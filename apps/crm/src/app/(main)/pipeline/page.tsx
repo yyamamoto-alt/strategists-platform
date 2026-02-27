@@ -45,7 +45,7 @@ export default function PipelinePage() {
     <div className="p-6 space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-white">
             営業パイプライン
           </h1>
           <p className="text-sm text-gray-500 mt-1">
@@ -57,8 +57,8 @@ export default function PipelinePage() {
             onClick={() => setView("kanban")}
             className={`px-3 py-1.5 text-sm rounded-lg ${
               view === "kanban"
-                ? "bg-primary-600 text-white"
-                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                ? "bg-brand text-white"
+                : "bg-surface-elevated text-gray-400 hover:bg-white/5"
             }`}
           >
             カンバン
@@ -67,8 +67,8 @@ export default function PipelinePage() {
             onClick={() => setView("table")}
             className={`px-3 py-1.5 text-sm rounded-lg ${
               view === "table"
-                ? "bg-primary-600 text-white"
-                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                ? "bg-brand text-white"
+                : "bg-surface-elevated text-gray-400 hover:bg-white/5"
             }`}
           >
             テーブル
@@ -81,12 +81,12 @@ export default function PipelinePage() {
           {byStage.map(({ stage, customers }) => (
             <div
               key={stage}
-              className={`flex-shrink-0 w-72 bg-gray-50 rounded-xl border-t-4 ${STAGE_COLORS[stage]}`}
+              className={`flex-shrink-0 w-72 bg-surface rounded-xl border-t-4 ${STAGE_COLORS[stage]}`}
             >
-              <div className="p-3 border-b bg-white rounded-t-xl">
+              <div className="p-3 border-b border-white/10 bg-surface-card rounded-t-xl">
                 <div className="flex items-center justify-between">
-                  <h3 className="font-semibold text-sm">{stage}</h3>
-                  <span className="bg-gray-200 text-gray-700 text-xs font-medium px-2 py-0.5 rounded-full">
+                  <h3 className="font-semibold text-sm text-white">{stage}</h3>
+                  <span className="bg-white/10 text-gray-300 text-xs font-medium px-2 py-0.5 rounded-full">
                     {customers.length}
                   </span>
                 </div>
@@ -107,13 +107,13 @@ export default function PipelinePage() {
                   <Link
                     key={customer.id}
                     href={`/customers/${customer.id}`}
-                    className="block bg-white rounded-lg border p-3 hover:shadow-md transition-shadow"
+                    className="block bg-surface-card rounded-lg border border-white/10 p-3 hover:shadow-[0_4px_6px_rgba(0,0,0,0.4)] transition-shadow"
                   >
                     <div className="flex items-center gap-2 mb-2">
-                      <div className="w-7 h-7 bg-primary-100 text-primary-700 rounded-full flex items-center justify-center font-bold text-xs">
+                      <div className="w-7 h-7 bg-brand-muted text-brand rounded-full flex items-center justify-center font-bold text-xs">
                         {customer.name.charAt(0)}
                       </div>
-                      <span className="font-medium text-sm">
+                      <span className="font-medium text-sm text-white">
                         {customer.name}
                       </span>
                     </div>
@@ -132,7 +132,7 @@ export default function PipelinePage() {
                       )}
                     </div>
                     {customer.contract?.confirmed_amount && (
-                      <p className="text-xs font-medium text-green-600">
+                      <p className="text-xs font-medium text-green-400">
                         {formatCurrency(customer.contract.confirmed_amount)}
                       </p>
                     )}
@@ -151,9 +151,9 @@ export default function PipelinePage() {
           ))}
         </div>
       ) : (
-        <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+        <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 overflow-hidden">
           <table className="w-full">
-            <thead className="bg-gray-50 border-b">
+            <thead className="bg-surface-elevated border-b border-white/10">
               <tr>
                 <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">顧客</th>
                 <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">ステージ</th>
@@ -166,9 +166,9 @@ export default function PipelinePage() {
             </thead>
             <tbody>
               {mockCustomers.map((c) => (
-                <tr key={c.id} className="border-b border-gray-100 hover:bg-gray-50">
+                <tr key={c.id} className="border-b border-white/[0.08] hover:bg-white/5">
                   <td className="py-3 px-4">
-                    <Link href={`/customers/${c.id}`} className="font-medium text-sm hover:text-primary-600">
+                    <Link href={`/customers/${c.id}`} className="font-medium text-sm text-white hover:text-brand">
                       {c.name}
                     </Link>
                   </td>
@@ -179,13 +179,13 @@ export default function PipelinePage() {
                       </span>
                     )}
                   </td>
-                  <td className="py-3 px-4 text-sm">{formatDate(c.pipeline?.meeting_scheduled_date || null)}</td>
-                  <td className="py-3 px-4 text-sm">{formatDate(c.pipeline?.meeting_conducted_date || null)}</td>
-                  <td className="py-3 px-4 text-sm">{formatDate(c.pipeline?.closing_date || null)}</td>
-                  <td className="py-3 px-4 text-sm text-right font-medium">
+                  <td className="py-3 px-4 text-sm text-gray-300">{formatDate(c.pipeline?.meeting_scheduled_date || null)}</td>
+                  <td className="py-3 px-4 text-sm text-gray-300">{formatDate(c.pipeline?.meeting_conducted_date || null)}</td>
+                  <td className="py-3 px-4 text-sm text-gray-300">{formatDate(c.pipeline?.closing_date || null)}</td>
+                  <td className="py-3 px-4 text-sm text-right font-medium text-white">
                     {c.contract?.confirmed_amount ? formatCurrency(c.contract.confirmed_amount) : "-"}
                   </td>
-                  <td className="py-3 px-4 text-sm text-gray-600">{c.pipeline?.comparison_services || "-"}</td>
+                  <td className="py-3 px-4 text-sm text-gray-400">{c.pipeline?.comparison_services || "-"}</td>
                 </tr>
               ))}
             </tbody>

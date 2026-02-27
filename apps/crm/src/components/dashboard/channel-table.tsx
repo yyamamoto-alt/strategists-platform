@@ -14,7 +14,7 @@ export function ChannelTable({ data }: ChannelTableProps) {
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-gray-200">
+          <tr className="border-b border-white/10">
             <th className="text-left py-2 px-2 text-xs font-medium text-gray-500">
               チャネル
             </th>
@@ -39,20 +39,20 @@ export function ChannelTable({ data }: ChannelTableProps) {
           {sorted.map((row) => (
             <tr
               key={row.channel}
-              className="border-b border-gray-100 hover:bg-gray-50"
+              className="border-b border-white/[0.08] hover:bg-white/5"
             >
-              <td className="py-2 px-2 font-medium">{row.channel}</td>
-              <td className="py-2 px-2 text-right">{row.applications}</td>
-              <td className="py-2 px-2 text-right">{row.closings}</td>
-              <td className="py-2 px-2 text-right">
+              <td className="py-2 px-2 font-medium text-white">{row.channel}</td>
+              <td className="py-2 px-2 text-right text-gray-300">{row.applications}</td>
+              <td className="py-2 px-2 text-right text-gray-300">{row.closings}</td>
+              <td className="py-2 px-2 text-right text-gray-300">
                 {row.applications > 0
                   ? `${Math.round((row.closings / row.applications) * 100)}%`
                   : "-"}
               </td>
-              <td className="py-2 px-2 text-right">
+              <td className="py-2 px-2 text-right text-gray-300">
                 {formatCurrency(row.revenue)}
               </td>
-              <td className="py-2 px-2 text-right">
+              <td className="py-2 px-2 text-right text-gray-300">
                 {formatCurrency(row.ltv)}
               </td>
             </tr>

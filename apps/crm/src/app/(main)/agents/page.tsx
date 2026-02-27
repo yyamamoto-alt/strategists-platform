@@ -19,39 +19,39 @@ export default function AgentsPage() {
 
   const statusColor = (status: string) => {
     switch (status) {
-      case "活動中": return "bg-blue-100 text-blue-800";
-      case "内定": return "bg-green-100 text-green-800";
-      case "入社済": return "bg-emerald-100 text-emerald-800";
-      case "休止": return "bg-orange-100 text-orange-800";
-      case "未開始": return "bg-gray-100 text-gray-800";
-      default: return "bg-gray-100 text-gray-800";
+      case "活動中": return "bg-brand-muted text-brand";
+      case "内定": return "bg-green-900/20 text-green-400";
+      case "入社済": return "bg-emerald-900/20 text-emerald-400";
+      case "休止": return "bg-orange-900/20 text-orange-400";
+      case "未開始": return "bg-white/10 text-gray-300";
+      default: return "bg-white/10 text-gray-300";
     }
   };
 
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">エージェント・転職支援</h1>
+        <h1 className="text-2xl font-bold text-white">エージェント・転職支援</h1>
         <p className="text-sm text-gray-500 mt-1">人材紹介サービスの利用状況・転職活動進捗</p>
       </div>
 
       {/* KPI */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl shadow-sm border p-4">
+        <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-4">
           <p className="text-xs text-gray-500">エージェント利用者</p>
-          <p className="text-2xl font-bold mt-1">{enrolled.length}名</p>
+          <p className="text-2xl font-bold text-white mt-1">{enrolled.length}名</p>
         </div>
-        <div className="bg-white rounded-xl shadow-sm border p-4">
+        <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-4">
           <p className="text-xs text-gray-500">転職活動中</p>
-          <p className="text-2xl font-bold mt-1">{activeSearch.length}名</p>
+          <p className="text-2xl font-bold text-white mt-1">{activeSearch.length}名</p>
         </div>
-        <div className="bg-white rounded-xl shadow-sm border p-4">
+        <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-4">
           <p className="text-xs text-gray-500">内定・入社済</p>
-          <p className="text-2xl font-bold mt-1">{placed.length}名</p>
+          <p className="text-2xl font-bold text-white mt-1">{placed.length}名</p>
         </div>
-        <div className="bg-white rounded-xl shadow-sm border p-4">
+        <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-4">
           <p className="text-xs text-gray-500">平均紹介手数料率</p>
-          <p className="text-2xl font-bold mt-1">
+          <p className="text-2xl font-bold text-white mt-1">
             {enrolled.length > 0
               ? `${Math.round(
                   (enrolled.reduce((sum, c) => sum + (c.agent.referral_fee_rate || 0), 0) /
@@ -64,9 +64,9 @@ export default function AgentsPage() {
       </div>
 
       {/* テーブル */}
-      <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+      <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 overflow-hidden">
         <table className="w-full">
-          <thead className="bg-gray-50 border-b">
+          <thead className="bg-surface-elevated border-b border-white/10">
             <tr>
               <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">顧客</th>
               <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">ステータス</th>
@@ -80,9 +80,9 @@ export default function AgentsPage() {
           </thead>
           <tbody>
             {agentCustomers.map((c) => (
-              <tr key={c.id} className="border-b border-gray-100 hover:bg-gray-50">
+              <tr key={c.id} className="border-b border-white/[0.08] hover:bg-white/5">
                 <td className="py-3 px-4">
-                  <Link href={`/customers/${c.id}`} className="font-medium text-sm hover:text-primary-600">
+                  <Link href={`/customers/${c.id}`} className="font-medium text-sm text-white hover:text-brand">
                     {c.name}
                   </Link>
                 </td>
@@ -91,18 +91,18 @@ export default function AgentsPage() {
                     {c.agent.job_search_status}
                   </span>
                 </td>
-                <td className="py-3 px-4 text-sm text-gray-600 max-w-[200px] truncate">
+                <td className="py-3 px-4 text-sm text-gray-400 max-w-[200px] truncate">
                   {c.agent.agent_plan || "-"}
                 </td>
-                <td className="py-3 px-4 text-sm text-gray-600 max-w-[200px] truncate">
+                <td className="py-3 px-4 text-sm text-gray-400 max-w-[200px] truncate">
                   {c.agent.selection_status || "-"}
                 </td>
-                <td className="py-3 px-4 text-sm text-center">{c.agent.exam_count}</td>
-                <td className="py-3 px-4 text-sm">
+                <td className="py-3 px-4 text-sm text-center text-gray-300">{c.agent.exam_count}</td>
+                <td className="py-3 px-4 text-sm text-gray-300">
                   {c.agent.referral_fee_rate ? `${(c.agent.referral_fee_rate * 100).toFixed(0)}%` : "-"}
                 </td>
-                <td className="py-3 px-4 text-sm text-gray-600">{c.agent.external_agents || "-"}</td>
-                <td className="py-3 px-4 text-sm text-gray-600 max-w-[200px] truncate">
+                <td className="py-3 px-4 text-sm text-gray-400">{c.agent.external_agents || "-"}</td>
+                <td className="py-3 px-4 text-sm text-gray-400 max-w-[200px] truncate">
                   {c.agent.level_up_confirmed || "-"}
                 </td>
               </tr>

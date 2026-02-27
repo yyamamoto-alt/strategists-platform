@@ -20,7 +20,7 @@ export default function CustomerDetailPage() {
     return (
       <div className="p-6">
         <p className="text-gray-500">顧客が見つかりません。</p>
-        <Link href="/customers" className="text-primary-600 hover:underline mt-2 inline-block">
+        <Link href="/customers" className="text-brand hover:underline mt-2 inline-block">
           顧客一覧に戻る
         </Link>
       </div>
@@ -37,17 +37,17 @@ export default function CustomerDetailPage() {
       <div className="flex items-center gap-4">
         <Link
           href="/customers"
-          className="text-gray-400 hover:text-gray-600 transition-colors"
+          className="text-gray-400 hover:text-gray-300 transition-colors"
         >
           ← 戻る
         </Link>
         <div className="flex-1">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-primary-100 text-primary-700 rounded-full flex items-center justify-center font-bold text-lg">
+            <div className="w-12 h-12 bg-brand-muted text-brand rounded-full flex items-center justify-center font-bold text-lg">
               {customer.name.charAt(0)}
             </div>
             <div>
-              <h1 className="text-2xl font-bold">{customer.name}</h1>
+              <h1 className="text-2xl font-bold text-white">{customer.name}</h1>
               <div className="flex items-center gap-2 mt-1">
                 <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getAttributeColor(customer.attribute)}`}>
                   {customer.attribute}
@@ -66,7 +66,7 @@ export default function CustomerDetailPage() {
             </div>
           </div>
         </div>
-        <button className="px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700">
+        <button className="px-4 py-2 bg-brand text-white rounded-lg text-sm font-medium hover:bg-brand-dark">
           編集
         </button>
       </div>
@@ -75,8 +75,8 @@ export default function CustomerDetailPage() {
         {/* 左カラム: 基本情報 + 営業情報 */}
         <div className="lg:col-span-2 space-y-6">
           {/* 基本情報カード */}
-          <div className="bg-white rounded-xl shadow-sm border p-6">
-            <h2 className="text-lg font-semibold mb-4">基本情報</h2>
+          <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-6">
+            <h2 className="text-lg font-semibold text-white mb-4">基本情報</h2>
             <div className="grid grid-cols-2 gap-4 text-sm">
               <InfoRow label="申込日" value={formatDate(customer.application_date)} />
               <InfoRow label="メール" value={customer.email || "-"} />
@@ -90,7 +90,7 @@ export default function CustomerDetailPage() {
             {customer.career_history && (
               <div className="mt-4">
                 <p className="text-xs text-gray-500 font-medium mb-1">経歴</p>
-                <p className="text-sm text-gray-700 whitespace-pre-line bg-gray-50 p-3 rounded-lg">
+                <p className="text-sm text-gray-300 whitespace-pre-line bg-surface-elevated p-3 rounded-lg">
                   {customer.career_history}
                 </p>
               </div>
@@ -98,7 +98,7 @@ export default function CustomerDetailPage() {
             {customer.target_companies && (
               <div className="mt-4">
                 <p className="text-xs text-gray-500 font-medium mb-1">志望企業</p>
-                <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg">
+                <p className="text-sm text-gray-300 bg-surface-elevated p-3 rounded-lg">
                   {customer.target_companies}
                 </p>
               </div>
@@ -107,8 +107,8 @@ export default function CustomerDetailPage() {
 
           {/* 営業・商談情報 */}
           {customer.pipeline && (
-            <div className="bg-white rounded-xl shadow-sm border p-6">
-              <h2 className="text-lg font-semibold mb-4">営業・商談情報</h2>
+            <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-6">
+              <h2 className="text-lg font-semibold text-white mb-4">営業・商談情報</h2>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <InfoRow label="面談予定日" value={formatDate(customer.pipeline.meeting_scheduled_date)} />
                 <InfoRow label="面談実施日" value={formatDate(customer.pipeline.meeting_conducted_date)} />
@@ -122,7 +122,7 @@ export default function CustomerDetailPage() {
               {customer.pipeline.sales_content && (
                 <div className="mt-4">
                   <p className="text-xs text-gray-500 font-medium mb-1">営業内容</p>
-                  <p className="text-sm text-gray-700 whitespace-pre-line bg-gray-50 p-3 rounded-lg">
+                  <p className="text-sm text-gray-300 whitespace-pre-line bg-surface-elevated p-3 rounded-lg">
                     {customer.pipeline.sales_content}
                   </p>
                 </div>
@@ -130,7 +130,7 @@ export default function CustomerDetailPage() {
               {customer.pipeline.sales_strategy && (
                 <div className="mt-4">
                   <p className="text-xs text-gray-500 font-medium mb-1">営業方針</p>
-                  <p className="text-sm text-gray-700 whitespace-pre-line bg-gray-50 p-3 rounded-lg">
+                  <p className="text-sm text-gray-300 whitespace-pre-line bg-surface-elevated p-3 rounded-lg">
                     {customer.pipeline.sales_strategy}
                   </p>
                 </div>
@@ -140,8 +140,8 @@ export default function CustomerDetailPage() {
 
           {/* 契約情報 */}
           {customer.contract && (
-            <div className="bg-white rounded-xl shadow-sm border p-6">
-              <h2 className="text-lg font-semibold mb-4">契約・入金情報</h2>
+            <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-6">
+              <h2 className="text-lg font-semibold text-white mb-4">契約・入金情報</h2>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <InfoRow label="プラン" value={customer.contract.plan_name || "-"} />
                 <InfoRow label="変更プラン" value={customer.contract.changed_plan || "-"} />
@@ -157,8 +157,8 @@ export default function CustomerDetailPage() {
 
           {/* 学習情報 */}
           {customer.learning && (
-            <div className="bg-white rounded-xl shadow-sm border p-6">
-              <h2 className="text-lg font-semibold mb-4">学習状況</h2>
+            <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-6">
+              <h2 className="text-lg font-semibold text-white mb-4">学習状況</h2>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <InfoRow label="指導開始日" value={formatDate(customer.learning.coaching_start_date)} />
                 <InfoRow label="指導終了日" value={formatDate(customer.learning.coaching_end_date)} />
@@ -172,7 +172,7 @@ export default function CustomerDetailPage() {
               {customer.learning.case_interview_progress && (
                 <div className="mt-4">
                   <p className="text-xs text-gray-500 font-medium mb-1">ケース面接対策状況</p>
-                  <p className="text-sm text-gray-700 whitespace-pre-line bg-gray-50 p-3 rounded-lg">
+                  <p className="text-sm text-gray-300 whitespace-pre-line bg-surface-elevated p-3 rounded-lg">
                     {customer.learning.case_interview_progress}
                   </p>
                 </div>
@@ -182,8 +182,8 @@ export default function CustomerDetailPage() {
 
           {/* エージェント情報 */}
           {customer.agent && (
-            <div className="bg-white rounded-xl shadow-sm border p-6">
-              <h2 className="text-lg font-semibold mb-4">エージェント・転職支援</h2>
+            <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-6">
+              <h2 className="text-lg font-semibold text-white mb-4">エージェント・転職支援</h2>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <InfoRow label="エージェント利用" value={customer.agent.agent_service_enrolled ? "あり" : "なし"} />
                 <InfoRow label="プラン" value={customer.agent.agent_plan || "-"} />
@@ -198,7 +198,7 @@ export default function CustomerDetailPage() {
               {customer.agent.agent_memo && (
                 <div className="mt-4">
                   <p className="text-xs text-gray-500 font-medium mb-1">エージェント業務メモ</p>
-                  <p className="text-sm text-gray-700 whitespace-pre-line bg-gray-50 p-3 rounded-lg">
+                  <p className="text-sm text-gray-300 whitespace-pre-line bg-surface-elevated p-3 rounded-lg">
                     {customer.agent.agent_memo}
                   </p>
                 </div>
@@ -210,53 +210,53 @@ export default function CustomerDetailPage() {
         {/* 右カラム: 活動履歴 + プロフィール */}
         <div className="space-y-6">
           {/* プロフィール詳細 */}
-          <div className="bg-white rounded-xl shadow-sm border p-6">
-            <h2 className="text-lg font-semibold mb-4">プロフィール</h2>
+          <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-6">
+            <h2 className="text-lg font-semibold text-white mb-4">プロフィール</h2>
             <div className="space-y-3 text-sm">
               {customer.sns_accounts && (
                 <div>
                   <p className="text-xs text-gray-500 font-medium">SNS</p>
-                  <p className="text-gray-700">{customer.sns_accounts}</p>
+                  <p className="text-gray-300">{customer.sns_accounts}</p>
                 </div>
               )}
               {customer.reference_media && (
                 <div>
                   <p className="text-xs text-gray-500 font-medium">参考メディア</p>
-                  <p className="text-gray-700">{customer.reference_media}</p>
+                  <p className="text-gray-300">{customer.reference_media}</p>
                 </div>
               )}
               {customer.hobbies && (
                 <div>
                   <p className="text-xs text-gray-500 font-medium">趣味・特技</p>
-                  <p className="text-gray-700">{customer.hobbies}</p>
+                  <p className="text-gray-300">{customer.hobbies}</p>
                 </div>
               )}
               {customer.behavioral_traits && (
                 <div>
                   <p className="text-xs text-gray-500 font-medium">行動特性</p>
-                  <p className="text-gray-700">{customer.behavioral_traits}</p>
+                  <p className="text-gray-300">{customer.behavioral_traits}</p>
                 </div>
               )}
               {customer.notes && (
                 <div>
                   <p className="text-xs text-gray-500 font-medium">備考</p>
-                  <p className="text-gray-700 bg-yellow-50 p-2 rounded">{customer.notes}</p>
+                  <p className="text-gray-300 bg-yellow-900/20 p-2 rounded">{customer.notes}</p>
                 </div>
               )}
               {customer.caution_notes && (
                 <div>
                   <p className="text-xs text-gray-500 font-medium">注意事項</p>
-                  <p className="text-gray-700 bg-red-50 p-2 rounded">{customer.caution_notes}</p>
+                  <p className="text-gray-300 bg-red-900/20 p-2 rounded">{customer.caution_notes}</p>
                 </div>
               )}
             </div>
           </div>
 
           {/* 活動履歴 */}
-          <div className="bg-white rounded-xl shadow-sm border p-6">
+          <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold">活動履歴</h2>
-              <button className="text-xs text-primary-600 hover:underline">
+              <h2 className="text-lg font-semibold text-white">活動履歴</h2>
+              <button className="text-xs text-brand hover:underline">
                 + 追加
               </button>
             </div>
@@ -267,17 +267,17 @@ export default function CustomerDetailPage() {
               {activities.map((activity) => (
                 <div
                   key={activity.id}
-                  className="border-l-2 border-primary-200 pl-3 py-1"
+                  className="border-l-2 border-brand/30 pl-3 py-1"
                 >
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-xs font-medium bg-gray-100 px-2 py-0.5 rounded">
+                    <span className="text-xs font-medium bg-surface-elevated text-gray-300 px-2 py-0.5 rounded">
                       {activity.activity_type}
                     </span>
                     <span className="text-xs text-gray-400">
                       {formatDate(activity.created_at)}
                     </span>
                   </div>
-                  <p className="text-sm text-gray-700">{activity.content}</p>
+                  <p className="text-sm text-gray-300">{activity.content}</p>
                   {activity.created_by && (
                     <p className="text-xs text-gray-400 mt-1">
                       担当: {activity.created_by}
@@ -297,7 +297,7 @@ function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <p className="text-xs text-gray-500 font-medium">{label}</p>
-      <p className="text-gray-800 mt-0.5">{value}</p>
+      <p className="text-white mt-0.5">{value}</p>
     </div>
   );
 }

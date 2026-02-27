@@ -37,7 +37,7 @@ export default function LearningPage() {
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">学習管理</h1>
+        <h1 className="text-2xl font-bold text-white">学習管理</h1>
         <p className="text-sm text-gray-500 mt-1">
           受講生の学習状況・指導記録
         </p>
@@ -45,30 +45,30 @@ export default function LearningPage() {
 
       {/* KPI */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <div className="bg-white rounded-xl shadow-sm border p-4">
+        <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-4">
           <p className="text-xs text-gray-500">受講生数</p>
-          <p className="text-2xl font-bold mt-1">{learners.length}</p>
+          <p className="text-2xl font-bold text-white mt-1">{learners.length}</p>
         </div>
-        <div className="bg-white rounded-xl shadow-sm border p-4">
+        <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-4">
           <p className="text-xs text-gray-500">平均出席率</p>
-          <p className="text-2xl font-bold mt-1">{formatPercent(avgAttendance)}</p>
+          <p className="text-2xl font-bold text-white mt-1">{formatPercent(avgAttendance)}</p>
         </div>
-        <div className="bg-white rounded-xl shadow-sm border p-4">
+        <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-4">
           <p className="text-xs text-gray-500">平均セッション数</p>
-          <p className="text-2xl font-bold mt-1">{avgSessions.toFixed(1)}</p>
+          <p className="text-2xl font-bold text-white mt-1">{avgSessions.toFixed(1)}</p>
         </div>
         {Object.entries(levelCounts).map(([level, count]) => (
-          <div key={level} className="bg-white rounded-xl shadow-sm border p-4">
+          <div key={level} className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-4">
             <p className="text-xs text-gray-500">{level}</p>
-            <p className="text-2xl font-bold mt-1">{count}名</p>
+            <p className="text-2xl font-bold text-white mt-1">{count}名</p>
           </div>
         ))}
       </div>
 
       {/* 受講生テーブル */}
-      <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+      <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 overflow-hidden">
         <table className="w-full">
-          <thead className="bg-gray-50 border-b">
+          <thead className="bg-surface-elevated border-b border-white/10">
             <tr>
               <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">受講生</th>
               <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">開始日</th>
@@ -82,25 +82,25 @@ export default function LearningPage() {
           </thead>
           <tbody>
             {learners.map((l) => (
-              <tr key={l.id} className="border-b border-gray-100 hover:bg-gray-50">
+              <tr key={l.id} className="border-b border-white/[0.08] hover:bg-white/5">
                 <td className="py-3 px-4">
-                  <Link href={`/customers/${l.id}`} className="font-medium text-sm hover:text-primary-600">
+                  <Link href={`/customers/${l.id}`} className="font-medium text-sm text-white hover:text-brand">
                     {l.name}
                   </Link>
                 </td>
-                <td className="py-3 px-4 text-sm">{formatDate(l.learning.coaching_start_date)}</td>
-                <td className="py-3 px-4 text-sm">{formatDate(l.learning.coaching_end_date)}</td>
-                <td className="py-3 px-4 text-sm text-center">{l.learning.total_sessions}</td>
+                <td className="py-3 px-4 text-sm text-gray-300">{formatDate(l.learning.coaching_start_date)}</td>
+                <td className="py-3 px-4 text-sm text-gray-300">{formatDate(l.learning.coaching_end_date)}</td>
+                <td className="py-3 px-4 text-sm text-center text-gray-300">{l.learning.total_sessions}</td>
                 <td className="py-3 px-4 text-center">
                   {l.learning.attendance_rate !== null ? (
                     <div className="flex items-center justify-center gap-2">
-                      <div className="w-16 bg-gray-200 rounded-full h-2">
+                      <div className="w-16 bg-white/10 rounded-full h-2">
                         <div
                           className="bg-green-500 h-2 rounded-full"
                           style={{ width: `${(l.learning.attendance_rate || 0) * 100}%` }}
                         />
                       </div>
-                      <span className="text-xs">{formatPercent(l.learning.attendance_rate)}</span>
+                      <span className="text-xs text-gray-300">{formatPercent(l.learning.attendance_rate)}</span>
                     </div>
                   ) : (
                     <span className="text-xs text-gray-400">-</span>
@@ -109,13 +109,13 @@ export default function LearningPage() {
                 <td className="py-3 px-4 text-center">
                   {l.learning.curriculum_progress !== null ? (
                     <div className="flex items-center justify-center gap-2">
-                      <div className="w-16 bg-gray-200 rounded-full h-2">
+                      <div className="w-16 bg-white/10 rounded-full h-2">
                         <div
-                          className="bg-blue-500 h-2 rounded-full"
+                          className="bg-brand h-2 rounded-full"
                           style={{ width: `${(l.learning.curriculum_progress || 0) * 100}%` }}
                         />
                       </div>
-                      <span className="text-xs">{formatPercent(l.learning.curriculum_progress)}</span>
+                      <span className="text-xs text-gray-300">{formatPercent(l.learning.curriculum_progress)}</span>
                     </div>
                   ) : (
                     <span className="text-xs text-gray-400">-</span>
@@ -125,10 +125,10 @@ export default function LearningPage() {
                   {l.learning.current_level ? (
                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                       l.learning.current_level === "上級者"
-                        ? "bg-green-100 text-green-800"
+                        ? "bg-green-900/20 text-green-400"
                         : l.learning.current_level === "中級者"
-                        ? "bg-blue-100 text-blue-800"
-                        : "bg-gray-100 text-gray-800"
+                        ? "bg-brand-muted text-brand"
+                        : "bg-white/10 text-gray-300"
                     }`}>
                       {l.learning.current_level}
                     </span>
@@ -136,7 +136,7 @@ export default function LearningPage() {
                     <span className="text-xs text-gray-400">-</span>
                   )}
                 </td>
-                <td className="py-3 px-4 text-sm text-gray-600">{l.learning.latest_evaluation || "-"}</td>
+                <td className="py-3 px-4 text-sm text-gray-400">{l.learning.latest_evaluation || "-"}</td>
               </tr>
             ))}
           </tbody>

@@ -2,11 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700&display=swap');
+
 @layer base {
   * {
-    @apply border-gray-800;
+    @apply border-white/10;
   }
   body {
-    @apply bg-gray-950 text-white;
+    @apply bg-surface text-white font-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 }

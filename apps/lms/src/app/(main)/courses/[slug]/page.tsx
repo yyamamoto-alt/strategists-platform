@@ -25,9 +25,9 @@ export default function CourseDetailPage() {
 
   if (!course) {
     return (
-      <div className="p-6 bg-gray-950 min-h-screen text-center py-20">
+      <div className="p-6 bg-surface min-h-screen text-center py-20">
         <p className="text-gray-400">コースが見つかりません</p>
-        <Link href="/courses" className="text-primary-400 hover:underline text-sm mt-2 inline-block">コース一覧に戻る</Link>
+        <Link href="/courses" className="text-brand-light hover:underline text-sm mt-2 inline-block">コース一覧に戻る</Link>
       </div>
     );
   }
@@ -35,12 +35,12 @@ export default function CourseDetailPage() {
   const totalLessons = modules.reduce((sum, m) => sum + (m.lessons?.length || 0), 0);
 
   return (
-    <div className="p-6 bg-gray-950 min-h-screen">
+    <div className="p-6 bg-surface min-h-screen">
       <Link href="/courses" className="inline-flex items-center gap-2 text-gray-400 hover:text-white text-sm mb-6 transition-colors">
         <ArrowLeft className="w-4 h-4" />コース一覧
       </Link>
 
-      <div className="bg-gradient-to-r from-primary-600 to-purple-700 rounded-xl p-8 mb-8">
+      <div className="bg-gradient-to-r from-brand to-purple-700 rounded-xl p-8 mb-8">
         <div className="flex items-center gap-2 mb-3">
           <span className="text-xs px-2 py-0.5 rounded-full bg-white/20 text-white">{levelLabels[course.level || ""] || course.level}</span>
           {course.category && <span className="text-xs px-2 py-0.5 rounded-full bg-white/20 text-white">{course.category}</span>}
@@ -64,8 +64,8 @@ export default function CourseDetailPage() {
                 const isExpanded = expandedModules.has(mod.id);
                 const lessons = mod.lessons || [];
                 return (
-                  <div key={mod.id} className="bg-gray-800 rounded-lg overflow-hidden">
-                    <button onClick={() => toggleModule(mod.id)} className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-750 transition-colors">
+                  <div key={mod.id} className="bg-surface-elevated rounded-lg overflow-hidden">
+                    <button onClick={() => toggleModule(mod.id)} className="w-full flex items-center justify-between p-4 text-left hover:bg-white/5 transition-colors">
                       <div className="flex items-center gap-3">
                         {isExpanded ? <ChevronDown className="w-4 h-4 text-gray-400" /> : <ChevronRight className="w-4 h-4 text-gray-400" />}
                         <span className="text-white font-medium">{mod.title}</span>
@@ -73,13 +73,13 @@ export default function CourseDetailPage() {
                       <span className="text-xs text-gray-400">{lessons.length}レッスン</span>
                     </button>
                     {isExpanded && (
-                      <div className="border-t border-gray-700">
+                      <div className="border-t border-white/10">
                         {lessons.sort((a, b) => a.sort_order - b.sort_order).map((lesson) => {
                           const Icon = typeIcons[lesson.lesson_type] || FileText;
                           return (
-                            <div key={lesson.id} className="flex items-center gap-3 px-6 py-3 border-b border-gray-700/50 last:border-0">
+                            <div key={lesson.id} className="flex items-center gap-3 px-6 py-3 border-b border-white/[0.08] last:border-0">
                               <Icon className="w-4 h-4 text-gray-400 shrink-0" />
-                              <Link href={`/courses/${slug}/learn/${lesson.id}`} className="text-sm text-gray-300 hover:text-primary-400 flex-1 transition-colors">{lesson.title}</Link>
+                              <Link href={`/courses/${slug}/learn/${lesson.id}`} className="text-sm text-gray-300 hover:text-brand-light flex-1 transition-colors">{lesson.title}</Link>
                               {lesson.duration_minutes && <span className="text-xs text-gray-500">{lesson.duration_minutes}分</span>}
                             </div>
                           );
@@ -93,11 +93,11 @@ export default function CourseDetailPage() {
           )}
         </div>
         <div>
-          <div className="bg-gray-800 rounded-xl p-6 sticky top-6">
+          <div className="bg-surface-elevated rounded-xl p-6 sticky top-6">
             <h3 className="text-lg font-bold text-white mb-3">受講中</h3>
             <p className="text-sm text-gray-400 mb-4">このコースで学習を進めましょう</p>
             {modules[0]?.lessons?.[0] && (
-              <Link href={`/courses/${slug}/learn/${modules[0].lessons[0].id}`} className="w-full bg-primary-600 hover:bg-primary-700 text-white py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2">
+              <Link href={`/courses/${slug}/learn/${modules[0].lessons[0].id}`} className="w-full bg-brand hover:bg-brand-dark text-white py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2">
                 <Play className="w-4 h-4" />学習を始める
               </Link>
             )}

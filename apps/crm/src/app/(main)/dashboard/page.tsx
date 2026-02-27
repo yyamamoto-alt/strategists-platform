@@ -38,7 +38,7 @@ export default function DashboardPage() {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">ダッシュボード</h1>
+          <h1 className="text-2xl font-bold text-white">ダッシュボード</h1>
           <p className="text-sm text-gray-500 mt-1">
             営業・売上・KPIの概況
           </p>
@@ -59,24 +59,24 @@ export default function DashboardPage() {
 
       {/* チャート */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-xl shadow-sm border p-6">
-          <h2 className="text-lg font-semibold mb-4">売上推移</h2>
+        <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-6">
+          <h2 className="text-lg font-semibold text-white mb-4">売上推移</h2>
           <RevenueChart data={mockRevenueMetrics} />
         </div>
-        <div className="bg-white rounded-xl shadow-sm border p-6">
-          <h2 className="text-lg font-semibold mb-4">ファネル推移</h2>
+        <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-6">
+          <h2 className="text-lg font-semibold text-white mb-4">ファネル推移</h2>
           <FunnelChart data={mockFunnelMetrics} />
         </div>
       </div>
 
       {/* 下段 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-xl shadow-sm border p-6">
-          <h2 className="text-lg font-semibold mb-4">チャネル別実績</h2>
+        <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-6">
+          <h2 className="text-lg font-semibold text-white mb-4">チャネル別実績</h2>
           <ChannelTable data={mockChannelMetrics} />
         </div>
-        <div className="bg-white rounded-xl shadow-sm border p-6">
-          <h2 className="text-lg font-semibold mb-4">最近の顧客</h2>
+        <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-6">
+          <h2 className="text-lg font-semibold text-white mb-4">最近の顧客</h2>
           <RecentCustomers customers={mockCustomers.slice(0, 5)} />
         </div>
       </div>

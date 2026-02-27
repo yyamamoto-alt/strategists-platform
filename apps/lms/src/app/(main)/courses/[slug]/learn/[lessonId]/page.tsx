@@ -30,7 +30,7 @@ export default function LessonPlayerPage() {
 
   if (!lesson) {
     return (
-      <div className="p-6 bg-gray-950 min-h-screen text-center py-20">
+      <div className="p-6 bg-surface min-h-screen text-center py-20">
         <p className="text-gray-400">レッスンが見つかりません</p>
       </div>
     );
@@ -39,9 +39,9 @@ export default function LessonPlayerPage() {
   const isCompleted = completedIds.has(lessonId);
 
   return (
-    <div className="flex h-screen bg-gray-950">
+    <div className="flex h-screen bg-surface">
       <div className="flex-1 overflow-y-auto">
-        <div className="sticky top-0 z-10 bg-gray-900 border-b border-gray-700 px-6 py-3 flex items-center justify-between">
+        <div className="sticky top-0 z-10 bg-surface-card border-b border-white/10 px-6 py-3 flex items-center justify-between">
           <Link href={`/courses/${slug}`} className="flex items-center gap-2 text-gray-400 hover:text-white text-sm transition-colors">
             <ArrowLeft className="w-4 h-4" />コースに戻る
           </Link>
@@ -56,20 +56,20 @@ export default function LessonPlayerPage() {
             <div className="mb-6"><MarkdownViewer content={lesson.markdown_content} protected={lesson.copy_protected} /></div>
           )}
           {lesson.description && (
-            <div className="bg-gray-800 rounded-lg p-6 mb-6"><p className="text-gray-300 whitespace-pre-wrap">{lesson.description}</p></div>
+            <div className="bg-surface-elevated rounded-lg p-6 mb-6"><p className="text-gray-300 whitespace-pre-wrap">{lesson.description}</p></div>
           )}
           <div className="flex items-center justify-between mb-6">
-            <button onClick={handleMarkComplete} disabled={isCompleted} className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-colors ${isCompleted ? "bg-green-900/50 text-green-300 cursor-default" : "bg-primary-600 hover:bg-primary-700 text-white"}`}>
+            <button onClick={handleMarkComplete} disabled={isCompleted} className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-colors ${isCompleted ? "bg-green-900/50 text-green-300 cursor-default" : "bg-brand hover:bg-brand-dark text-white"}`}>
               <CheckCircle className="w-5 h-5" />{isCompleted ? "完了済み" : "完了にする"}
             </button>
           </div>
-          <div className="flex justify-between border-t border-gray-700 pt-6">
+          <div className="flex justify-between border-t border-white/10 pt-6">
             {prevLesson ? <Link href={`/courses/${slug}/learn/${prevLesson.id}`} className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"><ArrowLeft className="w-4 h-4" /><span className="text-sm">{prevLesson.title}</span></Link> : <div />}
             {nextLesson ? <Link href={`/courses/${slug}/learn/${nextLesson.id}`} className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"><span className="text-sm">{nextLesson.title}</span><ArrowRight className="w-4 h-4" /></Link> : <div />}
           </div>
         </div>
       </div>
-      <aside className="w-72 bg-gray-900 border-l border-gray-700 overflow-y-auto hidden lg:block">
+      <aside className="w-72 bg-surface-card border-l border-white/10 overflow-y-auto hidden lg:block">
         <div className="p-4">
           <h3 className="text-sm font-semibold text-gray-400 uppercase mb-3">レッスン一覧</h3>
           <div className="space-y-1">
@@ -78,7 +78,7 @@ export default function LessonPlayerPage() {
               const isCurrent = l.id === lessonId;
               const done = completedIds.has(l.id);
               return (
-                <Link key={l.id} href={`/courses/${slug}/learn/${l.id}`} className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${isCurrent ? "bg-primary-600/20 text-primary-400" : "text-gray-400 hover:bg-gray-800 hover:text-white"}`}>
+                <Link key={l.id} href={`/courses/${slug}/learn/${l.id}`} className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${isCurrent ? "bg-brand-muted text-brand-light" : "text-gray-400 hover:bg-white/5 hover:text-white"}`}>
                   {done ? <CheckCircle className="w-4 h-4 text-green-400 shrink-0" /> : <Circle className="w-4 h-4 text-gray-600 shrink-0" />}
                   <span className="truncate">{l.title}</span>
                 </Link>

@@ -27,20 +27,25 @@ export function FunnelChart({ data }: FunnelChartProps) {
   return (
     <ResponsiveContainer width="100%" height={300}>
       <LineChart data={chartData}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-        <XAxis dataKey="period" tick={{ fontSize: 11 }} />
+        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
+        <XAxis dataKey="period" tick={{ fontSize: 11, fill: "#9ca3af" }} stroke="rgba(255,255,255,0.1)" />
         <YAxis
           yAxisId="left"
-          tick={{ fontSize: 11 }}
+          tick={{ fontSize: 11, fill: "#9ca3af" }}
+          stroke="rgba(255,255,255,0.1)"
         />
         <YAxis
           yAxisId="right"
           orientation="right"
-          tick={{ fontSize: 11 }}
+          tick={{ fontSize: 11, fill: "#9ca3af" }}
           tickFormatter={(v) => `${v}%`}
+          stroke="rgba(255,255,255,0.1)"
         />
-        <Tooltip />
-        <Legend iconSize={10} wrapperStyle={{ fontSize: 11 }} />
+        <Tooltip
+          contentStyle={{ backgroundColor: "#1A1A1A", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "8px", color: "#fff" }}
+          labelStyle={{ color: "#9ca3af" }}
+        />
+        <Legend iconSize={10} wrapperStyle={{ fontSize: 11, color: "#9ca3af" }} />
         <Line
           yAxisId="left"
           type="monotone"

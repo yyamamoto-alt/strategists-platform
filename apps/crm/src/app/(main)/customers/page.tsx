@@ -76,30 +76,30 @@ export default function CustomersPage() {
     <div className="p-6 space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">顧客一覧</h1>
+          <h1 className="text-2xl font-bold text-white">顧客一覧</h1>
           <p className="text-sm text-gray-500 mt-1">
             全{filtered.length}件の顧客
           </p>
         </div>
-        <button className="px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 transition-colors">
+        <button className="px-4 py-2 bg-brand text-white rounded-lg text-sm font-medium hover:bg-brand-dark transition-colors">
           + 新規顧客登録
         </button>
       </div>
 
       {/* フィルタ・検索 */}
-      <div className="bg-white rounded-xl shadow-sm border p-4">
+      <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-4">
         <div className="flex flex-wrap gap-3">
           <input
             type="text"
             placeholder="名前・メール・電話・大学で検索..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="flex-1 min-w-[200px] px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="flex-1 min-w-[200px] px-3 py-2 bg-surface-elevated border border-white/10 text-white placeholder-gray-500 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand"
           />
           <select
             value={attributeFilter}
             onChange={(e) => setAttributeFilter(e.target.value)}
-            className="px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="px-3 py-2 bg-surface-elevated border border-white/10 text-white rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand"
           >
             <option value="">全属性</option>
             <option value="既卒">既卒</option>
@@ -108,7 +108,7 @@ export default function CustomersPage() {
           <select
             value={stageFilter}
             onChange={(e) => setStageFilter(e.target.value)}
-            className="px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="px-3 py-2 bg-surface-elevated border border-white/10 text-white rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand"
           >
             <option value="">全ステージ</option>
             <option value="問い合わせ">問い合わせ</option>
@@ -127,7 +127,7 @@ export default function CustomersPage() {
               setSortBy(by);
               setSortDir(dir as "asc" | "desc");
             }}
-            className="px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="px-3 py-2 bg-surface-elevated border border-white/10 text-white rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand"
           >
             <option value="application_date-desc">申込日 (新しい順)</option>
             <option value="application_date-asc">申込日 (古い順)</option>
@@ -138,10 +138,10 @@ export default function CustomersPage() {
       </div>
 
       {/* 顧客テーブル */}
-      <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+      <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50 border-b">
+            <thead className="bg-surface-elevated border-b border-white/10">
               <tr>
                 <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase">
                   顧客
@@ -170,18 +170,18 @@ export default function CustomersPage() {
               {filtered.map((customer) => (
                 <tr
                   key={customer.id}
-                  className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                  className="border-b border-white/[0.08] hover:bg-white/5 transition-colors"
                 >
                   <td className="py-3 px-4">
                     <Link
                       href={`/customers/${customer.id}`}
                       className="flex items-center gap-3 group"
                     >
-                      <div className="w-9 h-9 bg-primary-100 text-primary-700 rounded-full flex items-center justify-center font-bold text-sm shrink-0">
+                      <div className="w-9 h-9 bg-brand-muted text-brand rounded-full flex items-center justify-center font-bold text-sm shrink-0">
                         {customer.name.charAt(0)}
                       </div>
                       <div>
-                        <p className="font-medium text-sm group-hover:text-primary-600 transition-colors">
+                        <p className="font-medium text-sm text-white group-hover:text-brand transition-colors">
                           {customer.name}
                         </p>
                         <p className="text-xs text-gray-400">
@@ -199,7 +199,7 @@ export default function CustomersPage() {
                       {customer.attribute}
                     </span>
                   </td>
-                  <td className="py-3 px-4 text-sm text-gray-600">
+                  <td className="py-3 px-4 text-sm text-gray-400">
                     {customer.utm_source || "-"}
                   </td>
                   <td className="py-3 px-4">
@@ -224,12 +224,12 @@ export default function CustomersPage() {
                       </span>
                     )}
                   </td>
-                  <td className="py-3 px-4 text-right text-sm font-medium">
+                  <td className="py-3 px-4 text-right text-sm font-medium text-white">
                     {customer.contract?.confirmed_amount
                       ? formatCurrency(customer.contract.confirmed_amount)
                       : "-"}
                   </td>
-                  <td className="py-3 px-4 text-sm text-gray-600">
+                  <td className="py-3 px-4 text-sm text-gray-400">
                     {formatDate(customer.application_date)}
                   </td>
                 </tr>

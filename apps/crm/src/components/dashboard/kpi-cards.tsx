@@ -62,13 +62,13 @@ export function KpiCards({
       {cards.map((card) => (
         <div
           key={card.title}
-          className="bg-white rounded-xl shadow-sm border p-4"
+          className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-4"
         >
           <div className="flex items-center gap-2 mb-2">
             <div className={`w-2 h-2 rounded-full ${card.color}`} />
             <p className="text-xs text-gray-500 font-medium">{card.title}</p>
           </div>
-          <p className="text-xl font-bold text-gray-900">{card.value}</p>
+          <p className="text-xl font-bold text-white">{card.value}</p>
           <p className="text-xs text-gray-400 mt-1">{card.subtitle}</p>
         </div>
       ))}

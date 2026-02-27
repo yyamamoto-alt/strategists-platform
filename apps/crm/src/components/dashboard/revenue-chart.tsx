@@ -26,15 +26,17 @@ export function RevenueChart({ data }: RevenueChartProps) {
   return (
     <ResponsiveContainer width="100%" height={300}>
       <BarChart data={data}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-        <XAxis dataKey="period" tick={{ fontSize: 11 }} />
-        <YAxis tickFormatter={formatYen} tick={{ fontSize: 11 }} />
+        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
+        <XAxis dataKey="period" tick={{ fontSize: 11, fill: "#9ca3af" }} stroke="rgba(255,255,255,0.1)" />
+        <YAxis tickFormatter={formatYen} tick={{ fontSize: 11, fill: "#9ca3af" }} stroke="rgba(255,255,255,0.1)" />
         <Tooltip
           formatter={(value) =>
             `¥${Number(value).toLocaleString()}`
           }
+          contentStyle={{ backgroundColor: "#1A1A1A", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "8px", color: "#fff" }}
+          labelStyle={{ color: "#9ca3af" }}
         />
-        <Legend iconSize={10} wrapperStyle={{ fontSize: 11 }} />
+        <Legend iconSize={10} wrapperStyle={{ fontSize: 11, color: "#9ca3af" }} />
         <Bar
           dataKey="school_revenue"
           name="スクール"
