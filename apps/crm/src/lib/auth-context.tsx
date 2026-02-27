@@ -1,6 +1,7 @@
 "use client";
 
-import { createContext, useContext, useState, ReactNode } from "react";
+import { createContext, useContext, ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import type { UserRole } from "@strategy-school/shared-db";
 
 interface AuthContextType {
@@ -17,21 +18,36 @@ const AuthContext = createContext<AuthContextType>({
   signOut: async () => {},
 });
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const useMock = process.env.NEXT_PUBLIC_USE_MOCK === "true";
+interface AuthProviderProps {
+  children: ReactNode;
+  initialUser?: { email: string; id: string } | null;
+  initialRole?: UserRole | null;
+}
 
-  const [user] = useState(
-    useMock ? { email: "admin@example.com", id: "mock-admin" } : null
-  );
-  const [role] = useState<UserRole | null>(useMock ? "admin" : null);
-  const [loading] = useState(false);
+export function AuthProvider({
+  children,
+  initialUser,
+  initialRole,
+}: AuthProviderProps) {
+  const useMock = process.env.NEXT_PUBLIC_USE_MOCK === "true";
+  const router = useRouter();
+
+  const user = useMock
+    ? { email: "admin@example.com", id: "mock-admin" }
+    : initialUser ?? null;
+
+  const role = useMock ? "admin" : initialRole ?? null;
 
   const signOut = async () => {
-    // In mock mode, do nothing
+    if (useMock) return;
+
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.push("/login");
+    router.refresh();
   };
 
   return (
-    <AuthContext.Provider value={{ user, role, loading, signOut }}>
+    <AuthContext.Provider value={{ user, role, loading: false, signOut }}>
       {children}
     </AuthContext.Provider>
   );

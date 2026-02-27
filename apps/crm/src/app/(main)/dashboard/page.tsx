@@ -1,85 +1,67 @@
-"use client";
+import { fetchCustomersWithRelations } from "@/lib/data/customers";
+import {
+  computeFunnelMetrics,
+  computeRevenueMetrics,
+  computeChannelMetrics,
+  fetchDashboardData,
+} from "@/lib/data/dashboard-metrics";
+import { DashboardClient } from "./dashboard-client";
 
-import { mockFunnelMetrics, mockRevenueMetrics, mockChannelMetrics, mockCustomers } from "@/lib/mock-data";
-import { formatCurrency, formatPercent } from "@/lib/utils";
-import { FunnelChart } from "@/components/dashboard/funnel-chart";
-import { RevenueChart } from "@/components/dashboard/revenue-chart";
-import { ChannelTable } from "@/components/dashboard/channel-table";
-import { KpiCards } from "@/components/dashboard/kpi-cards";
-import { RecentCustomers } from "@/components/dashboard/recent-customers";
+// モックデータ（フォールバック用）
+import {
+  mockFunnelMetrics,
+  mockRevenueMetrics,
+  mockChannelMetrics,
+  mockCustomers,
+} from "@/lib/mock-data";
 
-export default function DashboardPage() {
-  const latestFunnel = mockFunnelMetrics[mockFunnelMetrics.length - 1];
-  const latestRevenue = mockRevenueMetrics[mockRevenueMetrics.length - 1];
+export default async function DashboardPage() {
+  const useMock = process.env.NEXT_PUBLIC_USE_MOCK === "true";
 
-  // パイプライン集計
-  const pipelineCounts = mockCustomers.reduce(
-    (acc, c) => {
-      if (c.pipeline) {
-        acc[c.pipeline.stage] = (acc[c.pipeline.stage] || 0) + 1;
-      }
-      return acc;
-    },
-    {} as Record<string, number>
-  );
+  if (useMock) {
+    const totalCustomers = mockCustomers.length;
+    const closedCount = mockCustomers.filter(
+      (c) => c.pipeline?.stage === "成約" || c.pipeline?.stage === "入金済"
+    ).length;
+    const activeDeals = mockCustomers.filter(
+      (c) =>
+        c.pipeline?.stage !== "失注" &&
+        c.pipeline?.stage !== "入金済" &&
+        c.pipeline?.stage !== "成約"
+    ).length;
 
-  const totalCustomers = mockCustomers.length;
-  const closedCount = mockCustomers.filter(
-    (c) => c.pipeline?.stage === "成約" || c.pipeline?.stage === "入金済"
-  ).length;
-  const activeDeals = mockCustomers.filter(
-    (c) =>
-      c.pipeline?.stage !== "失注" &&
-      c.pipeline?.stage !== "入金済" &&
-      c.pipeline?.stage !== "成約"
-  ).length;
-
-  return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white">ダッシュボード</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            営業・売上・KPIの概況
-          </p>
-        </div>
-        <div className="text-sm text-gray-500">
-          最終更新: {new Date().toLocaleDateString("ja-JP")}
-        </div>
-      </div>
-
-      {/* KPIカード */}
-      <KpiCards
+    return (
+      <DashboardClient
         totalCustomers={totalCustomers}
         closedCount={closedCount}
         activeDeals={activeDeals}
-        latestRevenue={latestRevenue}
-        latestFunnel={latestFunnel}
+        customers={mockCustomers}
+        funnelMetrics={mockFunnelMetrics}
+        revenueMetrics={mockRevenueMetrics}
+        channelMetrics={mockChannelMetrics}
       />
+    );
+  }
 
-      {/* チャート */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-6">
-          <h2 className="text-lg font-semibold text-white mb-4">売上推移</h2>
-          <RevenueChart data={mockRevenueMetrics} />
-        </div>
-        <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-6">
-          <h2 className="text-lg font-semibold text-white mb-4">ファネル推移</h2>
-          <FunnelChart data={mockFunnelMetrics} />
-        </div>
-      </div>
+  // 実データモード
+  const [customers, dashboardData] = await Promise.all([
+    fetchCustomersWithRelations(),
+    fetchDashboardData(),
+  ]);
 
-      {/* 下段 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-6">
-          <h2 className="text-lg font-semibold text-white mb-4">チャネル別実績</h2>
-          <ChannelTable data={mockChannelMetrics} />
-        </div>
-        <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-6">
-          <h2 className="text-lg font-semibold text-white mb-4">最近の顧客</h2>
-          <RecentCustomers customers={mockCustomers.slice(0, 5)} />
-        </div>
-      </div>
-    </div>
+  const funnelMetrics = computeFunnelMetrics(customers);
+  const revenueMetrics = computeRevenueMetrics(customers);
+  const channelMetrics = computeChannelMetrics(customers);
+
+  return (
+    <DashboardClient
+      totalCustomers={dashboardData.totalCustomers}
+      closedCount={dashboardData.closedCount}
+      activeDeals={dashboardData.activeDeals}
+      customers={customers}
+      funnelMetrics={funnelMetrics}
+      revenueMetrics={revenueMetrics}
+      channelMetrics={channelMetrics}
+    />
   );
 }
