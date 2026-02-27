@@ -8,6 +8,8 @@ export async function POST() {
   const url = process.env.SUPABASE_URL!;
   const key = process.env.SUPABASE_ANON_KEY!;
 
+  const cookiesToReturn: { name: string; value: string; options: Record<string, unknown> }[] = [];
+
   const supabase = createServerClient<Database>(url, key, {
     cookies: {
       getAll() {
@@ -15,7 +17,7 @@ export async function POST() {
       },
       setAll(cookiesToSet) {
         cookiesToSet.forEach(({ name, value, options }) => {
-          cookieStore.set(name, value, options);
+          cookiesToReturn.push({ name, value, options: options as Record<string, unknown> });
         });
       },
     },
@@ -23,5 +25,10 @@ export async function POST() {
 
   await supabase.auth.signOut();
 
-  return NextResponse.json({ success: true });
+  const response = NextResponse.json({ success: true });
+  for (const cookie of cookiesToReturn) {
+    response.cookies.set(cookie.name, cookie.value, cookie.options);
+  }
+
+  return response;
 }

@@ -17,6 +17,9 @@ export async function POST(request: Request) {
   const url = process.env.SUPABASE_URL!;
   const key = process.env.SUPABASE_ANON_KEY!;
 
+  // Cookie をレスポンスに反映するためのバッファ
+  const cookiesToReturn: { name: string; value: string; options: Record<string, unknown> }[] = [];
+
   const supabase = createServerClient<Database>(url, key, {
     cookies: {
       getAll() {
@@ -24,7 +27,7 @@ export async function POST(request: Request) {
       },
       setAll(cookiesToSet) {
         cookiesToSet.forEach(({ name, value, options }) => {
-          cookieStore.set(name, value, options);
+          cookiesToReturn.push({ name, value, options: options as Record<string, unknown> });
         });
       },
     },
@@ -59,8 +62,15 @@ export async function POST(request: Request) {
     );
   }
 
-  return NextResponse.json({
+  // レスポンスに Cookie をセット
+  const response = NextResponse.json({
     user: { id: data.user.id, email: data.user.email },
     role,
   });
+
+  for (const cookie of cookiesToReturn) {
+    response.cookies.set(cookie.name, cookie.value, cookie.options);
+  }
+
+  return response;
 }
