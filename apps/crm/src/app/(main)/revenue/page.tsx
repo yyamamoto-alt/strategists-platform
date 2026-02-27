@@ -5,6 +5,8 @@ import {
   computeChannelMetrics,
 } from "@/lib/data/dashboard-metrics";
 import { RevenueClient } from "./revenue-client";
+
+export const dynamic = "force-dynamic";
 import {
   mockRevenueMetrics,
   mockFunnelMetrics,

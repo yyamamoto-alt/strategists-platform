@@ -7,6 +7,8 @@ import {
 } from "@/lib/data/dashboard-metrics";
 import { DashboardClient } from "./dashboard-client";
 
+export const dynamic = "force-dynamic";
+
 // モックデータ（フォールバック用）
 import {
   mockFunnelMetrics,
