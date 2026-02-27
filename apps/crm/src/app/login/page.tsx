@@ -29,8 +29,8 @@ export default function LoginPage() {
         return;
       }
 
-      router.push("/dashboard");
-      router.refresh();
+      // Cookie設定完了後にリダイレクト（router.pushだとキャッシュ問題があるためlocation使用）
+      window.location.href = "/dashboard";
     } catch {
       setError("ネットワークエラーが発生しました");
     } finally {
