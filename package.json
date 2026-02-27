@@ -1,0 +1,16 @@
+{
+  "name": "strategists-platform",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:crm": "npm run dev --workspace=apps/crm",
+    "dev:lms": "npm run dev --workspace=apps/lms",
+    "build:crm": "npm run build --workspace=apps/crm",
+    "build:lms": "npm run build --workspace=apps/lms",
+    "dev": "npm run dev:crm & npm run dev:lms"
+  }
+}
