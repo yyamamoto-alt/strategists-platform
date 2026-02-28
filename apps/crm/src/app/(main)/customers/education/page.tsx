@@ -2,7 +2,7 @@ import { fetchCustomersWithRelations } from "@/lib/data/customers";
 import { EducationClient } from "./education-client";
 import { mockCustomers } from "@/lib/mock-data";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export default async function EducationPage() {
   const useMock = process.env.NEXT_PUBLIC_USE_MOCK === "true";

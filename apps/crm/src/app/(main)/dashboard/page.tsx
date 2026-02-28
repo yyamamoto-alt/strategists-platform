@@ -9,7 +9,7 @@ import {
 } from "@/lib/data/dashboard-metrics";
 import { DashboardClient } from "./dashboard-client";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 // モックデータ（フォールバック用）
 import {

@@ -1,4 +1,4 @@
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 import { createServiceClient } from "@/lib/supabase/server";
 import { StudentsClient } from "./students-client";

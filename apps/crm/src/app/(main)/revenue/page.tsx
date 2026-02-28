@@ -9,7 +9,7 @@ import {
 } from "@/lib/data/dashboard-metrics";
 import { RevenueClient } from "./revenue-client";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 import {
   mockRevenueMetrics,
   mockFunnelMetrics,

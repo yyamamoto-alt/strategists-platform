@@ -3,7 +3,7 @@ import { computeAgentRevenueSummary } from "@/lib/data/dashboard-metrics";
 import { AgentsClient } from "./agents-client";
 import { mockCustomers } from "@/lib/mock-data";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export default async function AgentsPage() {
   const useMock = process.env.NEXT_PUBLIC_USE_MOCK === "true";

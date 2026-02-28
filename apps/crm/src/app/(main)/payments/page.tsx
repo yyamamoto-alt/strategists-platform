@@ -1,7 +1,7 @@
 import { createServiceClient } from "@/lib/supabase/server";
 import { PaymentsClient } from "./payments-client";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export interface BankTransfer {
   id: string;
@@ -96,6 +96,12 @@ async function fetchPayments(): Promise<Payment[]> {
 }
 
 export default async function PaymentsPage() {
+  const useMock = process.env.NEXT_PUBLIC_USE_MOCK === "true";
+
+  if (useMock) {
+    return <PaymentsClient bankTransfers={[]} payments={[]} />;
+  }
+
   const [bankTransfers, payments] = await Promise.all([
     fetchBankTransfers(),
     fetchPayments(),

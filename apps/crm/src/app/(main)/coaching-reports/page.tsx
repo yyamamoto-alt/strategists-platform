@@ -1,7 +1,7 @@
 import { createServiceClient } from "@/lib/supabase/server";
 import { CoachingReportsClient } from "./coaching-reports-client";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export interface CoachingReport {
   id: string;
@@ -62,6 +62,12 @@ async function fetchCoachingReports(): Promise<CoachingReport[]> {
 }
 
 export default async function CoachingReportsPage() {
+  const useMock = process.env.NEXT_PUBLIC_USE_MOCK === "true";
+
+  if (useMock) {
+    return <CoachingReportsClient reports={[]} />;
+  }
+
   const reports = await fetchCoachingReports();
   return <CoachingReportsClient reports={reports} />;
 }
