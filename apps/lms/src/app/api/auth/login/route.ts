@@ -14,8 +14,15 @@ export async function POST(request: Request) {
   }
 
   const cookieStore = await cookies();
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+
+  if (!url || !key) {
+    return NextResponse.json(
+      { error: "サーバー設定エラー: Supabase環境変数が未設定です" },
+      { status: 500 }
+    );
+  }
 
   // Cookie をレスポンスに反映するためのバッファ
   const cookiesToReturn: { name: string; value: string; options: Record<string, unknown> }[] = [];
