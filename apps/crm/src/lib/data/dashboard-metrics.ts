@@ -12,60 +12,16 @@ import type {
 } from "@strategy-school/shared-db";
 
 // ================================================================
-// ヘルパー
+// ヘルパー（calc-fields.ts から import: client-safe にも使えるように分離）
 // ================================================================
 
-/** 顧客のエージェント紹介報酬期待値を算出（Excel Col DX 再現） */
-function calcExpectedReferralFee(c: CustomerWithRelations): number {
-  const a = c.agent;
-  if (!a) return 0;
-  // DB に計算済みの値があればそれを優先
-  if (a.expected_referral_fee && a.expected_referral_fee > 0) {
-    return a.expected_referral_fee;
-  }
-  // なければ元の式で算出: 想定年収 × 入社至る率 × 内定確度 × 紹介料率 × マージン
-  const salary = a.offer_salary || 0;
-  const hireRate = a.hire_rate ?? 0.6;
-  const offerProb = a.offer_probability ?? 0.3;
-  const feeRate = a.referral_fee_rate ?? 0.3;
-  const margin = a.margin ?? 1.0;
-  return salary * hireRate * offerProb * feeRate * margin;
-}
-
-/** 顧客がエージェント利用者か判定 */
-function isAgentCustomer(c: CustomerWithRelations): boolean {
-  if (!c.agent) return false;
-  if (c.agent.agent_service_enrolled) return true;
-  // agent_service_enrolled が全部 false の移行データ対策:
-  // expected_referral_fee > 0 or offer_salary > 0 なら利用者とみなす
-  if (c.agent.expected_referral_fee && c.agent.expected_referral_fee > 0) return true;
-  if (c.agent.offer_salary && c.agent.offer_salary > 0) return true;
-  return false;
-}
-
-/** 顧客が「受講中」か判定（Excel Col BU の条件） */
-function isCurrentlyEnrolled(c: CustomerWithRelations): boolean {
-  // 成約済みであること
-  const stage = c.pipeline?.stage;
-  if (stage !== "成約" && stage !== "入金済") return false;
-  // 学習レコードがあり、coaching_end_date が null または未来
-  if (!c.learning) return false;
-  if (!c.learning.coaching_end_date) return true; // 終了日未設定 = まだ受講中
-  return new Date(c.learning.coaching_end_date) >= new Date();
-}
-
-/** 顧客のエージェント確定フラグを判定 */
-function isAgentConfirmed(c: CustomerWithRelations): boolean {
-  return c.agent?.placement_confirmed === "確定";
-}
-
-/** 補助金額算出（Excel Col EJ: リスキャリ補助金） */
-function getSubsidyAmount(c: CustomerWithRelations): number {
-  if (c.contract?.referral_category === "対象" || c.contract?.subsidy_eligible) {
-    return c.contract?.subsidy_amount || 203636;
-  }
-  return 0;
-}
+import {
+  calcExpectedReferralFee,
+  isAgentCustomer,
+  isCurrentlyEnrolled,
+  isAgentConfirmed,
+  getSubsidyAmount,
+} from "@/lib/calc-fields";
 
 /** 期間文字列を取得 (application_date or payment_date) */
 function getPeriod(c: CustomerWithRelations): string | null {

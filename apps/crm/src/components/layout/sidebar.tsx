@@ -15,15 +15,41 @@ interface NavItem {
 
 const mainNavigation: NavItem[] = [
   { name: "ダッシュボード", href: "/dashboard", icon: "📊" },
-  { name: "顧客一覧", href: "/customers", icon: "👤", roles: ["admin", "mentor"] },
   { name: "パイプライン", href: "/pipeline", icon: "🔄", roles: ["admin", "mentor"] },
   { name: "売上管理", href: "/revenue", icon: "💰", roles: ["admin"] },
+];
+
+const databaseNavigation: NavItem[] = [
+  { name: "顧客一覧", href: "/customers", icon: "👤", roles: ["admin", "mentor"] },
+  { name: "マーケDB", href: "/customers/marketing", icon: "📣", roles: ["admin", "mentor"] },
+  { name: "営業DB", href: "/customers/sales", icon: "💼", roles: ["admin", "mentor"] },
+  { name: "エデュケーションDB", href: "/customers/education", icon: "📖", roles: ["admin", "mentor"] },
 ];
 
 const adminNavigation: NavItem[] = [
   { name: "学習管理", href: "/learning", icon: "📖", roles: ["admin", "mentor"] },
   { name: "エージェント", href: "/agents", icon: "🤝", roles: ["admin", "mentor"] },
 ];
+
+/** /customers 系の isActive 判定（サブビューと顧客詳細を区別） */
+function isItemActive(pathname: string | null, href: string): boolean {
+  if (!pathname) return false;
+  if (pathname === href) return true;
+
+  // /customers は顧客詳細 (/customers/[id]) のみ active にし、
+  // サブビュー (/customers/marketing 等) では active にしない
+  if (href === "/customers") {
+    if (
+      pathname.startsWith("/customers/marketing") ||
+      pathname.startsWith("/customers/sales") ||
+      pathname.startsWith("/customers/education")
+    ) {
+      return false;
+    }
+  }
+
+  return pathname.startsWith(href + "/");
+}
 
 function NavSection({ title, items, role }: { title: string; items: NavItem[]; role: string | null }) {
   const pathname = usePathname();
@@ -39,8 +65,7 @@ function NavSection({ title, items, role }: { title: string; items: NavItem[]; r
         {title}
       </p>
       {filteredItems.map((item) => {
-        const isActive =
-          pathname === item.href || pathname?.startsWith(item.href + "/");
+        const isActive = isItemActive(pathname, item.href);
         return (
           <Link
             key={item.href}
@@ -82,6 +107,7 @@ export function Sidebar() {
       </div>
       <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
         <NavSection title="メイン" items={mainNavigation} role={role} />
+        <NavSection title="データベース" items={databaseNavigation} role={role} />
         <NavSection title="管理" items={adminNavigation} role={role} />
       </nav>
       <div className="p-4 border-t border-white/10">
