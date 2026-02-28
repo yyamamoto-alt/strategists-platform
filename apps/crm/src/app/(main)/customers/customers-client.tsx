@@ -117,6 +117,30 @@ export function CustomersClient({ customers }: CustomersClientProps) {
         <Link href={`/customers/${c.id}`} className="text-brand hover:underline">{c.name}</Link>
       ), sortValue: (c) => c.name },
 
+      // ═══ 売上サマリー 4列（名前の直後） ═══
+      { key: "rev_school", label: "確定スクール売上", width: 130, align: "right" as const, render: (c) => {
+        const v = c.contract?.confirmed_amount || 0;
+        return v > 0 ? formatCurrency(v) : "-";
+      }, sortValue: (c) => c.contract?.confirmed_amount || 0 },
+
+      { key: "rev_agent", label: "人材見込み売上", width: 130, align: "right" as const, render: (c) => {
+        const v = calcExpectedReferralFee(c);
+        return v > 0 ? formatCurrency(v) : "-";
+      }, sortValue: (c) => calcExpectedReferralFee(c) },
+
+      { key: "rev_subsidy", label: "補助金売上", width: 110, align: "right" as const, render: (c) => {
+        const v = getSubsidyAmount(c);
+        return v > 0 ? formatCurrency(v) : "-";
+      }, sortValue: (c) => getSubsidyAmount(c) },
+
+      { key: "rev_total", label: "合計売上見込み", width: 130, align: "right" as const, render: (c) => {
+        const school = c.contract?.confirmed_amount || 0;
+        const agent = calcExpectedReferralFee(c);
+        const subsidy = getSubsidyAmount(c);
+        const total = school + agent + subsidy;
+        return total > 0 ? <span className="font-semibold text-brand">{formatCurrency(total)}</span> : "-";
+      }, sortValue: (c) => (c.contract?.confirmed_amount || 0) + calcExpectedReferralFee(c) + getSubsidyAmount(c) },
+
       // ─── Col 1 (A): 申込日 ───
       { key: "application_date", label: "申込日", width: 100, render: (c) => formatDate(c.application_date), sortValue: (c) => c.application_date || "" },
 
@@ -395,8 +419,11 @@ export function CustomersClient({ customers }: CustomersClientProps) {
         c.agent?.referral_fee_rate != null ? formatPercent(c.agent.referral_fee_rate) : "-" },
 
       // ─── Col 81 (CC): マージン ───
-      { key: "margin", label: "マージン", width: 80, align: "right" as const, render: (c) =>
-        c.agent?.margin != null ? `${c.agent.margin}` : "-" },
+      { key: "margin", label: "マージン", width: 80, align: "right" as const, render: (c) => {
+        if (!c.agent) return "-";
+        const m = (c.agent.margin && c.agent.margin > 0) ? c.agent.margin : 0.75;
+        return formatPercent(m);
+      } },
 
       // ─── Col 82 (CD): 入社予定日 ───
       { key: "placement_date", label: "入社予定日", width: 100, render: (c) => formatDate(c.agent?.placement_date ?? null) },

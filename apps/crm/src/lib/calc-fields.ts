@@ -15,7 +15,8 @@ export function calcExpectedReferralFee(c: CustomerWithRelations): number {
   const hireRate = a.hire_rate ?? 0.6;
   const offerProb = a.offer_probability ?? 0.3;
   const feeRate = a.referral_fee_rate ?? 0.3;
-  const margin = a.margin ?? 1.0;
+  // DB の margin は integer型で 0.75 → 0 に切り捨てられている。0 は不正値なので 0.75 をデフォルト使用
+  const margin = (a.margin && a.margin > 0) ? a.margin : 0.75;
   return salary * hireRate * offerProb * feeRate * margin;
 }
 

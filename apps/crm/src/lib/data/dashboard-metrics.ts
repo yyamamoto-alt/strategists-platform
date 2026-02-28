@@ -24,6 +24,19 @@ import {
   calcAgentProjectedRevenue,
 } from "@/lib/calc-fields";
 
+/** 成約判定: 実データのステージ値に対応 */
+function isStageClosed(stage: string | undefined | null): boolean {
+  if (!stage) return false;
+  return (
+    stage === "成約" ||
+    stage === "入金済" ||
+    stage === "その他購入" ||
+    stage === "動画講座購入" ||
+    stage === "追加指導" ||
+    stage.includes("成約見込")
+  );
+}
+
 /** 期間文字列を取得（Excel PL準拠: 申込月ベース） */
 function getPeriod(c: CustomerWithRelations): string | null {
   const date = c.application_date || c.pipeline?.closing_date;
@@ -63,16 +76,18 @@ export function computeFunnelMetrics(
 
     if (c.pipeline) {
       const s = c.pipeline.stage;
-      if (s !== "問い合わせ") m.scheduled++;
+      const dealStatus = c.pipeline.deal_status;
+      // 日程確定以降（日程未確以外すべて）
+      if (s !== "日程未確") m.scheduled++;
+      // 面談実施: deal_status が「実施」を含む or 成約系ステージ
       if (
-        s === "面談実施" ||
-        s === "提案中" ||
-        s === "成約" ||
-        s === "入金済"
+        dealStatus === "実施" ||
+        isStageClosed(s)
       ) {
         m.conducted++;
       }
-      if (s === "成約" || s === "入金済") {
+      // 成約判定
+      if (isStageClosed(s)) {
         m.closed++;
       }
     }
@@ -125,40 +140,29 @@ export function computeRevenueMetrics(
     const m = byMonth.get(period)!;
     const amount = c.contract?.confirmed_amount || 0;
 
+    const closed = isStageClosed(c.pipeline?.stage);
+
     // 確定売上: スクール確定
-    if (
-      c.pipeline?.stage === "成約" ||
-      c.pipeline?.stage === "入金済"
-    ) {
+    if (closed) {
       m.confirmed_revenue += amount;
     }
-    m.projected_revenue += c.pipeline?.projected_amount || amount;
 
-    const isClosed =
-      c.pipeline?.stage === "成約" || c.pipeline?.stage === "入金済";
+    // 見込み売上: 確定スクール + 人材見込み + 補助金
+    const agentFee = calcExpectedReferralFee(c);
+    const subsidy = closed ? getSubsidyAmount(c) : 0;
+    m.projected_revenue += (closed ? amount : 0) + agentFee + subsidy;
 
     // セグメント分類: 成約済みの実績ベース
-    if (isClosed) {
+    if (closed) {
       m.school_revenue += amount;
     }
 
-    // エージェント売上: 人材紹介区分が「フル利用」or「一部利用」のみ
-    if (isAgentCustomer(c)) {
-      if (isAgentConfirmed(c)) {
-        m.agent_revenue += calcExpectedReferralFee(c);
-      } else if (isCurrentlyEnrolled(c)) {
-        const fee = calcExpectedReferralFee(c);
-        const cat = c.contract?.referral_category;
-        m.agent_revenue += cat === "一部利用" ? Math.round(fee * 0.5) : fee;
-      }
-    }
+    // エージェント売上: 全顧客の人材紹介報酬期待値
+    m.agent_revenue += agentFee;
 
     // 補助金: 成約済みのみ
-    if (isClosed) {
-      const subsidy = getSubsidyAmount(c);
-      if (subsidy > 0) {
-        m.other_revenue += subsidy;
-      }
+    if (closed && subsidy > 0) {
+      m.other_revenue += subsidy;
     }
   }
 
@@ -178,6 +182,8 @@ export function computeThreeTierRevenue(
     string,
     {
       confirmed_school: number;
+      confirmed_school_kisotsu: number;
+      confirmed_school_shinsotsu: number;
       confirmed_agent: number;
       confirmed_subsidy: number;
       projected_agent: number;
@@ -202,6 +208,8 @@ export function computeThreeTierRevenue(
     if (!byMonth.has(period)) {
       byMonth.set(period, {
         confirmed_school: 0,
+        confirmed_school_kisotsu: 0,
+        confirmed_school_shinsotsu: 0,
         confirmed_agent: 0,
         confirmed_subsidy: 0,
         projected_agent: 0,
@@ -212,36 +220,40 @@ export function computeThreeTierRevenue(
     }
     const m = byMonth.get(period)!;
     const amount = c.contract?.confirmed_amount || 0;
-    const isClosed =
-      c.pipeline?.stage === "成約" || c.pipeline?.stage === "入金済";
+    const closed = isStageClosed(c.pipeline?.stage);
 
     // --- Tier 1: 確定売上 ---
-    if (isClosed) {
+    if (closed) {
       m.confirmed_school += amount;
+      // 既卒/新卒セグメント分離
+      if (c.attribute?.includes('新卒')) {
+        m.confirmed_school_shinsotsu += amount;
+      } else {
+        m.confirmed_school_kisotsu += amount;
+      }
       m.closed_count++;
     }
 
     // エージェント確定分
-    if (isAgentCustomer(c) && isAgentConfirmed(c)) {
+    if (isAgentConfirmed(c)) {
       m.confirmed_agent += calcExpectedReferralFee(c);
     }
 
     // 補助金
-    if (isClosed) {
+    if (closed) {
       m.confirmed_subsidy += getSubsidyAmount(c);
     }
 
-    // --- Tier 2: エージェント見込み（受講中のみ、確定除外） ---
-    if (
-      isAgentCustomer(c) &&
-      isCurrentlyEnrolled(c) &&
-      !isAgentConfirmed(c)
-    ) {
-      m.projected_agent += calcExpectedReferralFee(c);
+    // --- Tier 2: 人材見込み（確定除外、全顧客の期待値を含む） ---
+    if (!isAgentConfirmed(c)) {
+      const fee = calcExpectedReferralFee(c);
+      if (fee > 0) {
+        m.projected_agent += fee;
+      }
     }
 
     // --- Tier 3: パイプライン予測用 ---
-    if (c.pipeline && !isClosed) {
+    if (c.pipeline && !closed) {
       m.pipeline_projected += c.pipeline.projected_amount || amount || 0;
       m.pipeline_count++;
     }
@@ -260,6 +272,8 @@ export function computeThreeTierRevenue(
       return {
         period,
         confirmed_school: m.confirmed_school,
+        confirmed_school_kisotsu: m.confirmed_school_kisotsu,
+        confirmed_school_shinsotsu: m.confirmed_school_shinsotsu,
         confirmed_agent: m.confirmed_agent,
         confirmed_subsidy: m.confirmed_subsidy,
         confirmed_total: confirmedTotal,
@@ -411,7 +425,7 @@ export function computeChannelMetrics(
     const m = byChannel.get(channel)!;
     m.applications++;
 
-    if (c.pipeline?.stage === "成約" || c.pipeline?.stage === "入金済") {
+    if (isStageClosed(c.pipeline?.stage)) {
       m.closings++;
       m.revenue += c.contract?.confirmed_amount || 0;
     }
@@ -448,9 +462,16 @@ export async function fetchDashboardData() {
     stageCounts[p.stage] = (stageCounts[p.stage] || 0) + 1;
   }
 
-  const closedCount =
-    (stageCounts["成約"] || 0) + (stageCounts["入金済"] || 0);
-  const lostCount = stageCounts["失注"] || 0;
+  const closedStages = ["成約", "入金済", "その他購入", "動画講座購入", "追加指導"];
+  let closedCount = 0;
+  for (const s of closedStages) {
+    closedCount += stageCounts[s] || 0;
+  }
+  // 成約見込(未入金) もカウント
+  for (const [s, count] of Object.entries(stageCounts)) {
+    if (s.includes("成約見込")) closedCount += count;
+  }
+  const lostCount = (stageCounts["失注"] || 0) + (stageCounts["失注見込"] || 0) + (stageCounts["失注見込(自動)"] || 0) + (stageCounts["CL"] || 0) + (stageCounts["全額返金"] || 0);
   const activeDeals =
     (totalCustomers || 0) - closedCount - lostCount;
 

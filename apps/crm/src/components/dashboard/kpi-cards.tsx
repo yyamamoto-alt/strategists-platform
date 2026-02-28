@@ -28,9 +28,9 @@ export function KpiCards({
       color: "bg-blue-500",
     },
     {
-      title: "今月確定売上",
-      value: formatCurrency(latestRevenue.confirmed_revenue),
-      subtitle: `見込: ${formatCurrency(latestRevenue.projected_revenue)}`,
+      title: "今月合計売上見込",
+      value: formatCurrency(latestRevenue.projected_revenue),
+      subtitle: `スクール: ${formatCurrency(latestRevenue.school_revenue)} / 人材: ${formatCurrency(latestRevenue.agent_revenue)}`,
       color: "bg-green-500",
     },
     {
