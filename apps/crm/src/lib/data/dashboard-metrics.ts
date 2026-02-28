@@ -147,8 +147,8 @@ export function computeRevenueMetrics(
       m.confirmed_revenue += amount;
     }
 
-    // 見込み売上: 確定スクール + 人材見込み + 補助金
-    const agentFee = calcExpectedReferralFee(c);
+    // 人材見込み: 人材紹介顧客のみ
+    const agentFee = isAgentCustomer(c) ? calcExpectedReferralFee(c) : 0;
     const subsidy = closed ? getSubsidyAmount(c) : 0;
     m.projected_revenue += (closed ? amount : 0) + agentFee + subsidy;
 
@@ -157,7 +157,7 @@ export function computeRevenueMetrics(
       m.school_revenue += amount;
     }
 
-    // エージェント売上: 全顧客の人材紹介報酬期待値
+    // エージェント売上: 人材紹介顧客のみ
     m.agent_revenue += agentFee;
 
     // 補助金: 成約済みのみ
@@ -234,8 +234,8 @@ export function computeThreeTierRevenue(
       m.closed_count++;
     }
 
-    // エージェント確定分
-    if (isAgentConfirmed(c)) {
+    // エージェント確定分（人材紹介顧客のみ）
+    if (isAgentCustomer(c) && isAgentConfirmed(c)) {
       m.confirmed_agent += calcExpectedReferralFee(c);
     }
 
@@ -244,8 +244,8 @@ export function computeThreeTierRevenue(
       m.confirmed_subsidy += getSubsidyAmount(c);
     }
 
-    // --- Tier 2: 人材見込み（確定除外、全顧客の期待値を含む） ---
-    if (!isAgentConfirmed(c)) {
+    // --- Tier 2: 人材見込み（人材紹介顧客のみ、確定除外） ---
+    if (isAgentCustomer(c) && !isAgentConfirmed(c)) {
       const fee = calcExpectedReferralFee(c);
       if (fee > 0) {
         m.projected_agent += fee;

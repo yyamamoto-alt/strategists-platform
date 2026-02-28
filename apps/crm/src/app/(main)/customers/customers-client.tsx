@@ -19,6 +19,7 @@ import {
   calcExpectedReferralFee,
   calcSessionProgress,
   calcScheduleProgress,
+  isAgentCustomer,
   isAgentConfirmed,
   getSubsidyAmount,
 } from "@/lib/calc-fields";
@@ -124,9 +125,10 @@ export function CustomersClient({ customers }: CustomersClientProps) {
       }, sortValue: (c) => c.contract?.confirmed_amount || 0 },
 
       { key: "rev_agent", label: "人材見込み売上", width: 130, align: "right" as const, render: (c) => {
+        if (!isAgentCustomer(c)) return "-";
         const v = calcExpectedReferralFee(c);
         return v > 0 ? formatCurrency(v) : "-";
-      }, sortValue: (c) => calcExpectedReferralFee(c) },
+      }, sortValue: (c) => isAgentCustomer(c) ? calcExpectedReferralFee(c) : 0 },
 
       { key: "rev_subsidy", label: "補助金売上", width: 110, align: "right" as const, render: (c) => {
         const v = getSubsidyAmount(c);
@@ -135,11 +137,22 @@ export function CustomersClient({ customers }: CustomersClientProps) {
 
       { key: "rev_total", label: "合計売上見込み", width: 130, align: "right" as const, render: (c) => {
         const school = c.contract?.confirmed_amount || 0;
-        const agent = calcExpectedReferralFee(c);
+        const agent = isAgentCustomer(c) ? calcExpectedReferralFee(c) : 0;
         const subsidy = getSubsidyAmount(c);
         const total = school + agent + subsidy;
         return total > 0 ? <span className="font-semibold text-brand">{formatCurrency(total)}</span> : "-";
-      }, sortValue: (c) => (c.contract?.confirmed_amount || 0) + calcExpectedReferralFee(c) + getSubsidyAmount(c) },
+      }, sortValue: (c) => {
+        const school = c.contract?.confirmed_amount || 0;
+        const agent = isAgentCustomer(c) ? calcExpectedReferralFee(c) : 0;
+        return school + agent + getSubsidyAmount(c);
+      } },
+
+      // ═══ 人材紹介顧客フラグ ═══
+      { key: "is_agent_customer", label: "人材紹介顧客", width: 110, align: "center" as const, render: (c) =>
+        isAgentCustomer(c)
+          ? <span className="text-green-400 font-medium">true</span>
+          : <span className="text-gray-500">false</span>,
+        sortValue: (c) => isAgentCustomer(c) ? 1 : 0 },
 
       // ─── Col 1 (A): 申込日 ───
       { key: "application_date", label: "申込日", width: 100, render: (c) => formatDate(c.application_date), sortValue: (c) => c.application_date || "" },
