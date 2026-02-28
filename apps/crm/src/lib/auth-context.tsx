@@ -42,8 +42,7 @@ export function AuthProvider({
     if (useMock) return;
 
     await fetch("/api/auth/logout", { method: "POST" });
-    router.push("/login");
-    router.refresh();
+    window.location.href = "/login";
   };
 
   return (

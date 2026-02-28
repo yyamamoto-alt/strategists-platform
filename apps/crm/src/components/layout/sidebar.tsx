@@ -92,10 +92,16 @@ export function Sidebar() {
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium truncate">{roleLabel}</p>
             <p className="text-xs text-gray-400 truncate">
-              {user?.email || "admin@example.com"}
+              {user?.email || ""}
             </p>
           </div>
         </div>
+        <button
+          onClick={signOut}
+          className="w-full mt-2 px-3 py-2 text-sm text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors text-left"
+        >
+          ログアウト
+        </button>
       </div>
     </aside>
   );
