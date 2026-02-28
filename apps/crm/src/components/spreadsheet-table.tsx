@@ -10,6 +10,10 @@ export interface SpreadsheetColumn<T> {
   align?: "left" | "right" | "center";
   render: (item: T) => React.ReactNode;
   sortValue?: (item: T) => string | number;
+  /** true = 計算で算出される変数カラム、false/undefined = DBベタ打ち定数カラム */
+  computed?: boolean;
+  /** 変数カラムの場合、計算式の説明 */
+  formula?: string;
 }
 
 interface SpreadsheetTableProps<T> {
@@ -38,6 +42,30 @@ function saveColumnWidths(key: string, widths: Record<string, number>) {
   } catch {
     // ignore
   }
+}
+
+function FormulaTooltip({ formula }: { formula: string }) {
+  const [show, setShow] = useState(false);
+  return (
+    <span className="relative inline-flex items-center ml-0.5">
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); setShow((v) => !v); }}
+        onMouseEnter={() => setShow(true)}
+        onMouseLeave={() => setShow(false)}
+        className="w-3.5 h-3.5 rounded-full bg-amber-500/20 text-amber-400 text-[9px] font-bold inline-flex items-center justify-center hover:bg-amber-500/40 transition-colors"
+        title={formula}
+      >
+        f
+      </button>
+      {show && (
+        <div className="absolute left-1/2 -translate-x-1/2 top-full mt-1 z-50 bg-gray-900 border border-white/20 rounded-lg px-3 py-2 text-xs text-gray-200 shadow-xl whitespace-pre-wrap min-w-[200px] max-w-[320px]">
+          <div className="text-[10px] text-amber-400 font-semibold mb-1">計算式</div>
+          {formula}
+        </div>
+      )}
+    </span>
+  );
 }
 
 export function SpreadsheetTable<T>({
@@ -185,7 +213,10 @@ export function SpreadsheetTable<T>({
                       col.sortValue ? () => handleSort(col.key) : undefined
                     }
                     className={cn(
-                      "py-2 px-2 text-[11px] font-semibold text-gray-500 uppercase whitespace-nowrap select-none relative",
+                      "py-2 px-2 text-[11px] font-semibold whitespace-nowrap select-none relative",
+                      col.computed
+                        ? "text-amber-400/80 border-b-2 border-amber-500/40"
+                        : "text-gray-500",
                       col.align === "right" ? "text-right" : "text-left",
                       col.sortValue &&
                         "cursor-pointer hover:text-gray-300 transition-colors",
@@ -199,6 +230,9 @@ export function SpreadsheetTable<T>({
                   >
                     <span className="inline-flex items-center gap-0.5 overflow-hidden">
                       {col.label}
+                      {col.computed && col.formula && (
+                        <FormulaTooltip formula={col.formula} />
+                      )}
                       {sortKey === col.key && (
                         <span className="text-brand">
                           {sortDir === "asc" ? "↑" : "↓"}

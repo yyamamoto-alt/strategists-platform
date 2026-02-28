@@ -124,18 +124,24 @@ export function CustomersClient({ customers }: CustomersClientProps) {
         return v > 0 ? formatCurrency(v) : "-";
       }, sortValue: (c) => c.contract?.confirmed_amount || 0 },
 
-      { key: "rev_agent", label: "人材見込み売上", width: 130, align: "right" as const, render: (c) => {
+      { key: "rev_agent", label: "人材見込み売上", width: 130, align: "right" as const, computed: true,
+        formula: "想定年収 × 入社至る率 × 内定確度 × 紹介料率 × マージン\n※人材紹介顧客(フル利用/一部利用)のみ表示",
+        render: (c) => {
         if (!isAgentCustomer(c)) return "-";
         const v = calcExpectedReferralFee(c);
         return v > 0 ? formatCurrency(v) : "-";
       }, sortValue: (c) => isAgentCustomer(c) ? calcExpectedReferralFee(c) : 0 },
 
-      { key: "rev_subsidy", label: "補助金売上", width: 110, align: "right" as const, render: (c) => {
+      { key: "rev_subsidy", label: "補助金売上", width: 110, align: "right" as const, computed: true,
+        formula: "IF(補助金対象 = \"対象\", 補助金額, 0)\nデフォルト: ¥203,636",
+        render: (c) => {
         const v = getSubsidyAmount(c);
         return v > 0 ? formatCurrency(v) : "-";
       }, sortValue: (c) => getSubsidyAmount(c) },
 
-      { key: "rev_total", label: "合計売上見込み", width: 130, align: "right" as const, render: (c) => {
+      { key: "rev_total", label: "合計売上見込み", width: 130, align: "right" as const, computed: true,
+        formula: "確定スクール売上 + 人材見込み売上 + 補助金売上",
+        render: (c) => {
         const school = c.contract?.confirmed_amount || 0;
         const agent = isAgentCustomer(c) ? calcExpectedReferralFee(c) : 0;
         const subsidy = getSubsidyAmount(c);
@@ -148,7 +154,9 @@ export function CustomersClient({ customers }: CustomersClientProps) {
       } },
 
       // ═══ 人材紹介顧客フラグ ═══
-      { key: "is_agent_customer", label: "人材紹介顧客", width: 110, align: "center" as const, render: (c) =>
+      { key: "is_agent_customer", label: "人材紹介顧客", width: 110, align: "center" as const, computed: true,
+        formula: "人材紹介区分 = \"フル利用\" OR \"一部利用\"",
+        render: (c) =>
         isAgentCustomer(c)
           ? <span className="text-green-400 font-medium">true</span>
           : <span className="text-gray-500">false</span>,
@@ -190,7 +198,9 @@ export function CustomersClient({ customers }: CustomersClientProps) {
       ) : "-", sortValue: (c) => c.pipeline?.stage || "" },
 
       // ─── Col 14 (N): 売上見込 ───
-      { key: "projected_amount", label: "売上見込", width: 110, align: "right" as const, render: (c) => {
+      { key: "projected_amount", label: "売上見込", width: 110, align: "right" as const, computed: true,
+        formula: "確定売上 + 人材見込売上 + 補助金額\n(DB保存値を優先表示)",
+        render: (c) => {
         const v = calcSalesProjection(c);
         return v > 0 ? formatCurrency(v) : "-";
       }, sortValue: (c) => calcSalesProjection(c) },
@@ -322,25 +332,33 @@ export function CustomersClient({ customers }: CustomersClientProps) {
         sortValue: (c) => c.learning?.completed_sessions || 0 },
 
       // ─── 残指導回数（計算: total - completed） ───
-      { key: "remaining_sessions", label: "残指導回数", width: 90, align: "right" as const, render: (c) => {
+      { key: "remaining_sessions", label: "残指導回数", width: 90, align: "right" as const, computed: true,
+        formula: "契約指導回数 − 指導完了数",
+        render: (c) => {
         const r = calcRemainingSessions(c);
         return c.learning ? `${r}回` : "-";
       }, sortValue: (c) => calcRemainingSessions(c) },
 
       // ─── Col 51 (AY): 日程消化率 ───
-      { key: "attendance_rate", label: "日程消化率", width: 90, align: "right" as const, render: (c) => {
+      { key: "attendance_rate", label: "日程消化率", width: 90, align: "right" as const, computed: true,
+        formula: "(現在日 − 指導開始日) / (指導終了日 − 指導開始日)",
+        render: (c) => {
         const v = calcScheduleProgress(c);
         return v !== null ? formatPercent(v) : (c.learning?.attendance_rate != null ? formatPercent(c.learning.attendance_rate) : "-");
       } },
 
       // ─── Col 52 (AZ): 指導消化率 ───
-      { key: "session_completion_rate", label: "指導消化率", width: 90, align: "right" as const, render: (c) => {
+      { key: "session_completion_rate", label: "指導消化率", width: 90, align: "right" as const, computed: true,
+        formula: "指導完了数 / 契約指導回数",
+        render: (c) => {
         const v = calcSessionProgress(c);
         return v !== null ? formatPercent(v) : "-";
       } },
 
       // ─── 進捗ステータス（計算） ───
-      { key: "progress_status", label: "進捗", width: 60, align: "center" as const, render: (c) => {
+      { key: "progress_status", label: "進捗", width: 60, align: "center" as const, computed: true,
+        formula: "日程消化率 / 指導消化率 > 1.5 → 遅延\nそれ以外 → 順調",
+        render: (c) => {
         const s = calcProgressStatus(c);
         const color = s === "順調" ? "text-green-400" : s === "遅延" ? "text-red-400" : "text-gray-500";
         return <span className={color}>{s}</span>;
@@ -396,7 +414,9 @@ export function CustomersClient({ customers }: CustomersClientProps) {
       { key: "assessment_session2", label: "アセスメント2回目", width: 130, render: (c) => <Truncated value={c.learning?.assessment_session2} width={130} /> },
 
       // ─── Col 73 (BU): 人材見込売上 ───
-      { key: "agent_projected_revenue", label: "人材見込売上", width: 120, align: "right" as const, render: (c) => {
+      { key: "agent_projected_revenue", label: "人材見込売上", width: 120, align: "right" as const, computed: true,
+        formula: "成約 AND 受講中 AND 人材紹介顧客 → 人材紹介報酬期待値\n一部利用の場合は × 0.5\n(DB保存値を優先表示)",
+        render: (c) => {
         // DB値 or 計算値
         const dbVal = c.agent?.expected_agent_revenue;
         const calcVal = calcAgentProjectedRevenue(c);
@@ -521,7 +541,9 @@ export function CustomersClient({ customers }: CustomersClientProps) {
       { key: "alternative_application", label: "別経由応募", width: 100, render: (c) => c.pipeline?.alternative_application || "-" },
 
       // ─── Col 128 (DX): 人材紹介報酬期待値 ───
-      { key: "expected_referral_fee", label: "人材紹介報酬期待値", width: 140, align: "right" as const, render: (c) => {
+      { key: "expected_referral_fee", label: "人材紹介報酬期待値", width: 140, align: "right" as const, computed: true,
+        formula: "想定年収 × 入社至る率 × 内定確度 × 紹介料率 × マージン\n(DB保存値を優先表示)",
+        render: (c) => {
         const v = calcExpectedReferralFee(c);
         return v > 0 ? formatCurrency(v) : "-";
       }, sortValue: (c) => calcExpectedReferralFee(c) },
@@ -554,13 +576,17 @@ export function CustomersClient({ customers }: CustomersClientProps) {
       { key: "subsidy_eligible", label: "補助金対象", width: 90, render: (c) => c.contract?.subsidy_eligible ? "対象" : "-" },
 
       // ─── Col 140 (EJ): 補助金額 ───
-      { key: "subsidy_amount", label: "補助金額", width: 100, align: "right" as const, render: (c) => {
+      { key: "subsidy_amount", label: "補助金額", width: 100, align: "right" as const, computed: true,
+        formula: "IF(補助金対象 = \"対象\", 補助金額, 0)\nデフォルト: ¥203,636",
+        render: (c) => {
         const v = getSubsidyAmount(c);
         return v > 0 ? formatCurrency(v) : "-";
       }, sortValue: (c) => getSubsidyAmount(c) },
 
       // ─── Col 141 (EK): 人材確定 ───
-      { key: "placement_confirmed", label: "人材確定", width: 80, align: "center" as const, render: (c) =>
+      { key: "placement_confirmed", label: "人材確定", width: 80, align: "center" as const, computed: true,
+        formula: "人材確定フラグ = \"確定\"",
+        render: (c) =>
         isAgentConfirmed(c) ? <span className="text-green-400">確定</span> : "-" },
     ],
     []
