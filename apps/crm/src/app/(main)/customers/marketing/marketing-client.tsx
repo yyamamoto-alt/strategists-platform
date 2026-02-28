@@ -13,6 +13,7 @@ import {
 import {
   calcClosingProbability,
   calcExpectedLTV,
+  calcSalesProjection,
 } from "@/lib/calc-fields";
 import {
   SpreadsheetTable,
@@ -176,6 +177,17 @@ export function MarketingClient({ customers }: MarketingClientProps) {
           return v > 0 ? formatCurrency(v) : "-";
         },
         sortValue: (c) => calcExpectedLTV(c),
+      },
+      {
+        key: "sales_projection",
+        label: "売上見込",
+        width: 110,
+        align: "right",
+        render: (c) => {
+          const v = calcSalesProjection(c);
+          return v > 0 ? formatCurrency(v) : "-";
+        },
+        sortValue: (c) => calcSalesProjection(c),
       },
       {
         key: "confirmed_amount",

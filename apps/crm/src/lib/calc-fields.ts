@@ -70,14 +70,23 @@ export function calcClosingProbability(c: CustomerWithRelations): number {
   return 0;
 }
 
-/** 見込LTV（Excel Col DD） */
-export function calcExpectedLTV(c: CustomerWithRelations): number {
-  const confirmedAmount = c.contract?.confirmed_amount || 0;
-  if (confirmedAmount > 0) {
-    const agentFee = isAgentCustomer(c) ? calcExpectedReferralFee(c) : 0;
-    const subsidy = getSubsidyAmount(c);
-    return confirmedAmount + agentFee + subsidy;
+/** 売上見込（Excel Col N）= 確定売上 + 人材見込売上 + 補助金額 */
+export function calcSalesProjection(c: CustomerWithRelations): number {
+  // DB移行値を優先（Excelの計算済み値）
+  if (c.pipeline?.projected_amount && c.pipeline.projected_amount > 0) {
+    return c.pipeline.projected_amount;
   }
+  // フォールバック: コンポーネントから再計算
+  const confirmed = c.contract?.confirmed_amount || 0;
+  const agentRev = calcAgentProjectedRevenue(c);
+  const subsidy = getSubsidyAmount(c);
+  return confirmed + agentRev + subsidy;
+}
+
+/** 見込LTV（Excel Col DD）= IF(売上見込>0, 売上見込, デフォルトLTV×成約見込率) */
+export function calcExpectedLTV(c: CustomerWithRelations): number {
+  const salesProjection = calcSalesProjection(c);
+  if (salesProjection > 0) return salesProjection;
   const defaultLTV = c.attribute === "新卒" ? 240000 : 427636;
   return Math.round(defaultLTV * calcClosingProbability(c));
 }

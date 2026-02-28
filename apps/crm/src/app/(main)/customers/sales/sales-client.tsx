@@ -14,6 +14,7 @@ import {
 import {
   calcClosingProbability,
   calcExpectedLTV,
+  calcSalesProjection,
 } from "@/lib/calc-fields";
 import {
   SpreadsheetTable,
@@ -205,7 +206,7 @@ export function SalesClient({ customers }: SalesClientProps) {
       },
       {
         key: "confirmed_amount",
-        label: "契約金額",
+        label: "確定売上",
         width: 110,
         align: "right",
         render: (c) =>
@@ -213,6 +214,17 @@ export function SalesClient({ customers }: SalesClientProps) {
             ? formatCurrency(c.contract.confirmed_amount)
             : "-",
         sortValue: (c) => c.contract?.confirmed_amount || 0,
+      },
+      {
+        key: "sales_projection",
+        label: "売上見込",
+        width: 110,
+        align: "right",
+        render: (c) => {
+          const v = calcSalesProjection(c);
+          return v > 0 ? formatCurrency(v) : "-";
+        },
+        sortValue: (c) => calcSalesProjection(c),
       },
       {
         key: "closing_prob",
