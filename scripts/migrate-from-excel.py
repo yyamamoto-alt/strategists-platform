@@ -279,17 +279,7 @@ def extract_customer(row, customer_id):
         elif db_col == 'phone':
             data[db_col] = to_text(val)
         elif db_col == 'attribute':
-            t = to_text(val)
-            # 属性を正規化: "既卒・中途(3年目未満)" → "既卒"
-            if t:
-                if '既卒' in t or '中途' in t:
-                    data[db_col] = '既卒'
-                elif '新卒' in t:
-                    data[db_col] = '新卒'
-                else:
-                    data[db_col] = t
-            else:
-                data[db_col] = '既卒'  # デフォルト
+            data[db_col] = to_text(val)
         else:
             data[db_col] = to_text(val)
 
@@ -299,7 +289,6 @@ def extract_customer(row, customer_id):
 def extract_pipeline(row, customer_id):
     """顧客DB行 → sales_pipeline テーブル用dict"""
     data = {'customer_id': customer_id}
-    has_data = False
 
     for col_idx, db_col in PIPELINE_MAPPING.items():
         val = row[col_idx - 1] if col_idx <= len(row) else None
@@ -307,42 +296,27 @@ def extract_pipeline(row, customer_id):
         if db_col == 'agent_interest_at_application':
             t = to_text(val)
             if t:
-                has_data = True
                 data[db_col] = t  # テキストとして保存
         elif db_col in ('sales_date', 'response_date', 'status_confirmed_date', 'status_final_date'):
             # 日付変換を試み、失敗したらテキストのまま保存
             t = to_text(val)
             if t:
-                has_data = True
                 d = to_date(val)
                 data[db_col] = d if d else t
             else:
                 data[db_col] = None
         elif db_col in ('projected_amount',):
-            i = to_int(val)
-            if i:
-                has_data = True
-            data[db_col] = i
+            data[db_col] = to_int(val)
         elif db_col == 'probability':
-            f = to_float(val)
-            if f is not None:
-                has_data = True
-            data[db_col] = f
+            data[db_col] = to_float(val)
         elif db_col == 'stage':
             t = to_text(val)
             data[db_col] = t or '問い合わせ'
-            if t:
-                has_data = True
         elif db_col == 'deal_status':
             t = to_text(val)
             data[db_col] = t or '未対応'
-            if t:
-                has_data = True
         else:
-            t = to_text(val)
-            if t:
-                has_data = True
-            data[db_col] = t
+            data[db_col] = to_text(val)
 
     # Col18 と Col23 が両方 sales_content にマップされる問題を解決
     col18 = to_text(row[17] if len(row) > 17 else None)
@@ -355,13 +329,12 @@ def extract_pipeline(row, customer_id):
     elif col23:
         data['sales_content'] = col23
 
-    return data if has_data else None
+    return data
 
 
 def extract_contract(row, customer_id):
     """顧客DB行 → contracts テーブル用dict"""
     data = {'customer_id': customer_id}
-    has_data = False
 
     for col_idx, db_col in CONTRACT_MAPPING.items():
         val = row[col_idx - 1] if col_idx <= len(row) else None
@@ -369,20 +342,14 @@ def extract_contract(row, customer_id):
         if db_col == 'payment_date':
             t = to_text(val)
             if t:
-                has_data = True
                 d = to_date(val)
                 data[db_col] = d if d else t
             else:
                 data[db_col] = None
         elif db_col in ('first_amount', 'confirmed_amount', 'subsidy_amount'):
-            i = to_int(val)
-            if i:
-                has_data = True
-            data[db_col] = i
+            data[db_col] = to_int(val)
         elif db_col == 'discount':
             t = to_text(val)
-            if t:
-                has_data = True
             # 割引は金額の場合とテキストの場合がある
             i = to_int(val)
             data['discount'] = i  # 数値なら数値
@@ -391,26 +358,18 @@ def extract_contract(row, customer_id):
                 data['discount'] = 0
         elif db_col == 'subsidy_eligible':
             data[db_col] = to_bool_text(val)
-            if val:
-                has_data = True
         elif db_col == 'billing_status':
             t = to_text(val)
             data[db_col] = t or '未請求'
-            if t:
-                has_data = True
         else:
-            t = to_text(val)
-            if t:
-                has_data = True
-            data[db_col] = t
+            data[db_col] = to_text(val)
 
-    return data if has_data else None
+    return data
 
 
 def extract_learning(row, customer_id):
     """顧客DB行 → learning_records テーブル用dict"""
     data = {'customer_id': customer_id}
-    has_data = False
 
     for col_idx, db_col in LEARNING_MAPPING.items():
         val = row[col_idx - 1] if col_idx <= len(row) else None
@@ -418,34 +377,23 @@ def extract_learning(row, customer_id):
         if db_col in ('coaching_start_date', 'coaching_end_date', 'last_coaching_date', 'enrollment_form_date'):
             t = to_text(val)
             if t:
-                has_data = True
                 d = to_date(val)
                 data[db_col] = d if d else t
             else:
                 data[db_col] = None
         elif db_col in ('total_sessions', 'completed_sessions', 'contract_months', 'extension_days'):
-            i = to_int(val)
-            if i is not None:
-                has_data = True
-            data[db_col] = i
+            data[db_col] = to_int(val)
         elif db_col in ('attendance_rate', 'session_completion_rate', 'weekly_sessions'):
-            f = to_float(val)
-            if f is not None:
-                has_data = True
-            data[db_col] = f
+            data[db_col] = to_float(val)
         else:
-            t = to_text(val)
-            if t:
-                has_data = True
-            data[db_col] = t
+            data[db_col] = to_text(val)
 
-    return data if has_data else None
+    return data
 
 
 def extract_agent(row, customer_id):
     """顧客DB行 → agent_records テーブル用dict"""
     data = {'customer_id': customer_id}
-    has_data = False
 
     for col_idx, db_col in AGENT_MAPPING.items():
         val = row[col_idx - 1] if col_idx <= len(row) else None
@@ -453,28 +401,18 @@ def extract_agent(row, customer_id):
         if db_col == 'placement_date':
             t = to_text(val)
             if t:
-                has_data = True
                 d = to_date(val)
                 data[db_col] = d if d else t
             else:
                 data[db_col] = None
         elif db_col in ('expected_agent_revenue', 'offer_salary', 'margin', 'expected_referral_fee'):
-            i = to_int(val)
-            if i is not None:
-                has_data = True
-            data[db_col] = i
+            data[db_col] = to_int(val)
         elif db_col in ('hire_rate', 'offer_probability', 'referral_fee_rate'):
-            f = to_float(val)
-            if f is not None:
-                has_data = True
-            data[db_col] = f
+            data[db_col] = to_float(val)
         else:
-            t = to_text(val)
-            if t:
-                has_data = True
-            data[db_col] = t
+            data[db_col] = to_text(val)
 
-    return data if has_data else None
+    return data
 
 
 # ============================================================
@@ -633,53 +571,80 @@ def process_bank(wb, customer_email_to_id, limit=None):
     return results
 
 
+CHUNK_SIZE = 500  # 1ファイルあたりの最大レコード数
+
+
+def write_table_sql(dir_path, seq, table_name, records):
+    """テーブル別にSQL分割ファイルを出力（500件ずつチャンク分割）"""
+    if len(records) <= CHUNK_SIZE:
+        filename = f"{seq:02d}_{table_name}.sql"
+        filepath = os.path.join(dir_path, filename)
+        with open(filepath, 'w', encoding='utf-8') as f:
+            f.write(f"-- {table_name} ({len(records)} records)\n")
+            f.write(f"-- 生成日時: {datetime.now().isoformat()}\n\n")
+            f.write("BEGIN;\n\n")
+            for data in records:
+                f.write(dict_to_insert_sql(table_name, data) + '\n')
+            f.write("\nCOMMIT;\n")
+        print(f"  {filename}: {len(records)} records")
+    else:
+        chunks = [records[i:i + CHUNK_SIZE] for i in range(0, len(records), CHUNK_SIZE)]
+        for ci, chunk in enumerate(chunks):
+            suffix = chr(ord('a') + ci)  # a, b, c, ...
+            filename = f"{seq:02d}{suffix}_{table_name}.sql"
+            filepath = os.path.join(dir_path, filename)
+            start = ci * CHUNK_SIZE + 1
+            end = start + len(chunk) - 1
+            with open(filepath, 'w', encoding='utf-8') as f:
+                f.write(f"-- {table_name} (records {start}-{end} / {len(records)})\n")
+                f.write(f"-- 生成日時: {datetime.now().isoformat()}\n\n")
+                f.write("BEGIN;\n\n")
+                for data in chunk:
+                    f.write(dict_to_insert_sql(table_name, data) + '\n')
+                f.write("\nCOMMIT;\n")
+            print(f"  {filename}: {len(chunk)} records ({start}-{end})")
+
+
 def generate_sql(results, payments, bank_transfers, output_path):
-    """SQL INSERT文をファイルに出力"""
-    with open(output_path, 'w', encoding='utf-8') as f:
-        f.write("-- =============================================\n")
-        f.write("-- スプレッドシートからの移行データ\n")
-        f.write(f"-- 生成日時: {datetime.now().isoformat()}\n")
-        f.write("-- =============================================\n\n")
-        f.write("BEGIN;\n\n")
+    """テーブル別にSQL分割ファイルを出力"""
+    dir_path = os.path.dirname(output_path) or 'scripts'
+    sql_dir = os.path.join(dir_path, 'migration_sql')
+    os.makedirs(sql_dir, exist_ok=True)
 
-        # customers
-        f.write(f"-- === customers ({len(results['customers'])} records) ===\n")
-        for data in results['customers']:
-            f.write(dict_to_insert_sql('customers', data) + '\n')
+    print(f"\nSQL分割出力先: {sql_dir}/")
 
-        # sales_pipeline
-        f.write(f"\n-- === sales_pipeline ({len(results['sales_pipeline'])} records) ===\n")
-        for data in results['sales_pipeline']:
-            f.write(dict_to_insert_sql('sales_pipeline', data) + '\n')
+    # 0: クリーンアップSQL
+    cleanup_path = os.path.join(sql_dir, '00_cleanup.sql')
+    with open(cleanup_path, 'w', encoding='utf-8') as f:
+        f.write("-- 既存データ削除（外部キー制約の順序で）\n")
+        f.write(f"-- 生成日時: {datetime.now().isoformat()}\n\n")
+        f.write("DELETE FROM agent_records;\n")
+        f.write("DELETE FROM learning_records;\n")
+        f.write("DELETE FROM contracts;\n")
+        f.write("DELETE FROM sales_pipeline;\n")
+        f.write("DELETE FROM payments;\n")
+        f.write("DELETE FROM bank_transfers;\n")
+        f.write("DELETE FROM customers;\n")
+    print(f"  00_cleanup.sql: DELETE文")
 
-        # contracts
-        f.write(f"\n-- === contracts ({len(results['contracts'])} records) ===\n")
-        for data in results['contracts']:
-            f.write(dict_to_insert_sql('contracts', data) + '\n')
+    # テーブル別に分割出力
+    tables = [
+        (1, 'customers', results['customers']),
+        (2, 'sales_pipeline', results['sales_pipeline']),
+        (3, 'contracts', results['contracts']),
+        (4, 'learning_records', results['learning_records']),
+        (5, 'agent_records', results['agent_records']),
+        (6, 'payments', payments),
+        (7, 'bank_transfers', bank_transfers),
+    ]
 
-        # learning_records
-        f.write(f"\n-- === learning_records ({len(results['learning_records'])} records) ===\n")
-        for data in results['learning_records']:
-            f.write(dict_to_insert_sql('learning_records', data) + '\n')
+    for seq, table_name, records in tables:
+        write_table_sql(sql_dir, seq, table_name, records)
 
-        # agent_records
-        f.write(f"\n-- === agent_records ({len(results['agent_records'])} records) ===\n")
-        for data in results['agent_records']:
-            f.write(dict_to_insert_sql('agent_records', data) + '\n')
-
-        # payments
-        f.write(f"\n-- === payments ({len(payments)} records) ===\n")
-        for data in payments:
-            f.write(dict_to_insert_sql('payments', data) + '\n')
-
-        # bank_transfers
-        f.write(f"\n-- === bank_transfers ({len(bank_transfers)} records) ===\n")
-        for data in bank_transfers:
-            f.write(dict_to_insert_sql('bank_transfers', data) + '\n')
-
-        f.write("\nCOMMIT;\n")
-
-    print(f"\nSQL出力: {output_path}")
+    print(f"\n実行順序:")
+    print(f"  1. 00_cleanup.sql      ← 既存データ削除")
+    print(f"  2. 01_customers.sql    ← 顧客（先に投入: 外部キー参照元）")
+    print(f"  3. 02〜07 を順番に投入")
 
 
 def main():

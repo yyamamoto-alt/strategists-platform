@@ -57,8 +57,10 @@ export function RevenueClient({
       forecast: acc.forecast + t.forecast_total,
       agent_confirmed: acc.agent_confirmed + t.confirmed_agent,
       agent_projected: acc.agent_projected + t.projected_agent,
+      school_kisotsu: acc.school_kisotsu + t.confirmed_school_kisotsu,
+      school_shinsotsu: acc.school_shinsotsu + t.confirmed_school_shinsotsu,
     }),
-    { confirmed: 0, projected: 0, forecast: 0, agent_confirmed: 0, agent_projected: 0 }
+    { confirmed: 0, projected: 0, forecast: 0, agent_confirmed: 0, agent_projected: 0, school_kisotsu: 0, school_shinsotsu: 0 }
   );
 
   const tabs: { id: TabId; label: string }[] = [
@@ -153,6 +155,8 @@ export function RevenueClient({
                   <th className="text-right py-2 px-3 text-xs font-semibold text-gray-500">確定売上</th>
                   {threeTierRevenue && (
                     <>
+                      <th className="text-right py-2 px-3 text-xs font-semibold text-blue-400/70">既卒</th>
+                      <th className="text-right py-2 px-3 text-xs font-semibold text-cyan-400/70">新卒</th>
                       <th className="text-right py-2 px-3 text-xs font-semibold text-amber-400/70">人材見込</th>
                       <th className="text-right py-2 px-3 text-xs font-semibold text-amber-400/70">見込含む計</th>
                       <th className="text-right py-2 px-3 text-xs font-semibold text-red-400/70">予測売上</th>
@@ -178,6 +182,12 @@ export function RevenueClient({
                       </td>
                       {threeTierRevenue && (
                         <>
+                          <td className="py-2 px-3 text-right text-blue-400/80">
+                            {t ? formatCurrency(t.confirmed_school_kisotsu) : "-"}
+                          </td>
+                          <td className="py-2 px-3 text-right text-cyan-400/80">
+                            {t ? formatCurrency(t.confirmed_school_shinsotsu) : "-"}
+                          </td>
                           <td className="py-2 px-3 text-right text-amber-400/80">
                             {t ? formatCurrency(t.projected_agent) : "-"}
                           </td>
@@ -213,6 +223,12 @@ export function RevenueClient({
                   </td>
                   {threeTierRevenue && (
                     <>
+                      <td className="py-2 px-3 text-right text-blue-400/80">
+                        {totalThreeTier ? formatCurrency(totalThreeTier.school_kisotsu) : "-"}
+                      </td>
+                      <td className="py-2 px-3 text-right text-cyan-400/80">
+                        {totalThreeTier ? formatCurrency(totalThreeTier.school_shinsotsu) : "-"}
+                      </td>
                       <td className="py-2 px-3 text-right text-amber-400/80">
                         {totalThreeTier
                           ? formatCurrency(totalThreeTier.agent_projected)

@@ -21,9 +21,8 @@ const mainNavigation: NavItem[] = [
 
 const databaseNavigation: NavItem[] = [
   { name: "顧客一覧", href: "/customers", icon: "👤", roles: ["admin", "mentor"] },
-  { name: "マーケDB", href: "/customers/marketing", icon: "📣", roles: ["admin", "mentor"] },
-  { name: "営業DB", href: "/customers/sales", icon: "💼", roles: ["admin", "mentor"] },
-  { name: "エデュケーションDB", href: "/customers/education", icon: "📖", roles: ["admin", "mentor"] },
+  { name: "指導報告DB", href: "/coaching-reports", icon: "📋", roles: ["admin", "mentor"] },
+  { name: "支払いDB", href: "/payments", icon: "💳", roles: ["admin"] },
 ];
 
 const adminNavigation: NavItem[] = [
@@ -32,23 +31,9 @@ const adminNavigation: NavItem[] = [
   { name: "LMSアカウント", href: "/students", icon: "🎓", roles: ["admin"] },
 ];
 
-/** /customers 系の isActive 判定（サブビューと顧客詳細を区別） */
 function isItemActive(pathname: string | null, href: string): boolean {
   if (!pathname) return false;
   if (pathname === href) return true;
-
-  // /customers は顧客詳細 (/customers/[id]) のみ active にし、
-  // サブビュー (/customers/marketing 等) では active にしない
-  if (href === "/customers") {
-    if (
-      pathname.startsWith("/customers/marketing") ||
-      pathname.startsWith("/customers/sales") ||
-      pathname.startsWith("/customers/education")
-    ) {
-      return false;
-    }
-  }
-
   return pathname.startsWith(href + "/");
 }
 

@@ -65,7 +65,7 @@ export function RevenueChart({ data, threeTierData }: RevenueChartProps) {
       {viewMode === "three-tier" && threeTierData ? (
         <ThreeTierChart data={threeTierData} />
       ) : (
-        <SegmentChart data={data} />
+        <SegmentChart data={data} threeTierData={threeTierData} />
       )}
     </div>
   );
@@ -142,10 +142,27 @@ function ThreeTierChart({ data }: { data: ThreeTierRevenue[] }) {
   );
 }
 
-function SegmentChart({ data }: { data: RevenueMetrics[] }) {
+function SegmentChart({ data, threeTierData }: { data: RevenueMetrics[]; threeTierData?: ThreeTierRevenue[] }) {
+  // threeTierData がある場合は既卒/新卒セグメントで表示
+  const chartData = threeTierData && threeTierData.length > 0
+    ? threeTierData.map(t => ({
+        period: t.period,
+        school_kisotsu: t.confirmed_school_kisotsu,
+        school_shinsotsu: t.confirmed_school_shinsotsu,
+        agent: t.confirmed_agent,
+        subsidy: t.confirmed_subsidy,
+      }))
+    : data.map(d => ({
+        period: d.period,
+        school_kisotsu: d.school_revenue,
+        school_shinsotsu: 0,
+        agent: d.agent_revenue,
+        subsidy: d.content_revenue + d.other_revenue,
+      }));
+
   return (
     <ResponsiveContainer width="100%" height={300}>
-      <BarChart data={data}>
+      <BarChart data={chartData}>
         <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
         <XAxis
           dataKey="period"
@@ -169,17 +186,17 @@ function SegmentChart({ data }: { data: RevenueMetrics[] }) {
         />
         <Legend iconSize={10} wrapperStyle={{ fontSize: 11, color: "#9ca3af" }} />
         <Bar
-          dataKey="school_revenue"
-          name="スクール"
+          dataKey="school_kisotsu"
+          name="既卒スクール"
           fill="#3b82f6"
           stackId="a"
           radius={[0, 0, 0, 0]}
         />
-        <Bar dataKey="agent_revenue" name="人材紹介" fill="#22c55e" stackId="a" />
-        <Bar dataKey="content_revenue" name="コンテンツ" fill="#f59e0b" stackId="a" />
+        <Bar dataKey="school_shinsotsu" name="新卒スクール" fill="#06b6d4" stackId="a" />
+        <Bar dataKey="agent" name="人材紹介" fill="#22c55e" stackId="a" />
         <Bar
-          dataKey="other_revenue"
-          name="その他"
+          dataKey="subsidy"
+          name="補助金"
           fill="#8b5cf6"
           stackId="a"
           radius={[4, 4, 0, 0]}

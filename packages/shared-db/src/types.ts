@@ -506,6 +506,9 @@ export interface ThreeTierRevenue {
   confirmed_agent: number;
   confirmed_subsidy: number;
   confirmed_total: number;
+  // 既卒/新卒セグメント内訳
+  confirmed_school_kisotsu: number;
+  confirmed_school_shinsotsu: number;
   // Tier 2: 見込み含む売上（確定 + 受講中エージェント見込み）
   projected_agent: number;
   projected_total: number;

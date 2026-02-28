@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createServiceClient } from "@/lib/supabase/server";
+import { unstable_cache } from "next/cache";
 import type {
   FunnelMetrics,
   RevenueMetrics,
@@ -446,7 +447,7 @@ export function computeChannelMetrics(
 // ダッシュボード直接集計（既存）
 // ================================================================
 
-export async function fetchDashboardData() {
+async function fetchDashboardDataRaw() {
   const supabase = createServiceClient();
 
   const { count: totalCustomers } = await supabase
@@ -482,3 +483,10 @@ export async function fetchDashboardData() {
     stageCounts,
   };
 }
+
+/** キャッシュ付きダッシュボードデータ取得（60秒間キャッシュ） */
+export const fetchDashboardData = unstable_cache(
+  fetchDashboardDataRaw,
+  ["dashboard-data"],
+  { revalidate: 60 }
+);
