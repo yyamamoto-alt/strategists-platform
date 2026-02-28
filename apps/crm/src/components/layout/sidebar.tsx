@@ -102,6 +102,11 @@ export function Sidebar() {
         >
           ログアウト
         </button>
+        {process.env.NEXT_PUBLIC_BUILD_TIME && (
+          <p className="px-3 mt-2 text-[10px] text-gray-600">
+            Deploy: {new Date(process.env.NEXT_PUBLIC_BUILD_TIME).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" })}
+          </p>
+        )}
       </div>
     </aside>
   );
