@@ -496,6 +496,47 @@ export interface ChannelMetrics {
   ltv: number;
 }
 
+// ---------- Phase 2: 3段階売上 & エージェント売上 ----------
+
+/** 月別3段階売上メトリクス（Excelの PL シート再現） */
+export interface ThreeTierRevenue {
+  period: string;
+  // Tier 1: 確定売上（入金済 + エージェント確定分）
+  confirmed_school: number;
+  confirmed_agent: number;
+  confirmed_subsidy: number;
+  confirmed_total: number;
+  // Tier 2: 見込み含む売上（確定 + 受講中エージェント見込み）
+  projected_agent: number;
+  projected_total: number;
+  // Tier 3: 予測売上（パイプライン成約率ベース）
+  forecast_total: number;
+}
+
+/** エージェント売上サマリー */
+export interface AgentRevenueSummary {
+  total_expected_fee: number;
+  total_confirmed_fee: number;
+  total_projected_fee: number;
+  active_agent_count: number;
+  confirmed_count: number;
+  in_progress_count: number;
+  avg_expected_salary: number;
+  avg_referral_fee_rate: number;
+}
+
+/** 四半期予測 */
+export interface QuarterlyForecast {
+  quarter: string;
+  confirmed_revenue: number;
+  projected_revenue: number;
+  forecast_revenue: number;
+  school_revenue: number;
+  agent_revenue: number;
+  closings: number;
+  applications: number;
+}
+
 // ---------- フィルタ・共通型 ----------
 
 export interface CustomerFilters {

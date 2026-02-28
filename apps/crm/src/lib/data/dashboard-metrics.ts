@@ -6,13 +6,89 @@ import type {
   RevenueMetrics,
   ChannelMetrics,
   CustomerWithRelations,
+  ThreeTierRevenue,
+  AgentRevenueSummary,
+  QuarterlyForecast,
 } from "@strategy-school/shared-db";
 
-// パイプラインステージ別の顧客数からファネルメトリクスを算出
+// ================================================================
+// ヘルパー
+// ================================================================
+
+/** 顧客のエージェント紹介報酬期待値を算出（Excel Col DX 再現） */
+function calcExpectedReferralFee(c: CustomerWithRelations): number {
+  const a = c.agent;
+  if (!a) return 0;
+  // DB に計算済みの値があればそれを優先
+  if (a.expected_referral_fee && a.expected_referral_fee > 0) {
+    return a.expected_referral_fee;
+  }
+  // なければ元の式で算出: 想定年収 × 入社至る率 × 内定確度 × 紹介料率 × マージン
+  const salary = a.offer_salary || 0;
+  const hireRate = a.hire_rate ?? 0.6;
+  const offerProb = a.offer_probability ?? 0.3;
+  const feeRate = a.referral_fee_rate ?? 0.3;
+  const margin = a.margin ?? 1.0;
+  return salary * hireRate * offerProb * feeRate * margin;
+}
+
+/** 顧客がエージェント利用者か判定 */
+function isAgentCustomer(c: CustomerWithRelations): boolean {
+  if (!c.agent) return false;
+  if (c.agent.agent_service_enrolled) return true;
+  // agent_service_enrolled が全部 false の移行データ対策:
+  // expected_referral_fee > 0 or offer_salary > 0 なら利用者とみなす
+  if (c.agent.expected_referral_fee && c.agent.expected_referral_fee > 0) return true;
+  if (c.agent.offer_salary && c.agent.offer_salary > 0) return true;
+  return false;
+}
+
+/** 顧客が「受講中」か判定（Excel Col BU の条件） */
+function isCurrentlyEnrolled(c: CustomerWithRelations): boolean {
+  // 成約済みであること
+  const stage = c.pipeline?.stage;
+  if (stage !== "成約" && stage !== "入金済") return false;
+  // 学習レコードがあり、coaching_end_date が null または未来
+  if (!c.learning) return false;
+  if (!c.learning.coaching_end_date) return true; // 終了日未設定 = まだ受講中
+  return new Date(c.learning.coaching_end_date) >= new Date();
+}
+
+/** 顧客のエージェント確定フラグを判定 */
+function isAgentConfirmed(c: CustomerWithRelations): boolean {
+  return c.agent?.placement_confirmed === "確定";
+}
+
+/** 補助金額算出（Excel Col EJ: リスキャリ補助金） */
+function getSubsidyAmount(c: CustomerWithRelations): number {
+  if (c.contract?.referral_category === "対象" || c.contract?.subsidy_eligible) {
+    return c.contract?.subsidy_amount || 203636;
+  }
+  return 0;
+}
+
+/** 期間文字列を取得 (application_date or payment_date) */
+function getPeriod(c: CustomerWithRelations): string | null {
+  const date =
+    c.contract?.payment_date || c.pipeline?.closing_date || c.application_date;
+  if (!date) return null;
+  return date.slice(0, 7).replace("-", "/");
+}
+
+/** 四半期文字列を取得 "2025/Q1" */
+function getQuarter(period: string): string {
+  const [year, month] = period.split("/");
+  const q = Math.ceil(Number(month) / 3);
+  return `${year}/Q${q}`;
+}
+
+// ================================================================
+// ファネルメトリクス（既存 - 変更なし）
+// ================================================================
+
 export function computeFunnelMetrics(
   customers: CustomerWithRelations[]
 ): FunnelMetrics[] {
-  // 月別に集計
   const byMonth = new Map<
     string,
     { applications: number; scheduled: number; conducted: number; closed: number }
@@ -21,7 +97,7 @@ export function computeFunnelMetrics(
   for (const c of customers) {
     const date = c.application_date;
     if (!date) continue;
-    const period = date.slice(0, 7).replace("-", "/"); // "2025-08" -> "2025/08"
+    const period = date.slice(0, 7).replace("-", "/");
 
     if (!byMonth.has(period)) {
       byMonth.set(period, { applications: 0, scheduled: 0, conducted: 0, closed: 0 });
@@ -46,7 +122,6 @@ export function computeFunnelMetrics(
     }
   }
 
-  // ソートして返す
   return Array.from(byMonth.entries())
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([period, m]) => ({
@@ -58,7 +133,10 @@ export function computeFunnelMetrics(
     }));
 }
 
-// 契約データから月別売上メトリクスを算出
+// ================================================================
+// 旧 RevenueMetrics（後方互換 - ダッシュボードチャートで使用）
+// ================================================================
+
 export function computeRevenueMetrics(
   customers: CustomerWithRelations[]
 ): RevenueMetrics[] {
@@ -75,10 +153,8 @@ export function computeRevenueMetrics(
   >();
 
   for (const c of customers) {
-    const paymentDate =
-      c.contract?.payment_date || c.pipeline?.closing_date || c.application_date;
-    if (!paymentDate) continue;
-    const period = paymentDate.slice(0, 7).replace("-", "/");
+    const period = getPeriod(c);
+    if (!period) continue;
 
     if (!byMonth.has(period)) {
       byMonth.set(period, {
@@ -93,17 +169,28 @@ export function computeRevenueMetrics(
     const m = byMonth.get(period)!;
     const amount = c.contract?.confirmed_amount || 0;
 
-    if (c.contract?.billing_status === "入金済") {
+    // 確定売上: スクール確定
+    if (
+      c.pipeline?.stage === "成約" ||
+      c.pipeline?.stage === "入金済"
+    ) {
       m.confirmed_revenue += amount;
     }
     m.projected_revenue += c.pipeline?.projected_amount || amount;
 
-    // セグメント分類
-    if (c.agent?.agent_service_enrolled) {
-      m.agent_revenue += amount * 0.3; // エージェント収益部分の概算
-      m.school_revenue += amount * 0.7;
+    // セグメント分類（エージェント判定を改善）
+    const agentFee = isAgentCustomer(c) ? calcExpectedReferralFee(c) : 0;
+    if (agentFee > 0) {
+      m.agent_revenue += agentFee;
+      m.school_revenue += amount;
     } else {
       m.school_revenue += amount;
+    }
+
+    // 補助金
+    const subsidy = getSubsidyAmount(c);
+    if (subsidy > 0) {
+      m.other_revenue += subsidy;
     }
   }
 
@@ -112,7 +199,233 @@ export function computeRevenueMetrics(
     .map(([period, m]) => ({ period, ...m }));
 }
 
-// utm_source 別のチャネルメトリクスを算出
+// ================================================================
+// 3段階売上メトリクス（Excel PL シート再現）
+// ================================================================
+
+export function computeThreeTierRevenue(
+  customers: CustomerWithRelations[]
+): ThreeTierRevenue[] {
+  const byMonth = new Map<
+    string,
+    {
+      confirmed_school: number;
+      confirmed_agent: number;
+      confirmed_subsidy: number;
+      projected_agent: number;
+      pipeline_projected: number;
+      pipeline_count: number;
+      closed_count: number;
+    }
+  >();
+
+  // 全体の成約率（予測に使用）
+  const totalClosed = customers.filter(
+    (c) => c.pipeline?.stage === "成約" || c.pipeline?.stage === "入金済"
+  ).length;
+  const totalWithPipeline = customers.filter((c) => c.pipeline).length;
+  const overallClosingRate =
+    totalWithPipeline > 0 ? totalClosed / totalWithPipeline : 0;
+
+  for (const c of customers) {
+    const period = getPeriod(c);
+    if (!period) continue;
+
+    if (!byMonth.has(period)) {
+      byMonth.set(period, {
+        confirmed_school: 0,
+        confirmed_agent: 0,
+        confirmed_subsidy: 0,
+        projected_agent: 0,
+        pipeline_projected: 0,
+        pipeline_count: 0,
+        closed_count: 0,
+      });
+    }
+    const m = byMonth.get(period)!;
+    const amount = c.contract?.confirmed_amount || 0;
+    const isClosed =
+      c.pipeline?.stage === "成約" || c.pipeline?.stage === "入金済";
+
+    // --- Tier 1: 確定売上 ---
+    if (isClosed) {
+      m.confirmed_school += amount;
+      m.closed_count++;
+    }
+
+    // エージェント確定分
+    if (isAgentCustomer(c) && isAgentConfirmed(c)) {
+      m.confirmed_agent += calcExpectedReferralFee(c);
+    }
+
+    // 補助金
+    if (isClosed) {
+      m.confirmed_subsidy += getSubsidyAmount(c);
+    }
+
+    // --- Tier 2: エージェント見込み（受講中のみ、確定除外） ---
+    if (
+      isAgentCustomer(c) &&
+      isCurrentlyEnrolled(c) &&
+      !isAgentConfirmed(c)
+    ) {
+      m.projected_agent += calcExpectedReferralFee(c);
+    }
+
+    // --- Tier 3: パイプライン予測用 ---
+    if (c.pipeline && !isClosed) {
+      m.pipeline_projected += c.pipeline.projected_amount || amount || 0;
+      m.pipeline_count++;
+    }
+  }
+
+  return Array.from(byMonth.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([period, m]) => {
+      const confirmedTotal =
+        m.confirmed_school + m.confirmed_agent + m.confirmed_subsidy;
+      const projectedTotal = confirmedTotal + m.projected_agent;
+      // Tier 3: 確定 + 見込み + パイプラインの期待値（成約率 × projected_amount）
+      const forecastTotal =
+        projectedTotal + m.pipeline_projected * overallClosingRate;
+
+      return {
+        period,
+        confirmed_school: m.confirmed_school,
+        confirmed_agent: m.confirmed_agent,
+        confirmed_subsidy: m.confirmed_subsidy,
+        confirmed_total: confirmedTotal,
+        projected_agent: m.projected_agent,
+        projected_total: projectedTotal,
+        forecast_total: Math.round(forecastTotal),
+      };
+    });
+}
+
+// ================================================================
+// エージェント売上サマリー
+// ================================================================
+
+export function computeAgentRevenueSummary(
+  customers: CustomerWithRelations[]
+): AgentRevenueSummary {
+  const agentCustomers = customers.filter(isAgentCustomer);
+
+  let totalExpected = 0;
+  let totalConfirmed = 0;
+  let totalProjected = 0;
+  let confirmedCount = 0;
+  let inProgressCount = 0;
+  let salarySum = 0;
+  let salaryCount = 0;
+  let feeRateSum = 0;
+  let feeRateCount = 0;
+
+  for (const c of agentCustomers) {
+    const fee = calcExpectedReferralFee(c);
+    totalExpected += fee;
+
+    if (isAgentConfirmed(c)) {
+      totalConfirmed += fee;
+      confirmedCount++;
+    } else if (isCurrentlyEnrolled(c)) {
+      totalProjected += fee;
+      inProgressCount++;
+    }
+
+    if (c.agent?.offer_salary && c.agent.offer_salary > 0) {
+      salarySum += c.agent.offer_salary;
+      salaryCount++;
+    }
+    if (c.agent?.referral_fee_rate && c.agent.referral_fee_rate > 0) {
+      feeRateSum += c.agent.referral_fee_rate;
+      feeRateCount++;
+    }
+  }
+
+  return {
+    total_expected_fee: totalExpected,
+    total_confirmed_fee: totalConfirmed,
+    total_projected_fee: totalProjected,
+    active_agent_count: agentCustomers.length,
+    confirmed_count: confirmedCount,
+    in_progress_count: inProgressCount,
+    avg_expected_salary: salaryCount > 0 ? Math.round(salarySum / salaryCount) : 0,
+    avg_referral_fee_rate: feeRateCount > 0 ? feeRateSum / feeRateCount : 0,
+  };
+}
+
+// ================================================================
+// 四半期予測
+// ================================================================
+
+export function computeQuarterlyForecast(
+  customers: CustomerWithRelations[]
+): QuarterlyForecast[] {
+  const threeTier = computeThreeTierRevenue(customers);
+  const funnel = computeFunnelMetrics(customers);
+
+  const byQuarter = new Map<
+    string,
+    {
+      confirmed: number;
+      projected: number;
+      forecast: number;
+      school: number;
+      agent: number;
+      closings: number;
+      applications: number;
+    }
+  >();
+
+  for (const t of threeTier) {
+    const q = getQuarter(t.period);
+    if (!byQuarter.has(q)) {
+      byQuarter.set(q, {
+        confirmed: 0,
+        projected: 0,
+        forecast: 0,
+        school: 0,
+        agent: 0,
+        closings: 0,
+        applications: 0,
+      });
+    }
+    const m = byQuarter.get(q)!;
+    m.confirmed += t.confirmed_total;
+    m.projected += t.projected_total;
+    m.forecast += t.forecast_total;
+    m.school += t.confirmed_school;
+    m.agent += t.confirmed_agent + t.projected_agent;
+  }
+
+  for (const f of funnel) {
+    const q = getQuarter(f.period);
+    const m = byQuarter.get(q);
+    if (m) {
+      m.closings += f.closed;
+      m.applications += f.applications;
+    }
+  }
+
+  return Array.from(byQuarter.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([quarter, m]) => ({
+      quarter,
+      confirmed_revenue: m.confirmed,
+      projected_revenue: m.projected,
+      forecast_revenue: m.forecast,
+      school_revenue: m.school,
+      agent_revenue: m.agent,
+      closings: m.closings,
+      applications: m.applications,
+    }));
+}
+
+// ================================================================
+// チャネルメトリクス（既存 - 変更なし）
+// ================================================================
+
 export function computeChannelMetrics(
   customers: CustomerWithRelations[]
 ): ChannelMetrics[] {
@@ -147,16 +460,17 @@ export function computeChannelMetrics(
     }));
 }
 
-// Supabase から直接ダッシュボードデータを集計取得
+// ================================================================
+// ダッシュボード直接集計（既存）
+// ================================================================
+
 export async function fetchDashboardData() {
   const supabase = createServiceClient();
 
-  // 基本顧客数
   const { count: totalCustomers } = await supabase
     .from("customers")
     .select("*", { count: "exact", head: true });
 
-  // ステージ別カウント
   const { data: pipelineData } = await supabase
     .from("sales_pipeline")
     .select("stage") as { data: { stage: string }[] | null };

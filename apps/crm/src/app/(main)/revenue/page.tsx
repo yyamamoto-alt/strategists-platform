@@ -3,6 +3,9 @@ import {
   computeFunnelMetrics,
   computeRevenueMetrics,
   computeChannelMetrics,
+  computeThreeTierRevenue,
+  computeAgentRevenueSummary,
+  computeQuarterlyForecast,
 } from "@/lib/data/dashboard-metrics";
 import { RevenueClient } from "./revenue-client";
 
@@ -32,6 +35,9 @@ export default async function RevenuePage() {
   const revenueMetrics = computeRevenueMetrics(customers);
   const funnelMetrics = computeFunnelMetrics(customers);
   const channelMetrics = computeChannelMetrics(customers);
+  const threeTierRevenue = computeThreeTierRevenue(customers);
+  const agentSummary = computeAgentRevenueSummary(customers);
+  const quarterlyForecast = computeQuarterlyForecast(customers);
 
   return (
     <RevenueClient
@@ -39,6 +45,9 @@ export default async function RevenuePage() {
       revenueMetrics={revenueMetrics}
       funnelMetrics={funnelMetrics}
       channelMetrics={channelMetrics}
+      threeTierRevenue={threeTierRevenue}
+      agentSummary={agentSummary}
+      quarterlyForecast={quarterlyForecast}
     />
   );
 }

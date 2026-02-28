@@ -1,4 +1,5 @@
 import { fetchCustomersWithRelations } from "@/lib/data/customers";
+import { computeAgentRevenueSummary } from "@/lib/data/dashboard-metrics";
 import { AgentsClient } from "./agents-client";
 import { mockCustomers } from "@/lib/mock-data";
 
@@ -12,5 +13,6 @@ export default async function AgentsPage() {
   }
 
   const customers = await fetchCustomersWithRelations();
-  return <AgentsClient customers={customers} />;
+  const agentSummary = computeAgentRevenueSummary(customers);
+  return <AgentsClient customers={customers} agentSummary={agentSummary} />;
 }

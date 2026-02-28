@@ -1,7 +1,7 @@
 "use client";
 
 import { formatCurrency, formatPercent } from "@/lib/utils";
-import { FunnelMetrics, RevenueMetrics } from "@/types/database";
+import type { FunnelMetrics, RevenueMetrics, AgentRevenueSummary } from "@/types/database";
 
 interface KpiCardsProps {
   totalCustomers: number;
@@ -9,6 +9,7 @@ interface KpiCardsProps {
   activeDeals: number;
   latestRevenue: RevenueMetrics;
   latestFunnel: FunnelMetrics;
+  agentSummary?: AgentRevenueSummary;
 }
 
 export function KpiCards({
@@ -17,6 +18,7 @@ export function KpiCards({
   activeDeals,
   latestRevenue,
   latestFunnel,
+  agentSummary,
 }: KpiCardsProps) {
   const cards = [
     {
@@ -44,10 +46,14 @@ export function KpiCards({
       color: "bg-orange-500",
     },
     {
-      title: "今月申込数",
-      value: latestFunnel.applications.toString(),
-      subtitle: `日程確定率: ${formatPercent(latestFunnel.scheduling_rate)}`,
-      color: "bg-cyan-500",
+      title: "人材紹介見込",
+      value: agentSummary
+        ? formatCurrency(agentSummary.total_projected_fee)
+        : "-",
+      subtitle: agentSummary
+        ? `対象: ${agentSummary.active_agent_count}名`
+        : "データなし",
+      color: "bg-emerald-500",
     },
     {
       title: "面談実施率",

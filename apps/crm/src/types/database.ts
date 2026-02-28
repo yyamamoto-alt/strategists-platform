@@ -29,4 +29,7 @@ export type {
   CustomerFilters,
   PaginationParams,
   Database,
+  ThreeTierRevenue,
+  AgentRevenueSummary,
+  QuarterlyForecast,
 } from "@strategy-school/shared-db";
