@@ -1,0 +1,21 @@
+BEGIN;
+-- === agent_records (1165 records) === (part 2)
+INSERT INTO agent_records (customer_id, hire_rate, offer_probability, id) VALUES (E'2e1f41ce-e28e-4513-8b51-5299c6619406', 0.4, 0.4, E'ceec0229-0ea9-4da1-8062-28f911dd46c2');
+INSERT INTO agent_records (customer_id, hire_rate, offer_probability, id) VALUES (E'cc885f66-4bf7-46f9-841b-623290f28063', 0.4, 0.4, E'7d3dc2cf-480d-4c91-bcd5-66c388bb1cfd');
+INSERT INTO agent_records (customer_id, hire_rate, offer_probability, id) VALUES (E'51a457b3-f203-40ac-af1c-69565dfe2b0c', 0.4, 0.4, E'14b004a3-e80b-4019-8dc4-1c14f0a2be26');
+INSERT INTO agent_records (customer_id, hire_rate, offer_probability, id) VALUES (E'638e3385-6bf0-4b3d-9062-80b12222d683', 0.4, 0.4, E'8a0361d3-34a3-4758-b58b-82826500dd95');
+INSERT INTO agent_records (customer_id, hire_rate, offer_probability, id) VALUES (E'd1e2f74e-1be4-4756-b4d3-ac40c5b71c9a', 0.4, 0.4, E'0c947913-32e9-429a-9127-e593d2443ebd');
+INSERT INTO agent_records (customer_id, hire_rate, offer_probability, id) VALUES (E'61c61dfc-3e5e-4a06-9236-b7b2641f0f86', 0.4, 0.4, E'5e3b1fff-7bc9-4cad-885f-3183bd9d8136');
+INSERT INTO agent_records (customer_id, offer_company, hire_rate, offer_probability, id) VALUES (E'd477bb14-bd2b-40ab-b2ca-1c391676032b', E'DI', 0.4, 0.4, E'a26a1a05-93cd-492a-a9dd-bc11f1b3aa93');
+INSERT INTO agent_records (customer_id, hire_rate, offer_probability, id) VALUES (E'fef150cc-fbbf-4eb5-80a7-8260ab2b8bd0', 0.4, 0.4, E'ee0f0570-157a-4b98-9091-19a93bb514f7');
+INSERT INTO agent_records (customer_id, hire_rate, offer_probability, id) VALUES (E'5c60a722-df2e-4d00-a884-2899acde6705', 0.4, 0.4, E'8bed7d05-fd63-406e-af6d-974f691a13a4');
+INSERT INTO agent_records (customer_id, hire_rate, offer_probability, id) VALUES (E'378accad-8a74-4426-afcc-14a01db82037', 0.4, 0.4, E'3c6ec34e-ed88-4fca-b038-d11151afeaeb');
+INSERT INTO agent_records (customer_id, hire_rate, offer_probability, id) VALUES (E'05a377e7-8796-4df0-9aa7-ad1290cd4b9a', 0.4, 0.4, E'5915de86-9181-40cb-b5e8-62fbd048f489');
+INSERT INTO agent_records (customer_id, hire_rate, offer_probability, id) VALUES (E'56f16943-55cc-4983-9eae-37f20953d7bc', 0.4, 0.4, E'c9fc0821-311b-48e5-ac48-37c76d2d964e');
+INSERT INTO agent_records (customer_id, hire_rate, offer_probability, id) VALUES (E'4e54bec6-ea24-4eba-9256-ae790285426a', 0.4, 0.4, E'17b40879-ffdb-4b9a-a35b-001dcb0fc2da');
+INSERT INTO agent_records (customer_id, hire_rate, offer_probability, id) VALUES (E'970807d8-dd1f-4a91-b578-2da34255c135', 0.4, 0.4, E'd6183c48-b31c-4a07-92f0-7262805ee925');
+INSERT INTO agent_records (customer_id, hire_rate, offer_probability, id) VALUES (E'8be9bd2c-4bda-4a6f-9ff7-d141ece100ab', 0.4, 0.4, E'57e4b477-37f9-417e-a237-f47697f95e3b');
+INSERT INTO agent_records (customer_id, hire_rate, offer_probability, id) VALUES (E'976ba4e5-5b8a-43b3-9d92-7c2bf75e264e', 0.4, 0.4, E'35b1ace4-3ef5-46c4-a65a-da53e670cea5');
+INSERT INTO agent_records (customer_id, offer_company, hire_rate, offer_probability, id) VALUES (E'3ecdc7fb-ed25-4ab5-abe7-2089f958ce0d', E'S&', 0.4, 0.4, E'6439597a-1e92-4ff6-ad74-554e963b258b');
+INSERT INTO agent_records (customer_id, offer_company, hire_rate, offer_probability, id) VALUES (E'3830984d-7251-4059-9d2a-6cad610d733b', E'ベイン', 0.4, 0.4, E'50eb941b-072a-421a-a045-91a4d26f45b5');
+COMMIT;

@@ -12,8 +12,6 @@ import {
 } from "@/lib/utils";
 import type { CustomerWithRelations } from "@strategy-school/shared-db";
 import {
-  calcClosingProbability,
-  calcExpectedLTV,
   calcSalesProjection,
   calcRemainingSessions,
   calcProgressStatus,
@@ -21,7 +19,6 @@ import {
   calcExpectedReferralFee,
   calcSessionProgress,
   calcScheduleProgress,
-  isAgentCustomer,
   isAgentConfirmed,
   getSubsidyAmount,
 } from "@/lib/calc-fields";
@@ -37,7 +34,7 @@ interface CustomersClientProps {
 // テキスト truncate ヘルパー
 function Truncated({ value, width = 140 }: { value: string | null | undefined; width?: number }) {
   return (
-    <span className={`max-w-[${width}px] truncate block`} title={value || ""}>
+    <span className="truncate block" style={{ maxWidth: width }} title={value || ""}>
       {value || "-"}
     </span>
   );
@@ -521,19 +518,6 @@ export function CustomersClient({ customers }: CustomersClientProps) {
       // ─── Col 141 (EK): 人材確定 ───
       { key: "placement_confirmed", label: "人材確定", width: 80, align: "center" as const, render: (c) =>
         isAgentConfirmed(c) ? <span className="text-green-400">確定</span> : "-" },
-
-      // ─── 計算フィールド: 成約見込率 (Excel Col DB) ───
-      { key: "closing_prob", label: "成約見込率", width: 90, align: "right" as const, render: (c) => formatPercent(calcClosingProbability(c)), sortValue: (c) => calcClosingProbability(c) },
-
-      // ─── 計算フィールド: 見込LTV (Excel Col DD) ───
-      { key: "expected_ltv", label: "見込LTV", width: 110, align: "right" as const, render: (c) => {
-        const v = calcExpectedLTV(c);
-        return v > 0 ? formatCurrency(v) : "-";
-      }, sortValue: (c) => calcExpectedLTV(c) },
-
-      // ─── エージェント利用（計算） ───
-      { key: "agent_enrolled", label: "エージェント利用", width: 110, align: "center" as const, render: (c) =>
-        isAgentCustomer(c) ? <span className="text-green-400">利用中</span> : "-" },
     ],
     []
   );
