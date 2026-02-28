@@ -5,7 +5,7 @@
 
 // ---------- ENUM型 ----------
 
-export type CustomerAttribute = "既卒" | "新卒";
+export type CustomerAttribute = "既卒" | "新卒" | (string & {});
 
 // DB migration 004 で TEXT型に変更済みのため string を許容
 export type PipelineStage =

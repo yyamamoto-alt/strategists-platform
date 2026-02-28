@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
 
 export interface SpreadsheetColumn<T> {
@@ -18,6 +18,26 @@ interface SpreadsheetTableProps<T> {
   getRowKey: (item: T) => string;
   searchPlaceholder?: string;
   searchFilter?: (item: T, query: string) => boolean;
+  storageKey?: string;
+}
+
+function loadColumnWidths(key: string): Record<string, number> | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(`ss-w-${key}`);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveColumnWidths(key: string, widths: Record<string, number>) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(`ss-w-${key}`, JSON.stringify(widths));
+  } catch {
+    // ignore
+  }
 }
 
 export function SpreadsheetTable<T>({
@@ -26,10 +46,76 @@ export function SpreadsheetTable<T>({
   getRowKey,
   searchPlaceholder = "検索...",
   searchFilter,
+  storageKey = "default",
 }: SpreadsheetTableProps<T>) {
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+
+  // カラム幅: localStorage から復元、なければデフォルト
+  const [columnWidths, setColumnWidths] = useState<Record<string, number>>(
+    () => {
+      const saved = loadColumnWidths(storageKey);
+      if (saved) return saved;
+      const defaults: Record<string, number> = {};
+      for (const col of columns) {
+        defaults[col.key] = col.width || 120;
+      }
+      return defaults;
+    }
+  );
+
+  // 幅変更時にlocalStorageへ保存
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(() => {
+      saveColumnWidths(storageKey, columnWidths);
+    }, 300);
+    return () => {
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    };
+  }, [columnWidths, storageKey]);
+
+  // リサイズハンドリング
+  const resizeRef = useRef<{
+    key: string;
+    startX: number;
+    startWidth: number;
+  } | null>(null);
+
+  const handleResizeStart = useCallback(
+    (e: React.MouseEvent, key: string) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const startWidth = columnWidths[key] || 120;
+      resizeRef.current = { key, startX: e.clientX, startWidth };
+
+      const handleMouseMove = (ev: MouseEvent) => {
+        if (!resizeRef.current) return;
+        const diff = ev.clientX - resizeRef.current.startX;
+        const newWidth = Math.max(40, resizeRef.current.startWidth + diff);
+        setColumnWidths((prev) => ({
+          ...prev,
+          [resizeRef.current!.key]: newWidth,
+        }));
+      };
+
+      const handleMouseUp = () => {
+        resizeRef.current = null;
+        document.removeEventListener("mousemove", handleMouseMove);
+        document.removeEventListener("mouseup", handleMouseUp);
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+      };
+
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseup", handleMouseUp);
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
+    },
+    [columnWidths]
+  );
 
   const filtered = useMemo(() => {
     let result = [...data];
@@ -67,23 +153,29 @@ export function SpreadsheetTable<T>({
     });
   }, []);
 
-  return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-3">
-        <input
-          type="text"
-          placeholder={searchPlaceholder}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="flex-1 max-w-sm px-3 py-2 bg-surface-elevated border border-white/10 text-white placeholder-gray-500 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand"
-        />
-        <span className="text-sm text-gray-500">{filtered.length}件</span>
-      </div>
+  const getColWidth = useCallback(
+    (col: SpreadsheetColumn<T>) => columnWidths[col.key] || col.width || 120,
+    [columnWidths]
+  );
 
+  return (
+    <div>
+      {searchFilter && (
+        <div className="flex items-center gap-2 mb-2">
+          <input
+            type="text"
+            placeholder={searchPlaceholder}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="flex-1 max-w-xs px-2 py-1 bg-surface-elevated border border-white/10 text-white placeholder-gray-500 rounded text-xs focus:outline-none focus:ring-1 focus:ring-brand"
+          />
+          <span className="text-xs text-gray-500">{filtered.length}件</span>
+        </div>
+      )}
       <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="overflow-auto max-h-[calc(100vh-180px)]">
           <table className="min-w-max w-full">
-            <thead className="bg-surface-elevated border-b border-white/10">
+            <thead className="bg-surface-elevated border-b border-white/10 sticky top-0 z-30">
               <tr>
                 {columns.map((col, i) => (
                   <th
@@ -92,15 +184,19 @@ export function SpreadsheetTable<T>({
                       col.sortValue ? () => handleSort(col.key) : undefined
                     }
                     className={cn(
-                      "py-2.5 px-3 text-xs font-semibold text-gray-500 uppercase whitespace-nowrap select-none",
+                      "py-2 px-2 text-[11px] font-semibold text-gray-500 uppercase whitespace-nowrap select-none relative",
                       col.align === "right" ? "text-right" : "text-left",
                       col.sortValue &&
                         "cursor-pointer hover:text-gray-300 transition-colors",
-                      i === 0 && "sticky left-0 z-20 bg-surface-elevated"
+                      i === 0 && "sticky left-0 z-40 bg-surface-elevated"
                     )}
-                    style={col.width ? { minWidth: col.width } : undefined}
+                    style={{
+                      width: getColWidth(col),
+                      minWidth: 40,
+                      maxWidth: getColWidth(col),
+                    }}
                   >
-                    <span className="inline-flex items-center gap-1">
+                    <span className="inline-flex items-center gap-0.5 overflow-hidden">
                       {col.label}
                       {sortKey === col.key && (
                         <span className="text-brand">
@@ -108,6 +204,11 @@ export function SpreadsheetTable<T>({
                         </span>
                       )}
                     </span>
+                    {/* リサイズハンドル */}
+                    <div
+                      onMouseDown={(e) => handleResizeStart(e, col.key)}
+                      className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-brand/50 active:bg-brand/70 transition-colors"
+                    />
                   </th>
                 ))}
               </tr>
@@ -122,7 +223,7 @@ export function SpreadsheetTable<T>({
                     <td
                       key={col.key}
                       className={cn(
-                        "py-2.5 px-3 text-sm whitespace-nowrap",
+                        "py-1.5 px-2 text-sm whitespace-nowrap overflow-hidden text-ellipsis",
                         col.align === "right"
                           ? "text-right"
                           : col.align === "center"
@@ -132,6 +233,10 @@ export function SpreadsheetTable<T>({
                           ? "sticky left-0 z-10 bg-surface-card group-hover:bg-surface-elevated font-medium text-white transition-colors"
                           : "text-gray-300"
                       )}
+                      style={{
+                        width: getColWidth(col),
+                        maxWidth: getColWidth(col),
+                      }}
                     >
                       {col.render(item)}
                     </td>

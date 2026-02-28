@@ -19,13 +19,10 @@ export function calcExpectedReferralFee(c: CustomerWithRelations): number {
   return salary * hireRate * offerProb * feeRate * margin;
 }
 
-/** 顧客がエージェント利用者か判定 */
+/** 顧客が人材紹介利用者か判定: 人材紹介区分が「フル利用」or「一部利用」のみ */
 export function isAgentCustomer(c: CustomerWithRelations): boolean {
-  if (!c.agent) return false;
-  if (c.agent.agent_service_enrolled) return true;
-  if (c.agent.expected_referral_fee && c.agent.expected_referral_fee > 0) return true;
-  if (c.agent.offer_salary && c.agent.offer_salary > 0) return true;
-  return false;
+  const cat = c.contract?.referral_category;
+  return cat === "フル利用" || cat === "一部利用";
 }
 
 /** 顧客が「受講中」か判定（Excel Col BU の条件） */
@@ -126,14 +123,13 @@ export function calcProgressStatus(c: CustomerWithRelations): "順調" | "遅延
   return schedule / session > 1.5 ? "遅延" : "順調";
 }
 
-/** 人材見込売上（プランタイプ乗数付き）（Excel Col BU） */
+/** 人材見込売上（人材紹介区分に基づく乗数）（Excel Col BU） */
 export function calcAgentProjectedRevenue(c: CustomerWithRelations): number {
   if (!isCurrentlyEnrolled(c) || !isAgentCustomer(c) || isAgentConfirmed(c)) return 0;
   const fee = calcExpectedReferralFee(c);
-  const plan = c.contract?.plan_name || "";
+  const cat = c.contract?.referral_category;
   let multiplier = 1.0;
-  if (plan.includes("専用")) multiplier = 1.0;
-  else if (plan.includes("併用")) multiplier = 0.5;
-  else if (c.contract?.referral_category === "対象") multiplier = 0.42;
+  if (cat === "フル利用") multiplier = 1.0;
+  else if (cat === "一部利用") multiplier = 0.5;
   return Math.round(fee * multiplier);
 }

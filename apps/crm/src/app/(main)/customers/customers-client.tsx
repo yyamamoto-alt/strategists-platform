@@ -49,7 +49,7 @@ export function CustomersClient({ customers }: CustomersClientProps) {
   const [stageFilter, setStageFilter] = useState<string>("");
   const [sortBy, setSortBy] = useState<string>("application_date");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
-  const [viewMode, setViewMode] = useState<"design" | "spreadsheet">("design");
+  const [viewMode, setViewMode] = useState<"design" | "spreadsheet">("spreadsheet");
 
   // 属性・ステージフィルタは両ビュー共通
   const baseFiltered = useMemo(() => {
@@ -539,95 +539,85 @@ export function CustomersClient({ customers }: CustomersClientProps) {
   );
 
   return (
-    <div className="p-6 space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white">顧客一覧</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            全{viewMode === "spreadsheet" ? baseFiltered.length : filtered.length}件の顧客
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="flex bg-surface-elevated rounded-lg p-0.5 border border-white/10">
-            <button
-              onClick={() => setViewMode("design")}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                viewMode === "design"
-                  ? "bg-brand text-white"
-                  : "text-gray-400 hover:text-white"
-              }`}
+    <div className="p-4 space-y-2">
+      {/* コンパクトヘッダー: タイトル + フィルタ + ビュー切替を1行に */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <h1 className="text-lg font-bold text-white shrink-0">顧客一覧</h1>
+        <span className="text-xs text-gray-500 shrink-0">
+          {viewMode === "spreadsheet" ? baseFiltered.length : filtered.length}件
+        </span>
+        <select
+          value={attributeFilter}
+          onChange={(e) => setAttributeFilter(e.target.value)}
+          className="px-2 py-1 bg-surface-elevated border border-white/10 text-white rounded text-xs focus:outline-none focus:ring-1 focus:ring-brand"
+        >
+          <option value="">全属性</option>
+          <option value="既卒">既卒</option>
+          <option value="新卒">新卒</option>
+        </select>
+        <select
+          value={stageFilter}
+          onChange={(e) => setStageFilter(e.target.value)}
+          className="px-2 py-1 bg-surface-elevated border border-white/10 text-white rounded text-xs focus:outline-none focus:ring-1 focus:ring-brand"
+        >
+          <option value="">全ステージ</option>
+          <option value="問い合わせ">問い合わせ</option>
+          <option value="日程確定">日程確定</option>
+          <option value="面談実施">面談実施</option>
+          <option value="提案中">提案中</option>
+          <option value="成約">成約</option>
+          <option value="入金済">入金済</option>
+          <option value="失注">失注</option>
+          <option value="保留">保留</option>
+        </select>
+        {viewMode === "design" && (
+          <>
+            <input
+              type="text"
+              placeholder="名前・メール・電話で検索..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="flex-1 min-w-[160px] px-2 py-1 bg-surface-elevated border border-white/10 text-white placeholder-gray-500 rounded text-xs focus:outline-none focus:ring-1 focus:ring-brand"
+            />
+            <select
+              value={`${sortBy}-${sortDir}`}
+              onChange={(e) => {
+                const [by, dir] = e.target.value.split("-");
+                setSortBy(by);
+                setSortDir(dir as "asc" | "desc");
+              }}
+              className="px-2 py-1 bg-surface-elevated border border-white/10 text-white rounded text-xs focus:outline-none focus:ring-1 focus:ring-brand"
             >
-              デザインビュー
-            </button>
+              <option value="application_date-desc">申込日↓</option>
+              <option value="application_date-asc">申込日↑</option>
+              <option value="name-asc">名前A-Z</option>
+              <option value="amount-desc">金額↓</option>
+            </select>
+          </>
+        )}
+        <div className="ml-auto flex items-center gap-2 shrink-0">
+          <div className="flex bg-surface-elevated rounded p-0.5 border border-white/10">
             <button
               onClick={() => setViewMode("spreadsheet")}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+              className={`px-2 py-1 rounded text-[11px] font-medium transition-colors ${
                 viewMode === "spreadsheet"
                   ? "bg-brand text-white"
                   : "text-gray-400 hover:text-white"
               }`}
             >
-              スプレッドシートビュー
+              表
+            </button>
+            <button
+              onClick={() => setViewMode("design")}
+              className={`px-2 py-1 rounded text-[11px] font-medium transition-colors ${
+                viewMode === "design"
+                  ? "bg-brand text-white"
+                  : "text-gray-400 hover:text-white"
+              }`}
+            >
+              カード
             </button>
           </div>
-          <button className="px-4 py-2 bg-brand text-white rounded-lg text-sm font-medium hover:bg-brand-dark transition-colors">
-            + 新規顧客登録
-          </button>
-        </div>
-      </div>
-
-      {/* 共通フィルタバー（両ビューで使用） */}
-      <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-4">
-        <div className="flex flex-wrap gap-3">
-          <select
-            value={attributeFilter}
-            onChange={(e) => setAttributeFilter(e.target.value)}
-            className="px-3 py-2 bg-surface-elevated border border-white/10 text-white rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand"
-          >
-            <option value="">全属性</option>
-            <option value="既卒">既卒</option>
-            <option value="新卒">新卒</option>
-          </select>
-          <select
-            value={stageFilter}
-            onChange={(e) => setStageFilter(e.target.value)}
-            className="px-3 py-2 bg-surface-elevated border border-white/10 text-white rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand"
-          >
-            <option value="">全ステージ</option>
-            <option value="問い合わせ">問い合わせ</option>
-            <option value="日程確定">日程確定</option>
-            <option value="面談実施">面談実施</option>
-            <option value="提案中">提案中</option>
-            <option value="成約">成約</option>
-            <option value="入金済">入金済</option>
-            <option value="失注">失注</option>
-            <option value="保留">保留</option>
-          </select>
-          {viewMode === "design" && (
-            <>
-              <input
-                type="text"
-                placeholder="名前・メール・電話・大学で検索..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="flex-1 min-w-[200px] px-3 py-2 bg-surface-elevated border border-white/10 text-white placeholder-gray-500 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand"
-              />
-              <select
-                value={`${sortBy}-${sortDir}`}
-                onChange={(e) => {
-                  const [by, dir] = e.target.value.split("-");
-                  setSortBy(by);
-                  setSortDir(dir as "asc" | "desc");
-                }}
-                className="px-3 py-2 bg-surface-elevated border border-white/10 text-white rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand"
-              >
-                <option value="application_date-desc">申込日 (新しい順)</option>
-                <option value="application_date-asc">申込日 (古い順)</option>
-                <option value="name-asc">名前 (A-Z)</option>
-                <option value="amount-desc">金額 (大きい順)</option>
-              </select>
-            </>
-          )}
         </div>
       </div>
 
@@ -637,6 +627,7 @@ export function CustomersClient({ customers }: CustomersClientProps) {
           columns={spreadsheetColumns}
           data={baseFiltered}
           getRowKey={(c) => c.id}
+          storageKey="customers-main"
           searchPlaceholder="名前・メール・電話・大学・経歴で検索..."
           searchFilter={(c, q) =>
             c.name.toLowerCase().includes(q) ||

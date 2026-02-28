@@ -21,12 +21,12 @@ import {
   isCurrentlyEnrolled,
   isAgentConfirmed,
   getSubsidyAmount,
+  calcAgentProjectedRevenue,
 } from "@/lib/calc-fields";
 
-/** 期間文字列を取得 (application_date or payment_date) */
+/** 期間文字列を取得（Excel PL準拠: 申込月ベース） */
 function getPeriod(c: CustomerWithRelations): string | null {
-  const date =
-    c.contract?.payment_date || c.pipeline?.closing_date || c.application_date;
+  const date = c.application_date || c.pipeline?.closing_date;
   if (!date) return null;
   return date.slice(0, 7).replace("-", "/");
 }
@@ -134,19 +134,31 @@ export function computeRevenueMetrics(
     }
     m.projected_revenue += c.pipeline?.projected_amount || amount;
 
-    // セグメント分類（エージェント判定を改善）
-    const agentFee = isAgentCustomer(c) ? calcExpectedReferralFee(c) : 0;
-    if (agentFee > 0) {
-      m.agent_revenue += agentFee;
-      m.school_revenue += amount;
-    } else {
+    const isClosed =
+      c.pipeline?.stage === "成約" || c.pipeline?.stage === "入金済";
+
+    // セグメント分類: 成約済みの実績ベース
+    if (isClosed) {
       m.school_revenue += amount;
     }
 
-    // 補助金
-    const subsidy = getSubsidyAmount(c);
-    if (subsidy > 0) {
-      m.other_revenue += subsidy;
+    // エージェント売上: 人材紹介区分が「フル利用」or「一部利用」のみ
+    if (isAgentCustomer(c)) {
+      if (isAgentConfirmed(c)) {
+        m.agent_revenue += calcExpectedReferralFee(c);
+      } else if (isCurrentlyEnrolled(c)) {
+        const fee = calcExpectedReferralFee(c);
+        const cat = c.contract?.referral_category;
+        m.agent_revenue += cat === "一部利用" ? Math.round(fee * 0.5) : fee;
+      }
+    }
+
+    // 補助金: 成約済みのみ
+    if (isClosed) {
+      const subsidy = getSubsidyAmount(c);
+      if (subsidy > 0) {
+        m.other_revenue += subsidy;
+      }
     }
   }
 
