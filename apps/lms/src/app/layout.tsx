@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth-context";
+import { getLmsSession } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
   title: "Strategists LMS | 学習管理",
@@ -8,11 +9,28 @@ export const metadata: Metadata = {
   icons: { icon: "/favicon.png" },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const useMock = process.env.NEXT_PUBLIC_USE_MOCK === "true";
+
+  let initialUser: { email: string; id: string } | null = null;
+  let initialRole: "admin" | "mentor" | "student" | null = null;
+
+  if (!useMock) {
+    try {
+      const session = await getLmsSession();
+      if (session) {
+        initialUser = session.user;
+        initialRole = session.role;
+      }
+    } catch {
+      // Supabase 未設定の場合はスキップ
+    }
+  }
+
   return (
     <html lang="ja">
       <head>
@@ -20,7 +38,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
       <body>
-        <AuthProvider>
+        <AuthProvider initialUser={initialUser} initialRole={initialRole}>
           {children}
         </AuthProvider>
       </body>

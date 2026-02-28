@@ -52,7 +52,11 @@ export function CustomersClient({ customers }: CustomersClientProps) {
   const baseFiltered = useMemo(() => {
     let result = [...customers];
     if (attributeFilter) {
-      result = result.filter((c) => c.attribute === attributeFilter);
+      if (attributeFilter === "既卒") {
+        result = result.filter((c) => c.attribute.includes("既卒"));
+      } else if (attributeFilter === "新卒") {
+        result = result.filter((c) => !c.attribute.includes("既卒"));
+      }
     }
     if (stageFilter) {
       result = result.filter((c) => c.pipeline?.stage === stageFilter);
@@ -545,14 +549,31 @@ export function CustomersClient({ customers }: CustomersClientProps) {
           className="px-2 py-1 bg-surface-elevated border border-white/10 text-white rounded text-xs focus:outline-none focus:ring-1 focus:ring-brand"
         >
           <option value="">全ステージ</option>
-          <option value="問い合わせ">問い合わせ</option>
-          <option value="日程確定">日程確定</option>
-          <option value="面談実施">面談実施</option>
-          <option value="提案中">提案中</option>
-          <option value="成約">成約</option>
-          <option value="入金済">入金済</option>
-          <option value="失注">失注</option>
-          <option value="保留">保留</option>
+          <optgroup label="アクティブ">
+            <option value="日程未確">日程未確</option>
+            <option value="検討中">検討中</option>
+            <option value="長期検討">長期検討</option>
+          </optgroup>
+          <optgroup label="成約">
+            <option value="成約">成約</option>
+            <option value="その他購入">その他購入</option>
+            <option value="動画講座購入">動画講座購入</option>
+            <option value="追加指導">追加指導</option>
+          </optgroup>
+          <optgroup label="未実施">
+            <option value="NoShow">NoShow</option>
+            <option value="未実施">未実施</option>
+            <option value="実施不可">実施不可</option>
+            <option value="非実施対象">非実施対象</option>
+          </optgroup>
+          <optgroup label="失注">
+            <option value="失注">失注</option>
+            <option value="失注見込">失注見込</option>
+            <option value="失注見込(自動)">失注見込(自動)</option>
+            <option value="CL">CL</option>
+            <option value="全額返金">全額返金</option>
+          </optgroup>
+          <option value="その他">その他</option>
         </select>
         {viewMode === "design" && (
           <>

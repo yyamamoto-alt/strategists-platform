@@ -29,6 +29,7 @@ const databaseNavigation: NavItem[] = [
 const adminNavigation: NavItem[] = [
   { name: "学習管理", href: "/learning", icon: "📖", roles: ["admin", "mentor"] },
   { name: "エージェント", href: "/agents", icon: "🤝", roles: ["admin", "mentor"] },
+  { name: "LMSアカウント", href: "/students", icon: "🎓", roles: ["admin"] },
 ];
 
 /** /customers 系の isActive 判定（サブビューと顧客詳細を区別） */

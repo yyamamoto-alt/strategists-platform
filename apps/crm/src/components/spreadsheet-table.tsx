@@ -93,11 +93,12 @@ export function SpreadsheetTable<T>({
 
       const handleMouseMove = (ev: MouseEvent) => {
         if (!resizeRef.current) return;
-        const diff = ev.clientX - resizeRef.current.startX;
-        const newWidth = Math.max(40, resizeRef.current.startWidth + diff);
+        const { key: colKey, startX, startWidth } = resizeRef.current;
+        const diff = ev.clientX - startX;
+        const newWidth = Math.max(40, startWidth + diff);
         setColumnWidths((prev) => ({
           ...prev,
-          [resizeRef.current!.key]: newWidth,
+          [colKey]: newWidth,
         }));
       };
 

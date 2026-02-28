@@ -8,25 +8,33 @@ import {
   getStageColor,
   getAttributeColor,
 } from "@/lib/utils";
-import type { CustomerWithRelations, PipelineStage } from "@strategy-school/shared-db";
+import type { CustomerWithRelations } from "@strategy-school/shared-db";
 
-const STAGES: PipelineStage[] = [
-  "問い合わせ",
-  "日程確定",
-  "面談実施",
-  "提案中",
-  "成約",
-  "入金済",
+// 実データのステージ値に合わせた定義（ビジネスフロー順）
+const KANBAN_STAGES = [
+  // アクティブ（商談進行中）
+  { label: "日程未確", match: ["日程未確"], borderColor: "border-t-slate-400" },
+  { label: "検討中", match: ["検討中", "長期検討"], borderColor: "border-t-blue-400" },
+  // 成約系
+  { label: "成約", match: ["成約"], borderColor: "border-t-green-400" },
+  { label: "追加購入", match: ["その他購入", "動画講座購入", "追加指導"], borderColor: "border-t-emerald-400" },
+  // 未実施系
+  { label: "NoShow", match: ["NoShow"], borderColor: "border-t-amber-400" },
+  { label: "未実施", match: ["未実施", "実施不可", "非実施対象"], borderColor: "border-t-yellow-400" },
+  // 失注系
+  { label: "失注", match: ["失注", "失注見込", "失注見込(自動)", "CL", "全額返金"], borderColor: "border-t-red-400" },
+  // その他
+  { label: "その他", match: [], borderColor: "border-t-gray-400" },
 ];
 
-const STAGE_COLORS: Record<string, string> = {
-  問い合わせ: "border-t-gray-400",
-  日程確定: "border-t-blue-400",
-  面談実施: "border-t-indigo-400",
-  提案中: "border-t-yellow-400",
-  成約: "border-t-green-400",
-  入金済: "border-t-emerald-400",
-};
+// フィルタドロップダウン用の全ステージ
+const ALL_STAGES = [
+  "日程未確", "検討中", "長期検討",
+  "成約", "その他購入", "動画講座購入", "追加指導",
+  "NoShow", "未実施", "実施不可", "非実施対象",
+  "失注", "失注見込", "失注見込(自動)", "CL", "全額返金",
+  "その他",
+];
 
 interface PipelineClientProps {
   customers: CustomerWithRelations[];
@@ -34,10 +42,26 @@ interface PipelineClientProps {
 
 export function PipelineClient({ customers }: PipelineClientProps) {
   const [view, setView] = useState<"kanban" | "table">("kanban");
+  const [stageFilter, setStageFilter] = useState<string>("");
 
-  const byStage = STAGES.map((stage) => ({
-    stage,
-    customers: customers.filter((c) => c.pipeline?.stage === stage),
+  // テーブルビュー用フィルタ
+  const filteredCustomers = stageFilter
+    ? customers.filter((c) => c.pipeline?.stage === stageFilter)
+    : customers;
+
+  // カンバン: ステージごとに顧客をグループ化
+  const allMatchedStages = new Set(KANBAN_STAGES.flatMap((s) => s.match));
+  const byStage = KANBAN_STAGES.map((stageDef) => ({
+    ...stageDef,
+    customers: customers.filter((c) => {
+      const stage = c.pipeline?.stage;
+      if (!stage) return stageDef.match.length === 0; // その他
+      if (stageDef.match.length === 0) {
+        // "その他" = マッチしないもの全て
+        return !allMatchedStages.has(stage);
+      }
+      return stageDef.match.includes(stage);
+    }),
   }));
 
   const totalValue = customers
@@ -54,6 +78,18 @@ export function PipelineClient({ customers }: PipelineClientProps) {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {view === "table" && (
+            <select
+              value={stageFilter}
+              onChange={(e) => setStageFilter(e.target.value)}
+              className="px-2 py-1.5 text-sm bg-surface-elevated border border-white/10 text-white rounded-lg focus:outline-none focus:ring-1 focus:ring-brand"
+            >
+              <option value="">全ステージ</option>
+              {ALL_STAGES.map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+          )}
           <button
             onClick={() => setView("kanban")}
             className={`px-3 py-1.5 text-sm rounded-lg ${
@@ -79,14 +115,14 @@ export function PipelineClient({ customers }: PipelineClientProps) {
 
       {view === "kanban" ? (
         <div className="flex gap-4 overflow-x-auto pb-4">
-          {byStage.map(({ stage, customers }) => (
+          {byStage.map(({ label, borderColor, customers }) => (
             <div
-              key={stage}
-              className={`flex-shrink-0 w-72 bg-surface rounded-xl border-t-4 ${STAGE_COLORS[stage]}`}
+              key={label}
+              className={`flex-shrink-0 w-72 bg-surface rounded-xl border-t-4 ${borderColor}`}
             >
               <div className="p-3 border-b border-white/10 bg-surface-card rounded-t-xl">
                 <div className="flex items-center justify-between">
-                  <h3 className="font-semibold text-sm text-white">{stage}</h3>
+                  <h3 className="font-semibold text-sm text-white">{label}</h3>
                   <span className="bg-white/10 text-gray-300 text-xs font-medium px-2 py-0.5 rounded-full">
                     {customers.length}
                   </span>
@@ -123,17 +159,17 @@ export function PipelineClient({ customers }: PipelineClientProps) {
                       >
                         {customer.attribute}
                       </span>
-                      {customer.utm_source && (
-                        <span className="text-[10px] text-gray-400">
-                          via {customer.utm_source}
+                      {customer.pipeline?.stage && (
+                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${getStageColor(customer.pipeline.stage)}`}>
+                          {customer.pipeline.stage}
                         </span>
                       )}
                     </div>
-                    {customer.contract?.confirmed_amount && (
+                    {customer.contract?.confirmed_amount ? (
                       <p className="text-xs font-medium text-green-400">
                         {formatCurrency(customer.contract.confirmed_amount)}
                       </p>
-                    )}
+                    ) : null}
                     <p className="text-[10px] text-gray-400 mt-1">
                       {formatDate(customer.application_date)}
                     </p>
@@ -152,16 +188,16 @@ export function PipelineClient({ customers }: PipelineClientProps) {
             <thead className="bg-surface-elevated border-b border-white/10">
               <tr>
                 <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">顧客</th>
-                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">ステージ</th>
-                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">面談予定</th>
-                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">面談実施</th>
-                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">成約日</th>
-                <th className="text-right py-3 px-4 text-xs font-semibold text-gray-500">金額</th>
-                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">比較サービス</th>
+                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">検討状況</th>
+                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">実施状況</th>
+                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">営業担当</th>
+                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">営業実施日</th>
+                <th className="text-right py-3 px-4 text-xs font-semibold text-gray-500">確定売上</th>
+                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">申込日</th>
               </tr>
             </thead>
             <tbody>
-              {customers.map((c) => (
+              {filteredCustomers.map((c) => (
                 <tr key={c.id} className="border-b border-white/[0.08] hover:bg-white/5">
                   <td className="py-3 px-4">
                     <Link href={`/customers/${c.id}`} className="font-medium text-sm text-white hover:text-brand">
@@ -175,13 +211,13 @@ export function PipelineClient({ customers }: PipelineClientProps) {
                       </span>
                     )}
                   </td>
-                  <td className="py-3 px-4 text-sm text-gray-300">{formatDate(c.pipeline?.meeting_scheduled_date || null)}</td>
-                  <td className="py-3 px-4 text-sm text-gray-300">{formatDate(c.pipeline?.meeting_conducted_date || null)}</td>
-                  <td className="py-3 px-4 text-sm text-gray-300">{formatDate(c.pipeline?.closing_date || null)}</td>
+                  <td className="py-3 px-4 text-sm text-gray-300">{c.pipeline?.deal_status || "-"}</td>
+                  <td className="py-3 px-4 text-sm text-gray-300">{c.pipeline?.sales_person || "-"}</td>
+                  <td className="py-3 px-4 text-sm text-gray-300">{formatDate(c.pipeline?.sales_date ?? null)}</td>
                   <td className="py-3 px-4 text-sm text-right font-medium text-white">
                     {c.contract?.confirmed_amount ? formatCurrency(c.contract.confirmed_amount) : "-"}
                   </td>
-                  <td className="py-3 px-4 text-sm text-gray-400">{c.pipeline?.comparison_services || "-"}</td>
+                  <td className="py-3 px-4 text-sm text-gray-300">{formatDate(c.application_date)}</td>
                 </tr>
               ))}
             </tbody>

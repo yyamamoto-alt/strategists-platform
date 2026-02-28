@@ -28,7 +28,7 @@ export function isAgentCustomer(c: CustomerWithRelations): boolean {
 /** 顧客が「受講中」か判定（Excel Col BU の条件） */
 export function isCurrentlyEnrolled(c: CustomerWithRelations): boolean {
   const stage = c.pipeline?.stage;
-  if (stage !== "成約" && stage !== "入金済") return false;
+  if (stage !== "成約" && stage !== "入金済" && stage !== "追加指導") return false;
   if (!c.learning) return false;
   if (!c.learning.coaching_end_date) return true;
   const endDate = new Date(c.learning.coaching_end_date);
@@ -57,9 +57,19 @@ export function getSubsidyAmount(c: CustomerWithRelations): number {
 export function calcClosingProbability(c: CustomerWithRelations): number {
   const stage = c.pipeline?.stage;
   if (!stage) return 0;
-  if (stage === "入金済" || stage === "成約") return 1.0;
-  if (stage === "失注") return 0;
+  // 成約系 → 100%
+  if (stage === "成約" || stage === "入金済" || stage === "その他購入" || stage === "動画講座購入" || stage === "追加指導") return 1.0;
+  // 失注系 → 0%
+  if (stage === "失注" || stage === "失注見込" || stage === "失注見込(自動)" || stage === "CL" || stage === "全額返金") return 0;
+  // 未実施系 → 0%
+  if (stage === "NoShow" || stage === "未実施" || stage === "実施不可" || stage === "非実施対象") return 0;
+  // 保留
   if (stage === "保留" || c.pipeline?.deal_status === "保留") return 0;
+  // アクティブ
+  if (stage === "検討中") return 0.5;
+  if (stage === "長期検討") return 0.2;
+  if (stage === "日程未確") return 0.1;
+  // レガシー値（互換性維持）
   if (stage === "提案中") return 0.5;
   if (stage === "面談実施") return 0.3;
   if (stage === "日程確定") return 0.15;
