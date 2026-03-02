@@ -36,16 +36,18 @@ export function DataSyncClient({
 
   // 接続追加フォーム
   const [showAddForm, setShowAddForm] = useState(false);
-  const [formName, setFormName] = useState("");
-  const [formSpreadsheetId, setFormSpreadsheetId] = useState("");
-  const [formSheetName, setFormSheetName] = useState("Sheet1");
-  const [formMapping, setFormMapping] = useState("{}");
+  const [formUrl, setFormUrl] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
-  // プレビュー
-  const [previewHeaders, setPreviewHeaders] = useState<string[]>([]);
+  // プレビュー結果
+  const [previewTitle, setPreviewTitle] = useState("");
   const [previewSheets, setPreviewSheets] = useState<string[]>([]);
+  const [previewHeaders, setPreviewHeaders] = useState<string[]>([]);
+  const [previewSpreadsheetId, setPreviewSpreadsheetId] = useState("");
+  const [selectedSheet, setSelectedSheet] = useState("");
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
+  const [previewError, setPreviewError] = useState("");
+  const [previewLoaded, setPreviewLoaded] = useState(false);
 
   // マッピングUI
   const [mappingFields, setMappingFields] = useState<Record<string, string>>({});
@@ -76,37 +78,95 @@ export function DataSyncClient({
   ];
 
   // ================================================================
-  // 接続追加
+  // URL からプレビュー取得（DB保存不要）
+  // ================================================================
+
+  const loadPreviewFromUrl = useCallback(
+    async (url: string, sheet?: string) => {
+      if (!url.trim()) return;
+      setIsLoadingPreview(true);
+      setPreviewError("");
+      try {
+        const params = new URLSearchParams({ url: url.trim() });
+        if (sheet) params.set("sheet", sheet);
+        const res = await fetch(`/api/spreadsheets/preview-url?${params}`);
+        const data = await res.json();
+        if (!res.ok) {
+          setPreviewError(data.error || "取得に失敗しました");
+          return;
+        }
+        setPreviewSpreadsheetId(data.spreadsheet_id);
+        setPreviewTitle(data.title);
+        setPreviewSheets(data.sheets || []);
+        setPreviewHeaders(data.headers || []);
+        if (!sheet && data.sheets?.length > 0) {
+          setSelectedSheet(data.sheets[0]);
+        }
+        setPreviewLoaded(true);
+      } catch {
+        setPreviewError("接続エラーが発生しました");
+      } finally {
+        setIsLoadingPreview(false);
+      }
+    },
+    []
+  );
+
+  // シート変更時にヘッダーを再取得
+  const handleSheetChange = useCallback(
+    (sheet: string) => {
+      setSelectedSheet(sheet);
+      setMappingFields({});
+      if (formUrl.trim()) {
+        loadPreviewFromUrl(formUrl, sheet);
+      }
+    },
+    [formUrl, loadPreviewFromUrl]
+  );
+
+  // ================================================================
+  // 接続追加（保存）
   // ================================================================
 
   const addConnection = useCallback(async () => {
-    if (!formName || !formSpreadsheetId) return;
+    if (!previewSpreadsheetId || !previewTitle) return;
     setIsSaving(true);
     try {
       const res = await fetch("/api/spreadsheets", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: formName,
-          spreadsheet_id: formSpreadsheetId,
-          sheet_name: formSheetName,
+          name: previewTitle,
+          spreadsheet_id: previewSpreadsheetId,
+          sheet_name: selectedSheet || "Sheet1",
           column_mapping: mappingFields,
         }),
       });
       if (res.ok) {
         const data = await res.json();
         setConnections((prev) => [data, ...prev]);
-        setShowAddForm(false);
-        setFormName("");
-        setFormSpreadsheetId("");
-        setFormSheetName("Sheet1");
-        setMappingFields({});
-        setPreviewHeaders([]);
+        resetAddForm();
+      } else {
+        const data = await res.json();
+        alert(`保存エラー: ${data.error || "不明なエラー"}`);
       }
     } finally {
       setIsSaving(false);
     }
-  }, [formName, formSpreadsheetId, formSheetName, mappingFields]);
+  }, [previewSpreadsheetId, previewTitle, selectedSheet, mappingFields]);
+
+  const resetAddForm = useCallback(() => {
+    setShowAddForm(false);
+    setFormUrl("");
+    setPreviewTitle("");
+    setPreviewSheets([]);
+    setPreviewHeaders([]);
+    setPreviewSpreadsheetId("");
+    setSelectedSheet("");
+    setPreviewError("");
+    setPreviewLoaded(false);
+    setMappingFields({});
+  }, []);
 
   // ================================================================
   // 接続削除
@@ -119,55 +179,6 @@ export function DataSyncClient({
       setConnections((prev) => prev.filter((c) => c.id !== connId));
     }
   }, []);
-
-  // ================================================================
-  // プレビュー取得
-  // ================================================================
-
-  const loadPreview = useCallback(async (connId: string) => {
-    setIsLoadingPreview(true);
-    try {
-      const res = await fetch(`/api/spreadsheets/${connId}/preview`);
-      if (res.ok) {
-        const data = await res.json();
-        setPreviewHeaders(data.headers || []);
-        setPreviewSheets(data.sheets || []);
-      }
-    } finally {
-      setIsLoadingPreview(false);
-    }
-  }, []);
-
-  // 新規追加時のプレビュー（一時接続を作成してからプレビュー）
-  const loadPreviewForNew = useCallback(async () => {
-    if (!formSpreadsheetId) return;
-    setIsLoadingPreview(true);
-    try {
-      // 一時的に接続を作成
-      const createRes = await fetch("/api/spreadsheets", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: formName || "temp_preview",
-          spreadsheet_id: formSpreadsheetId,
-          sheet_name: formSheetName,
-        }),
-      });
-      if (createRes.ok) {
-        const conn = await createRes.json();
-        const previewRes = await fetch(`/api/spreadsheets/${conn.id}/preview`);
-        if (previewRes.ok) {
-          const data = await previewRes.json();
-          setPreviewHeaders(data.headers || []);
-          setPreviewSheets(data.sheets || []);
-        }
-        // 一時接続を削除
-        await fetch(`/api/spreadsheets/${conn.id}`, { method: "DELETE" });
-      }
-    } finally {
-      setIsLoadingPreview(false);
-    }
-  }, [formSpreadsheetId, formSheetName, formName]);
 
   // ================================================================
   // 同期実行
@@ -185,10 +196,8 @@ export function DataSyncClient({
         alert(
           `同期完了: ${data.rows_processed}行処理 (更新: ${data.rows_updated}, 未マッチ: ${data.rows_unmatched})`
         );
-        // リロード
-        const [connsRes, logsRes, unmatchedRes] = await Promise.all([
+        const [connsRes, unmatchedRes] = await Promise.all([
           fetch("/api/spreadsheets"),
-          fetch("/api/spreadsheets"),  // logs will be fetched via page reload
           fetch("/api/unmatched"),
         ]);
         if (connsRes.ok) setConnections(await connsRes.json());
@@ -282,137 +291,185 @@ export function DataSyncClient({
         <div className="space-y-4">
           <div className="flex justify-end">
             <button
-              onClick={() => setShowAddForm(!showAddForm)}
-              className="px-4 py-2 bg-brand text-white rounded-lg text-sm font-medium hover:bg-brand/90"
+              onClick={() => {
+                if (showAddForm) {
+                  resetAddForm();
+                } else {
+                  setShowAddForm(true);
+                }
+              }}
+              className="px-4 py-2 bg-brand text-white rounded-lg text-sm font-medium hover:bg-brand/90 transition-colors"
             >
-              + 接続追加
+              {showAddForm ? "キャンセル" : "+ 接続追加"}
             </button>
           </div>
 
           {/* 追加フォーム */}
           {showAddForm && (
-            <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-6 space-y-4">
-              <h3 className="text-lg font-semibold text-white">新しい接続を追加</h3>
+            <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-6 space-y-5">
+              <h3 className="text-lg font-semibold text-white">
+                Google Spreadsheet を接続
+              </h3>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm text-gray-400 block mb-1">接続名</label>
+              {/* Step 1: URL入力 */}
+              <div>
+                <label className="text-sm text-gray-400 block mb-1.5">
+                  Google SpreadsheetのURL
+                </label>
+                <div className="flex gap-2">
                   <input
-                    type="text"
-                    value={formName}
-                    onChange={(e) => setFormName(e.target.value)}
-                    placeholder="例: LP申込, Jicoo, カルテ"
-                    className="w-full px-3 py-2 bg-surface-elevated border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-brand"
-                  />
-                </div>
-                <div>
-                  <label className="text-sm text-gray-400 block mb-1">
-                    Spreadsheet ID
-                    <span className="text-gray-600 text-xs ml-1">(URLの /d/〇〇〇/ 部分)</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={formSpreadsheetId}
-                    onChange={(e) => {
-                      let val = e.target.value;
-                      // URLからIDを抽出
-                      const match = val.match(/\/d\/([a-zA-Z0-9_-]+)/);
-                      if (match) val = match[1];
-                      setFormSpreadsheetId(val);
+                    type="url"
+                    value={formUrl}
+                    onChange={(e) => setFormUrl(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && formUrl.trim()) {
+                        loadPreviewFromUrl(formUrl);
+                      }
                     }}
-                    placeholder="スプレッドシートIDまたはURL"
-                    className="w-full px-3 py-2 bg-surface-elevated border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-brand"
+                    placeholder="https://docs.google.com/spreadsheets/d/xxxxx/edit"
+                    className="flex-1 px-3 py-2.5 bg-[#1a1a2e] border border-white/15 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand"
+                    autoFocus
                   />
-                </div>
-                <div>
-                  <label className="text-sm text-gray-400 block mb-1">シート名</label>
-                  {previewSheets.length > 0 ? (
-                    <select
-                      value={formSheetName}
-                      onChange={(e) => setFormSheetName(e.target.value)}
-                      className="w-full px-3 py-2 bg-surface-elevated border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-brand"
-                    >
-                      {previewSheets.map((s) => (
-                        <option key={s} value={s}>{s}</option>
-                      ))}
-                    </select>
-                  ) : (
-                    <input
-                      type="text"
-                      value={formSheetName}
-                      onChange={(e) => setFormSheetName(e.target.value)}
-                      placeholder="Sheet1"
-                      className="w-full px-3 py-2 bg-surface-elevated border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-brand"
-                    />
-                  )}
-                </div>
-                <div className="flex items-end">
                   <button
-                    onClick={loadPreviewForNew}
-                    disabled={!formSpreadsheetId || isLoadingPreview}
-                    className="px-4 py-2 bg-surface-elevated border border-white/10 text-white rounded-lg text-sm hover:bg-white/10 disabled:opacity-50"
+                    type="button"
+                    onClick={() => loadPreviewFromUrl(formUrl)}
+                    disabled={!formUrl.trim() || isLoadingPreview}
+                    className="px-5 py-2.5 bg-brand text-white rounded-lg text-sm font-medium hover:bg-brand/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
                   >
-                    {isLoadingPreview ? "読込中..." : "ヘッダー取得"}
+                    {isLoadingPreview ? (
+                      <span className="flex items-center gap-2">
+                        <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        読込中
+                      </span>
+                    ) : (
+                      "接続テスト"
+                    )}
                   </button>
                 </div>
+                <p className="text-xs text-gray-500 mt-1.5">
+                  ブラウザのアドレスバーからURLをコピー＆ペーストしてください
+                </p>
               </div>
 
-              {/* カラムマッピング */}
-              {previewHeaders.length > 0 && (
-                <div>
-                  <h4 className="text-sm font-medium text-white mb-2">カラムマッピング</h4>
-                  <p className="text-xs text-gray-500 mb-3">
-                    CRMのフィールドに対応するスプレッドシートの列を選択してください
-                  </p>
-                  <div className="grid grid-cols-2 gap-2">
-                    {CRM_FIELDS.map((field) => (
-                      <div key={field.key} className="flex items-center gap-2">
-                        <span className="text-xs text-gray-400 w-32 shrink-0">{field.label}</span>
-                        <select
-                          value={mappingFields[field.key] || ""}
-                          onChange={(e) => updateMapping(field.key, e.target.value)}
-                          className="flex-1 px-2 py-1.5 bg-surface-elevated border border-white/10 rounded text-white text-xs focus:outline-none focus:border-brand"
-                        >
-                          <option value="">-- 未設定 --</option>
-                          {previewHeaders.map((h) => (
-                            <option key={h} value={h}>{h}</option>
-                          ))}
-                        </select>
-                      </div>
-                    ))}
-                  </div>
+              {/* エラー表示 */}
+              {previewError && (
+                <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-3 text-sm text-red-400">
+                  {previewError}
                 </div>
               )}
 
-              <div className="flex gap-2 justify-end">
-                <button
-                  onClick={() => {
-                    setShowAddForm(false);
-                    setPreviewHeaders([]);
-                    setPreviewSheets([]);
-                    setMappingFields({});
-                  }}
-                  className="px-4 py-2 text-gray-400 hover:text-white text-sm"
-                >
-                  キャンセル
-                </button>
-                <button
-                  onClick={addConnection}
-                  disabled={!formName || !formSpreadsheetId || isSaving}
-                  className="px-4 py-2 bg-brand text-white rounded-lg text-sm font-medium hover:bg-brand/90 disabled:opacity-50"
-                >
-                  {isSaving ? "保存中..." : "保存"}
-                </button>
-              </div>
+              {/* Step 2: プレビュー結果 */}
+              {previewLoaded && (
+                <div className="space-y-4 border-t border-white/10 pt-5">
+                  {/* 接続名（自動取得） */}
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-gray-500 w-24 shrink-0">接続名</span>
+                    <span className="text-white font-medium">{previewTitle}</span>
+                    <span className="px-2 py-0.5 bg-green-500/20 text-green-400 rounded text-xs">
+                      接続OK
+                    </span>
+                  </div>
+
+                  {/* シート選択 */}
+                  {previewSheets.length > 1 && (
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs text-gray-500 w-24 shrink-0">シート</span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {previewSheets.map((s) => (
+                          <button
+                            key={s}
+                            type="button"
+                            onClick={() => handleSheetChange(s)}
+                            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                              selectedSheet === s
+                                ? "bg-brand text-white"
+                                : "bg-white/5 text-gray-400 hover:text-white hover:bg-white/10"
+                            }`}
+                          >
+                            {s}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* カラムマッピング */}
+                  {previewHeaders.length > 0 && (
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <div>
+                          <h4 className="text-sm font-medium text-white">
+                            カラムマッピング
+                          </h4>
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            CRMフィールドに対応するスプレッドシートの列を選択
+                          </p>
+                        </div>
+                        <span className="text-xs text-gray-500">
+                          {previewHeaders.length}列検出
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {CRM_FIELDS.map((field) => (
+                          <div
+                            key={field.key}
+                            className="flex items-center gap-2 bg-white/[0.02] rounded-lg px-3 py-2"
+                          >
+                            <span className="text-xs text-gray-400 w-28 shrink-0">
+                              {field.label}
+                            </span>
+                            <select
+                              value={mappingFields[field.key] || ""}
+                              onChange={(e) =>
+                                updateMapping(field.key, e.target.value)
+                              }
+                              className="flex-1 px-2 py-1.5 bg-[#1a1a2e] border border-white/10 rounded text-white text-xs focus:outline-none focus:border-brand appearance-none"
+                            >
+                              <option value="">-- 未設定 --</option>
+                              {previewHeaders.map((h) => (
+                                <option key={h} value={h}>
+                                  {h}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {previewHeaders.length === 0 && (
+                    <p className="text-sm text-yellow-400">
+                      ヘッダー行が見つかりません。シートにデータがあるか確認してください。
+                    </p>
+                  )}
+
+                  {/* 保存ボタン */}
+                  <div className="flex justify-end pt-2">
+                    <button
+                      type="button"
+                      onClick={addConnection}
+                      disabled={!previewSpreadsheetId || isSaving}
+                      className="px-6 py-2.5 bg-brand text-white rounded-lg text-sm font-medium hover:bg-brand/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {isSaving ? "保存中..." : "この接続を保存"}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
-          {/* 接続一覧テーブル */}
-          {connections.length === 0 ? (
+          {/* 接続一覧 */}
+          {connections.length === 0 && !showAddForm ? (
             <div className="bg-surface-card rounded-xl border border-white/10 p-12 text-center">
-              <p className="text-gray-400">接続がありません。「+ 接続追加」から追加してください</p>
+              <div className="text-gray-500 mb-2 text-3xl">📊</div>
+              <p className="text-gray-400 mb-1">接続がありません</p>
+              <p className="text-xs text-gray-500">
+                「+ 接続追加」からGoogle Spreadsheetを接続してください
+              </p>
             </div>
-          ) : (
+          ) : connections.length > 0 ? (
             <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 overflow-hidden">
               <table className="w-full text-sm">
                 <thead>
@@ -432,39 +489,50 @@ export function DataSyncClient({
                       <td className="p-4 text-white font-medium">{conn.name}</td>
                       <td className="p-4 text-gray-300">{conn.sheet_name}</td>
                       <td className="p-4 text-gray-300">
-                        <span className={`px-2 py-0.5 rounded text-xs ${
-                          conn.sync_mode === "append" ? "bg-blue-500/20 text-blue-400" : "bg-purple-500/20 text-purple-400"
-                        }`}>
+                        <span
+                          className={`px-2 py-0.5 rounded text-xs ${
+                            conn.sync_mode === "append"
+                              ? "bg-blue-500/20 text-blue-400"
+                              : "bg-purple-500/20 text-purple-400"
+                          }`}
+                        >
                           {conn.sync_mode === "append" ? "差分" : "全件"}
                         </span>
                       </td>
-                      <td className="p-4 text-gray-400 text-xs">{formatDate(conn.last_synced_at)}</td>
+                      <td className="p-4 text-gray-400 text-xs">
+                        {formatDate(conn.last_synced_at)}
+                      </td>
                       <td className="p-4 text-gray-300">{conn.last_synced_row}</td>
                       <td className="p-4">
-                        <span className={`px-2 py-0.5 rounded text-xs ${
-                          conn.is_active ? "bg-green-500/20 text-green-400" : "bg-gray-500/20 text-gray-400"
-                        }`}>
+                        <span
+                          className={`px-2 py-0.5 rounded text-xs ${
+                            conn.is_active
+                              ? "bg-green-500/20 text-green-400"
+                              : "bg-gray-500/20 text-gray-400"
+                          }`}
+                        >
                           {conn.is_active ? "有効" : "無効"}
                         </span>
                       </td>
                       <td className="p-4 text-right">
                         <div className="flex gap-2 justify-end">
                           <button
-                            onClick={() => loadPreview(conn.id)}
-                            className="px-2 py-1 text-xs text-gray-400 hover:text-white border border-white/10 rounded"
-                          >
-                            プレビュー
-                          </button>
-                          <button
                             onClick={() => runSync(conn.id)}
                             disabled={syncingId === conn.id}
-                            className="px-2 py-1 text-xs text-brand hover:text-white border border-brand/30 rounded disabled:opacity-50"
+                            className="px-3 py-1.5 text-xs text-brand hover:text-white border border-brand/30 rounded-md hover:bg-brand/10 disabled:opacity-50 transition-colors"
                           >
-                            {syncingId === conn.id ? "同期中..." : "同期実行"}
+                            {syncingId === conn.id ? (
+                              <span className="flex items-center gap-1.5">
+                                <span className="w-3 h-3 border-2 border-brand/30 border-t-brand rounded-full animate-spin" />
+                                同期中
+                              </span>
+                            ) : (
+                              "同期実行"
+                            )}
                           </button>
                           <button
                             onClick={() => deleteConnection(conn.id)}
-                            className="px-2 py-1 text-xs text-red-400 hover:text-red-300 border border-red-500/20 rounded"
+                            className="px-3 py-1.5 text-xs text-red-400 hover:text-red-300 border border-red-500/20 rounded-md hover:bg-red-500/10 transition-colors"
                           >
                             削除
                           </button>
@@ -475,7 +543,7 @@ export function DataSyncClient({
                 </tbody>
               </table>
             </div>
-          )}
+          ) : null}
         </div>
       )}
 
@@ -516,17 +584,22 @@ export function DataSyncClient({
                             value={searchCustomerId}
                             onChange={(e) => setSearchCustomerId(e.target.value)}
                             placeholder="顧客ID (UUID)"
-                            className="px-2 py-1 bg-surface-elevated border border-white/10 rounded text-white text-xs w-64 focus:outline-none focus:border-brand"
+                            className="px-2 py-1 bg-[#1a1a2e] border border-white/10 rounded text-white text-xs w-64 focus:outline-none focus:border-brand"
                           />
                           <button
-                            onClick={() => resolveUnmatched(record.id, "link", searchCustomerId)}
+                            onClick={() =>
+                              resolveUnmatched(record.id, "link", searchCustomerId)
+                            }
                             disabled={!searchCustomerId}
                             className="px-2 py-1 text-xs bg-brand text-white rounded disabled:opacity-50"
                           >
                             紐付け
                           </button>
                           <button
-                            onClick={() => { setLinkingId(null); setSearchCustomerId(""); }}
+                            onClick={() => {
+                              setLinkingId(null);
+                              setSearchCustomerId("");
+                            }}
                             className="px-2 py-1 text-xs text-gray-400"
                           >
                             取消
@@ -600,19 +673,29 @@ export function DataSyncClient({
                 <tbody>
                   {syncLogs.map((log) => (
                     <tr key={log.id} className="border-b border-white/5 hover:bg-white/5">
-                      <td className="p-4 text-gray-300 text-xs">{formatDate(log.started_at)}</td>
+                      <td className="p-4 text-gray-300 text-xs">
+                        {formatDate(log.started_at)}
+                      </td>
                       <td className="p-4">
-                        <span className={`px-2 py-0.5 rounded text-xs ${
-                          log.status === "success"
-                            ? "bg-green-500/20 text-green-400"
+                        <span
+                          className={`px-2 py-0.5 rounded text-xs ${
+                            log.status === "success"
+                              ? "bg-green-500/20 text-green-400"
+                              : log.status === "error"
+                              ? "bg-red-500/20 text-red-400"
+                              : "bg-yellow-500/20 text-yellow-400"
+                          }`}
+                        >
+                          {log.status === "success"
+                            ? "成功"
                             : log.status === "error"
-                            ? "bg-red-500/20 text-red-400"
-                            : "bg-yellow-500/20 text-yellow-400"
-                        }`}>
-                          {log.status === "success" ? "成功" : log.status === "error" ? "エラー" : "実行中"}
+                            ? "エラー"
+                            : "実行中"}
                         </span>
                       </td>
-                      <td className="p-4 text-gray-300 text-right">{log.rows_processed}</td>
+                      <td className="p-4 text-gray-300 text-right">
+                        {log.rows_processed}
+                      </td>
                       <td className="p-4 text-gray-300 text-right">{log.rows_updated}</td>
                       <td className="p-4 text-right">
                         {log.rows_unmatched > 0 ? (

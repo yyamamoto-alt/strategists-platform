@@ -80,6 +80,49 @@ export async function getSheetMetadata(
 }
 
 /**
+ * スプレッドシートのタイトル + シート一覧 + 指定シートのヘッダーを一括取得
+ */
+export async function getSpreadsheetInfo(
+  spreadsheetId: string,
+  sheetName?: string
+): Promise<{
+  title: string;
+  sheets: { title: string; sheetId: number }[];
+  headers: string[];
+}> {
+  const auth = getAuth();
+  const sheets = google.sheets({ version: "v4", auth });
+
+  // タイトル + シート一覧を取得
+  const metaRes = await sheets.spreadsheets.get({
+    spreadsheetId,
+    fields: "properties.title,sheets.properties.title,sheets.properties.sheetId",
+  });
+
+  const title = metaRes.data.properties?.title || "";
+  const sheetList =
+    metaRes.data.sheets?.map((s) => ({
+      title: s.properties?.title || "",
+      sheetId: s.properties?.sheetId || 0,
+    })) || [];
+
+  // ヘッダー行を取得（シート名指定がなければ最初のシート）
+  const targetSheet = sheetName || sheetList[0]?.title || "Sheet1";
+  let headers: string[] = [];
+  try {
+    const headerRes = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: `'${targetSheet}'!1:1`,
+    });
+    headers = headerRes.data.values?.[0] || [];
+  } catch {
+    // ヘッダー取得失敗は無視（シートが空の場合など）
+  }
+
+  return { title, sheets: sheetList, headers };
+}
+
+/**
  * ヘッダー行のみを取得（プレビュー用）
  */
 export async function fetchSheetHeaders(
