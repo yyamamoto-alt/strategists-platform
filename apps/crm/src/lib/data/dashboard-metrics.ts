@@ -337,8 +337,10 @@ export function computeThreeTierRevenue(
       m.confirmed_subsidy += getSubsidyAmount(c);
     }
 
-    // --- Tier 2: 人材見込み（確定除外） ---
-    if (isAgentCustomer(c) && !isAgentConfirmed(c)) {
+    // --- Tier 2: 人材見込み（確定除外、受講中のみ — Excel Col BU 準拠） ---
+    // isCurrentlyEnrolled: 成約/入金済/追加指導 かつ 指導終了日が未来
+    const enrolledAgent = isAgentCustomer(c) && !isAgentConfirmed(c) && isCurrentlyEnrolled(c);
+    if (enrolledAgent) {
       const fee = calcExpectedReferralFee(c);
       if (fee > 0) {
         m.projected_agent += fee;
@@ -346,6 +348,7 @@ export function computeThreeTierRevenue(
     }
 
     // --- Tier 3: ステージ別成約確率ベースの予測 ---
+    // 予測 = 見込み含む売上 + 未成約パイプラインの期待値
     if (!closed) {
       const prob = calcClosingProbability(c);
       if (prob > 0) {
@@ -353,8 +356,8 @@ export function computeThreeTierRevenue(
         const potentialSchool = amount > 0 ? amount :
           (isShinsotsu(c.attribute) ? 240000 : 427636);
         m.forecast_school += potentialSchool * prob;
-        // エージェント売上期待値
-        if (isAgentCustomer(c)) {
+        // エージェント売上期待値（Tier 2で計上済みの受講中顧客は除外）
+        if (isAgentCustomer(c) && !enrolledAgent) {
           m.forecast_agent += calcExpectedReferralFee(c) * prob;
         }
         // 補助金期待値
@@ -382,11 +385,12 @@ export function computeThreeTierRevenue(
         m.confirmed_school + m.confirmed_agent + m.confirmed_subsidy;
       const projectedTotal = confirmedTotal + m.projected_agent;
 
-      // Tier 3: 確定 + 未成約パイプラインの期待値（ステージ別確率）
+      // Tier 3: 見込み含む売上 + 未成約パイプラインの期待値（ステージ別確率）
+      // ベースは projectedTotal（確定+人材見込み）。予測は常に見込み以上になる
       // 当月は月消化率で割り戻し（Excel Col DE 準拠）
       const monthMultiplier = getMonthProgressMultiplier(period);
       const forecastRaw =
-        confirmedTotal + m.forecast_school + m.forecast_agent + m.forecast_subsidy;
+        projectedTotal + m.forecast_school + m.forecast_agent + m.forecast_subsidy;
       const forecastTotal = forecastRaw * monthMultiplier;
 
       return {
@@ -845,13 +849,15 @@ function computeSegmentData(
     }
 
     // Tier 3: 未成約パイプラインの期待値
+    // 受講中エージェント顧客は agentRevByPeriod に計上済みなので forecast から除外
     if (!isStageClosed(c.pipeline?.stage)) {
       const prob = calcClosingProbability(c);
       if (prob > 0) {
         const potentialSchool = (c.contract?.confirmed_amount || 0) > 0
           ? c.contract!.confirmed_amount!
           : (isShinsotsu(c.attribute) ? 240000 : 427636);
-        const potentialAgent = isAgentCustomer(c) ? calcExpectedReferralFee(c) * prob : 0;
+        const isEnrolledAgent = isAgentCustomer(c) && !isAgentConfirmed(c) && isCurrentlyEnrolled(c);
+        const potentialAgent = (isAgentCustomer(c) && !isEnrolledAgent) ? calcExpectedReferralFee(c) * prob : 0;
         const potentialSubsidy = getSubsidyAmount(c) * prob;
         forecastByPeriod[period] = (forecastByPeriod[period] || 0) +
           potentialSchool * prob + potentialAgent + potentialSubsidy;
