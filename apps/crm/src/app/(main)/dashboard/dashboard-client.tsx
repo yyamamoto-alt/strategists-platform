@@ -12,7 +12,6 @@ import type {
 
 const CATEGORY_LABELS: Record<string, { label: string; color: string; icon: string }> = {
   marketing: { label: "マーケティング", color: "border-blue-500/50 bg-blue-500/5", icon: "📊" },
-  management: { label: "経営", color: "border-amber-500/50 bg-amber-500/5", icon: "📈" },
   sales: { label: "営業", color: "border-green-500/50 bg-green-500/5", icon: "🤝" },
 };
 
@@ -118,7 +117,7 @@ export function DashboardClient({
         )}
 
         {localInsights && localInsights.length > 0 ? (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {localInsights.map((insight) => {
               const meta = CATEGORY_LABELS[insight.category] || {
                 label: insight.category,

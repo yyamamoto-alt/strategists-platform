@@ -1,11 +1,6 @@
 "use client";
 
-import { useState } from "react";
 import {
-  BarChart,
-  Bar,
-  LineChart,
-  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -13,7 +8,8 @@ import {
   Legend,
   ResponsiveContainer,
   ComposedChart,
-  Area,
+  Bar,
+  Line,
 } from "recharts";
 import type { RevenueMetrics, ThreeTierRevenue } from "@/types/database";
 
@@ -28,52 +24,17 @@ const formatYen = (value: number) => {
   return value.toString();
 };
 
-type ViewMode = "segment" | "three-tier";
-
 export function RevenueChart({ data, threeTierData }: RevenueChartProps) {
-  const [viewMode, setViewMode] = useState<ViewMode>(
-    threeTierData && threeTierData.length > 0 ? "three-tier" : "segment"
-  );
-
-  return (
-    <div>
-      {threeTierData && threeTierData.length > 0 && (
-        <div className="flex gap-1 mb-4">
-          <button
-            onClick={() => setViewMode("three-tier")}
-            className={`px-3 py-1 text-xs rounded-full transition-colors ${
-              viewMode === "three-tier"
-                ? "bg-brand text-white"
-                : "bg-white/10 text-gray-400 hover:bg-white/20"
-            }`}
-          >
-            3段階売上
-          </button>
-          <button
-            onClick={() => setViewMode("segment")}
-            className={`px-3 py-1 text-xs rounded-full transition-colors ${
-              viewMode === "segment"
-                ? "bg-brand text-white"
-                : "bg-white/10 text-gray-400 hover:bg-white/20"
-            }`}
-          >
-            セグメント別
-          </button>
-        </div>
-      )}
-
-      {viewMode === "three-tier" && threeTierData ? (
-        <ThreeTierChart data={threeTierData} />
-      ) : (
-        <SegmentChart data={data} threeTierData={threeTierData} />
-      )}
-    </div>
-  );
+  if (threeTierData && threeTierData.length > 0) {
+    return <UnifiedChart data={threeTierData} />;
+  }
+  return <FallbackChart data={data} />;
 }
 
-function ThreeTierChart({ data }: { data: ThreeTierRevenue[] }) {
+/** 統合チャート: セグメント別積み上げ棒 + 3段階ライン */
+function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
   return (
-    <ResponsiveContainer width="100%" height={300}>
+    <ResponsiveContainer width="100%" height={320}>
       <ComposedChart data={data}>
         <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
         <XAxis
@@ -97,37 +58,46 @@ function ThreeTierChart({ data }: { data: ThreeTierRevenue[] }) {
           labelStyle={{ color: "#9ca3af" }}
         />
         <Legend iconSize={10} wrapperStyle={{ fontSize: 11, color: "#9ca3af" }} />
-        {/* Tier 1: 確定売上（積み上げ棒） */}
+
+        {/* 積み上げ棒: セグメント内訳 (Tier 1 確定売上) */}
         <Bar
-          dataKey="confirmed_school"
-          name="スクール確定"
-          fill="#3b82f6"
-          stackId="confirmed"
+          dataKey="confirmed_school_kisotsu"
+          name="既卒スクール"
+          fill="#ffffff"
+          stackId="revenue"
           radius={[0, 0, 0, 0]}
+        />
+        <Bar
+          dataKey="confirmed_school_shinsotsu"
+          name="新卒スクール"
+          fill="#ef4444"
+          stackId="revenue"
         />
         <Bar
           dataKey="confirmed_agent"
           name="人材確定"
-          fill="#22c55e"
-          stackId="confirmed"
+          fill="#525252"
+          stackId="revenue"
         />
         <Bar
           dataKey="confirmed_subsidy"
           name="補助金"
-          fill="#8b5cf6"
-          stackId="confirmed"
+          fill="#a3a3a3"
+          stackId="revenue"
           radius={[4, 4, 0, 0]}
         />
-        {/* Tier 2: 見込み含む（線） */}
+
+        {/* ライン: Tier 2 見込み含む */}
         <Line
           type="monotone"
           dataKey="projected_total"
-          name="見込み含む売上"
+          name="見込み含む"
           stroke="#f59e0b"
           strokeWidth={2}
           dot={{ r: 3, fill: "#f59e0b" }}
         />
-        {/* Tier 3: 予測（点線） */}
+
+        {/* ライン: Tier 3 予測 */}
         <Line
           type="monotone"
           dataKey="forecast_total"
@@ -142,27 +112,17 @@ function ThreeTierChart({ data }: { data: ThreeTierRevenue[] }) {
   );
 }
 
-function SegmentChart({ data, threeTierData }: { data: RevenueMetrics[]; threeTierData?: ThreeTierRevenue[] }) {
-  // threeTierData がある場合は既卒/新卒セグメントで表示
-  const chartData = threeTierData && threeTierData.length > 0
-    ? threeTierData.map(t => ({
-        period: t.period,
-        school_kisotsu: t.confirmed_school_kisotsu,
-        school_shinsotsu: t.confirmed_school_shinsotsu,
-        agent: t.confirmed_agent,
-        subsidy: t.confirmed_subsidy,
-      }))
-    : data.map(d => ({
-        period: d.period,
-        school_kisotsu: d.school_revenue,
-        school_shinsotsu: 0,
-        agent: d.agent_revenue,
-        subsidy: d.content_revenue + d.other_revenue,
-      }));
+/** フォールバック: threeTierData がない場合 */
+function FallbackChart({ data }: { data: RevenueMetrics[] }) {
+  const chartData = data.map((d) => ({
+    period: d.period,
+    confirmed: d.confirmed_revenue,
+    projected: d.projected_revenue,
+  }));
 
   return (
-    <ResponsiveContainer width="100%" height={300}>
-      <BarChart data={chartData}>
+    <ResponsiveContainer width="100%" height={320}>
+      <ComposedChart data={chartData}>
         <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
         <XAxis
           dataKey="period"
@@ -185,23 +145,9 @@ function SegmentChart({ data, threeTierData }: { data: RevenueMetrics[]; threeTi
           labelStyle={{ color: "#9ca3af" }}
         />
         <Legend iconSize={10} wrapperStyle={{ fontSize: 11, color: "#9ca3af" }} />
-        <Bar
-          dataKey="school_kisotsu"
-          name="既卒スクール"
-          fill="#3b82f6"
-          stackId="a"
-          radius={[0, 0, 0, 0]}
-        />
-        <Bar dataKey="school_shinsotsu" name="新卒スクール" fill="#06b6d4" stackId="a" />
-        <Bar dataKey="agent" name="人材紹介" fill="#22c55e" stackId="a" />
-        <Bar
-          dataKey="subsidy"
-          name="補助金"
-          fill="#8b5cf6"
-          stackId="a"
-          radius={[4, 4, 0, 0]}
-        />
-      </BarChart>
+        <Bar dataKey="confirmed" name="確定売上" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+        <Line type="monotone" dataKey="projected" name="見込み売上" stroke="#f59e0b" strokeWidth={2} dot={{ r: 3, fill: "#f59e0b" }} />
+      </ComposedChart>
     </ResponsiveContainer>
   );
 }

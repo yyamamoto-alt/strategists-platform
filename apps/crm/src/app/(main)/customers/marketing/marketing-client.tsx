@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import Link from "next/link";
 import type { CustomerWithRelations } from "@strategy-school/shared-db";
+import type { ChannelAttribution } from "@/lib/data/marketing-settings";
 import {
   formatDate,
   formatCurrency,
@@ -22,19 +23,40 @@ import {
 
 interface MarketingClientProps {
   customers: CustomerWithRelations[];
+  attributionMap: Record<string, ChannelAttribution>;
 }
 
-export function MarketingClient({ customers }: MarketingClientProps) {
-  // KPI計算
+function getConfidenceBadge(confidence: string) {
+  switch (confidence) {
+    case "high":
+      return "bg-green-500/20 text-green-400";
+    case "medium":
+      return "bg-yellow-500/20 text-yellow-400";
+    default:
+      return "bg-gray-500/20 text-gray-400";
+  }
+}
+
+export function MarketingClient({ customers, attributionMap }: MarketingClientProps) {
+  const hasAttribution = Object.keys(attributionMap).length > 0;
+
+  // KPI計算: attribution がある場合は marketing_channel ベース、ない場合は utm_source ベース
   const kpis = useMemo(() => {
-    // チャネル別集計
-    const byChannel = new Map<string, { count: number; closed: number; ltvSum: number }>();
+    const byChannel = new Map<string, { count: number; conducted: number; closed: number; ltvSum: number }>();
     for (const c of customers) {
-      const ch = c.utm_source || "その他";
-      if (!byChannel.has(ch)) byChannel.set(ch, { count: 0, closed: 0, ltvSum: 0 });
+      const attr = attributionMap[c.id];
+      const ch = hasAttribution
+        ? (attr?.marketing_channel || "不明")
+        : (c.utm_source || "その他");
+
+      if (!byChannel.has(ch)) byChannel.set(ch, { count: 0, conducted: 0, closed: 0, ltvSum: 0 });
       const m = byChannel.get(ch)!;
       m.count++;
       const isClosed = c.pipeline?.stage === "成約" || c.pipeline?.stage === "入金済";
+      // 実施判定: meeting_conducted_date がある or 成約済み
+      if (c.pipeline?.meeting_conducted_date || isClosed) {
+        m.conducted++;
+      }
       if (isClosed) {
         m.closed++;
         m.ltvSum += calcExpectedLTV(c);
@@ -45,8 +67,9 @@ export function MarketingClient({ customers }: MarketingClientProps) {
       .map(([channel, m]) => ({
         channel,
         count: m.count,
+        conducted: m.conducted,
         closed: m.closed,
-        closingRate: m.count > 0 ? m.closed / m.count : 0,
+        closingRate: m.conducted > 0 ? m.closed / m.conducted : 0,
         avgLTV: m.closed > 0 ? Math.round(m.ltvSum / m.closed) : 0,
       }))
       .sort((a, b) => b.count - a.count);
@@ -60,7 +83,7 @@ export function MarketingClient({ customers }: MarketingClientProps) {
       .sort((a, b) => b.avgLTV - a.avgLTV)[0];
 
     return { top5Channels, bestClosingChannel, bestLTVChannel, totalCustomers: customers.length };
-  }, [customers]);
+  }, [customers, attributionMap, hasAttribution]);
 
   const columns: SpreadsheetColumn<CustomerWithRelations>[] = useMemo(
     () => [
@@ -93,6 +116,53 @@ export function MarketingClient({ customers }: MarketingClientProps) {
         render: (c) => formatDate(c.application_date),
         sortValue: (c) => c.application_date || "",
       },
+      // 帰属チャネル (attribution がある場合のみ表示)
+      ...(hasAttribution
+        ? [
+            {
+              key: "marketing_channel" as const,
+              label: "帰属チャネル",
+              width: 130,
+              render: (c: CustomerWithRelations) => {
+                const attr = attributionMap[c.id];
+                return attr ? (
+                  <span className="text-white font-medium text-xs">{attr.marketing_channel}</span>
+                ) : (
+                  <span className="text-gray-600 text-xs">未計算</span>
+                );
+              },
+              sortValue: (c: CustomerWithRelations) => attributionMap[c.id]?.marketing_channel || "",
+            },
+            {
+              key: "attribution_source" as const,
+              label: "帰属根拠",
+              width: 120,
+              render: (c: CustomerWithRelations) => {
+                const attr = attributionMap[c.id];
+                return attr ? (
+                  <span className="px-2 py-0.5 rounded text-xs bg-white/10 text-gray-300">{attr.attribution_source}</span>
+                ) : "-";
+              },
+            },
+            {
+              key: "confidence" as const,
+              label: "信頼度",
+              width: 80,
+              render: (c: CustomerWithRelations) => {
+                const attr = attributionMap[c.id];
+                return attr ? (
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getConfidenceBadge(attr.confidence)}`}>
+                    {attr.confidence}
+                  </span>
+                ) : "-";
+              },
+              sortValue: (c: CustomerWithRelations) => {
+                const conf = attributionMap[c.id]?.confidence;
+                return conf === "high" ? 3 : conf === "medium" ? 2 : 1;
+              },
+            },
+          ] as SpreadsheetColumn<CustomerWithRelations>[]
+        : []),
       {
         key: "utm_source",
         label: "utm_source",
@@ -213,7 +283,7 @@ export function MarketingClient({ customers }: MarketingClientProps) {
         render: (c) => c.pipeline?.google_ads_target || "-",
       },
     ],
-    []
+    [attributionMap, hasAttribution]
   );
 
   return (
@@ -222,6 +292,7 @@ export function MarketingClient({ customers }: MarketingClientProps) {
         <h1 className="text-2xl font-bold text-white">マーケティングDB</h1>
         <p className="text-sm text-gray-500 mt-1">
           チャネル分析・流入元別パフォーマンス
+          {hasAttribution && <span className="ml-2 text-brand">(帰属チャネル適用中)</span>}
         </p>
       </div>
 
@@ -251,7 +322,7 @@ export function MarketingClient({ customers }: MarketingClientProps) {
               </p>
               <p className="text-sm text-gray-400 mt-1">
                 成約率 {formatPercent(kpis.bestClosingChannel.closingRate)}
-                （{kpis.bestClosingChannel.closed}/{kpis.bestClosingChannel.count}件）
+                ({kpis.bestClosingChannel.closed}/{kpis.bestClosingChannel.conducted}実施)
               </p>
             </>
           ) : (
@@ -269,7 +340,7 @@ export function MarketingClient({ customers }: MarketingClientProps) {
               </p>
               <p className="text-sm text-gray-400 mt-1">
                 平均LTV {formatCurrency(kpis.bestLTVChannel.avgLTV)}
-                （{kpis.bestLTVChannel.closed}件成約）
+                ({kpis.bestLTVChannel.closed}件成約)
               </p>
             </>
           ) : (
@@ -283,12 +354,13 @@ export function MarketingClient({ customers }: MarketingClientProps) {
         columns={columns}
         data={customers}
         getRowKey={(c) => c.id}
-        searchPlaceholder="名前・utm_source・utm_campaign で検索..."
+        searchPlaceholder="名前・チャネル・utm_source で検索..."
         searchFilter={(c, q) =>
           c.name.toLowerCase().includes(q) ||
           (c.utm_source?.toLowerCase().includes(q) ?? false) ||
           (c.utm_campaign?.toLowerCase().includes(q) ?? false) ||
-          (c.utm_medium?.toLowerCase().includes(q) ?? false)
+          (c.utm_medium?.toLowerCase().includes(q) ?? false) ||
+          (attributionMap[c.id]?.marketing_channel?.toLowerCase().includes(q) ?? false)
         }
       />
     </div>

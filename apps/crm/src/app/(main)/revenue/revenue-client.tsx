@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { formatCurrency, formatPercent } from "@/lib/utils";
 import type {
   PLSheetData,
@@ -32,6 +32,10 @@ interface TableRow {
   format: RowFormat;
   values: (number | null)[];
   totalValue: number | null;
+  /** 折りたたみ可能な行の場合、グループIDを指定 */
+  collapsibleGroup?: string;
+  /** この行が属する折りたたみグループID */
+  parentGroup?: string;
 }
 
 type PeriodRange = "6m" | "12m" | "all";
@@ -99,6 +103,9 @@ function buildRows(
   const paidChannels = data.channels.filter((ch) => ch.isPaid);
 
   for (const metric of funnelMetrics) {
+    const organicGroupId = `${metric.key}_organic`;
+    const paidGroupId = `${metric.key}_paid`;
+
     // ヘッダー
     rows.push({
       key: `${metric.key}_header`,
@@ -121,9 +128,9 @@ function buildRows(
       totalValue: data.grandTotals[metric.key],
     });
 
-    // organic小計
+    // organic小計（折りたたみトグル）
     rows.push({
-      key: `${metric.key}_organic`,
+      key: organicGroupId,
       label: "organic計",
       indent: 1,
       style: "subtotal",
@@ -135,9 +142,10 @@ function buildRows(
         (s, ch) => s + ch.totals[metric.key],
         0
       ),
+      collapsibleGroup: organicGroupId,
     });
 
-    // organic個別チャネル
+    // organic個別チャネル（折りたたみ対象）
     for (const ch of organicChannels) {
       rows.push({
         key: `${metric.key}_o_${ch.name}`,
@@ -149,12 +157,13 @@ function buildRows(
           (p) => ch.funnel[p]?.[metric.key] || null
         ),
         totalValue: ch.totals[metric.key],
+        parentGroup: organicGroupId,
       });
     }
 
-    // paid小計
+    // paid小計（折りたたみトグル）
     rows.push({
-      key: `${metric.key}_paid`,
+      key: paidGroupId,
       label: "paid計",
       indent: 1,
       style: "subtotal",
@@ -166,9 +175,10 @@ function buildRows(
         (s, ch) => s + ch.totals[metric.key],
         0
       ),
+      collapsibleGroup: paidGroupId,
     });
 
-    // paid個別チャネル
+    // paid個別チャネル（折りたたみ対象）
     for (const ch of paidChannels) {
       rows.push({
         key: `${metric.key}_p_${ch.name}`,
@@ -180,6 +190,7 @@ function buildRows(
           (p) => ch.funnel[p]?.[metric.key] || null
         ),
         totalValue: ch.totals[metric.key],
+        parentGroup: paidGroupId,
       });
     }
 
@@ -434,6 +445,31 @@ function PLSection({
     [data, periods, showGradYear]
   );
 
+  // デフォルトですべて折りたたんだ状態
+  const allCollapsibleGroups = useMemo(() => {
+    const groups = new Set<string>();
+    for (const row of rows) {
+      if (row.collapsibleGroup) groups.add(row.collapsibleGroup);
+    }
+    return groups;
+  }, [rows]);
+
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(
+    () => new Set(allCollapsibleGroups)
+  );
+
+  const toggleGroup = useCallback((groupId: string) => {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(groupId)) {
+        next.delete(groupId);
+      } else {
+        next.add(groupId);
+      }
+      return next;
+    });
+  }, []);
+
   return (
     <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10">
       <div className="px-6 py-4 border-b border-white/10">
@@ -466,6 +502,11 @@ function PLSection({
           </thead>
           <tbody>
             {rows.map((row) => {
+              // 折りたたまれたグループの子行はスキップ
+              if (row.parentGroup && collapsedGroups.has(row.parentGroup)) {
+                return null;
+              }
+
               if (row.style === "separator") {
                 return (
                   <tr key={row.key}>
@@ -479,16 +520,34 @@ function PLSection({
               const valCls = getValueStyle(row.style);
               const totCls = getTotalStyle(row.style);
               const hasValues = row.values.length > 0;
+              const isCollapsible = !!row.collapsibleGroup;
+              const isCollapsed = row.collapsibleGroup
+                ? collapsedGroups.has(row.collapsibleGroup)
+                : false;
 
               return (
                 <tr
                   key={row.key}
-                  className={`border-b border-white/[0.06] ${bg}`}
+                  className={`border-b border-white/[0.06] ${bg} ${
+                    isCollapsible ? "cursor-pointer hover:bg-white/[0.04]" : ""
+                  }`}
+                  onClick={
+                    isCollapsible
+                      ? () => toggleGroup(row.collapsibleGroup!)
+                      : undefined
+                  }
                 >
                   <td
-                    className={`py-1.5 px-3 sticky left-0 z-10 bg-surface-card ${labelCls}`}
+                    className={`py-1.5 px-3 sticky left-0 z-10 bg-surface-card ${labelCls} ${
+                      isCollapsible ? "select-none" : ""
+                    }`}
                     style={{ paddingLeft: `${12 + row.indent * 16}px` }}
                   >
+                    {isCollapsible && (
+                      <span className="inline-block w-4 text-gray-500 text-xs">
+                        {isCollapsed ? "▸" : "▾"}
+                      </span>
+                    )}
                     {row.label}
                   </td>
                   {hasValues
