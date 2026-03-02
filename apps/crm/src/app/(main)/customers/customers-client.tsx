@@ -3,7 +3,6 @@
 import { useState, useMemo } from "react";
 import Link from "next/link";
 import {
-  formatDate,
   formatCurrency,
   formatPercent,
   getStageColor,
@@ -11,6 +10,7 @@ import {
   getDealStatusColor,
 } from "@/lib/utils";
 import type { CustomerWithRelations } from "@strategy-school/shared-db";
+import type { ChannelAttribution } from "@/lib/data/marketing-settings";
 import {
   calcSalesProjection,
   calcRemainingSessions,
@@ -30,6 +30,18 @@ import {
 
 interface CustomersClientProps {
   customers: CustomerWithRelations[];
+  attributionMap: Record<string, ChannelAttribution>;
+}
+
+// 日付フォーマット: YY/MM/DD（26/02/21形式）
+function fmtDate(d: string | null | undefined): string {
+  if (!d) return "-";
+  const date = new Date(d);
+  if (isNaN(date.getTime())) return "-";
+  const yy = String(date.getFullYear()).slice(2);
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const dd = String(date.getDate()).padStart(2, "0");
+  return `${yy}/${mm}/${dd}`;
 }
 
 // テキスト truncate ヘルパー
@@ -56,22 +68,22 @@ const VIEW_TABS: { key: ViewTab; label: string }[] = [
 
 // タブごとに表示するカラムキーの定義
 const VIEW_COLUMNS: Record<ViewTab, string[] | null> = {
-  // null = 全カラム表示
-  all: null,
+  all: null, // 全カラム表示
   marketing: [
-    "name", "rev_total",
-    "application_date", "email", "attribute",
+    "application_date", "name", "attribute", "stage", "deal_status",
+    "rev_total",
+    "marketing_channel",
     "utm_source", "utm_medium", "utm_id", "utm_campaign",
-    "initial_channel", "stage", "deal_status",
+    "initial_channel", "application_reason",
     "first_reward_category", "performance_reward_category",
     "google_ads_target", "marketing_memo", "comparison_services",
     "sales_route", "lead_time",
   ],
   sales: [
-    "name", "rev_total",
-    "application_date", "attribute", "stage", "deal_status",
-    "projected_amount", "confirmed_amount", "first_amount", "discount",
+    "application_date", "name", "attribute", "stage", "deal_status",
+    "confirmed_amount", "rev_total", "projected_amount",
     "probability", "sales_date", "response_date",
+    "first_amount", "discount",
     "sales_person", "sales_content", "sales_strategy",
     "decision_factor", "application_reason",
     "agent_confirmation", "jicoo_message",
@@ -80,8 +92,9 @@ const VIEW_COLUMNS: Record<ViewTab, string[] | null> = {
     "alternative_application",
   ],
   education: [
-    "name", "rev_total",
-    "attribute", "enrollment_status", "plan_name", "mentor_name",
+    "application_date", "name", "attribute", "stage", "deal_status",
+    "rev_total",
+    "enrollment_status", "plan_name", "mentor_name",
     "coaching_start", "coaching_end", "last_coaching",
     "contract_months", "total_sessions", "completed_sessions",
     "remaining_sessions", "weekly_sessions",
@@ -98,8 +111,9 @@ const VIEW_COLUMNS: Record<ViewTab, string[] | null> = {
     "mentoring_satisfaction", "start_email_sent",
   ],
   agent: [
-    "name", "rev_total",
-    "attribute", "is_agent_customer", "referral_category", "referral_status",
+    "application_date", "name", "attribute", "stage", "deal_status",
+    "confirmed_amount", "rev_total", "projected_amount",
+    "is_agent_customer", "referral_category", "referral_status",
     "rev_agent", "rev_subsidy",
     "expected_referral_fee", "agent_projected_revenue",
     "offer_company", "external_agents",
@@ -111,12 +125,12 @@ const VIEW_COLUMNS: Record<ViewTab, string[] | null> = {
   ],
 };
 
-export function CustomersClient({ customers }: CustomersClientProps) {
+export function CustomersClient({ customers, attributionMap }: CustomersClientProps) {
   const [attributeFilter, setAttributeFilter] = useState<string>("");
   const [stageFilter, setStageFilter] = useState<string>("");
   const [activeTab, setActiveTab] = useState<ViewTab>("all");
 
-  // 属性・ステージフィルタ
+  // フィルタ
   const baseFiltered = useMemo(() => {
     let result = [...customers];
     if (attributeFilter) {
@@ -132,483 +146,370 @@ export function CustomersClient({ customers }: CustomersClientProps) {
     return result;
   }, [customers, attributeFilter, stageFilter]);
 
-  // ==============================================================
-  // 全カラム定義（重複を整理済み）
-  // ==============================================================
+  // ================================================================
+  // 全カラム定義（並び順が表示順）
+  // ================================================================
   const allColumns: SpreadsheetColumn<CustomerWithRelations>[] = useMemo(
     () => [
-      // ─── Col B: 名前 [sticky] ───
-      { key: "name", label: "名前", width: 140, render: (c) => (
-        <Link href={`/customers/${c.id}`} className="text-brand hover:underline">{c.name}</Link>
-      ), sortValue: (c) => c.name },
+      // ─── 申込日（名前の左） ───
+      { key: "application_date", label: "申込日", width: 78, stickyLeft: 0,
+        render: (c) => <span className="text-gray-400 text-xs">{fmtDate(c.application_date)}</span>,
+        sortValue: (c) => c.application_date || "" },
 
-      // ═══ 売上サマリー（合計のみ。詳細は営業/エージェントタブで） ═══
-      { key: "rev_total", label: "合計売上見込み", width: 130, align: "right" as const, computed: true,
-        formula: "確定売上 + 人材見込み売上(人材紹介顧客のみ) + 補助金",
-        render: (c) => {
-        const school = c.contract?.confirmed_amount || 0;
-        const agent = isAgentCustomer(c) ? calcExpectedReferralFee(c) : 0;
-        const subsidy = getSubsidyAmount(c);
-        const total = school + agent + subsidy;
-        return total > 0 ? <span className="font-semibold text-brand">{formatCurrency(total)}</span> : "-";
-      }, sortValue: (c) => {
-        const school = c.contract?.confirmed_amount || 0;
-        const agent = isAgentCustomer(c) ? calcExpectedReferralFee(c) : 0;
-        return school + agent + getSubsidyAmount(c);
-      } },
+      // ─── 名前 [sticky] ───
+      { key: "name", label: "名前", width: 120, stickyLeft: 78,
+        render: (c) => (
+          <Link href={`/customers/${c.id}`} className="text-brand hover:underline text-sm">{c.name}</Link>
+        ), sortValue: (c) => c.name },
 
-      // ─── Col A: 申込日 ───
-      { key: "application_date", label: "申込日", width: 100, render: (c) => formatDate(c.application_date), sortValue: (c) => c.application_date || "" },
+      // ─── 属性（名前の右横） ───
+      { key: "attribute", label: "属性", width: 56, category: "base",
+        render: (c) => (
+          <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${getAttributeColor(c.attribute)}`}>{c.attribute.includes("既卒") ? "既卒" : "新卒"}</span>
+        ), sortValue: (c) => c.attribute },
 
-      // ─── Col C: メアド ───
-      { key: "email", label: "メアド", width: 180, render: (c) => c.email || "-" },
+      // ─── 検討状況（名前の右横） ───
+      { key: "stage", label: "検討状況", width: 85, category: "sales",
+        render: (c) => c.pipeline ? (
+          <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${getStageColor(c.pipeline.stage)}`}>{c.pipeline.stage}</span>
+        ) : "-", sortValue: (c) => c.pipeline?.stage || "" },
 
-      // ─── Col D: 電話番号 ───
-      { key: "phone", label: "電話番号", width: 130, render: (c) => c.phone || "-" },
+      // ─── 実施状況（検討状況の横） ───
+      { key: "deal_status", label: "実施状況", width: 80, category: "sales",
+        render: (c) => c.pipeline ? (
+          <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${getDealStatusColor(c.pipeline.deal_status)}`}>{c.pipeline.deal_status}</span>
+        ) : "-", sortValue: (c) => c.pipeline?.deal_status || "" },
 
-      // ─── Col E-H: UTM ───
-      { key: "utm_source", label: "utm_source", width: 100, render: (c) => c.utm_source || "-", sortValue: (c) => c.utm_source || "" },
-      { key: "utm_medium", label: "utm_medium", width: 100, render: (c) => c.utm_medium || "-" },
-      { key: "utm_id", label: "utm_id", width: 80, render: (c) => c.utm_id || "-" },
-      { key: "utm_campaign", label: "utm_campaign", width: 120, render: (c) => c.utm_campaign || "-" },
-
-      // ─── Col I: 属性 ───
-      { key: "attribute", label: "属性", width: 70, render: (c) => (
-        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getAttributeColor(c.attribute)}`}>{c.attribute}</span>
-      ), sortValue: (c) => c.attribute },
-
-      // ─── Col J: 経歴 ───
-      { key: "career_history", label: "経歴", width: 200, render: (c) => <Truncated value={c.career_history} width={200} /> },
-
-      // ─── Col K: 申込時点エージェント ───
-      { key: "agent_interest", label: "申込時エージェント", width: 130, render: (c) =>
-        c.pipeline?.agent_interest_at_application ? "○" : "-" },
-
-      // ─── Col L: 面接予定時期 ───
-      { key: "meeting_scheduled", label: "面接予定時期", width: 110, render: (c) => formatDate(c.pipeline?.meeting_scheduled_date ?? null), sortValue: (c) => c.pipeline?.meeting_scheduled_date || "" },
-
-      // ─── Col M: 検討状況 ───
-      { key: "stage", label: "検討状況", width: 90, render: (c) => c.pipeline ? (
-        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getStageColor(c.pipeline.stage)}`}>{c.pipeline.stage}</span>
-      ) : "-", sortValue: (c) => c.pipeline?.stage || "" },
-
-      // ─── Col N: 売上見込 ───
-      { key: "projected_amount", label: "売上見込", width: 110, align: "right" as const, computed: true,
-        formula: "確定売上 + 人材見込売上 + 補助金額\n(DB保存値を優先表示)",
-        render: (c) => {
-        const v = calcSalesProjection(c);
-        return v > 0 ? formatCurrency(v) : "-";
-      }, sortValue: (c) => calcSalesProjection(c) },
-
-      // ─── Col O: 検討・失注理由 ───
-      { key: "decision_factor", label: "検討・失注理由", width: 140, render: (c) => <Truncated value={c.pipeline?.decision_factor} /> },
-
-      // ─── Col P: 実施状況 ───
-      { key: "deal_status", label: "実施状況", width: 90, render: (c) => c.pipeline ? (
-        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getDealStatusColor(c.pipeline.deal_status)}`}>{c.pipeline.deal_status}</span>
-      ) : "-", sortValue: (c) => c.pipeline?.deal_status || "" },
-
-      // ─── Col Q: 初回認知経路 ───
-      { key: "initial_channel", label: "初回認知経路", width: 120, render: (c) => c.pipeline?.initial_channel || "-" },
-
-      // ─── Col R: 申し込みの決め手 ───
-      { key: "application_reason", label: "申し込みの決め手", width: 140, render: (c) => <Truncated value={c.application_reason} /> },
-
-      // ─── Col S: 営業実施日 ───
-      { key: "sales_date", label: "営業実施日", width: 100, render: (c) => formatDate(c.pipeline?.sales_date ?? null), sortValue: (c) => c.pipeline?.sales_date || "" },
-
-      // ─── Col T: 確度 ───
-      { key: "probability", label: "確度", width: 70, align: "right" as const, render: (c) =>
-        c.pipeline?.probability != null ? formatPercent(c.pipeline.probability) : "-",
-        sortValue: (c) => c.pipeline?.probability || 0 },
-
-      // ─── Col U: 返答日/仮入会日 ───
-      { key: "response_date", label: "返答日", width: 100, render: (c) => formatDate(c.pipeline?.response_date ?? null) },
-
-      // ─── Col V: 営業担当 ───
-      { key: "sales_person", label: "営業担当", width: 90, render: (c) => c.pipeline?.sales_person || "-" },
-
-      // ─── Col W: 営業内容 ───
-      { key: "sales_content", label: "営業内容", width: 180, render: (c) => <Truncated value={c.pipeline?.sales_content} width={180} /> },
-
-      // ─── Col X: 営業方針 ───
-      { key: "sales_strategy", label: "営業方針", width: 140, render: (c) => <Truncated value={c.pipeline?.sales_strategy} /> },
-
-      // ─── Col Y: jicooメッセージ ───
-      { key: "jicoo_message", label: "jicooメッセージ", width: 140, render: (c) => <Truncated value={c.pipeline?.jicoo_message} /> },
-
-      // ─── Col Z: エージェント利用意向 ───
-      { key: "agent_confirmation", label: "エージェント利用意向", width: 130, render: (c) => c.pipeline?.agent_confirmation || "-" },
-
-      // ─── Col AA: マーケメモ ───
-      { key: "marketing_memo", label: "マーケメモ", width: 140, render: (c) => <Truncated value={c.pipeline?.marketing_memo} /> },
-
-      // ─── Col AB: 経路(営業担当記入) ───
-      { key: "sales_route", label: "経路(営業)", width: 120, render: (c) => c.pipeline?.sales_route || c.pipeline?.route_by_sales || "-" },
-
-      // ─── Col AC: 比較サービス ───
-      { key: "comparison_services", label: "比較サービス", width: 140, render: (c) => <Truncated value={c.pipeline?.comparison_services} /> },
-
-      // ─── Col AD: 一次報酬分類 ───
-      { key: "first_reward_category", label: "一次報酬分類", width: 110, render: (c) => c.pipeline?.first_reward_category || "-" },
-
-      // ─── Col AE: 成果報酬分類 ───
-      { key: "performance_reward_category", label: "成果報酬分類", width: 110, render: (c) => c.pipeline?.performance_reward_category || "-" },
-
-      // ─── Col AF: リードタイム ───
-      { key: "lead_time", label: "リードタイム", width: 100, render: (c) => c.pipeline?.lead_time || "-" },
-
-      // ─── Col AG: Google広告成果対象 ───
-      { key: "google_ads_target", label: "Google広告", width: 110, render: (c) => c.pipeline?.google_ads_target || "-" },
-
-      // ─── Col AH: 人材紹介区分 ───
-      { key: "referral_category", label: "人材紹介区分", width: 110, render: (c) => c.contract?.referral_category || "-" },
-
-      // ─── Col AI: 紹介ステータス ───
-      { key: "referral_status", label: "紹介ステータス", width: 110, render: (c) => c.contract?.referral_status || "-" },
-
-      // ─── Col AJ: 一次報酬請求予定額 ───
-      { key: "first_amount", label: "一次報酬額", width: 110, align: "right" as const, render: (c) =>
-        c.contract?.first_amount ? formatCurrency(c.contract.first_amount) : "-",
-        sortValue: (c) => c.contract?.first_amount || 0 },
-
-      // ─── Col AK: 確定売上 ───
-      { key: "confirmed_amount", label: "確定売上", width: 110, align: "right" as const, render: (c) =>
-        c.contract?.confirmed_amount ? formatCurrency(c.contract.confirmed_amount) : "-",
+      // ═══ 売上3種（近接配置） ═══
+      { key: "confirmed_amount", label: "確定売上", width: 100, align: "right" as const, category: "sales",
+        render: (c) => c.contract?.confirmed_amount ? formatCurrency(c.contract.confirmed_amount) : "-",
         sortValue: (c) => c.contract?.confirmed_amount || 0 },
 
-      // ─── Col AL: 割引 ───
-      { key: "discount", label: "割引", width: 80, align: "right" as const, render: (c) =>
-        c.contract?.discount ? formatCurrency(c.contract.discount) : "-" },
-
-      // ─── Col AM: Progress Sheet ───
-      { key: "progress_sheet", label: "Progress Sheet", width: 120, render: (c) =>
-        c.contract?.progress_sheet_url ? (
-          <a href={c.contract.progress_sheet_url} target="_blank" rel="noopener noreferrer" className="text-brand hover:underline text-xs">リンク</a>
-        ) : "-" },
-
-      // ─── Col AN: 受講状況 ───
-      { key: "enrollment_status", label: "受講状況", width: 100, render: (c) => c.contract?.enrollment_status || "-" },
-
-      // ─── Col AO: 受講サービス名 ───
-      { key: "plan_name", label: "受講サービス名", width: 160, render: (c) => <Truncated value={c.contract?.plan_name} width={160} /> },
-
-      // ─── Col AP: 指導メンター ───
-      { key: "mentor_name", label: "指導メンター", width: 100, render: (c) => c.learning?.mentor_name || "-" },
-
-      // ─── Col AQ: 入金日 ───
-      { key: "payment_date", label: "入金日", width: 100, render: (c) => formatDate(c.contract?.payment_date ?? null), sortValue: (c) => c.contract?.payment_date || "" },
-
-      // ─── Col AR: 指導開始日 ───
-      { key: "coaching_start", label: "指導開始日", width: 100, render: (c) => formatDate(c.learning?.coaching_start_date ?? null), sortValue: (c) => c.learning?.coaching_start_date || "" },
-
-      // ─── Col AS: 指導終了日 ───
-      { key: "coaching_end", label: "指導終了日", width: 100, render: (c) => formatDate(c.learning?.coaching_end_date ?? null), sortValue: (c) => c.learning?.coaching_end_date || "" },
-
-      // ─── Col AT: 最終指導日 ───
-      { key: "last_coaching", label: "最終指導日", width: 100, render: (c) => formatDate(c.learning?.last_coaching_date ?? null) },
-
-      // ─── Col AU: 契約月数 ───
-      { key: "contract_months", label: "契約月数", width: 80, align: "right" as const, render: (c) =>
-        c.learning?.contract_months != null ? `${c.learning.contract_months}ヶ月` : "-" },
-
-      // ─── Col AV: 契約指導回数 ───
-      { key: "total_sessions", label: "契約指導回数", width: 100, align: "right" as const, render: (c) =>
-        c.learning?.total_sessions != null ? `${c.learning.total_sessions}回` : "-",
-        sortValue: (c) => c.learning?.total_sessions || 0 },
-
-      // ─── Col AW: 週あたり指導数 ───
-      { key: "weekly_sessions", label: "週あたり指導数", width: 110, align: "right" as const, render: (c) =>
-        c.learning?.weekly_sessions != null ? `${c.learning.weekly_sessions}回` : "-" },
-
-      // ─── Col AX: 指導完了数 ───
-      { key: "completed_sessions", label: "指導完了数", width: 90, align: "right" as const, render: (c) =>
-        c.learning?.completed_sessions != null ? `${c.learning.completed_sessions}回` : "-",
-        sortValue: (c) => c.learning?.completed_sessions || 0 },
-
-      // ─── 残指導回数（計算） ───
-      { key: "remaining_sessions", label: "残指導回数", width: 90, align: "right" as const, computed: true,
-        formula: "契約指導回数 − 指導完了数",
+      { key: "rev_total", label: "見込含む売上", width: 110, align: "right" as const, computed: true, category: "sales",
+        formula: "確定売上 + 人材見込み売上 + 補助金",
         render: (c) => {
-        const r = calcRemainingSessions(c);
-        return c.learning ? `${r}回` : "-";
-      }, sortValue: (c) => calcRemainingSessions(c) },
+          const school = c.contract?.confirmed_amount || 0;
+          const agent = isAgentCustomer(c) ? calcExpectedReferralFee(c) : 0;
+          const subsidy = getSubsidyAmount(c);
+          const total = school + agent + subsidy;
+          return total > 0 ? <span className="font-semibold text-brand">{formatCurrency(total)}</span> : "-";
+        }, sortValue: (c) => {
+          const school = c.contract?.confirmed_amount || 0;
+          const agent = isAgentCustomer(c) ? calcExpectedReferralFee(c) : 0;
+          return school + agent + getSubsidyAmount(c);
+        } },
 
-      // ─── Col AY: 日程消化率 ───
-      { key: "attendance_rate", label: "日程消化率", width: 90, align: "right" as const, computed: true,
-        formula: "(現在日 − 指導開始日) / (指導終了日 − 指導開始日)",
+      { key: "projected_amount", label: "予測売上", width: 100, align: "right" as const, computed: true, category: "sales",
+        formula: "確定売上 + 人材見込売上 + 補助金\n(成約確率ベース含む)",
         render: (c) => {
-        const v = calcScheduleProgress(c);
-        return v !== null ? formatPercent(v) : (c.learning?.attendance_rate != null ? formatPercent(c.learning.attendance_rate) : "-");
-      } },
+          const v = calcSalesProjection(c);
+          return v > 0 ? formatCurrency(v) : "-";
+        }, sortValue: (c) => calcSalesProjection(c) },
 
-      // ─── Col AZ: 指導消化率 ───
-      { key: "session_completion_rate", label: "指導消化率", width: 90, align: "right" as const, computed: true,
-        formula: "指導完了数 / 契約指導回数",
+      // ═══ マーケティング（オレンジ） ═══
+      { key: "marketing_channel", label: "帰属チャネル", width: 110, category: "marketing",
         render: (c) => {
-        const v = calcSessionProgress(c);
-        return v !== null ? formatPercent(v) : "-";
-      } },
+          const attr = attributionMap[c.id];
+          return attr ? <span className="text-white font-medium text-xs">{attr.marketing_channel}</span> : <span className="text-gray-600 text-xs">-</span>;
+        }, sortValue: (c) => attributionMap[c.id]?.marketing_channel || "" },
 
-      // ─── 進捗ステータス（計算） ───
-      { key: "progress_status", label: "進捗", width: 60, align: "center" as const, computed: true,
-        formula: "日程消化率 / 指導消化率 > 1.5 → 遅延\nそれ以外 → 順調",
-        render: (c) => {
-        const s = calcProgressStatus(c);
-        const color = s === "順調" ? "text-green-400" : s === "遅延" ? "text-red-400" : "text-gray-500";
-        return <span className={color}>{s}</span>;
-      } },
+      { key: "utm_source", label: "utm_source", width: 90, category: "marketing",
+        render: (c) => <span className="text-xs">{c.utm_source || "-"}</span>, sortValue: (c) => c.utm_source || "" },
+      { key: "utm_medium", label: "utm_medium", width: 90, category: "marketing",
+        render: (c) => <span className="text-xs">{c.utm_medium || "-"}</span> },
+      { key: "utm_id", label: "utm_id", width: 70, category: "marketing",
+        render: (c) => <span className="text-xs">{c.utm_id || "-"}</span> },
+      { key: "utm_campaign", label: "utm_campaign", width: 100, category: "marketing",
+        render: (c) => <span className="text-xs">{c.utm_campaign || "-"}</span> },
 
-      // ─── Col BA: 進捗テキスト ───
-      { key: "progress_text", label: "進捗テキスト", width: 140, render: (c) => <Truncated value={c.learning?.progress_text} /> },
+      { key: "initial_channel", label: "初回認知経路", width: 110, category: "marketing",
+        render: (c) => <span className="text-xs">{c.pipeline?.initial_channel || "-"}</span> },
+      { key: "application_reason", label: "申し込みの決め手", width: 130, category: "marketing",
+        render: (c) => <Truncated value={c.application_reason} width={130} /> },
 
-      // ─── Col BB-BD: レベル ───
-      { key: "level_fermi", label: "フェルミ", width: 70, render: (c) => c.learning?.level_fermi || "-" },
-      { key: "level_case", label: "ケース", width: 70, render: (c) => c.learning?.level_case || "-" },
-      { key: "level_mck", label: "McK", width: 70, render: (c) => c.learning?.level_mck || "-" },
+      { key: "first_reward_category", label: "一次報酬分類", width: 100, category: "marketing",
+        render: (c) => <span className="text-xs">{c.pipeline?.first_reward_category || "-"}</span> },
+      { key: "performance_reward_category", label: "成果報酬分類", width: 100, category: "marketing",
+        render: (c) => <span className="text-xs">{c.pipeline?.performance_reward_category || "-"}</span> },
+      { key: "google_ads_target", label: "Google広告", width: 100, category: "marketing",
+        render: (c) => <span className="text-xs">{c.pipeline?.google_ads_target || "-"}</span> },
+      { key: "marketing_memo", label: "マーケメモ", width: 130, category: "marketing",
+        render: (c) => <Truncated value={c.pipeline?.marketing_memo} width={130} /> },
+      { key: "comparison_services", label: "比較サービス", width: 120, category: "marketing",
+        render: (c) => <Truncated value={c.pipeline?.comparison_services} width={120} /> },
+      { key: "sales_route", label: "経路(営業)", width: 100, category: "marketing",
+        render: (c) => <span className="text-xs">{c.pipeline?.sales_route || c.pipeline?.route_by_sales || "-"}</span> },
+      { key: "lead_time", label: "リードタイム", width: 90, category: "marketing",
+        render: (c) => <span className="text-xs">{c.pipeline?.lead_time || "-"}</span> },
 
-      // ─── Col BF: 選考状況 ───
-      { key: "selection_status", label: "選考状況", width: 120, render: (c) => <Truncated value={c.learning?.selection_status} width={120} /> },
+      // ═══ 営業（青） ═══
+      { key: "career_history", label: "経歴", width: 180, category: "base",
+        render: (c) => <Truncated value={c.career_history} width={180} /> },
 
-      // ─── Col BG: レベルアップ幅 ───
-      { key: "level_up_range", label: "レベルアップ幅", width: 110, render: (c) => c.learning?.level_up_range || "-" },
+      { key: "agent_interest", label: "申込時エージェント", width: 80, category: "sales",
+        render: (c) => c.pipeline?.agent_interest_at_application
+          ? <span className="text-blue-400">○</span>
+          : <span className="text-gray-600">-</span> },
 
-      // ─── Col BH: 面接予定時期(終了時) ───
-      { key: "interview_timing_at_end", label: "面接予定時期(終了時)", width: 140, render: (c) => <Truncated value={c.learning?.interview_timing_at_end} /> },
+      { key: "meeting_scheduled", label: "面接予定", width: 78, category: "sales",
+        render: (c) => <span className="text-xs">{fmtDate(c.pipeline?.meeting_scheduled_date)}</span>,
+        sortValue: (c) => c.pipeline?.meeting_scheduled_date || "" },
 
-      // ─── Col BI: 受験企業(終了時) ───
-      { key: "target_companies_at_end", label: "受験企業(終了時)", width: 140, render: (c) => <Truncated value={c.learning?.target_companies_at_end} /> },
+      { key: "decision_factor", label: "検討・失注理由", width: 130, category: "sales",
+        render: (c) => <Truncated value={c.pipeline?.decision_factor} width={130} /> },
 
-      // ─── Col BJ: 内定確度判定 ───
-      { key: "offer_probability_at_end", label: "内定確度判定", width: 100, render: (c) => c.learning?.offer_probability_at_end || "-" },
+      { key: "sales_date", label: "営業日", width: 78, category: "sales",
+        render: (c) => <span className="text-xs">{fmtDate(c.pipeline?.sales_date)}</span>,
+        sortValue: (c) => c.pipeline?.sales_date || "" },
 
-      // ─── Col BK: 追加指導提案 ───
-      { key: "additional_coaching_proposal", label: "追加指導提案", width: 140, render: (c) => <Truncated value={c.learning?.additional_coaching_proposal} /> },
+      { key: "probability", label: "確度", width: 60, align: "right" as const, category: "sales",
+        render: (c) => c.pipeline?.probability != null ? formatPercent(c.pipeline.probability) : "-",
+        sortValue: (c) => c.pipeline?.probability || 0 },
 
-      // ─── Col BL: 指導開始時レベル ───
-      { key: "initial_coaching_level", label: "指導開始時レベル", width: 120, render: (c) => c.learning?.initial_coaching_level || "-" },
+      { key: "response_date", label: "返答日", width: 78, category: "sales",
+        render: (c) => <span className="text-xs">{fmtDate(c.pipeline?.response_date)}</span> },
 
-      // ─── Col BM: 入会フォーム提出日 ───
-      { key: "enrollment_form_date", label: "入会フォーム日", width: 110, render: (c) => formatDate(c.learning?.enrollment_form_date ?? null) },
+      { key: "sales_person", label: "営業担当", width: 80, category: "sales",
+        render: (c) => <span className="text-xs">{c.pipeline?.sales_person || "-"}</span> },
 
-      // ─── Col BN: 指導要望 ───
-      { key: "coaching_requests", label: "指導要望", width: 140, render: (c) => <Truncated value={c.learning?.coaching_requests} /> },
+      { key: "sales_content", label: "営業内容", width: 240, category: "sales", multiline: true,
+        render: (c) => c.pipeline?.sales_content || "-" },
 
-      // ─── Col BO: 入会理由 ───
-      { key: "enrollment_reason", label: "入会理由", width: 140, render: (c) => <Truncated value={c.learning?.enrollment_reason} /> },
+      { key: "sales_strategy", label: "営業方針", width: 220, category: "sales", multiline: true,
+        render: (c) => c.pipeline?.sales_strategy || "-" },
 
-      // ─── Col BP: エージェント業務メモ ───
-      { key: "agent_memo", label: "エージェント業務メモ", width: 160, render: (c) => <Truncated value={c.agent?.agent_memo} width={160} /> },
+      { key: "jicoo_message", label: "jicooメッセージ", width: 130, category: "sales",
+        render: (c) => <Truncated value={c.pipeline?.jicoo_message} width={130} /> },
 
-      // ─── Col BQ-BR: ビヘイビア ───
-      { key: "behavior_session1", label: "ビヘイビア1回目", width: 120, render: (c) => <Truncated value={c.learning?.behavior_session1} width={120} /> },
-      { key: "behavior_session2", label: "ビヘイビア2回目", width: 120, render: (c) => <Truncated value={c.learning?.behavior_session2} width={120} /> },
+      { key: "agent_confirmation", label: "エージェント利用意向", width: 120, category: "sales",
+        render: (c) => <span className="text-xs">{c.pipeline?.agent_confirmation || "-"}</span> },
 
-      // ─── Col BS-BT: アセスメント ───
-      { key: "assessment_session1", label: "アセスメント1回目", width: 130, render: (c) => <Truncated value={c.learning?.assessment_session1} width={130} /> },
-      { key: "assessment_session2", label: "アセスメント2回目", width: 130, render: (c) => <Truncated value={c.learning?.assessment_session2} width={130} /> },
+      { key: "first_amount", label: "一次報酬額", width: 100, align: "right" as const, category: "sales",
+        render: (c) => c.contract?.first_amount ? formatCurrency(c.contract.first_amount) : "-",
+        sortValue: (c) => c.contract?.first_amount || 0 },
 
-      // ─── Col BU: 人材見込売上 ───
-      { key: "agent_projected_revenue", label: "人材見込売上", width: 120, align: "right" as const, computed: true,
-        formula: "成約 AND 受講中 AND 人材紹介顧客 → 人材紹介報酬期待値\n一部利用: × 0.5",
-        render: (c) => {
-        const dbVal = c.agent?.expected_agent_revenue;
-        const calcVal = calcAgentProjectedRevenue(c);
-        const v = (dbVal && dbVal > 0) ? dbVal : calcVal;
-        return v > 0 ? formatCurrency(v) : "-";
-      }, sortValue: (c) => c.agent?.expected_agent_revenue || calcAgentProjectedRevenue(c) },
+      { key: "discount", label: "割引", width: 70, align: "right" as const, category: "sales",
+        render: (c) => c.contract?.discount ? formatCurrency(c.contract.discount) : "-" },
 
-      // ─── 人材見込み売上（サマリー用、エージェントタブ表示） ───
-      { key: "rev_agent", label: "人材見込み売上", width: 130, align: "right" as const, computed: true,
-        formula: "想定年収 × 入社至る率 × 内定確度 × 紹介料率 × マージン\n※人材紹介顧客のみ",
-        render: (c) => {
-        if (!isAgentCustomer(c)) return "-";
-        const v = calcExpectedReferralFee(c);
-        return v > 0 ? formatCurrency(v) : "-";
-      }, sortValue: (c) => isAgentCustomer(c) ? calcExpectedReferralFee(c) : 0 },
+      { key: "alternative_application", label: "別経由応募", width: 90, category: "sales",
+        render: (c) => <span className="text-xs">{c.pipeline?.alternative_application || "-"}</span> },
 
-      // ─── 補助金売上（サマリー用、エージェントタブ表示） ───
-      { key: "rev_subsidy", label: "補助金売上", width: 110, align: "right" as const, computed: true,
-        formula: "IF(補助金対象 = \"対象\", 補助金額, 0)\nデフォルト: ¥203,636",
-        render: (c) => {
-        const v = getSubsidyAmount(c);
-        return v > 0 ? formatCurrency(v) : "-";
-      }, sortValue: (c) => getSubsidyAmount(c) },
+      // ─── 追加指導（営業） ───
+      { key: "additional_sales_content", label: "[追加]営業内容", width: 130, category: "sales",
+        render: (c) => <Truncated value={c.pipeline?.additional_sales_content} width={130} /> },
+      { key: "additional_plan", label: "[追加]プラン", width: 110, category: "sales",
+        render: (c) => <span className="text-xs">{c.pipeline?.additional_plan || "-"}</span> },
+      { key: "additional_discount_info", label: "[追加]割引案内", width: 110, category: "sales",
+        render: (c) => <Truncated value={c.pipeline?.additional_discount_info} width={110} /> },
 
-      // ─── 人材紹介顧客フラグ ───
-      { key: "is_agent_customer", label: "人材紹介顧客", width: 110, align: "center" as const, computed: true,
+      // ═══ 人材紹介（紫） ═══
+      { key: "referral_category", label: "人材紹介区分", width: 100, category: "agent",
+        render: (c) => <span className="text-xs">{c.contract?.referral_category || "-"}</span> },
+      { key: "referral_status", label: "紹介ステータス", width: 100, category: "agent",
+        render: (c) => <span className="text-xs">{c.contract?.referral_status || "-"}</span> },
+
+      { key: "is_agent_customer", label: "人材紹介顧客", width: 90, align: "center" as const, computed: true, category: "agent",
         formula: "人材紹介区分 = \"フル利用\" OR \"一部利用\"",
-        render: (c) =>
-        isAgentCustomer(c)
-          ? <span className="text-green-400 font-medium">true</span>
-          : <span className="text-gray-500">false</span>,
+        render: (c) => isAgentCustomer(c)
+          ? <span className="text-purple-400 font-medium text-xs">利用</span>
+          : <span className="text-gray-600 text-xs">-</span>,
         sortValue: (c) => isAgentCustomer(c) ? 1 : 0 },
 
-      // ─── Col BV: 延長分(日) ───
-      { key: "extension_days", label: "延長分(日)", width: 90, align: "right" as const, render: (c) =>
-        c.learning?.extension_days != null ? `${c.learning.extension_days}日` : "-" },
-
-      // ─── Col BW: 内定先 ───
-      { key: "offer_company", label: "内定先", width: 140, render: (c) => c.agent?.offer_company || "-" },
-
-      // ─── Col BX: 利用エージェント ───
-      { key: "external_agents", label: "利用エージェント", width: 120, render: (c) => c.agent?.external_agents || "-" },
-
-      // ─── Col BY: 入社至る率 ───
-      { key: "hire_rate", label: "入社至る率", width: 90, align: "right" as const, render: (c) =>
-        c.agent?.hire_rate != null ? formatPercent(c.agent.hire_rate) : "-" },
-
-      // ─── Col BZ: 内定確度 ───
-      { key: "offer_probability", label: "内定確度", width: 90, align: "right" as const, render: (c) =>
-        c.agent?.offer_probability != null ? formatPercent(c.agent.offer_probability) : "-" },
-
-      // ─── Col CA: 想定年収 ───
-      { key: "offer_salary", label: "想定年収", width: 110, align: "right" as const, render: (c) =>
-        c.agent?.offer_salary ? formatCurrency(c.agent.offer_salary) : "-",
-        sortValue: (c) => c.agent?.offer_salary || 0 },
-
-      // ─── Col CB: 紹介料率 ───
-      { key: "referral_fee_rate", label: "紹介料率", width: 80, align: "right" as const, render: (c) =>
-        c.agent?.referral_fee_rate != null ? formatPercent(c.agent.referral_fee_rate) : "-" },
-
-      // ─── Col CC: マージン ───
-      { key: "margin", label: "マージン", width: 80, align: "right" as const, render: (c) => {
-        if (!c.agent) return "-";
-        const m = (c.agent.margin && c.agent.margin > 0) ? c.agent.margin : 0.75;
-        return formatPercent(m);
-      } },
-
-      // ─── Col CD: 入社予定日 ───
-      { key: "placement_date", label: "入社予定日", width: 100, render: (c) => formatDate(c.agent?.placement_date ?? null) },
-
-      // ─── Col CE: メモ ───
-      { key: "general_memo", label: "メモ", width: 160, render: (c) => <Truncated value={c.agent?.general_memo} width={160} /> },
-
-      // ─── Col CF-CG: カルテ情報 ───
-      { key: "karte_email", label: "メアド(カルテ)", width: 160, render: (c) => c.karte_email || "-" },
-      { key: "karte_phone", label: "電話(カルテ)", width: 120, render: (c) => c.karte_phone || "-" },
-
-      // ─── Col CH: 生年月日 ───
-      { key: "birth_date", label: "生年月日", width: 100, render: (c) => formatDate(c.birth_date ?? null) },
-
-      // ─── Col CI: フリガナ ───
-      { key: "name_kana", label: "フリガナ", width: 120, render: (c) => c.name_kana || "-" },
-
-      // ─── Col CJ: 志望企業 ───
-      { key: "target_companies", label: "志望企業", width: 160, render: (c) => <Truncated value={c.target_companies} width={160} /> },
-
-      // ─── Col CK: 対策ファーム ───
-      { key: "target_firm_type", label: "対策ファーム", width: 120, render: (c) => c.target_firm_type || "-" },
-
-      // ─── Col CL: 申込時レベル ───
-      { key: "initial_level", label: "申込時レベル", width: 100, render: (c) => c.initial_level || "-" },
-
-      // ─── Col CM: ケース面接対策の進捗 ───
-      { key: "case_interview_progress", label: "ケース面接対策進捗", width: 160, render: (c) => <Truncated value={c.learning?.case_interview_progress} width={160} /> },
-
-      // ─── Col CN: ケース面接で苦手なこと ───
-      { key: "case_interview_weaknesses", label: "ケース面接苦手", width: 140, render: (c) => <Truncated value={c.learning?.case_interview_weaknesses} /> },
-
-      // ─── Col CO: 申込の決め手(カルテ) ───
-      { key: "application_reason_karte", label: "申込の決め手(カルテ)", width: 160, render: (c) => <Truncated value={c.application_reason_karte} width={160} /> },
-
-      // ─── Col CP: 有料プログラムへの関心 ───
-      { key: "program_interest", label: "有料プログラム関心", width: 140, render: (c) => <Truncated value={c.program_interest} /> },
-
-      // ─── Col CQ: 希望期間・頻度 ───
-      { key: "desired_schedule", label: "希望期間・頻度", width: 120, render: (c) => <Truncated value={c.desired_schedule} width={120} /> },
-
-      // ─── Col CR: ご購入いただいたコンテンツ ───
-      { key: "purchased_content", label: "購入コンテンツ", width: 140, render: (c) => <Truncated value={c.purchased_content} /> },
-
-      // ─── Col CS: 親御様からの支援 ───
-      { key: "parent_support", label: "親御様支援", width: 100, render: (c) => c.parent_support || "-" },
-
-      // ─── Col CT: 就活アカウント(X) ───
-      { key: "sns_accounts", label: "就活アカウント", width: 120, render: (c) => c.sns_accounts || "-" },
-
-      // ─── Col CU: 参考メディア ───
-      { key: "reference_media", label: "参考メディア", width: 120, render: (c) => c.reference_media || "-" },
-
-      // ─── Col CV: 趣味・特技 ───
-      { key: "hobbies", label: "趣味・特技", width: 120, render: (c) => <Truncated value={c.hobbies} width={120} /> },
-
-      // ─── Col CW: 行動特性 ───
-      { key: "behavioral_traits", label: "行動特性", width: 140, render: (c) => <Truncated value={c.behavioral_traits} /> },
-
-      // ─── Col CX: その他要望・特記事項 ───
-      { key: "other_background", label: "その他", width: 140, render: (c) => <Truncated value={c.other_background} /> },
-
-      // ─── Col CY: 備考 ───
-      { key: "notes", label: "備考", width: 180, render: (c) => <Truncated value={c.notes} width={180} /> },
-
-      // ─── Col CZ: 注意事項 ───
-      { key: "caution_notes", label: "注意事項", width: 140, render: (c) => <Truncated value={c.caution_notes} /> },
-
-      // ─── Col DG: メンタリング満足度 ───
-      { key: "mentoring_satisfaction", label: "メンタリング満足度", width: 130, render: (c) => c.learning?.mentoring_satisfaction || "-" },
-
-      // ─── Col DN: エージェント失注理由 ───
-      { key: "loss_reason", label: "エージェント失注理由", width: 140, render: (c) => <Truncated value={c.agent?.loss_reason} /> },
-
-      // ─── Col DO: 請求書用 ───
-      { key: "invoice_info", label: "請求書用", width: 120, render: (c) => <Truncated value={c.contract?.invoice_info} width={120} /> },
-
-      // ─── Col DQ: 請求状況 ───
-      { key: "billing_status", label: "請求状況", width: 90, render: (c) => c.contract?.billing_status || "-" },
-
-      // ─── Col DR: 別経由での応募 ───
-      { key: "alternative_application", label: "別経由応募", width: 100, render: (c) => c.pipeline?.alternative_application || "-" },
-
-      // ─── Col DX: 人材紹介報酬期待値 ───
-      { key: "expected_referral_fee", label: "人材紹介報酬期待値", width: 140, align: "right" as const, computed: true,
+      { key: "rev_agent", label: "人材見込売上", width: 110, align: "right" as const, computed: true, category: "agent",
         formula: "想定年収 × 入社至る率 × 内定確度 × 紹介料率 × マージン",
         render: (c) => {
-        const v = calcExpectedReferralFee(c);
-        return v > 0 ? formatCurrency(v) : "-";
-      }, sortValue: (c) => calcExpectedReferralFee(c) },
+          if (!isAgentCustomer(c)) return "-";
+          const v = calcExpectedReferralFee(c);
+          return v > 0 ? formatCurrency(v) : "-";
+        }, sortValue: (c) => isAgentCustomer(c) ? calcExpectedReferralFee(c) : 0 },
 
-      // ─── Col DZ: 転職意向 ───
-      { key: "transfer_intent", label: "転職意向", width: 100, render: (c) => c.transfer_intent || "-" },
+      { key: "rev_subsidy", label: "補助金売上", width: 100, align: "right" as const, computed: true, category: "agent",
+        formula: "IF(補助金対象=\"対象\", ¥203,636, 0)",
+        render: (c) => {
+          const v = getSubsidyAmount(c);
+          return v > 0 ? formatCurrency(v) : "-";
+        }, sortValue: (c) => getSubsidyAmount(c) },
 
-      // ─── Col EA: 大学名 ───
-      { key: "university", label: "大学名", width: 130, render: (c) => c.university || "-", sortValue: (c) => c.university || "" },
+      { key: "agent_projected_revenue", label: "人材見込売上(DB)", width: 120, align: "right" as const, computed: true, category: "agent",
+        formula: "成約 AND 受講中 AND 人材紹介顧客 → 報酬期待値",
+        render: (c) => {
+          const dbVal = c.agent?.expected_agent_revenue;
+          const calcVal = calcAgentProjectedRevenue(c);
+          const v = (dbVal && dbVal > 0) ? dbVal : calcVal;
+          return v > 0 ? formatCurrency(v) : "-";
+        }, sortValue: (c) => c.agent?.expected_agent_revenue || calcAgentProjectedRevenue(c) },
 
-      // ─── Col EB: 受講開始日メール送付済み ───
-      { key: "start_email_sent", label: "開始メール送付", width: 110, render: (c) => c.learning?.start_email_sent || "-" },
+      { key: "expected_referral_fee", label: "報酬期待値", width: 120, align: "right" as const, computed: true, category: "agent",
+        formula: "想定年収 × 入社至る率 × 内定確度 × 紹介料率 × マージン",
+        render: (c) => {
+          const v = calcExpectedReferralFee(c);
+          return v > 0 ? formatCurrency(v) : "-";
+        }, sortValue: (c) => calcExpectedReferralFee(c) },
 
-      // ─── Col EC: [追加指導]営業内容 ───
-      { key: "additional_sales_content", label: "[追加]営業内容", width: 140, render: (c) => <Truncated value={c.pipeline?.additional_sales_content} /> },
-
-      // ─── Col ED: [追加指導]プラン ───
-      { key: "additional_plan", label: "[追加]プラン", width: 120, render: (c) => c.pipeline?.additional_plan || "-" },
-
-      // ─── Col EE: [追加指導]割引制度の案内 ───
-      { key: "additional_discount_info", label: "[追加]割引案内", width: 120, render: (c) => <Truncated value={c.pipeline?.additional_discount_info} width={120} /> },
-
-      // ─── Col EF: [追加指導]学び ───
-      { key: "additional_notes", label: "[追加]学び", width: 120, render: (c) => <Truncated value={c.pipeline?.additional_notes} width={120} /> },
-
-      // ─── Col EG: エージェント担当者 ───
-      { key: "agent_staff", label: "エージェント担当者", width: 120, render: (c) => c.agent?.agent_staff || "-" },
-
-      // ─── Col EI: リスキャリ補助金対象 ───
-      { key: "subsidy_eligible", label: "補助金対象", width: 90, render: (c) => c.contract?.subsidy_eligible ? "対象" : "-" },
-
-      // ─── Col EK: 人材確定 ───
-      { key: "placement_confirmed", label: "人材確定", width: 80, align: "center" as const, computed: true,
+      { key: "offer_company", label: "内定先", width: 120, category: "agent",
+        render: (c) => <span className="text-xs">{c.agent?.offer_company || "-"}</span> },
+      { key: "external_agents", label: "利用エージェント", width: 110, category: "agent",
+        render: (c) => <span className="text-xs">{c.agent?.external_agents || "-"}</span> },
+      { key: "hire_rate", label: "入社至る率", width: 80, align: "right" as const, category: "agent",
+        render: (c) => c.agent?.hire_rate != null ? formatPercent(c.agent.hire_rate) : "-" },
+      { key: "offer_probability", label: "内定確度", width: 80, align: "right" as const, category: "agent",
+        render: (c) => c.agent?.offer_probability != null ? formatPercent(c.agent.offer_probability) : "-" },
+      { key: "offer_salary", label: "想定年収", width: 100, align: "right" as const, category: "agent",
+        render: (c) => c.agent?.offer_salary ? formatCurrency(c.agent.offer_salary) : "-",
+        sortValue: (c) => c.agent?.offer_salary || 0 },
+      { key: "referral_fee_rate", label: "紹介料率", width: 70, align: "right" as const, category: "agent",
+        render: (c) => c.agent?.referral_fee_rate != null ? formatPercent(c.agent.referral_fee_rate) : "-" },
+      { key: "margin", label: "マージン", width: 70, align: "right" as const, category: "agent",
+        render: (c) => {
+          if (!c.agent) return "-";
+          const m = (c.agent.margin && c.agent.margin > 0) ? c.agent.margin : 0.75;
+          return formatPercent(m);
+        } },
+      { key: "placement_date", label: "入社予定日", width: 78, category: "agent",
+        render: (c) => <span className="text-xs">{fmtDate(c.agent?.placement_date)}</span> },
+      { key: "placement_confirmed", label: "人材確定", width: 70, align: "center" as const, computed: true, category: "agent",
         formula: "人材確定フラグ = \"確定\"",
-        render: (c) =>
-        isAgentConfirmed(c) ? <span className="text-green-400">確定</span> : "-" },
+        render: (c) => isAgentConfirmed(c) ? <span className="text-purple-400">確定</span> : "-" },
+      { key: "agent_staff", label: "エージェント担当", width: 100, category: "agent",
+        render: (c) => <span className="text-xs">{c.agent?.agent_staff || "-"}</span> },
+      { key: "agent_memo", label: "エージェント業務メモ", width: 150, category: "agent", multiline: true,
+        render: (c) => c.agent?.agent_memo || "-" },
+      { key: "loss_reason", label: "失注理由", width: 120, category: "agent",
+        render: (c) => <Truncated value={c.agent?.loss_reason} width={120} /> },
+      { key: "subsidy_eligible", label: "補助金対象", width: 80, category: "agent",
+        render: (c) => c.contract?.subsidy_eligible ? <span className="text-purple-400 text-xs">対象</span> : "-" },
+
+      // ═══ エデュケーション（緑） ═══
+      { key: "enrollment_status", label: "受講状況", width: 90, category: "education",
+        render: (c) => <span className="text-xs">{c.contract?.enrollment_status || "-"}</span> },
+      { key: "plan_name", label: "プラン名", width: 140, category: "education",
+        render: (c) => <Truncated value={c.contract?.plan_name} width={140} /> },
+      { key: "mentor_name", label: "メンター", width: 80, category: "education",
+        render: (c) => <span className="text-xs">{c.learning?.mentor_name || "-"}</span> },
+      { key: "coaching_start", label: "指導開始", width: 78, category: "education",
+        render: (c) => <span className="text-xs">{fmtDate(c.learning?.coaching_start_date)}</span>,
+        sortValue: (c) => c.learning?.coaching_start_date || "" },
+      { key: "coaching_end", label: "指導終了", width: 78, category: "education",
+        render: (c) => <span className="text-xs">{fmtDate(c.learning?.coaching_end_date)}</span>,
+        sortValue: (c) => c.learning?.coaching_end_date || "" },
+      { key: "last_coaching", label: "最終指導", width: 78, category: "education",
+        render: (c) => <span className="text-xs">{fmtDate(c.learning?.last_coaching_date)}</span> },
+      { key: "contract_months", label: "契約月数", width: 70, align: "right" as const, category: "education",
+        render: (c) => c.learning?.contract_months != null ? `${c.learning.contract_months}M` : "-" },
+      { key: "total_sessions", label: "契約回数", width: 70, align: "right" as const, category: "education",
+        render: (c) => c.learning?.total_sessions != null ? `${c.learning.total_sessions}回` : "-",
+        sortValue: (c) => c.learning?.total_sessions || 0 },
+      { key: "completed_sessions", label: "完了数", width: 60, align: "right" as const, category: "education",
+        render: (c) => c.learning?.completed_sessions != null ? `${c.learning.completed_sessions}` : "-",
+        sortValue: (c) => c.learning?.completed_sessions || 0 },
+      { key: "remaining_sessions", label: "残回数", width: 60, align: "right" as const, computed: true, category: "education",
+        formula: "契約指導回数 − 指導完了数",
+        render: (c) => { const r = calcRemainingSessions(c); return c.learning ? `${r}` : "-"; },
+        sortValue: (c) => calcRemainingSessions(c) },
+      { key: "weekly_sessions", label: "週回数", width: 60, align: "right" as const, category: "education",
+        render: (c) => c.learning?.weekly_sessions != null ? `${c.learning.weekly_sessions}` : "-" },
+      { key: "attendance_rate", label: "日程消化率", width: 80, align: "right" as const, computed: true, category: "education",
+        formula: "(現在日 − 開始日) / (終了日 − 開始日)",
+        render: (c) => {
+          const v = calcScheduleProgress(c);
+          return v !== null ? formatPercent(v) : (c.learning?.attendance_rate != null ? formatPercent(c.learning.attendance_rate) : "-");
+        } },
+      { key: "session_completion_rate", label: "指導消化率", width: 80, align: "right" as const, computed: true, category: "education",
+        formula: "指導完了数 / 契約指導回数",
+        render: (c) => { const v = calcSessionProgress(c); return v !== null ? formatPercent(v) : "-"; } },
+      { key: "progress_status", label: "進捗", width: 50, align: "center" as const, computed: true, category: "education",
+        formula: "日程消化率 / 指導消化率 で判定",
+        render: (c) => {
+          const s = calcProgressStatus(c);
+          const color = s === "順調" ? "text-green-400" : s === "遅延" ? "text-red-400" : "text-gray-500";
+          return <span className={`text-xs ${color}`}>{s}</span>;
+        } },
+      { key: "level_fermi", label: "フェルミ", width: 60, category: "education",
+        render: (c) => <span className="text-xs">{c.learning?.level_fermi || "-"}</span> },
+      { key: "level_case", label: "ケース", width: 60, category: "education",
+        render: (c) => <span className="text-xs">{c.learning?.level_case || "-"}</span> },
+      { key: "level_mck", label: "McK", width: 60, category: "education",
+        render: (c) => <span className="text-xs">{c.learning?.level_mck || "-"}</span> },
+      { key: "progress_text", label: "進捗テキスト", width: 130, category: "education",
+        render: (c) => <Truncated value={c.learning?.progress_text} width={130} /> },
+      { key: "selection_status", label: "選考状況", width: 110, category: "education",
+        render: (c) => <Truncated value={c.learning?.selection_status} width={110} /> },
+      { key: "level_up_range", label: "レベルアップ幅", width: 100, category: "education",
+        render: (c) => <span className="text-xs">{c.learning?.level_up_range || "-"}</span> },
+      { key: "initial_coaching_level", label: "指導開始時レベル", width: 110, category: "education",
+        render: (c) => <span className="text-xs">{c.learning?.initial_coaching_level || "-"}</span> },
+      { key: "enrollment_form_date", label: "入会フォーム日", width: 78, category: "education",
+        render: (c) => <span className="text-xs">{fmtDate(c.learning?.enrollment_form_date)}</span> },
+      { key: "coaching_requests", label: "指導要望", width: 130, category: "education",
+        render: (c) => <Truncated value={c.learning?.coaching_requests} width={130} /> },
+      { key: "enrollment_reason", label: "入会理由", width: 130, category: "education",
+        render: (c) => <Truncated value={c.learning?.enrollment_reason} width={130} /> },
+      { key: "behavior_session1", label: "ビヘイビア1", width: 100, category: "education",
+        render: (c) => <Truncated value={c.learning?.behavior_session1} width={100} /> },
+      { key: "behavior_session2", label: "ビヘイビア2", width: 100, category: "education",
+        render: (c) => <Truncated value={c.learning?.behavior_session2} width={100} /> },
+      { key: "assessment_session1", label: "アセスメント1", width: 110, category: "education",
+        render: (c) => <Truncated value={c.learning?.assessment_session1} width={110} /> },
+      { key: "assessment_session2", label: "アセスメント2", width: 110, category: "education",
+        render: (c) => <Truncated value={c.learning?.assessment_session2} width={110} /> },
+      { key: "case_interview_progress", label: "ケース面接進捗", width: 140, category: "education",
+        render: (c) => <Truncated value={c.learning?.case_interview_progress} width={140} /> },
+      { key: "case_interview_weaknesses", label: "ケース面接苦手", width: 120, category: "education",
+        render: (c) => <Truncated value={c.learning?.case_interview_weaknesses} width={120} /> },
+      { key: "interview_timing_at_end", label: "面接予定(終了時)", width: 120, category: "education",
+        render: (c) => <Truncated value={c.learning?.interview_timing_at_end} width={120} /> },
+      { key: "target_companies_at_end", label: "受験企業(終了時)", width: 120, category: "education",
+        render: (c) => <Truncated value={c.learning?.target_companies_at_end} width={120} /> },
+      { key: "offer_probability_at_end", label: "内定確度判定", width: 90, category: "education",
+        render: (c) => <span className="text-xs">{c.learning?.offer_probability_at_end || "-"}</span> },
+      { key: "additional_coaching_proposal", label: "追加指導提案", width: 120, category: "education",
+        render: (c) => <Truncated value={c.learning?.additional_coaching_proposal} width={120} /> },
+      { key: "mentoring_satisfaction", label: "メンタリング満足度", width: 110, category: "education",
+        render: (c) => <span className="text-xs">{c.learning?.mentoring_satisfaction || "-"}</span> },
+      { key: "start_email_sent", label: "開始メール送付", width: 100, category: "education",
+        render: (c) => <span className="text-xs">{c.learning?.start_email_sent || "-"}</span> },
+
+      // ═══ その他基本情報 ═══
+      { key: "payment_date", label: "入金日", width: 78, category: "sales",
+        render: (c) => <span className="text-xs">{fmtDate(c.contract?.payment_date)}</span>,
+        sortValue: (c) => c.contract?.payment_date || "" },
+      { key: "progress_sheet", label: "Progress Sheet", width: 100,
+        render: (c) => c.contract?.progress_sheet_url
+          ? <a href={c.contract.progress_sheet_url} target="_blank" rel="noopener noreferrer" className="text-brand hover:underline text-xs">リンク</a>
+          : "-" },
+      { key: "extension_days", label: "延長(日)", width: 70, align: "right" as const, category: "education",
+        render: (c) => c.learning?.extension_days != null ? `${c.learning.extension_days}` : "-" },
+      { key: "additional_notes", label: "[追加]学び", width: 110, category: "sales",
+        render: (c) => <Truncated value={c.pipeline?.additional_notes} width={110} /> },
+      { key: "general_memo", label: "メモ", width: 140,
+        render: (c) => <Truncated value={c.agent?.general_memo} width={140} /> },
+      { key: "university", label: "大学名", width: 110,
+        render: (c) => <span className="text-xs">{c.university || "-"}</span>, sortValue: (c) => c.university || "" },
+      { key: "target_companies", label: "志望企業", width: 140,
+        render: (c) => <Truncated value={c.target_companies} width={140} /> },
+      { key: "target_firm_type", label: "対策ファーム", width: 100,
+        render: (c) => <span className="text-xs">{c.target_firm_type || "-"}</span> },
+      { key: "initial_level", label: "申込時レベル", width: 90,
+        render: (c) => <span className="text-xs">{c.initial_level || "-"}</span> },
+      { key: "transfer_intent", label: "転職意向", width: 80,
+        render: (c) => <span className="text-xs">{c.transfer_intent || "-"}</span> },
+      { key: "billing_status", label: "請求状況", width: 80, category: "sales",
+        render: (c) => <span className="text-xs">{c.contract?.billing_status || "-"}</span> },
+      { key: "invoice_info", label: "請求書用", width: 110,
+        render: (c) => <Truncated value={c.contract?.invoice_info} width={110} /> },
+      { key: "notes", label: "備考", width: 160,
+        render: (c) => <Truncated value={c.notes} width={160} /> },
+      { key: "caution_notes", label: "注意事項", width: 120,
+        render: (c) => <Truncated value={c.caution_notes} width={120} /> },
     ],
-    []
+    [attributionMap]
   );
 
   // タブに応じたカラムフィルタリング
   const spreadsheetColumns = useMemo(() => {
     const allowedKeys = VIEW_COLUMNS[activeTab];
-    if (!allowedKeys) return allColumns; // 全般 = 全カラム
-    return allColumns.filter((col) => allowedKeys.includes(col.key));
+    if (!allowedKeys) return allColumns;
+    return allowedKeys.map((key) => allColumns.find((col) => col.key === key)).filter(Boolean) as SpreadsheetColumn<CustomerWithRelations>[];
   }, [allColumns, activeTab]);
 
   return (
@@ -616,18 +517,25 @@ export function CustomersClient({ customers }: CustomersClientProps) {
       {/* ヘッダー: タイトル + フィルタ */}
       <div className="flex items-center gap-3 flex-wrap">
         <h1 className="text-lg font-bold text-white shrink-0">顧客一覧</h1>
-        <span className="text-xs text-gray-500 shrink-0">
-          {baseFiltered.length}件
-        </span>
-        <select
-          value={attributeFilter}
-          onChange={(e) => setAttributeFilter(e.target.value)}
-          className="px-2 py-1 bg-surface-elevated border border-white/10 text-white rounded text-xs focus:outline-none focus:ring-1 focus:ring-brand"
-        >
-          <option value="">全属性</option>
-          <option value="既卒">既卒</option>
-          <option value="新卒">新卒</option>
-        </select>
+        <span className="text-xs text-gray-500 shrink-0">{baseFiltered.length}件</span>
+
+        {/* 属性フィルタ */}
+        <div className="flex gap-0.5 bg-surface-elevated rounded-md p-0.5 border border-white/10">
+          {["", "既卒", "新卒"].map((val) => (
+            <button
+              key={val}
+              onClick={() => setAttributeFilter(val)}
+              className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+                attributeFilter === val
+                  ? "bg-brand text-white"
+                  : "text-gray-400 hover:text-white"
+              }`}
+            >
+              {val || "全属性"}
+            </button>
+          ))}
+        </div>
+
         <select
           value={stageFilter}
           onChange={(e) => setStageFilter(e.target.value)}
@@ -677,21 +585,28 @@ export function CustomersClient({ customers }: CustomersClientProps) {
             {tab.label}
           </button>
         ))}
+
+        {/* カテゴリ凡例 */}
+        <div className="flex items-center gap-2 ml-3 pl-3 border-l border-white/10">
+          <span className="flex items-center gap-1 text-[10px] text-orange-400/70"><span className="w-2 h-2 rounded-sm bg-orange-500/30" />マーケ</span>
+          <span className="flex items-center gap-1 text-[10px] text-blue-400/70"><span className="w-2 h-2 rounded-sm bg-blue-500/30" />営業</span>
+          <span className="flex items-center gap-1 text-[10px] text-green-400/70"><span className="w-2 h-2 rounded-sm bg-green-500/30" />エデュ</span>
+          <span className="flex items-center gap-1 text-[10px] text-purple-400/70"><span className="w-2 h-2 rounded-sm bg-purple-500/30" />人材</span>
+        </div>
       </div>
 
-      {/* スプレッドシートビュー */}
+      {/* テーブル */}
       <SpreadsheetTable
         columns={spreadsheetColumns}
         data={baseFiltered}
         getRowKey={(c) => c.id}
         storageKey={`customers-${activeTab}`}
-        searchPlaceholder="名前・メール・電話・大学・経歴で検索..."
+        searchPlaceholder="名前・大学・経歴・チャネルで検索..."
         searchFilter={(c, q) =>
           c.name.toLowerCase().includes(q) ||
-          (c.email?.toLowerCase().includes(q) ?? false) ||
-          (c.phone?.includes(q) ?? false) ||
           (c.university?.toLowerCase().includes(q) ?? false) ||
-          (c.career_history?.toLowerCase().includes(q) ?? false)
+          (c.career_history?.toLowerCase().includes(q) ?? false) ||
+          (attributionMap[c.id]?.marketing_channel?.toLowerCase().includes(q) ?? false)
         }
       />
     </div>

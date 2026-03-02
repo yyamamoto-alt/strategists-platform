@@ -3,6 +3,8 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
 
+export type ColumnCategory = "marketing" | "sales" | "education" | "agent" | "base";
+
 export interface SpreadsheetColumn<T> {
   key: string;
   label: string;
@@ -10,10 +12,13 @@ export interface SpreadsheetColumn<T> {
   align?: "left" | "right" | "center";
   render: (item: T) => React.ReactNode;
   sortValue?: (item: T) => string | number;
-  /** true = 計算で算出される変数カラム、false/undefined = DBベタ打ち定数カラム */
   computed?: boolean;
-  /** 変数カラムの場合、計算式の説明 */
   formula?: string;
+  category?: ColumnCategory;
+  /** true = 複数行表示を許可（営業内容など長文カラム） */
+  multiline?: boolean;
+  /** sticky列の左端からの固定位置（px）。undefinedなら固定しない */
+  stickyLeft?: number;
 }
 
 interface SpreadsheetTableProps<T> {
@@ -24,6 +29,31 @@ interface SpreadsheetTableProps<T> {
   searchFilter?: (item: T, query: string) => boolean;
   storageKey?: string;
 }
+
+// カテゴリ別のヘッダーとセルの色
+const CATEGORY_HEADER_COLORS: Record<ColumnCategory, string> = {
+  marketing: "bg-orange-500/10",
+  sales: "bg-blue-500/10",
+  education: "bg-green-500/10",
+  agent: "bg-purple-500/10",
+  base: "",
+};
+
+const CATEGORY_CELL_COLORS: Record<ColumnCategory, string> = {
+  marketing: "bg-orange-500/[0.03]",
+  sales: "bg-blue-500/[0.03]",
+  education: "bg-green-500/[0.03]",
+  agent: "bg-purple-500/[0.03]",
+  base: "",
+};
+
+const CATEGORY_HEADER_TEXT: Record<ColumnCategory, string> = {
+  marketing: "text-orange-400/80",
+  sales: "text-blue-400/80",
+  education: "text-green-400/80",
+  agent: "text-purple-400/80",
+  base: "text-gray-500",
+};
 
 function loadColumnWidths(key: string): Record<string, number> | null {
   if (typeof window === "undefined") return null;
@@ -80,7 +110,6 @@ export function SpreadsheetTable<T>({
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
-  // カラム幅: localStorage から復元、なければデフォルト
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>(
     () => {
       const saved = loadColumnWidths(storageKey);
@@ -93,7 +122,6 @@ export function SpreadsheetTable<T>({
     }
   );
 
-  // 幅変更時にlocalStorageへ保存
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
@@ -105,7 +133,6 @@ export function SpreadsheetTable<T>({
     };
   }, [columnWidths, storageKey]);
 
-  // リサイズハンドリング
   const resizeRef = useRef<{
     key: string;
     startX: number;
@@ -121,13 +148,10 @@ export function SpreadsheetTable<T>({
 
       const handleMouseMove = (ev: MouseEvent) => {
         if (!resizeRef.current) return;
-        const { key: colKey, startX, startWidth } = resizeRef.current;
+        const { key: colKey, startX, startWidth: sw } = resizeRef.current;
         const diff = ev.clientX - startX;
-        const newWidth = Math.max(40, startWidth + diff);
-        setColumnWidths((prev) => ({
-          ...prev,
-          [colKey]: newWidth,
-        }));
+        const newWidth = Math.max(40, sw + diff);
+        setColumnWidths((prev) => ({ ...prev, [colKey]: newWidth }));
       };
 
       const handleMouseUp = () => {
@@ -206,84 +230,91 @@ export function SpreadsheetTable<T>({
           <table className="min-w-max w-full">
             <thead className="bg-surface-elevated border-b border-white/10 sticky top-0 z-30">
               <tr>
-                {columns.map((col, i) => (
-                  <th
-                    key={col.key}
-                    onClick={
-                      col.sortValue ? () => handleSort(col.key) : undefined
-                    }
-                    className={cn(
-                      "py-2 px-2 text-[11px] font-semibold whitespace-nowrap select-none relative",
-                      col.computed
-                        ? "text-amber-400/80 border-b-2 border-amber-500/40"
-                        : "text-gray-500",
-                      col.align === "right" ? "text-right" : "text-left",
-                      col.sortValue &&
-                        "cursor-pointer hover:text-gray-300 transition-colors",
-                      i === 0 && "sticky left-0 z-40 bg-surface-elevated"
-                    )}
-                    style={{
-                      width: getColWidth(col),
-                      minWidth: 40,
-                      maxWidth: getColWidth(col),
-                    }}
-                  >
-                    <span className="inline-flex items-center gap-0.5 overflow-hidden">
-                      {col.label}
-                      {col.computed && col.formula && (
-                        <FormulaTooltip formula={col.formula} />
-                      )}
-                      {sortKey === col.key && (
-                        <span className="text-brand">
-                          {sortDir === "asc" ? "↑" : "↓"}
-                        </span>
-                      )}
-                    </span>
-                    {/* リサイズハンドル */}
-                    <div
-                      onMouseDown={(e) => handleResizeStart(e, col.key)}
-                      className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-brand/50 active:bg-brand/70 transition-colors"
-                    />
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((item) => (
-                <tr
-                  key={getRowKey(item)}
-                  className="border-b border-white/[0.08] hover:bg-white/5 transition-colors group"
-                >
-                  {columns.map((col, i) => (
-                    <td
+                {columns.map((col) => {
+                  const cat = col.category || "base";
+                  const isSticky = col.stickyLeft !== undefined;
+                  return (
+                    <th
                       key={col.key}
+                      onClick={col.sortValue ? () => handleSort(col.key) : undefined}
                       className={cn(
-                        "py-1.5 px-2 text-sm whitespace-nowrap overflow-hidden text-ellipsis",
-                        col.align === "right"
-                          ? "text-right"
-                          : col.align === "center"
-                            ? "text-center"
-                            : "text-left",
-                        i === 0
-                          ? "sticky left-0 z-10 bg-surface-card group-hover:bg-surface-elevated font-medium text-white transition-colors"
-                          : "text-gray-300"
+                        "py-2 px-2 text-[11px] font-semibold whitespace-nowrap select-none relative",
+                        col.computed
+                          ? "text-amber-400/80 border-b-2 border-amber-500/40"
+                          : CATEGORY_HEADER_TEXT[cat],
+                        CATEGORY_HEADER_COLORS[cat],
+                        col.align === "right" ? "text-right" : "text-left",
+                        col.sortValue && "cursor-pointer hover:text-gray-300 transition-colors",
+                        isSticky && "sticky z-40 bg-surface-elevated"
                       )}
                       style={{
                         width: getColWidth(col),
+                        minWidth: 40,
                         maxWidth: getColWidth(col),
+                        ...(isSticky ? { left: col.stickyLeft } : {}),
                       }}
                     >
-                      {col.render(item)}
-                    </td>
-                  ))}
+                      <span className="inline-flex items-center gap-0.5 overflow-hidden">
+                        {col.label}
+                        {col.computed && col.formula && <FormulaTooltip formula={col.formula} />}
+                        {sortKey === col.key && (
+                          <span className="text-brand">{sortDir === "asc" ? "↑" : "↓"}</span>
+                        )}
+                      </span>
+                      <div
+                        onMouseDown={(e) => handleResizeStart(e, col.key)}
+                        className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-brand/50 active:bg-brand/70 transition-colors"
+                      />
+                    </th>
+                  );
+                })}
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((item, rowIdx) => (
+                <tr
+                  key={getRowKey(item)}
+                  className={cn(
+                    "border-b border-white/[0.06] hover:bg-white/5 transition-colors group",
+                    rowIdx % 2 === 1 && "bg-white/[0.015]"
+                  )}
+                >
+                  {columns.map((col) => {
+                    const cat = col.category || "base";
+                    const isSticky = col.stickyLeft !== undefined;
+                    return (
+                      <td
+                        key={col.key}
+                        className={cn(
+                          "py-1.5 px-2 text-sm overflow-hidden",
+                          col.multiline
+                            ? "whitespace-pre-wrap text-xs leading-relaxed line-clamp-3"
+                            : "whitespace-nowrap text-ellipsis",
+                          col.align === "right"
+                            ? "text-right"
+                            : col.align === "center"
+                              ? "text-center"
+                              : "text-left",
+                          isSticky
+                            ? "sticky z-10 font-medium text-white transition-colors bg-surface-card group-hover:bg-surface-elevated"
+                            : cn("text-gray-300", CATEGORY_CELL_COLORS[cat]),
+                          rowIdx % 2 === 1 && !isSticky && "bg-blend-multiply"
+                        )}
+                        style={{
+                          width: getColWidth(col),
+                          maxWidth: getColWidth(col),
+                          ...(isSticky ? { left: col.stickyLeft } : {}),
+                        }}
+                      >
+                        {col.render(item)}
+                      </td>
+                    );
+                  })}
                 </tr>
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td
-                    colSpan={columns.length}
-                    className="py-8 text-center text-gray-500 text-sm"
-                  >
+                  <td colSpan={columns.length} className="py-8 text-center text-gray-500 text-sm">
                     データがありません
                   </td>
                 </tr>
