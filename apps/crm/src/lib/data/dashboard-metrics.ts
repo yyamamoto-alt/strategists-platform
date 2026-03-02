@@ -31,17 +31,10 @@ import {
   isShinsotsu,
 } from "@/lib/calc-fields";
 
-/** 成約判定: 実データのステージ値に対応 */
+/** 成約判定: 「成約」「入金済」のみ。動画講座購入/その他購入/追加指導/成約見込は除外 */
 function isStageClosed(stage: string | undefined | null): boolean {
   if (!stage) return false;
-  return (
-    stage === "成約" ||
-    stage === "入金済" ||
-    stage === "その他購入" ||
-    stage === "動画講座購入" ||
-    stage === "追加指導" ||
-    stage.includes("成約見込")
-  );
+  return stage === "成約" || stage === "入金済";
 }
 
 /** 期間文字列を取得（Excel PL準拠: 申込月ベース） */
@@ -893,14 +886,10 @@ async function fetchDashboardDataRaw() {
     stageCounts[p.stage] = (stageCounts[p.stage] || 0) + 1;
   }
 
-  const closedStages = ["成約", "入金済", "その他購入", "動画講座購入", "追加指導"];
+  const closedStages = ["成約", "入金済"];
   let closedCount = 0;
   for (const s of closedStages) {
     closedCount += stageCounts[s] || 0;
-  }
-  // 成約見込(未入金) もカウント
-  for (const [s, count] of Object.entries(stageCounts)) {
-    if (s.includes("成約見込")) closedCount += count;
   }
   const lostCount = (stageCounts["失注"] || 0) + (stageCounts["失注見込"] || 0) + (stageCounts["失注見込(自動)"] || 0) + (stageCounts["CL"] || 0) + (stageCounts["全額返金"] || 0);
   const activeDeals =

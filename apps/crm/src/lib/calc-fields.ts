@@ -65,8 +65,11 @@ export function getSubsidyAmount(c: CustomerWithRelations): number {
 export function calcClosingProbability(c: CustomerWithRelations): number {
   const stage = c.pipeline?.stage;
   if (!stage) return 0;
-  // 成約系 → 100%
-  if (stage === "成約" || stage === "入金済" || stage === "その他購入" || stage === "動画講座購入" || stage === "追加指導") return 1.0;
+  // 成約系 → 100%（動画講座購入/その他購入/追加指導は成約扱いしない）
+  if (stage === "成約" || stage === "入金済") return 1.0;
+  // その他購入・動画講座購入・追加指導は低確率扱い
+  if (stage === "その他購入" || stage === "動画講座購入" || stage === "追加指導") return 0;
+  if (stage.includes("成約見込")) return 0;
   // 失注系 → 0%
   if (stage === "失注" || stage === "失注見込" || stage === "失注見込(自動)" || stage === "CL" || stage === "全額返金") return 0;
   // 未実施系 → 0%
