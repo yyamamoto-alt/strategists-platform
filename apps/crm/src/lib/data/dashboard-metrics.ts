@@ -68,13 +68,19 @@ function getQuarter(period: string): string {
 // ファネルメトリクス（既存 - 変更なし）
 // ================================================================
 
+/** 追加指導ステージ判定 */
+function isAdditionalCoaching(stage: string | undefined | null): boolean {
+  if (!stage) return false;
+  return stage.startsWith("追加指導");
+}
+
 export function computeFunnelMetrics(
   customers: CustomerWithRelations[]
 ): FunnelMetrics[] {
   const filtered = filterByAnalyticsPeriod(customers);
   const byMonth = new Map<
     string,
-    { applications: number; scheduled: number; conducted: number; closed: number }
+    { applications: number; scheduled: number; conducted: number; closed: number; additional_coaching: number }
   >();
 
   for (const c of filtered) {
@@ -83,7 +89,7 @@ export function computeFunnelMetrics(
     const period = date.slice(0, 7).replace("-", "/");
 
     if (!byMonth.has(period)) {
-      byMonth.set(period, { applications: 0, scheduled: 0, conducted: 0, closed: 0 });
+      byMonth.set(period, { applications: 0, scheduled: 0, conducted: 0, closed: 0, additional_coaching: 0 });
     }
     const m = byMonth.get(period)!;
     m.applications++;
@@ -100,6 +106,10 @@ export function computeFunnelMetrics(
       ) {
         m.conducted++;
       }
+      // 追加指導（成約率分母から除外）
+      if (isAdditionalCoaching(s)) {
+        m.additional_coaching++;
+      }
       // 成約判定
       if (isStageClosed(s)) {
         m.closed++;
@@ -109,13 +119,17 @@ export function computeFunnelMetrics(
 
   return Array.from(byMonth.entries())
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([period, m]) => ({
-      period,
-      ...m,
-      scheduling_rate: m.applications > 0 ? m.scheduled / m.applications : 0,
-      conduct_rate: m.scheduled > 0 ? m.conducted / m.scheduled : 0,
-      closing_rate: m.conducted > 0 ? m.closed / m.conducted : 0,
-    }));
+    .map(([period, m]) => {
+      // 成約率分母: 実施 - 追加指導（結果未確定のため除外）
+      const closingDenom = m.conducted - m.additional_coaching;
+      return {
+        period,
+        ...m,
+        scheduling_rate: m.applications > 0 ? m.scheduled / m.applications : 0,
+        conduct_rate: m.scheduled > 0 ? m.conducted / m.scheduled : 0,
+        closing_rate: closingDenom > 0 ? m.closed / closingDenom : 0,
+      };
+    });
 }
 
 // ================================================================
@@ -190,35 +204,35 @@ export function computeRevenueMetrics(
 // 3段階売上メトリクス（Excel PL シート再現）
 // ================================================================
 
-/** 直近N月のファネル成約率を計算（実施→成約ベース） */
+/** 直近N月のファネル成約率を計算（実施-追加指導→成約ベース） */
 function computeRecentClosingRate(
   customers: CustomerWithRelations[],
   recentMonths: number = 3
 ): number {
-  // 月別のファネルデータを集計
-  const byMonth = new Map<string, { conducted: number; closed: number }>();
+  const byMonth = new Map<string, { conducted: number; closed: number; additional_coaching: number }>();
 
   for (const c of customers) {
     const date = c.application_date;
     if (!date) continue;
     const period = date.slice(0, 7).replace("-", "/");
     if (!byMonth.has(period)) {
-      byMonth.set(period, { conducted: 0, closed: 0 });
+      byMonth.set(period, { conducted: 0, closed: 0, additional_coaching: 0 });
     }
     const m = byMonth.get(period)!;
     if (!c.pipeline) continue;
     const s = c.pipeline.stage;
     const dealStatus = c.pipeline.deal_status;
-    // 実施済み: deal_status="実施" or 成約系ステージ
     if (dealStatus === "実施" || isStageClosed(s)) {
       m.conducted++;
+    }
+    if (isAdditionalCoaching(s)) {
+      m.additional_coaching++;
     }
     if (isStageClosed(s)) {
       m.closed++;
     }
   }
 
-  // 直近N月のデータを取得（当月は除外 — 未完データなので）
   const now = new Date();
   const currentPeriod = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, "0")}`;
   const sortedPeriods = Array.from(byMonth.keys())
@@ -228,20 +242,24 @@ function computeRecentClosingRate(
 
   let totalConducted = 0;
   let totalClosed = 0;
+  let totalAC = 0;
   for (const p of sortedPeriods) {
     const m = byMonth.get(p)!;
     totalConducted += m.conducted;
     totalClosed += m.closed;
+    totalAC += m.additional_coaching;
   }
 
-  // 直近データがない場合は全体平均にフォールバック
-  if (totalConducted === 0) {
+  const denom = totalConducted - totalAC;
+  if (denom <= 0) {
     const allConducted = Array.from(byMonth.values()).reduce((s, m) => s + m.conducted, 0);
     const allClosed = Array.from(byMonth.values()).reduce((s, m) => s + m.closed, 0);
-    return allConducted > 0 ? allClosed / allConducted : 0;
+    const allAC = Array.from(byMonth.values()).reduce((s, m) => s + m.additional_coaching, 0);
+    const allDenom = allConducted - allAC;
+    return allDenom > 0 ? allClosed / allDenom : 0;
   }
 
-  return totalClosed / totalConducted;
+  return totalClosed / denom;
 }
 
 /** 当月の日数進捗補正係数を計算 */
@@ -575,7 +593,6 @@ export function computeChannelFunnelPivot(
   customers = filterByAnalyticsPeriod(customers);
   const hasAttribution = attributionMap && Object.keys(attributionMap).length > 0;
 
-  // チャネル → { periods: { period → counts }, total counts }
   const byChannel = new Map<
     string,
     {
@@ -585,6 +602,7 @@ export function computeChannelFunnelPivot(
       conducted: number;
       closed: number;
       revenue: number;
+      additional_coaching: number;
     }
   >();
 
@@ -605,6 +623,7 @@ export function computeChannelFunnelPivot(
         conducted: 0,
         closed: 0,
         revenue: 0,
+        additional_coaching: 0,
       });
     }
     const ch = byChannel.get(channel)!;
@@ -614,7 +633,6 @@ export function computeChannelFunnelPivot(
     }
     const p = ch.periods.get(period)!;
 
-    // 申込
     p.applications++;
     ch.applications++;
 
@@ -622,17 +640,17 @@ export function computeChannelFunnelPivot(
       const s = c.pipeline.stage;
       const dealStatus = c.pipeline.deal_status;
 
-      // 日程確定
       if (s !== "日程未確") {
         p.scheduled++;
         ch.scheduled++;
       }
-      // 面談実施
       if (dealStatus === "実施" || isStageClosed(s)) {
         p.conducted++;
         ch.conducted++;
       }
-      // 成約
+      if (isAdditionalCoaching(s)) {
+        ch.additional_coaching++;
+      }
       if (isStageClosed(s)) {
         const rev = c.contract?.confirmed_amount || 0;
         p.closed++;
@@ -652,6 +670,8 @@ export function computeChannelFunnelPivot(
       });
 
       const ltvPerApp = ch.applications > 0 ? Math.round(ch.revenue / ch.applications) : 0;
+      // 成約率分母: 実施 - 追加指導
+      const closingDenom = ch.conducted - ch.additional_coaching;
 
       return {
         channel,
@@ -663,7 +683,7 @@ export function computeChannelFunnelPivot(
           closed: ch.closed,
           revenue: ch.revenue,
           conduct_rate: ch.scheduled > 0 ? ch.conducted / ch.scheduled : 0,
-          closing_rate: ch.conducted > 0 ? ch.closed / ch.conducted : 0,
+          closing_rate: closingDenom > 0 ? ch.closed / closingDenom : 0,
           ltv_per_app: ltvPerApp,
           target_cpa: Math.round(ltvPerApp * 0.3),
         },
@@ -697,7 +717,7 @@ function computeSegmentData(
 
   // 月別トータル
   const periodTotals = new Map<string, PLFunnelCounts>();
-  const grandTotals: PLFunnelCounts = { applications: 0, scheduled: 0, conducted: 0, closed: 0 };
+  const grandTotals: PLFunnelCounts = { applications: 0, scheduled: 0, conducted: 0, closed: 0, additional_coaching: 0 };
 
   // 売上
   const confirmedRevenue: Record<string, number> = {};
@@ -742,18 +762,18 @@ function computeSegmentData(
       channelMap.set(channel, {
         isPaid,
         funnel: new Map(),
-        totals: { applications: 0, scheduled: 0, conducted: 0, closed: 0 },
+        totals: { applications: 0, scheduled: 0, conducted: 0, closed: 0, additional_coaching: 0 },
       });
     }
     const ch = channelMap.get(channel)!;
 
     if (!ch.funnel.has(period)) {
-      ch.funnel.set(period, { applications: 0, scheduled: 0, conducted: 0, closed: 0 });
+      ch.funnel.set(period, { applications: 0, scheduled: 0, conducted: 0, closed: 0, additional_coaching: 0 });
     }
     const pf = ch.funnel.get(period)!;
 
     if (!periodTotals.has(period)) {
-      periodTotals.set(period, { applications: 0, scheduled: 0, conducted: 0, closed: 0 });
+      periodTotals.set(period, { applications: 0, scheduled: 0, conducted: 0, closed: 0, additional_coaching: 0 });
     }
     const pt = periodTotals.get(period)!;
 
@@ -781,6 +801,13 @@ function computeSegmentData(
         ch.totals.conducted++;
         pt.conducted++;
         grandTotals.conducted++;
+      }
+      // 追加指導（成約率分母から除外）
+      if (isAdditionalCoaching(s)) {
+        pf.additional_coaching++;
+        ch.totals.additional_coaching++;
+        pt.additional_coaching++;
+        grandTotals.additional_coaching++;
       }
       // 成約
       if (isStageClosed(s)) {
@@ -954,6 +981,86 @@ export function computePLSheetData(
     kisotsu: computeSegmentData(kisotsuCustomers, attributionMap, hasAttribution, periods),
     shinsotsu: computeSegmentData(shinsotsuCustomers, attributionMap, hasAttribution, periods),
   };
+}
+
+// ================================================================
+// チャネル別トレンド分析（直近2週間 vs 前6週間）
+// ================================================================
+
+export interface ChannelTrend {
+  channel: string;
+  recentCount: number;          // 直近2週間の申込数
+  recentWeeklyRate: number;     // 直近2週間の週あたり申込数
+  baselineCount: number;        // 前6週間の申込数
+  baselineWeeklyRate: number;   // 前6週間の週あたり申込数
+  trendPct: number;             // 変化率 (%)
+  trend: "up" | "down" | "stable";
+}
+
+export function computeChannelTrends(
+  customers: CustomerWithRelations[],
+  attributionMap?: Record<string, ChannelAttribution>
+): ChannelTrend[] {
+  const now = new Date();
+  const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+  const eightWeeksAgo = new Date(now.getTime() - 56 * 24 * 60 * 60 * 1000);
+
+  const twoWeeksStr = twoWeeksAgo.toISOString().slice(0, 10);
+  const eightWeeksStr = eightWeeksAgo.toISOString().slice(0, 10);
+
+  const hasAttribution = attributionMap && Object.keys(attributionMap).length > 0;
+
+  const byChannel = new Map<string, { recent: number; baseline: number }>();
+
+  for (const c of customers) {
+    const date = c.application_date;
+    if (!date) continue;
+    if (date < eightWeeksStr) continue;
+
+    const channel = hasAttribution
+      ? (attributionMap[c.id]?.marketing_channel || "不明")
+      : (c.utm_source || "その他");
+
+    if (!byChannel.has(channel)) {
+      byChannel.set(channel, { recent: 0, baseline: 0 });
+    }
+    const m = byChannel.get(channel)!;
+
+    if (date >= twoWeeksStr) {
+      m.recent++;
+    } else {
+      m.baseline++;
+    }
+  }
+
+  return Array.from(byChannel.entries())
+    .map(([channel, m]) => {
+      const recentWeeklyRate = m.recent / 2;
+      const baselineWeeklyRate = m.baseline / 6;
+
+      let trendPct = 0;
+      let trend: "up" | "down" | "stable" = "stable";
+
+      if (baselineWeeklyRate > 0) {
+        trendPct = ((recentWeeklyRate - baselineWeeklyRate) / baselineWeeklyRate) * 100;
+        trend = trendPct > 15 ? "up" : trendPct < -15 ? "down" : "stable";
+      } else if (m.recent > 0) {
+        trendPct = 100;
+        trend = "up";
+      }
+
+      return {
+        channel,
+        recentCount: m.recent,
+        recentWeeklyRate: Math.round(recentWeeklyRate * 10) / 10,
+        baselineCount: m.baseline,
+        baselineWeeklyRate: Math.round(baselineWeeklyRate * 10) / 10,
+        trendPct: Math.round(trendPct),
+        trend,
+      };
+    })
+    .filter(t => t.recentCount > 0 || t.baselineCount > 0)
+    .sort((a, b) => b.recentCount - a.recentCount);
 }
 
 // ================================================================

@@ -881,16 +881,16 @@ export const mockActivities: Activity[] = [
 
 // ===== ファネルメトリクス (P/Lシートベース) =====
 export const mockFunnelMetrics: FunnelMetrics[] = [
-  { period: "2025/05", applications: 17, scheduled: 11, conducted: 11, closed: 3, scheduling_rate: 0.65, conduct_rate: 1.0, closing_rate: 0.27 },
-  { period: "2025/06", applications: 36, scheduled: 29, conducted: 21, closed: 8, scheduling_rate: 0.81, conduct_rate: 0.72, closing_rate: 0.38 },
-  { period: "2025/07", applications: 40, scheduled: 35, conducted: 27, closed: 9, scheduling_rate: 0.88, conduct_rate: 0.77, closing_rate: 0.33 },
-  { period: "2025/08", applications: 24, scheduled: 20, conducted: 19, closed: 10, scheduling_rate: 0.83, conduct_rate: 0.95, closing_rate: 0.53 },
-  { period: "2025/09", applications: 29, scheduled: 23, conducted: 22, closed: 9, scheduling_rate: 0.79, conduct_rate: 0.96, closing_rate: 0.41 },
-  { period: "2025/10", applications: 35, scheduled: 28, conducted: 24, closed: 12, scheduling_rate: 0.80, conduct_rate: 0.86, closing_rate: 0.50 },
-  { period: "2025/11", applications: 38, scheduled: 28, conducted: 20, closed: 10, scheduling_rate: 0.74, conduct_rate: 0.71, closing_rate: 0.50 },
-  { period: "2025/12", applications: 20, scheduled: 18, conducted: 16, closed: 9, scheduling_rate: 0.90, conduct_rate: 0.89, closing_rate: 0.56 },
-  { period: "2026/01", applications: 23, scheduled: 20, conducted: 16, closed: 11, scheduling_rate: 0.87, conduct_rate: 0.80, closing_rate: 0.69 },
-  { period: "2026/02", applications: 29, scheduled: 25, conducted: 15, closed: 7, scheduling_rate: 0.86, conduct_rate: 0.60, closing_rate: 0.47 },
+  { period: "2025/05", applications: 17, scheduled: 11, conducted: 11, closed: 3, additional_coaching: 0, scheduling_rate: 0.65, conduct_rate: 1.0, closing_rate: 0.27 },
+  { period: "2025/06", applications: 36, scheduled: 29, conducted: 21, closed: 8, additional_coaching: 1, scheduling_rate: 0.81, conduct_rate: 0.72, closing_rate: 0.40 },
+  { period: "2025/07", applications: 40, scheduled: 35, conducted: 27, closed: 9, additional_coaching: 2, scheduling_rate: 0.88, conduct_rate: 0.77, closing_rate: 0.36 },
+  { period: "2025/08", applications: 24, scheduled: 20, conducted: 19, closed: 10, additional_coaching: 1, scheduling_rate: 0.83, conduct_rate: 0.95, closing_rate: 0.56 },
+  { period: "2025/09", applications: 29, scheduled: 23, conducted: 22, closed: 9, additional_coaching: 1, scheduling_rate: 0.79, conduct_rate: 0.96, closing_rate: 0.43 },
+  { period: "2025/10", applications: 35, scheduled: 28, conducted: 24, closed: 12, additional_coaching: 2, scheduling_rate: 0.80, conduct_rate: 0.86, closing_rate: 0.55 },
+  { period: "2025/11", applications: 38, scheduled: 28, conducted: 20, closed: 10, additional_coaching: 1, scheduling_rate: 0.74, conduct_rate: 0.71, closing_rate: 0.53 },
+  { period: "2025/12", applications: 20, scheduled: 18, conducted: 16, closed: 9, additional_coaching: 0, scheduling_rate: 0.90, conduct_rate: 0.89, closing_rate: 0.56 },
+  { period: "2026/01", applications: 23, scheduled: 20, conducted: 16, closed: 11, additional_coaching: 1, scheduling_rate: 0.87, conduct_rate: 0.80, closing_rate: 0.73 },
+  { period: "2026/02", applications: 29, scheduled: 25, conducted: 15, closed: 7, additional_coaching: 2, scheduling_rate: 0.86, conduct_rate: 0.60, closing_rate: 0.54 },
 ];
 
 // ===== 売上メトリクス =====

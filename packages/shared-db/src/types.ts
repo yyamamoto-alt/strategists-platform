@@ -472,8 +472,11 @@ export interface FunnelMetrics {
   scheduled: number;
   conducted: number;
   closed: number;
+  /** 追加指導数（成約率分母から除外） */
+  additional_coaching: number;
   scheduling_rate: number;
   conduct_rate: number;
+  /** 成約率: closed / (conducted - additional_coaching) */
   closing_rate: number;
 }
 
@@ -573,6 +576,8 @@ export interface PLFunnelCounts {
   scheduled: number;
   conducted: number;
   closed: number;
+  /** 追加指導ステージ（成約率分母から除外） */
+  additional_coaching: number;
 }
 
 export interface PLChannelData {

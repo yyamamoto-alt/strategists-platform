@@ -42,20 +42,24 @@ export function MarketingClient({ customers, attributionMap }: MarketingClientPr
 
   // KPI計算: attribution がある場合は marketing_channel ベース、ない場合は utm_source ベース
   const kpis = useMemo(() => {
-    const byChannel = new Map<string, { count: number; conducted: number; closed: number; ltvSum: number }>();
+    const byChannel = new Map<string, { count: number; conducted: number; closed: number; ltvSum: number; additionalCoaching: number }>();
     for (const c of customers) {
       const attr = attributionMap[c.id];
       const ch = hasAttribution
         ? (attr?.marketing_channel || "不明")
         : (c.utm_source || "その他");
 
-      if (!byChannel.has(ch)) byChannel.set(ch, { count: 0, conducted: 0, closed: 0, ltvSum: 0 });
+      if (!byChannel.has(ch)) byChannel.set(ch, { count: 0, conducted: 0, closed: 0, ltvSum: 0, additionalCoaching: 0 });
       const m = byChannel.get(ch)!;
       m.count++;
       const isClosed = c.pipeline?.stage === "成約" || c.pipeline?.stage === "入金済";
       // 実施判定: meeting_conducted_date がある or 成約済み
       if (c.pipeline?.meeting_conducted_date || isClosed) {
         m.conducted++;
+      }
+      // 追加指導（成約率分母から除外）
+      if (c.pipeline?.stage?.startsWith("追加指導")) {
+        m.additionalCoaching++;
       }
       if (isClosed) {
         m.closed++;
@@ -64,14 +68,18 @@ export function MarketingClient({ customers, attributionMap }: MarketingClientPr
     }
 
     const channelData = Array.from(byChannel.entries())
-      .map(([channel, m]) => ({
-        channel,
-        count: m.count,
-        conducted: m.conducted,
-        closed: m.closed,
-        closingRate: m.conducted > 0 ? m.closed / m.conducted : 0,
-        avgLTV: m.closed > 0 ? Math.round(m.ltvSum / m.closed) : 0,
-      }))
+      .map(([channel, m]) => {
+        // 成約率分母: 実施 - 追加指導
+        const closingDenom = m.conducted - m.additionalCoaching;
+        return {
+          channel,
+          count: m.count,
+          conducted: m.conducted,
+          closed: m.closed,
+          closingRate: closingDenom > 0 ? m.closed / closingDenom : 0,
+          avgLTV: m.closed > 0 ? Math.round(m.ltvSum / m.closed) : 0,
+        };
+      })
       .sort((a, b) => b.count - a.count);
 
     const top5Channels = channelData.slice(0, 5);
@@ -322,7 +330,7 @@ export function MarketingClient({ customers, attributionMap }: MarketingClientPr
               </p>
               <p className="text-sm text-gray-400 mt-1">
                 成約率 {formatPercent(kpis.bestClosingChannel.closingRate)}
-                ({kpis.bestClosingChannel.closed}/{kpis.bestClosingChannel.conducted}実施)
+                ({kpis.bestClosingChannel.closed}成約/{kpis.bestClosingChannel.conducted}実施)
               </p>
             </>
           ) : (

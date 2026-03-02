@@ -3,9 +3,11 @@ import {
   computeFunnelMetricsBySegment,
   computeRevenueMetrics,
   computeThreeTierRevenue,
+  computeChannelTrends,
   fetchDashboardData,
 } from "@/lib/data/dashboard-metrics";
 import { fetchLatestInsights } from "@/lib/data/insights";
+import { fetchChannelAttributions } from "@/lib/data/marketing-settings";
 import { DashboardClient } from "./dashboard-client";
 
 export const revalidate = 60;
@@ -37,15 +39,23 @@ export default async function DashboardPage() {
   }
 
   // 実データモード
-  const [customers, dashboardData, insights] = await Promise.all([
+  const [customers, dashboardData, insights, attributionMap] = await Promise.all([
     fetchCustomersWithRelations(),
     fetchDashboardData(),
     fetchLatestInsights(),
+    fetchChannelAttributions(),
   ]);
+
+  // 配列 → Record<customer_id, attribution> 変換
+  const attrRecord: Record<string, (typeof attributionMap)[number]> = {};
+  for (const a of attributionMap) {
+    attrRecord[a.customer_id] = a;
+  }
 
   const funnelBySegment = computeFunnelMetricsBySegment(customers);
   const revenueMetrics = computeRevenueMetrics(customers);
   const threeTierRevenue = computeThreeTierRevenue(customers);
+  const channelTrends = computeChannelTrends(customers, attrRecord);
 
   return (
     <DashboardClient
@@ -57,6 +67,7 @@ export default async function DashboardPage() {
       revenueMetrics={revenueMetrics}
       threeTierRevenue={threeTierRevenue}
       insights={insights}
+      channelTrends={channelTrends}
     />
   );
 }

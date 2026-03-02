@@ -103,8 +103,9 @@ function buildRows(
     rateLabel?: string;
     rateSuffix?: string;
     denomKey?: keyof PLFunnelCounts;
+    excludeAC?: boolean;
   }[] = [
-    { key: "closed", label: "成約数", rateLabel: "成約率", rateSuffix: "（実施→成約）", denomKey: "conducted" },
+    { key: "closed", label: "成約数", rateLabel: "成約率", rateSuffix: "（実施-追加指導→成約）", denomKey: "conducted", excludeAC: true },
     { key: "conducted", label: "実施数", rateLabel: "実施率", rateSuffix: "（日程確定→実施）", denomKey: "scheduled" },
     { key: "scheduled", label: "日程確定数", rateLabel: "日程確定率", rateSuffix: "（申込→日程確定）", denomKey: "applications" },
     { key: "applications", label: "申込数" },
@@ -189,8 +190,26 @@ function buildRows(
     // レート行（チャネル別折りたたみ付き）
     if (metric.rateLabel && metric.denomKey) {
       const dk = metric.denomKey;
+      const useACExclusion = !!metric.excludeAC;
       const rateOrganicGroup = `${metric.key}_rate_organic`;
       const ratePaidGroup = `${metric.key}_rate_paid`;
+
+      // 分母計算ヘルパー: excludeAC の場合は追加指導を差し引く
+      const getDenom = (counts: PLFunnelCounts | undefined): number => {
+        if (!counts) return 0;
+        const base = counts[dk] || 0;
+        return useACExclusion ? base - (counts.additional_coaching || 0) : base;
+      };
+      const getChDenom = (channels: typeof organicChannels, p: string): number => {
+        const base = sumChannelsRaw(channels, p, dk);
+        if (!useACExclusion) return base;
+        return base - sumChannelsRaw(channels, p, "additional_coaching");
+      };
+      const getChTotalDenom = (channels: typeof organicChannels): number => {
+        const base = channels.reduce((s, ch) => s + ch.totals[dk], 0);
+        if (!useACExclusion) return base;
+        return base - channels.reduce((s, ch) => s + (ch.totals.additional_coaching || 0), 0);
+      };
 
       // 全体レート
       rows.push({
@@ -201,12 +220,14 @@ function buildRows(
         format: "percent",
         values: periods.map((p) => {
           const num = data.totals[p]?.[metric.key] || 0;
-          const den = data.totals[p]?.[dk] || 0;
+          const den = getDenom(data.totals[p]);
           return den > 0 ? num / den : null;
         }),
         totalValue: (() => {
           const num = data.grandTotals[metric.key];
-          const den = data.grandTotals[dk];
+          const den = useACExclusion
+            ? data.grandTotals[dk] - (data.grandTotals.additional_coaching || 0)
+            : data.grandTotals[dk];
           return den > 0 ? num / den : null;
         })(),
       });
@@ -220,12 +241,12 @@ function buildRows(
         format: "percent",
         values: periods.map((p) => {
           const num = sumChannelsRaw(organicChannels, p, metric.key);
-          const den = sumChannelsRaw(organicChannels, p, dk);
+          const den = getChDenom(organicChannels, p);
           return den > 0 ? num / den : null;
         }),
         totalValue: (() => {
           const num = organicChannels.reduce((s, ch) => s + ch.totals[metric.key], 0);
-          const den = organicChannels.reduce((s, ch) => s + ch.totals[dk], 0);
+          const den = getChTotalDenom(organicChannels);
           return den > 0 ? num / den : null;
         })(),
         collapsibleGroup: rateOrganicGroup,
@@ -240,11 +261,15 @@ function buildRows(
           format: "percent",
           values: periods.map((p) => {
             const num = ch.funnel[p]?.[metric.key] || 0;
-            const den = ch.funnel[p]?.[dk] || 0;
+            const den = useACExclusion
+              ? (ch.funnel[p]?.[dk] || 0) - (ch.funnel[p]?.additional_coaching || 0)
+              : (ch.funnel[p]?.[dk] || 0);
             return den > 0 ? num / den : null;
           }),
           totalValue: (() => {
-            const den = ch.totals[dk];
+            const den = useACExclusion
+              ? ch.totals[dk] - (ch.totals.additional_coaching || 0)
+              : ch.totals[dk];
             return den > 0 ? ch.totals[metric.key] / den : null;
           })(),
           parentGroup: rateOrganicGroup,
@@ -260,12 +285,12 @@ function buildRows(
         format: "percent",
         values: periods.map((p) => {
           const num = sumChannelsRaw(paidChannels, p, metric.key);
-          const den = sumChannelsRaw(paidChannels, p, dk);
+          const den = getChDenom(paidChannels, p);
           return den > 0 ? num / den : null;
         }),
         totalValue: (() => {
           const num = paidChannels.reduce((s, ch) => s + ch.totals[metric.key], 0);
-          const den = paidChannels.reduce((s, ch) => s + ch.totals[dk], 0);
+          const den = getChTotalDenom(paidChannels);
           return den > 0 ? num / den : null;
         })(),
         collapsibleGroup: ratePaidGroup,
@@ -280,11 +305,15 @@ function buildRows(
           format: "percent",
           values: periods.map((p) => {
             const num = ch.funnel[p]?.[metric.key] || 0;
-            const den = ch.funnel[p]?.[dk] || 0;
+            const den = useACExclusion
+              ? (ch.funnel[p]?.[dk] || 0) - (ch.funnel[p]?.additional_coaching || 0)
+              : (ch.funnel[p]?.[dk] || 0);
             return den > 0 ? num / den : null;
           }),
           totalValue: (() => {
-            const den = ch.totals[dk];
+            const den = useACExclusion
+              ? ch.totals[dk] - (ch.totals.additional_coaching || 0)
+              : ch.totals[dk];
             return den > 0 ? ch.totals[metric.key] / den : null;
           })(),
           parentGroup: ratePaidGroup,
@@ -723,7 +752,7 @@ export function RevenueClient({ plData }: RevenueClientProps) {
         <div>
           <h1 className="text-2xl font-bold text-white">売上管理</h1>
           <p className="text-sm text-gray-500 mt-1">
-            P/L（Excel準拠） ※成約率の分母は実施数
+            P/L（Excel準拠） ※成約率の分母は実施数-追加指導数
           </p>
         </div>
         <div className="flex gap-1">

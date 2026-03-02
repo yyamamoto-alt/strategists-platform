@@ -9,6 +9,7 @@ import type {
   ThreeTierRevenue,
   AiInsight,
 } from "@strategy-school/shared-db";
+import type { ChannelTrend } from "@/lib/data/dashboard-metrics";
 
 const CATEGORY_META: Record<string, { label: string; accent: string; bg: string }> = {
   marketing: { label: "マーケティング", accent: "border-blue-500", bg: "bg-blue-500/5" },
@@ -22,12 +23,10 @@ function parseInsightItems(content: string): { title: string; body: string }[] {
     .filter((s) => s.trim().length > 0)
     .map((s) => {
       const trimmed = s.trim();
-      // 太字タイトル（**...**）を抽出
       const boldMatch = trimmed.match(/^\*\*(.+?)\*\*[：:\s]*([\s\S]*)/);
       if (boldMatch) {
         return { title: boldMatch[1].trim(), body: boldMatch[2].trim() };
       }
-      // 最初の行をタイトルとして使用
       const lines = trimmed.split("\n");
       return { title: lines[0].trim(), body: lines.slice(1).join("\n").trim() };
     });
@@ -42,6 +41,7 @@ interface DashboardClientProps {
   revenueMetrics: RevenueMetrics[];
   threeTierRevenue?: ThreeTierRevenue[];
   insights?: AiInsight[];
+  channelTrends?: ChannelTrend[];
 }
 
 export function DashboardClient({
@@ -53,6 +53,7 @@ export function DashboardClient({
   revenueMetrics,
   threeTierRevenue,
   insights,
+  channelTrends,
 }: DashboardClientProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationError, setGenerationError] = useState<string | null>(null);
@@ -85,7 +86,6 @@ export function DashboardClient({
     }
   };
 
-  // management カテゴリをフィルタ
   const displayInsights = localInsights?.filter(
     (i) => i.category === "marketing" || i.category === "sales"
   );
@@ -119,6 +119,74 @@ export function DashboardClient({
           />
         </div>
       </div>
+
+      {/* 直近のマーケティング状況分析 */}
+      {channelTrends && channelTrends.length > 0 && (
+        <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-6">
+          <div className="mb-4">
+            <h2 className="text-lg font-semibold text-white">直近のマーケティング状況分析</h2>
+            <p className="text-xs text-gray-500 mt-1">
+              直近2週間 vs 前6週間の週あたりペース比較
+            </p>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+            {channelTrends.map((t) => (
+              <div
+                key={t.channel}
+                className={`rounded-lg border p-3 ${
+                  t.trend === "up"
+                    ? "border-green-500/30 bg-green-500/5"
+                    : t.trend === "down"
+                      ? "border-red-500/30 bg-red-500/5"
+                      : "border-white/10 bg-white/[0.02]"
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs font-medium text-gray-300 truncate">
+                    {t.channel}
+                  </span>
+                  <span
+                    className={`text-lg font-bold ${
+                      t.trend === "up"
+                        ? "text-green-400"
+                        : t.trend === "down"
+                          ? "text-red-400"
+                          : "text-gray-400"
+                    }`}
+                  >
+                    {t.trend === "up" ? "↑" : t.trend === "down" ? "↓" : "→"}
+                  </span>
+                </div>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-xl font-bold text-white">
+                    {t.recentCount}
+                  </span>
+                  <span className="text-xs text-gray-500">件/2週</span>
+                </div>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-[10px] text-gray-500">
+                    週{t.recentWeeklyRate}/週 (前: {t.baselineWeeklyRate}/週)
+                  </span>
+                </div>
+                {t.trendPct !== 0 && (
+                  <span
+                    className={`text-xs font-semibold ${
+                      t.trend === "up"
+                        ? "text-green-400"
+                        : t.trend === "down"
+                          ? "text-red-400"
+                          : "text-gray-400"
+                    }`}
+                  >
+                    {t.trendPct > 0 ? "+" : ""}
+                    {t.trendPct}%
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* AI経営示唆 */}
       <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-6">

@@ -104,7 +104,7 @@ export function FunnelChart({ data, kisotsuData, shinsotsuData }: FunnelChartPro
             yAxisId="right"
             type="monotone"
             dataKey="closing_rate_pct"
-            name="成約率(実施→成約%)"
+            name="成約率(実施-追加指導→成約%)"
             stroke="#f59e0b"
             strokeWidth={2}
             strokeDasharray="5 5"
