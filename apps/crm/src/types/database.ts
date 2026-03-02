@@ -38,4 +38,8 @@ export type {
   ChannelFunnelPivot,
   ChannelFunnelPivotPeriod,
   AiInsight,
+  PLFunnelCounts,
+  PLChannelData,
+  PLSegmentData,
+  PLSheetData,
 } from "@strategy-school/shared-db";

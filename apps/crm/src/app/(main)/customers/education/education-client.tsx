@@ -12,6 +12,7 @@ import {
   calcAgentProjectedRevenue,
   isAgentCustomer,
   isCurrentlyEnrolled,
+  isShinsotsu,
 } from "@/lib/calc-fields";
 import {
   SpreadsheetTable,
@@ -35,14 +36,16 @@ export function EducationClient({ customers }: EducationClientProps) {
   );
 
   const filteredByTab = useMemo(
-    () => enrolledCustomers.filter((c) => c.attribute === tab),
+    () => enrolledCustomers.filter((c) =>
+      tab === "新卒" ? isShinsotsu(c.attribute) : !isShinsotsu(c.attribute)
+    ),
     [enrolledCustomers, tab]
   );
 
   // KPI計算
   const kpis = useMemo(() => {
-    const kisotsu = enrolledCustomers.filter((c) => c.attribute === "既卒");
-    const shinsotsu = enrolledCustomers.filter((c) => c.attribute === "新卒");
+    const kisotsu = enrolledCustomers.filter((c) => !isShinsotsu(c.attribute));
+    const shinsotsu = enrolledCustomers.filter((c) => isShinsotsu(c.attribute));
 
     const currentlyEnrolledKisotsu = kisotsu.filter(isCurrentlyEnrolled).length;
     const currentlyEnrolledShinsotsu = shinsotsu.filter(isCurrentlyEnrolled).length;
@@ -326,7 +329,7 @@ export function EducationClient({ customers }: EducationClientProps) {
         >
           既卒（社会人）
           <span className="ml-1.5 text-xs opacity-75">
-            {enrolledCustomers.filter((c) => c.attribute === "既卒").length}
+            {enrolledCustomers.filter((c) => !isShinsotsu(c.attribute)).length}
           </span>
         </button>
         <button
@@ -339,7 +342,7 @@ export function EducationClient({ customers }: EducationClientProps) {
         >
           新卒（学生）
           <span className="ml-1.5 text-xs opacity-75">
-            {enrolledCustomers.filter((c) => c.attribute === "新卒").length}
+            {enrolledCustomers.filter((c) => isShinsotsu(c.attribute)).length}
           </span>
         </button>
       </div>

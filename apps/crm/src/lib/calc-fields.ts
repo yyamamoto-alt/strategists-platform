@@ -4,6 +4,13 @@ import type { CustomerWithRelations } from "@strategy-school/shared-db";
 // 共通ヘルパー（dashboard-metrics.ts と共用、client-safe）
 // ================================================================
 
+/** 新卒判定: "新卒", "27卒(学部卒)", "28卒(院卒)" 等すべてを新卒と判定 */
+export function isShinsotsu(attribute: string | null | undefined): boolean {
+  if (!attribute) return false;
+  if (attribute.includes("既卒")) return false;
+  return attribute.includes("卒");
+}
+
 /** 顧客のエージェント紹介報酬期待値を算出（Excel Col DX 再現） */
 export function calcExpectedReferralFee(c: CustomerWithRelations): number {
   const a = c.agent;
@@ -95,7 +102,7 @@ export function calcSalesProjection(c: CustomerWithRelations): number {
 export function calcExpectedLTV(c: CustomerWithRelations): number {
   const salesProjection = calcSalesProjection(c);
   if (salesProjection > 0) return salesProjection;
-  const defaultLTV = c.attribute === "新卒" ? 240000 : 427636;
+  const defaultLTV = isShinsotsu(c.attribute) ? 240000 : 427636;
   return Math.round(defaultLTV * calcClosingProbability(c));
 }
 

@@ -11,6 +11,10 @@ import type {
   AgentRevenueSummary,
   QuarterlyForecast,
   ChannelFunnelPivot,
+  PLSheetData,
+  PLSegmentData,
+  PLChannelData,
+  PLFunnelCounts,
 } from "@strategy-school/shared-db";
 
 // ================================================================
@@ -24,6 +28,7 @@ import {
   isAgentConfirmed,
   getSubsidyAmount,
   calcAgentProjectedRevenue,
+  isShinsotsu,
 } from "@/lib/calc-fields";
 
 /** 成約判定: 実データのステージ値に対応 */
@@ -291,7 +296,7 @@ export function computeThreeTierRevenue(
     if (closed) {
       m.confirmed_school += amount;
       // 既卒/新卒セグメント分離
-      if (c.attribute?.includes('新卒')) {
+      if (isShinsotsu(c.attribute)) {
         m.confirmed_school_shinsotsu += amount;
       } else {
         m.confirmed_school_kisotsu += amount;
@@ -623,6 +628,249 @@ export function computeChannelFunnelPivot(
         },
       };
     });
+}
+
+// ================================================================
+// PL Sheet 再現集計（Excel準拠 — 既卒/新卒セグメント別）
+// ================================================================
+
+function isPaidChannelName(ch: string): boolean {
+  return ch.includes("広告");
+}
+
+function computeSegmentData(
+  customers: CustomerWithRelations[],
+  attributionMap: Record<string, ChannelAttribution>,
+  hasAttribution: boolean,
+  allPeriods: string[]
+): PLSegmentData {
+  // チャネル別データ蓄積
+  const channelMap = new Map<
+    string,
+    {
+      isPaid: boolean;
+      funnel: Map<string, PLFunnelCounts>;
+      totals: PLFunnelCounts;
+    }
+  >();
+
+  // 月別トータル
+  const periodTotals = new Map<string, PLFunnelCounts>();
+  const grandTotals: PLFunnelCounts = { applications: 0, scheduled: 0, conducted: 0, closed: 0 };
+
+  // 売上
+  const confirmedRevenue: Record<string, number> = {};
+  const revenue: Record<string, number> = {};
+  let confirmedRevenueTotal = 0;
+  let revenueTotal = 0;
+
+  // LTV計算用
+  const closedCountByPeriod: Record<string, number> = {};
+  const schoolRevByPeriod: Record<string, number> = {};
+  const agentRevByPeriod: Record<string, number> = {};
+
+  let agentConfirmed = 0;
+  let agentProjected = 0;
+
+  // 卒年別申込数（新卒用）
+  const gradYearApps: Record<string, Record<string, number>> = {};
+
+  for (const c of customers) {
+    if (!c.application_date) continue;
+    const period = c.application_date.slice(0, 7).replace("-", "/");
+
+    // チャネル解決
+    const channel = hasAttribution
+      ? (attributionMap[c.id]?.marketing_channel || "不明")
+      : (c.utm_source || "その他");
+
+    const isPaid = isPaidChannelName(channel);
+
+    // チャネルエントリ確保
+    if (!channelMap.has(channel)) {
+      channelMap.set(channel, {
+        isPaid,
+        funnel: new Map(),
+        totals: { applications: 0, scheduled: 0, conducted: 0, closed: 0 },
+      });
+    }
+    const ch = channelMap.get(channel)!;
+
+    if (!ch.funnel.has(period)) {
+      ch.funnel.set(period, { applications: 0, scheduled: 0, conducted: 0, closed: 0 });
+    }
+    const pf = ch.funnel.get(period)!;
+
+    if (!periodTotals.has(period)) {
+      periodTotals.set(period, { applications: 0, scheduled: 0, conducted: 0, closed: 0 });
+    }
+    const pt = periodTotals.get(period)!;
+
+    // 申込
+    pf.applications++;
+    ch.totals.applications++;
+    pt.applications++;
+    grandTotals.applications++;
+
+    // ファネルステップ
+    if (c.pipeline) {
+      const s = c.pipeline.stage;
+      const dealStatus = c.pipeline.deal_status;
+
+      // 日程確定
+      if (s !== "日程未確") {
+        pf.scheduled++;
+        ch.totals.scheduled++;
+        pt.scheduled++;
+        grandTotals.scheduled++;
+      }
+      // 面談実施
+      if (dealStatus === "実施" || isStageClosed(s)) {
+        pf.conducted++;
+        ch.totals.conducted++;
+        pt.conducted++;
+        grandTotals.conducted++;
+      }
+      // 成約
+      if (isStageClosed(s)) {
+        pf.closed++;
+        ch.totals.closed++;
+        pt.closed++;
+        grandTotals.closed++;
+
+        const amount = c.contract?.confirmed_amount || 0;
+        confirmedRevenue[period] = (confirmedRevenue[period] || 0) + amount;
+        confirmedRevenueTotal += amount;
+        closedCountByPeriod[period] = (closedCountByPeriod[period] || 0) + 1;
+        schoolRevByPeriod[period] = (schoolRevByPeriod[period] || 0) + amount;
+      }
+    }
+
+    // 人材紹介売上
+    if (isAgentCustomer(c)) {
+      const fee = calcExpectedReferralFee(c);
+      if (isAgentConfirmed(c)) {
+        agentConfirmed += fee;
+        agentRevByPeriod[period] = (agentRevByPeriod[period] || 0) + fee;
+      } else if (isCurrentlyEnrolled(c)) {
+        agentProjected += fee;
+        agentRevByPeriod[period] = (agentRevByPeriod[period] || 0) + fee;
+      }
+    }
+
+    // 卒年別申込数
+    if (c.graduation_year) {
+      const gy = String(c.graduation_year);
+      if (!gradYearApps[gy]) gradYearApps[gy] = {};
+      gradYearApps[gy][period] = (gradYearApps[gy][period] || 0) + 1;
+    }
+  }
+
+  // 売上計算: revenue = confirmed + agent
+  for (const p of allPeriods) {
+    const conf = confirmedRevenue[p] || 0;
+    const agentRev = agentRevByPeriod[p] || 0;
+    revenue[p] = conf + agentRev;
+    revenueTotal += revenue[p];
+  }
+
+  // LTV計算
+  const ltvSchool: Record<string, number> = {};
+  const ltvWithAgent: Record<string, number> = {};
+  let totalClosedCount = 0;
+  let totalSchoolRev = 0;
+  let totalAgentRev = 0;
+
+  for (const p of allPeriods) {
+    const closed = closedCountByPeriod[p] || 0;
+    const schoolRev = schoolRevByPeriod[p] || 0;
+    const agentRev = agentRevByPeriod[p] || 0;
+
+    ltvSchool[p] = closed > 0 ? Math.round(schoolRev / closed) : 0;
+    ltvWithAgent[p] = closed > 0 ? Math.round((schoolRev + agentRev) / closed) : 0;
+
+    totalClosedCount += closed;
+    totalSchoolRev += schoolRev;
+    totalAgentRev += agentRev;
+  }
+
+  const cumulativeLtvSchool = totalClosedCount > 0 ? Math.round(totalSchoolRev / totalClosedCount) : 0;
+  const cumulativeLtvWithAgent = totalClosedCount > 0 ? Math.round((totalSchoolRev + totalAgentRev) / totalClosedCount) : 0;
+
+  const ltvPerApp = grandTotals.applications > 0 ? Math.round(confirmedRevenueTotal / grandTotals.applications) : 0;
+  const targetCpa = Math.round(ltvPerApp * 0.3);
+
+  // チャネルデータ変換
+  const channels: PLChannelData[] = [];
+  channelMap.forEach((data, name) => {
+    const funnel: Record<string, PLFunnelCounts> = {};
+    data.funnel.forEach((counts, period) => {
+      funnel[period] = counts;
+    });
+    channels.push({
+      name,
+      isPaid: data.isPaid,
+      funnel,
+      totals: data.totals,
+    });
+  });
+
+  // ソート: organic → paid、それぞれ申込数降順
+  channels.sort((a, b) => {
+    if (a.isPaid !== b.isPaid) return a.isPaid ? 1 : -1;
+    return b.totals.applications - a.totals.applications;
+  });
+
+  // periodTotals変換
+  const totals: Record<string, PLFunnelCounts> = {};
+  periodTotals.forEach((counts, period) => {
+    totals[period] = counts;
+  });
+
+  return {
+    revenue,
+    confirmedRevenue,
+    revenueTotal,
+    confirmedRevenueTotal,
+    channels,
+    totals,
+    grandTotals,
+    ltvSchool,
+    ltvWithAgent,
+    cumulativeLtvSchool,
+    cumulativeLtvWithAgent,
+    agentConfirmed,
+    agentProjected,
+    ltvPerApp,
+    targetCpa,
+    graduationYearApps: Object.keys(gradYearApps).length > 0 ? gradYearApps : undefined,
+  };
+}
+
+export function computePLSheetData(
+  customers: CustomerWithRelations[],
+  attributionMap: Record<string, ChannelAttribution>
+): PLSheetData {
+  const hasAttribution = Object.keys(attributionMap).length > 0;
+
+  // 全期間収集
+  const periodSet = new Set<string>();
+  for (const c of customers) {
+    if (c.application_date) {
+      periodSet.add(c.application_date.slice(0, 7).replace("-", "/"));
+    }
+  }
+  const periods = Array.from(periodSet).sort();
+
+  // 既卒/新卒分割
+  const kisotsuCustomers = customers.filter(c => !isShinsotsu(c.attribute));
+  const shinsotsuCustomers = customers.filter(c => isShinsotsu(c.attribute));
+
+  return {
+    periods,
+    kisotsu: computeSegmentData(kisotsuCustomers, attributionMap, hasAttribution, periods),
+    shinsotsu: computeSegmentData(shinsotsuCustomers, attributionMap, hasAttribution, periods),
+  };
 }
 
 // ================================================================

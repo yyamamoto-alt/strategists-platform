@@ -566,6 +566,47 @@ export interface ChannelFunnelPivot {
   };
 }
 
+// ---------- PL Sheet 再現型（Excel準拠） ----------
+
+export interface PLFunnelCounts {
+  applications: number;
+  scheduled: number;
+  conducted: number;
+  closed: number;
+}
+
+export interface PLChannelData {
+  name: string;
+  isPaid: boolean;
+  funnel: Record<string, PLFunnelCounts>;
+  totals: PLFunnelCounts;
+}
+
+export interface PLSegmentData {
+  revenue: Record<string, number>;
+  confirmedRevenue: Record<string, number>;
+  revenueTotal: number;
+  confirmedRevenueTotal: number;
+  channels: PLChannelData[];
+  totals: Record<string, PLFunnelCounts>;
+  grandTotals: PLFunnelCounts;
+  ltvSchool: Record<string, number>;
+  ltvWithAgent: Record<string, number>;
+  cumulativeLtvSchool: number;
+  cumulativeLtvWithAgent: number;
+  agentConfirmed: number;
+  agentProjected: number;
+  ltvPerApp: number;
+  targetCpa: number;
+  graduationYearApps?: Record<string, Record<string, number>>;
+}
+
+export interface PLSheetData {
+  periods: string[];
+  kisotsu: PLSegmentData;
+  shinsotsu: PLSegmentData;
+}
+
 // ---------- AI経営示唆型 ----------
 
 export interface AiInsight {
