@@ -61,31 +61,68 @@ export function getSubsidyAmount(c: CustomerWithRelations): number {
 // Phase 3: 算出フィールド（Excel パリティ用）
 // ================================================================
 
-/** 成約見込率（Excel Col DB: IFS formula with stage conditions） */
+/** 成約見込率（Excel Col DB: IFS formula — スプレッドシート完全準拠）
+ *
+ * T7 = pipeline.probability（営業角度: 営業マンが報告フォームで入力する 0–1）
+ * DC7 = attribute（既卒/新卒）
+ */
 export function calcClosingProbability(c: CustomerWithRelations): number {
   const stage = c.pipeline?.stage;
   if (!stage) return 0;
-  // 成約系 → 100%（動画講座購入/その他購入/追加指導は成約扱いしない）
+
+  // 営業角度（T7）: DBではfloat 0–1。未設定時は既卒65%/新卒30%をデフォルト
+  const t = (c.pipeline?.probability != null && c.pipeline.probability > 0)
+    ? c.pipeline.probability
+    : (isShinsotsu(c.attribute) ? 0.30 : 0.65);
+
+  // --- 成約系 → 100% ---
   if (stage === "成約" || stage === "入金済") return 1.0;
-  // その他購入・動画講座購入・追加指導は低確率扱い
-  if (stage === "その他購入" || stage === "動画講座購入" || stage === "追加指導") return 0;
+  if (stage === "成約(追加指導経由)" || stage === "途中解約(成約)") return 1.0;
+
+  // --- 追加指導系（サブタイプ判定） ---
+  if (stage.startsWith("追加指導")) {
+    if (stage.includes("CL") || stage.includes("noshow") || stage.includes("失注")) return 0;
+    if (stage.includes("検討中")) return 0.30;
+    // 追加指導（一般）: 営業角度 × 80%
+    return t * 0.80;
+  }
+
+  // --- その他購入・動画講座購入 → 0% ---
+  if (stage === "その他購入" || stage === "動画講座購入") return 0;
   if (stage.includes("成約見込")) return 0;
-  // 失注系 → 0%
-  if (stage === "失注" || stage === "失注見込" || stage === "失注見込(自動)" || stage === "CL" || stage === "全額返金") return 0;
-  // 未実施系 → 0%
-  if (stage === "NoShow" || stage === "未実施" || stage === "実施不可" || stage === "非実施対象") return 0;
-  // 保留
+
+  // --- CL → 5%（復帰の可能性あり） ---
+  if (stage === "CL") return 0.05;
+  if (stage === "全額返金") return 0;
+
+  // --- 失注系 ---
+  if (stage === "失注") return 0;
+  if (stage === "失注見込" || stage === "失注見込(自動)") return 0.02;
+
+  // --- 未実施: 面談予定だが未実施。既卒/新卒で大幅に異なる ---
+  if (stage === "未実施") {
+    return isShinsotsu(c.attribute) ? 0.80 * 0.30 : 0.90 * 0.65;
+  }
+
+  // --- NoShow/非実施 → 0% ---
+  if (stage === "NoShow" || stage === "実施不可" || stage === "非実施対象") return 0;
+
+  // --- 保留 → 0% ---
   if (stage === "保留" || c.pipeline?.deal_status === "保留") return 0;
-  // アクティブ
-  if (stage === "検討中") return 0.5;
-  if (stage === "長期検討") return 0.2;
-  if (stage === "日程未確") return 0.1;
-  // レガシー値（互換性維持）
-  if (stage === "提案中") return 0.5;
-  if (stage === "面談実施") return 0.3;
-  if (stage === "日程確定") return 0.15;
+
+  // --- アクティブステージ: 営業角度ベース ---
+  if (stage === "検討中") return t * 0.80;
+  if (stage === "長期検討") return t * 0.50;
+  if (stage === "日程確定") return 0.20;
+  if (stage === "日程未確") return 0.05;
+
+  // --- レガシー値 ---
+  if (stage === "提案中") return t * 0.80;
+  if (stage === "面談実施") return t * 0.80;
   if (stage === "問い合わせ") return 0.05;
-  return 0;
+
+  // デフォルト: Excel IFERROR fallback = 20%
+  return 0.20;
 }
 
 /** 売上見込（Excel Col N）= 確定売上 + 人材見込売上 + 補助金額 */

@@ -365,8 +365,11 @@ export function computeThreeTierRevenue(
       const projectedTotal = confirmedTotal + m.projected_agent;
 
       // Tier 3: 確定 + 未成約パイプラインの期待値（ステージ別確率）
-      const forecastTotal =
+      // 当月は月消化率で割り戻し（Excel Col DE 準拠）
+      const monthMultiplier = getMonthProgressMultiplier(period);
+      const forecastRaw =
         confirmedTotal + m.forecast_school + m.forecast_agent + m.forecast_subsidy;
+      const forecastTotal = forecastRaw * monthMultiplier;
 
       return {
         period,
@@ -836,14 +839,15 @@ function computeSegmentData(
     }
   }
 
-  // 売上計算: revenue = confirmed + agent, forecast = confirmed + agent + pipeline期待値
+  // 売上計算: revenue = confirmed + agent, forecast = confirmed + agent + pipeline期待値 × 月消化率補正
   for (const p of allPeriods) {
     const conf = confirmedRevenue[p] || 0;
     const agentRev = agentRevByPeriod[p] || 0;
     revenue[p] = conf + agentRev;
     revenueTotal += revenue[p];
     const forecast = conf + agentRev + (forecastByPeriod[p] || 0);
-    forecastRevenue[p] = Math.round(forecast);
+    const monthMul = getMonthProgressMultiplier(p);
+    forecastRevenue[p] = Math.round(forecast * monthMul);
     forecastRevenueTotal += forecastRevenue[p];
   }
 
