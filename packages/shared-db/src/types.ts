@@ -540,6 +540,81 @@ export interface QuarterlyForecast {
   applications: number;
 }
 
+// ---------- チャネル×月ピボット集計型 ----------
+
+export interface ChannelFunnelPivotPeriod {
+  applications: number;
+  scheduled: number;
+  conducted: number;
+  closed: number;
+  revenue: number;
+}
+
+export interface ChannelFunnelPivot {
+  channel: string;
+  periods: Record<string, ChannelFunnelPivotPeriod>;
+  total: {
+    applications: number;
+    scheduled: number;
+    conducted: number;
+    closed: number;
+    revenue: number;
+    conduct_rate: number;
+    closing_rate: number;
+    ltv_per_app: number;
+    target_cpa: number;
+  };
+}
+
+// ---------- AI経営示唆型 ----------
+
+export interface AiInsight {
+  id: string;
+  category: "marketing" | "management" | "sales";
+  content: string;
+  data_snapshot: Record<string, unknown> | null;
+  generated_at: string;
+}
+
+// ---------- マーケティング帰属型 ----------
+
+export interface MarketingChannel {
+  id: string;
+  name: string;
+  category: string;
+  is_paid: boolean;
+  priority: number;
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface ChannelMappingRule {
+  id: string;
+  source_field: string;
+  source_value: string;
+  match_type: "exact" | "contains" | "prefix";
+  channel_name: string;
+  notes: string | null;
+  priority: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface ChannelAttribution {
+  id: string;
+  customer_id: string;
+  marketing_channel: string;
+  attribution_source: string;
+  confidence: "high" | "medium" | "low";
+  touch_first: string | null;
+  touch_decision: string | null;
+  touch_last: string | null;
+  is_multi_touch: boolean;
+  raw_data: Record<string, string | null> | null;
+  computed_at: string;
+}
+
 // ---------- フィルタ・共通型 ----------
 
 export interface CustomerFilters {

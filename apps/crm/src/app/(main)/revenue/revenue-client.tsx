@@ -1,10 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState, useMemo } from "react";
 import { formatCurrency, formatPercent } from "@/lib/utils";
 import { RevenueChart } from "@/components/dashboard/revenue-chart";
 import { FunnelChart } from "@/components/dashboard/funnel-chart";
-import { ChannelTable } from "@/components/dashboard/channel-table";
 import type {
   CustomerWithRelations,
   RevenueMetrics,
@@ -13,6 +12,7 @@ import type {
   ThreeTierRevenue,
   AgentRevenueSummary,
   QuarterlyForecast,
+  ChannelFunnelPivot,
 } from "@strategy-school/shared-db";
 
 interface RevenueClientProps {
@@ -23,6 +23,7 @@ interface RevenueClientProps {
   threeTierRevenue?: ThreeTierRevenue[];
   agentSummary?: AgentRevenueSummary;
   quarterlyForecast?: QuarterlyForecast[];
+  channelPivot?: ChannelFunnelPivot[];
 }
 
 type TabId = "pl" | "quarterly" | "channel";
@@ -35,8 +36,10 @@ export function RevenueClient({
   threeTierRevenue,
   agentSummary,
   quarterlyForecast,
+  channelPivot,
 }: RevenueClientProps) {
   const [activeTab, setActiveTab] = useState<TabId>("pl");
+  const [showAllPeriods, setShowAllPeriods] = useState(false);
 
   // 累計計算
   const customersWithRevenue = customers.filter((c) => c.contract?.confirmed_amount);
@@ -62,6 +65,24 @@ export function RevenueClient({
     }),
     { confirmed: 0, projected: 0, forecast: 0, agent_confirmed: 0, agent_projected: 0, school_kisotsu: 0, school_shinsotsu: 0 }
   );
+
+  // ピボットテーブル用: 全期間のソート済みリスト
+  const allPeriods = useMemo(() => {
+    if (!channelPivot || channelPivot.length === 0) return [];
+    const periodSet = new Set<string>();
+    for (const ch of channelPivot) {
+      for (const p of Object.keys(ch.periods)) {
+        periodSet.add(p);
+      }
+    }
+    return Array.from(periodSet).sort((a, b) => a.localeCompare(b));
+  }, [channelPivot]);
+
+  // 表示する期間（最新6ヶ月 or 全期間）
+  const displayPeriods = useMemo(() => {
+    if (showAllPeriods) return allPeriods;
+    return allPeriods.slice(-6);
+  }, [allPeriods, showAllPeriods]);
 
   const tabs: { id: TabId; label: string }[] = [
     { id: "pl", label: "P/L（損益概要）" },
@@ -343,13 +364,232 @@ export function RevenueClient({
         </div>
       )}
 
-      {/* チャネル分析 */}
+      {/* チャネル分析 - ピボットテーブル */}
       {activeTab === "channel" && (
         <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-6">
-          <h2 className="text-lg font-semibold text-white mb-4">チャネル別実績</h2>
-          <ChannelTable data={channelMetrics} />
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-white">チャネル×月別ファネル分析</h2>
+            {channelPivot && allPeriods.length > 6 && (
+              <button
+                onClick={() => setShowAllPeriods(!showAllPeriods)}
+                className="text-xs px-3 py-1.5 rounded-lg bg-white/10 text-gray-300 hover:bg-white/20 transition-colors"
+              >
+                {showAllPeriods ? `最新6ヶ月のみ` : `全期間（${allPeriods.length}ヶ月）`}
+              </button>
+            )}
+          </div>
+          {channelPivot && channelPivot.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="text-sm whitespace-nowrap">
+                <thead>
+                  {/* ヘッダー1行目: チャネル名 + 月グループ + 合計グループ */}
+                  <tr className="border-b border-white/10">
+                    <th
+                      rowSpan={2}
+                      className="text-left py-2 px-3 text-xs font-semibold text-gray-500 sticky left-0 bg-surface-card z-10 min-w-[120px]"
+                    >
+                      チャネル
+                    </th>
+                    {displayPeriods.map((period) => (
+                      <th
+                        key={period}
+                        colSpan={3}
+                        className="text-center py-2 px-1 text-xs font-semibold text-gray-400 border-l border-white/10"
+                      >
+                        {period}
+                      </th>
+                    ))}
+                    <th
+                      colSpan={7}
+                      className="text-center py-2 px-1 text-xs font-semibold text-white border-l-2 border-white/20"
+                    >
+                      合計
+                    </th>
+                  </tr>
+                  {/* ヘッダー2行目: 各月のサブカラム + 合計のサブカラム */}
+                  <tr className="border-b border-white/10">
+                    {displayPeriods.map((period) => (
+                      <Fragment key={period}>
+                        <th className="text-right py-1 px-2 text-[10px] font-medium text-gray-500 border-l border-white/10">
+                          申込
+                        </th>
+                        <th className="text-right py-1 px-2 text-[10px] font-medium text-gray-500">
+                          実施
+                        </th>
+                        <th className="text-right py-1 px-2 text-[10px] font-medium text-gray-500">
+                          成約
+                        </th>
+                      </Fragment>
+                    ))}
+                    <th className="text-right py-1 px-2 text-[10px] font-medium text-gray-400 border-l-2 border-white/20">
+                      申込
+                    </th>
+                    <th className="text-right py-1 px-2 text-[10px] font-medium text-gray-400">
+                      実施
+                    </th>
+                    <th className="text-right py-1 px-2 text-[10px] font-medium text-gray-400">
+                      成約
+                    </th>
+                    <th className="text-right py-1 px-2 text-[10px] font-medium text-gray-400">
+                      実施率
+                    </th>
+                    <th className="text-right py-1 px-2 text-[10px] font-medium text-gray-400">
+                      成約率
+                    </th>
+                    <th className="text-right py-1 px-2 text-[10px] font-medium text-gray-400">
+                      LTV/申込
+                    </th>
+                    <th className="text-right py-1 px-2 text-[10px] font-medium text-gray-400">
+                      目標CPA
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {channelPivot.map((ch) => (
+                    <tr
+                      key={ch.channel}
+                      className="border-b border-white/[0.06] hover:bg-white/5"
+                    >
+                      <td className="py-2 px-3 font-medium text-white sticky left-0 bg-surface-card z-10">
+                        {ch.channel}
+                      </td>
+                      {displayPeriods.map((period) => {
+                        const d = ch.periods[period];
+                        return (
+                          <Fragment key={period}>
+                            <td className="py-1.5 px-2 text-right text-gray-300 border-l border-white/10">
+                              {d?.applications || <span className="text-gray-600">-</span>}
+                            </td>
+                            <td className="py-1.5 px-2 text-right text-gray-300">
+                              {d?.conducted || <span className="text-gray-600">-</span>}
+                            </td>
+                            <td className="py-1.5 px-2 text-right text-gray-300">
+                              {d?.closed || <span className="text-gray-600">-</span>}
+                            </td>
+                          </Fragment>
+                        );
+                      })}
+                      {/* 合計列 */}
+                      <td className="py-1.5 px-2 text-right font-medium text-white border-l-2 border-white/20">
+                        {ch.total.applications}
+                      </td>
+                      <td className="py-1.5 px-2 text-right text-gray-300">
+                        {ch.total.conducted}
+                      </td>
+                      <td className="py-1.5 px-2 text-right text-gray-300">
+                        {ch.total.closed}
+                      </td>
+                      <td className="py-1.5 px-2 text-right text-gray-300">
+                        {formatPercent(ch.total.conduct_rate)}
+                      </td>
+                      <td className="py-1.5 px-2 text-right text-gray-300">
+                        {formatPercent(ch.total.closing_rate)}
+                      </td>
+                      <td className="py-1.5 px-2 text-right text-amber-400">
+                        {formatCurrency(ch.total.ltv_per_app)}
+                      </td>
+                      <td className="py-1.5 px-2 text-right text-green-400">
+                        {formatCurrency(ch.total.target_cpa)}
+                      </td>
+                    </tr>
+                  ))}
+                  {/* 合計行 */}
+                  <tr className="border-t-2 border-white/20 bg-white/5 font-bold">
+                    <td className="py-2 px-3 text-white sticky left-0 bg-white/5 z-10">
+                      合計
+                    </td>
+                    {displayPeriods.map((period) => {
+                      const totApp = channelPivot.reduce(
+                        (s, ch) => s + (ch.periods[period]?.applications || 0),
+                        0
+                      );
+                      const totCond = channelPivot.reduce(
+                        (s, ch) => s + (ch.periods[period]?.conducted || 0),
+                        0
+                      );
+                      const totClosed = channelPivot.reduce(
+                        (s, ch) => s + (ch.periods[period]?.closed || 0),
+                        0
+                      );
+                      return (
+                        <Fragment key={period}>
+                          <td className="py-1.5 px-2 text-right text-white border-l border-white/10">
+                            {totApp || "-"}
+                          </td>
+                          <td className="py-1.5 px-2 text-right text-gray-300">
+                            {totCond || "-"}
+                          </td>
+                          <td className="py-1.5 px-2 text-right text-gray-300">
+                            {totClosed || "-"}
+                          </td>
+                        </Fragment>
+                      );
+                    })}
+                    {(() => {
+                      const grandApp = channelPivot.reduce(
+                        (s, ch) => s + ch.total.applications,
+                        0
+                      );
+                      const grandCond = channelPivot.reduce(
+                        (s, ch) => s + ch.total.conducted,
+                        0
+                      );
+                      const grandClosed = channelPivot.reduce(
+                        (s, ch) => s + ch.total.closed,
+                        0
+                      );
+                      const grandRev = channelPivot.reduce(
+                        (s, ch) => s + ch.total.revenue,
+                        0
+                      );
+                      const grandSched = channelPivot.reduce(
+                        (s, ch) => s + ch.total.scheduled,
+                        0
+                      );
+                      const grandLtvPerApp =
+                        grandApp > 0 ? Math.round(grandRev / grandApp) : 0;
+                      return (
+                        <>
+                          <td className="py-1.5 px-2 text-right text-white border-l-2 border-white/20">
+                            {grandApp}
+                          </td>
+                          <td className="py-1.5 px-2 text-right text-gray-300">
+                            {grandCond}
+                          </td>
+                          <td className="py-1.5 px-2 text-right text-gray-300">
+                            {grandClosed}
+                          </td>
+                          <td className="py-1.5 px-2 text-right text-gray-300">
+                            {formatPercent(
+                              grandSched > 0 ? grandCond / grandSched : 0
+                            )}
+                          </td>
+                          <td className="py-1.5 px-2 text-right text-gray-300">
+                            {formatPercent(
+                              grandCond > 0 ? grandClosed / grandCond : 0
+                            )}
+                          </td>
+                          <td className="py-1.5 px-2 text-right text-amber-400">
+                            {formatCurrency(grandLtvPerApp)}
+                          </td>
+                          <td className="py-1.5 px-2 text-right text-green-400">
+                            {formatCurrency(Math.round(grandLtvPerApp * 0.3))}
+                          </td>
+                        </>
+                      );
+                    })()}
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="text-gray-500 text-sm">
+              チャネルデータがありません
+            </p>
+          )}
         </div>
       )}
     </div>
   );
 }
+

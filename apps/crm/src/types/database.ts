@@ -32,4 +32,10 @@ export type {
   ThreeTierRevenue,
   AgentRevenueSummary,
   QuarterlyForecast,
+  MarketingChannel,
+  ChannelMappingRule,
+  ChannelAttribution,
+  ChannelFunnelPivot,
+  ChannelFunnelPivotPeriod,
+  AiInsight,
 } from "@strategy-school/shared-db";

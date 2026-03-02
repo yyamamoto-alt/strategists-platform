@@ -5,6 +5,7 @@ import {
   computeThreeTierRevenue,
   fetchDashboardData,
 } from "@/lib/data/dashboard-metrics";
+import { fetchLatestInsights } from "@/lib/data/insights";
 import { DashboardClient } from "./dashboard-client";
 
 export const revalidate = 60;
@@ -36,9 +37,10 @@ export default async function DashboardPage() {
   }
 
   // 実データモード
-  const [customers, dashboardData] = await Promise.all([
+  const [customers, dashboardData, insights] = await Promise.all([
     fetchCustomersWithRelations(),
     fetchDashboardData(),
+    fetchLatestInsights(),
   ]);
 
   const funnelMetrics = computeFunnelMetrics(customers);
@@ -52,6 +54,7 @@ export default async function DashboardPage() {
       funnelMetrics={funnelMetrics}
       revenueMetrics={revenueMetrics}
       threeTierRevenue={threeTierRevenue}
+      insights={insights}
     />
   );
 }

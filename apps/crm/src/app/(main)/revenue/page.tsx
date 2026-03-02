@@ -6,7 +6,9 @@ import {
   computeThreeTierRevenue,
   computeAgentRevenueSummary,
   computeQuarterlyForecast,
+  computeChannelFunnelPivot,
 } from "@/lib/data/dashboard-metrics";
+import { fetchChannelAttributions } from "@/lib/data/marketing-settings";
 import { RevenueClient } from "./revenue-client";
 
 export const revalidate = 60;
@@ -31,13 +33,24 @@ export default async function RevenuePage() {
     );
   }
 
-  const customers = await fetchCustomersWithRelations();
+  const [customers, attributions] = await Promise.all([
+    fetchCustomersWithRelations(),
+    fetchChannelAttributions(),
+  ]);
+
+  // 帰属データをMapに変換
+  const attributionMap: Record<string, (typeof attributions)[number]> = {};
+  for (const attr of attributions) {
+    attributionMap[attr.customer_id] = attr;
+  }
+
   const revenueMetrics = computeRevenueMetrics(customers);
   const funnelMetrics = computeFunnelMetrics(customers);
-  const channelMetrics = computeChannelMetrics(customers);
+  const channelMetrics = computeChannelMetrics(customers, attributionMap);
   const threeTierRevenue = computeThreeTierRevenue(customers);
   const agentSummary = computeAgentRevenueSummary(customers);
   const quarterlyForecast = computeQuarterlyForecast(customers);
+  const channelPivot = computeChannelFunnelPivot(customers, attributionMap);
 
   return (
     <RevenueClient
@@ -48,6 +61,7 @@ export default async function RevenuePage() {
       threeTierRevenue={threeTierRevenue}
       agentSummary={agentSummary}
       quarterlyForecast={quarterlyForecast}
+      channelPivot={channelPivot}
     />
   );
 }

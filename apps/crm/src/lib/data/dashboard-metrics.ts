@@ -10,6 +10,7 @@ import type {
   ThreeTierRevenue,
   AgentRevenueSummary,
   QuarterlyForecast,
+  ChannelFunnelPivot,
 } from "@strategy-school/shared-db";
 
 // ================================================================
@@ -516,6 +517,112 @@ export function computeChannelMetrics(
       cpa: 0,
       ltv: m.closings > 0 ? Math.round(m.revenue / m.closings) : 0,
     }));
+}
+
+// ================================================================
+// チャネル×月ピボット集計（Excel PL クロス分析再現）
+// ================================================================
+
+export function computeChannelFunnelPivot(
+  customers: CustomerWithRelations[],
+  attributionMap?: Record<string, ChannelAttribution>
+): ChannelFunnelPivot[] {
+  const hasAttribution = attributionMap && Object.keys(attributionMap).length > 0;
+
+  // チャネル → { periods: { period → counts }, total counts }
+  const byChannel = new Map<
+    string,
+    {
+      periods: Map<string, { applications: number; scheduled: number; conducted: number; closed: number; revenue: number }>;
+      applications: number;
+      scheduled: number;
+      conducted: number;
+      closed: number;
+      revenue: number;
+    }
+  >();
+
+  for (const c of customers) {
+    const date = c.application_date;
+    if (!date) continue;
+    const period = date.slice(0, 7).replace("-", "/");
+
+    const channel = hasAttribution
+      ? (attributionMap[c.id]?.marketing_channel || "不明")
+      : (c.utm_source || "その他");
+
+    if (!byChannel.has(channel)) {
+      byChannel.set(channel, {
+        periods: new Map(),
+        applications: 0,
+        scheduled: 0,
+        conducted: 0,
+        closed: 0,
+        revenue: 0,
+      });
+    }
+    const ch = byChannel.get(channel)!;
+
+    if (!ch.periods.has(period)) {
+      ch.periods.set(period, { applications: 0, scheduled: 0, conducted: 0, closed: 0, revenue: 0 });
+    }
+    const p = ch.periods.get(period)!;
+
+    // 申込
+    p.applications++;
+    ch.applications++;
+
+    if (c.pipeline) {
+      const s = c.pipeline.stage;
+      const dealStatus = c.pipeline.deal_status;
+
+      // 日程確定
+      if (s !== "日程未確") {
+        p.scheduled++;
+        ch.scheduled++;
+      }
+      // 面談実施
+      if (dealStatus === "実施" || isStageClosed(s)) {
+        p.conducted++;
+        ch.conducted++;
+      }
+      // 成約
+      if (isStageClosed(s)) {
+        const rev = c.contract?.confirmed_amount || 0;
+        p.closed++;
+        ch.closed++;
+        p.revenue += rev;
+        ch.revenue += rev;
+      }
+    }
+  }
+
+  return Array.from(byChannel.entries())
+    .sort(([, a], [, b]) => b.revenue - a.revenue)
+    .map(([channel, ch]) => {
+      const periods: Record<string, { applications: number; scheduled: number; conducted: number; closed: number; revenue: number }> = {};
+      ch.periods.forEach((counts, period) => {
+        periods[period] = counts;
+      });
+
+      const ltvPerApp = ch.applications > 0 ? Math.round(ch.revenue / ch.applications) : 0;
+
+      return {
+        channel,
+        periods,
+        total: {
+          applications: ch.applications,
+          scheduled: ch.scheduled,
+          conducted: ch.conducted,
+          closed: ch.closed,
+          revenue: ch.revenue,
+          conduct_rate: ch.scheduled > 0 ? ch.conducted / ch.scheduled : 0,
+          closing_rate: ch.conducted > 0 ? ch.closed / ch.conducted : 0,
+          ltv_per_app: ltvPerApp,
+          target_cpa: Math.round(ltvPerApp * 0.3),
+        },
+      };
+    });
 }
 
 // ================================================================
