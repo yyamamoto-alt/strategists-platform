@@ -31,6 +31,18 @@ import {
   isShinsotsu,
 } from "@/lib/calc-fields";
 
+/** 集計対象開始日: これより前の申込は集計から除外（データはDB保持） */
+const ANALYTICS_START_DATE = "2024-01-01";
+
+/** 集計対象期間フィルタ */
+function filterByAnalyticsPeriod(
+  customers: CustomerWithRelations[]
+): CustomerWithRelations[] {
+  return customers.filter(
+    (c) => c.application_date && c.application_date >= ANALYTICS_START_DATE
+  );
+}
+
 /** 成約判定: 「成約」「入金済」のみ。動画講座購入/その他購入/追加指導/成約見込は除外 */
 function isStageClosed(stage: string | undefined | null): boolean {
   if (!stage) return false;
@@ -58,12 +70,13 @@ function getQuarter(period: string): string {
 export function computeFunnelMetrics(
   customers: CustomerWithRelations[]
 ): FunnelMetrics[] {
+  const filtered = filterByAnalyticsPeriod(customers);
   const byMonth = new Map<
     string,
     { applications: number; scheduled: number; conducted: number; closed: number }
   >();
 
-  for (const c of customers) {
+  for (const c of filtered) {
     const date = c.application_date;
     if (!date) continue;
     const period = date.slice(0, 7).replace("-", "/");
@@ -111,6 +124,7 @@ export function computeFunnelMetrics(
 export function computeRevenueMetrics(
   customers: CustomerWithRelations[]
 ): RevenueMetrics[] {
+  customers = filterByAnalyticsPeriod(customers);
   const byMonth = new Map<
     string,
     {
@@ -246,6 +260,7 @@ function getMonthProgressMultiplier(period: string): number {
 export function computeThreeTierRevenue(
   customers: CustomerWithRelations[]
 ): ThreeTierRevenue[] {
+  customers = filterByAnalyticsPeriod(customers);
   const byMonth = new Map<
     string,
     {
@@ -358,7 +373,7 @@ export function computeThreeTierRevenue(
 export function computeAgentRevenueSummary(
   customers: CustomerWithRelations[]
 ): AgentRevenueSummary {
-  const agentCustomers = customers.filter(isAgentCustomer);
+  const agentCustomers = filterByAnalyticsPeriod(customers).filter(isAgentCustomer);
 
   let totalExpected = 0;
   let totalConfirmed = 0;
@@ -481,6 +496,7 @@ export function computeChannelMetrics(
   customers: CustomerWithRelations[],
   attributionMap?: Record<string, ChannelAttribution>
 ): ChannelMetrics[] {
+  customers = filterByAnalyticsPeriod(customers);
   const byChannel = new Map<
     string,
     { applications: number; closings: number; revenue: number }
@@ -525,6 +541,7 @@ export function computeChannelFunnelPivot(
   customers: CustomerWithRelations[],
   attributionMap?: Record<string, ChannelAttribution>
 ): ChannelFunnelPivot[] {
+  customers = filterByAnalyticsPeriod(customers);
   const hasAttribution = attributionMap && Object.keys(attributionMap).length > 0;
 
   // チャネル → { periods: { period → counts }, total counts }
@@ -844,6 +861,7 @@ export function computePLSheetData(
   customers: CustomerWithRelations[],
   attributionMap: Record<string, ChannelAttribution>
 ): PLSheetData {
+  customers = filterByAnalyticsPeriod(customers);
   const hasAttribution = Object.keys(attributionMap).length > 0;
 
   // 全期間収集
@@ -875,11 +893,13 @@ async function fetchDashboardDataRaw() {
 
   const { count: totalCustomers } = await supabase
     .from("customers")
-    .select("*", { count: "exact", head: true });
+    .select("*", { count: "exact", head: true })
+    .gte("application_date", ANALYTICS_START_DATE);
 
   const { data: pipelineData } = await supabase
     .from("sales_pipeline")
-    .select("stage") as { data: { stage: string }[] | null };
+    .select("stage, customers!inner(application_date)")
+    .gte("customers.application_date", ANALYTICS_START_DATE) as { data: { stage: string }[] | null };
 
   const stageCounts: Record<string, number> = {};
   for (const p of pipelineData || []) {
