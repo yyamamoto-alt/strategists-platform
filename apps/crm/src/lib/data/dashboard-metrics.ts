@@ -176,6 +176,74 @@ export function computeRevenueMetrics(
 // 3段階売上メトリクス（Excel PL シート再現）
 // ================================================================
 
+/** 直近N月のファネル成約率を計算（実施→成約ベース） */
+function computeRecentClosingRate(
+  customers: CustomerWithRelations[],
+  recentMonths: number = 3
+): number {
+  // 月別のファネルデータを集計
+  const byMonth = new Map<string, { conducted: number; closed: number }>();
+
+  for (const c of customers) {
+    const date = c.application_date;
+    if (!date) continue;
+    const period = date.slice(0, 7).replace("-", "/");
+    if (!byMonth.has(period)) {
+      byMonth.set(period, { conducted: 0, closed: 0 });
+    }
+    const m = byMonth.get(period)!;
+    if (!c.pipeline) continue;
+    const s = c.pipeline.stage;
+    const dealStatus = c.pipeline.deal_status;
+    // 実施済み: deal_status="実施" or 成約系ステージ
+    if (dealStatus === "実施" || isStageClosed(s)) {
+      m.conducted++;
+    }
+    if (isStageClosed(s)) {
+      m.closed++;
+    }
+  }
+
+  // 直近N月のデータを取得（当月は除外 — 未完データなので）
+  const now = new Date();
+  const currentPeriod = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const sortedPeriods = Array.from(byMonth.keys())
+    .filter((p) => p < currentPeriod)
+    .sort((a, b) => b.localeCompare(a))
+    .slice(0, recentMonths);
+
+  let totalConducted = 0;
+  let totalClosed = 0;
+  for (const p of sortedPeriods) {
+    const m = byMonth.get(p)!;
+    totalConducted += m.conducted;
+    totalClosed += m.closed;
+  }
+
+  // 直近データがない場合は全体平均にフォールバック
+  if (totalConducted === 0) {
+    const allConducted = Array.from(byMonth.values()).reduce((s, m) => s + m.conducted, 0);
+    const allClosed = Array.from(byMonth.values()).reduce((s, m) => s + m.closed, 0);
+    return allConducted > 0 ? allClosed / allConducted : 0;
+  }
+
+  return totalClosed / totalConducted;
+}
+
+/** 当月の日数進捗補正係数を計算 */
+function getMonthProgressMultiplier(period: string): number {
+  const now = new Date();
+  const currentPeriod = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, "0")}`;
+
+  if (period !== currentPeriod) return 1; // 過去月は補正不要
+
+  const dayOfMonth = now.getDate();
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+
+  // 最低1日（0除算防止）
+  return dayOfMonth > 0 ? daysInMonth / dayOfMonth : 1;
+}
+
 export function computeThreeTierRevenue(
   customers: CustomerWithRelations[]
 ): ThreeTierRevenue[] {
@@ -194,13 +262,8 @@ export function computeThreeTierRevenue(
     }
   >();
 
-  // 全体の成約率（予測に使用）
-  const totalClosed = customers.filter(
-    (c) => c.pipeline?.stage === "成約" || c.pipeline?.stage === "入金済"
-  ).length;
-  const totalWithPipeline = customers.filter((c) => c.pipeline).length;
-  const overallClosingRate =
-    totalWithPipeline > 0 ? totalClosed / totalWithPipeline : 0;
+  // 直近3ヶ月のファネル成約率（実施→成約ベース）
+  const recentClosingRate = computeRecentClosingRate(customers, 3);
 
   for (const c of customers) {
     const period = getPeriod(c);
@@ -266,9 +329,13 @@ export function computeThreeTierRevenue(
       const confirmedTotal =
         m.confirmed_school + m.confirmed_agent + m.confirmed_subsidy;
       const projectedTotal = confirmedTotal + m.projected_agent;
-      // Tier 3: 確定 + 見込み + パイプラインの期待値（成約率 × projected_amount）
+
+      // Tier 3: 確定 + 見込み + パイプライン期待値
+      // 直近3ヶ月の成約率を使用 + 当月は日数進捗補正
+      const monthMultiplier = getMonthProgressMultiplier(period);
       const forecastTotal =
-        projectedTotal + m.pipeline_projected * overallClosingRate;
+        projectedTotal +
+        m.pipeline_projected * recentClosingRate * monthMultiplier;
 
       return {
         period,
@@ -406,19 +473,27 @@ export function computeQuarterlyForecast(
 }
 
 // ================================================================
-// チャネルメトリクス（既存 - 変更なし）
+// チャネルメトリクス（帰属データ対応版）
 // ================================================================
 
+import type { ChannelAttribution } from "@/lib/data/marketing-settings";
+
 export function computeChannelMetrics(
-  customers: CustomerWithRelations[]
+  customers: CustomerWithRelations[],
+  attributionMap?: Record<string, ChannelAttribution>
 ): ChannelMetrics[] {
   const byChannel = new Map<
     string,
     { applications: number; closings: number; revenue: number }
   >();
 
+  const hasAttribution = attributionMap && Object.keys(attributionMap).length > 0;
+
   for (const c of customers) {
-    const channel = c.utm_source || "その他";
+    // 帰属データがある場合は marketing_channel、ない場合は utm_source
+    const channel = hasAttribution
+      ? (attributionMap[c.id]?.marketing_channel || "不明")
+      : (c.utm_source || "その他");
 
     if (!byChannel.has(channel)) {
       byChannel.set(channel, { applications: 0, closings: 0, revenue: 0 });
