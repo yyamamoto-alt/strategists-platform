@@ -59,53 +59,53 @@ function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
         />
         <Legend iconSize={10} wrapperStyle={{ fontSize: 11, color: "#9ca3af" }} />
 
-        {/* 積み上げ棒: セグメント内訳 (Tier 1 確定売上) */}
+        {/* 積み上げ棒: 確定売上セグメント内訳 */}
         <Bar
           dataKey="confirmed_school_kisotsu"
           name="既卒スクール"
-          fill="#ffffff"
+          fill="#3b82f6"
           stackId="revenue"
           radius={[0, 0, 0, 0]}
         />
         <Bar
           dataKey="confirmed_school_shinsotsu"
           name="新卒スクール"
-          fill="#ef4444"
+          fill="#22c55e"
           stackId="revenue"
         />
         <Bar
           dataKey="confirmed_agent"
           name="人材確定"
-          fill="#525252"
+          fill="#f59e0b"
           stackId="revenue"
         />
         <Bar
           dataKey="confirmed_subsidy"
           name="補助金"
-          fill="#a3a3a3"
+          fill="#a855f7"
           stackId="revenue"
           radius={[4, 4, 0, 0]}
         />
 
-        {/* ライン: Tier 2 見込み含む */}
+        {/* ライン: Tier 2 見込み含む（確定+人材見込） */}
         <Line
           type="monotone"
           dataKey="projected_total"
-          name="見込み含む"
-          stroke="#f59e0b"
+          name="確定+人材見込"
+          stroke="#94a3b8"
           strokeWidth={2}
-          dot={{ r: 3, fill: "#f59e0b" }}
+          dot={{ r: 3, fill: "#94a3b8" }}
         />
 
-        {/* ライン: Tier 3 予測 */}
+        {/* ライン: Tier 3 予測（パイプライン期待値含む） */}
         <Line
           type="monotone"
           dataKey="forecast_total"
           name="予測売上"
-          stroke="#ef4444"
+          stroke="#f97316"
           strokeWidth={2}
           strokeDasharray="6 3"
-          dot={{ r: 3, fill: "#ef4444" }}
+          dot={{ r: 3, fill: "#f97316" }}
         />
       </ComposedChart>
     </ResponsiveContainer>

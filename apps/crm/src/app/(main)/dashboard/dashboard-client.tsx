@@ -10,15 +10,35 @@ import type {
   AiInsight,
 } from "@strategy-school/shared-db";
 
-const CATEGORY_LABELS: Record<string, { label: string; color: string; icon: string }> = {
-  marketing: { label: "マーケティング", color: "border-blue-500/50 bg-blue-500/5", icon: "📊" },
-  sales: { label: "営業", color: "border-green-500/50 bg-green-500/5", icon: "🤝" },
+const CATEGORY_META: Record<string, { label: string; accent: string; bg: string }> = {
+  marketing: { label: "マーケティング", accent: "border-blue-500", bg: "bg-blue-500/5" },
+  sales: { label: "営業", accent: "border-emerald-500", bg: "bg-emerald-500/5" },
 };
+
+/** AI示唆テキストを ■ 単位でパース */
+function parseInsightItems(content: string): { title: string; body: string }[] {
+  return content
+    .split("■")
+    .filter((s) => s.trim().length > 0)
+    .map((s) => {
+      const trimmed = s.trim();
+      // 太字タイトル（**...**）を抽出
+      const boldMatch = trimmed.match(/^\*\*(.+?)\*\*[：:\s]*([\s\S]*)/);
+      if (boldMatch) {
+        return { title: boldMatch[1].trim(), body: boldMatch[2].trim() };
+      }
+      // 最初の行をタイトルとして使用
+      const lines = trimmed.split("\n");
+      return { title: lines[0].trim(), body: lines.slice(1).join("\n").trim() };
+    });
+}
 
 interface DashboardClientProps {
   totalCustomers: number;
   closedCount: number;
   funnelMetrics: FunnelMetrics[];
+  funnelKisotsu?: FunnelMetrics[];
+  funnelShinsotsu?: FunnelMetrics[];
   revenueMetrics: RevenueMetrics[];
   threeTierRevenue?: ThreeTierRevenue[];
   insights?: AiInsight[];
@@ -28,6 +48,8 @@ export function DashboardClient({
   totalCustomers,
   closedCount,
   funnelMetrics,
+  funnelKisotsu,
+  funnelShinsotsu,
   revenueMetrics,
   threeTierRevenue,
   insights,
@@ -46,7 +68,6 @@ export function DashboardClient({
         setGenerationError(data.error || "生成に失敗しました");
         return;
       }
-      // 生成結果をローカルステートに反映
       const newInsights: AiInsight[] = data.insights.map(
         (i: { category: string; content: string }) => ({
           id: crypto.randomUUID(),
@@ -63,6 +84,11 @@ export function DashboardClient({
       setIsGenerating(false);
     }
   };
+
+  // management カテゴリをフィルタ
+  const displayInsights = localInsights?.filter(
+    (i) => i.category === "marketing" || i.category === "sales"
+  );
 
   return (
     <div className="p-6 space-y-6">
@@ -86,19 +112,23 @@ export function DashboardClient({
         </div>
         <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-6">
           <h2 className="text-lg font-semibold text-white mb-4">ファネル推移</h2>
-          <FunnelChart data={funnelMetrics} />
+          <FunnelChart
+            data={funnelMetrics}
+            kisotsuData={funnelKisotsu}
+            shinsotsuData={funnelShinsotsu}
+          />
         </div>
       </div>
 
       {/* AI経営示唆 */}
       <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-6">
         <div className="flex items-center justify-between mb-4">
-          <div>
+          <div className="flex items-center gap-3">
             <h2 className="text-lg font-semibold text-white">AI経営示唆</h2>
-            {localInsights && localInsights.length > 0 && (
-              <p className="text-xs text-gray-500 mt-1">
-                最終生成: {new Date(localInsights[0].generated_at).toLocaleString("ja-JP")}
-              </p>
+            {displayInsights && displayInsights.length > 0 && (
+              <span className="text-xs text-gray-500">
+                {new Date(displayInsights[0].generated_at).toLocaleString("ja-JP")}
+              </span>
             )}
           </div>
           <button
@@ -116,34 +146,44 @@ export function DashboardClient({
           </div>
         )}
 
-        {localInsights && localInsights.length > 0 ? (
+        {displayInsights && displayInsights.length > 0 ? (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {localInsights.map((insight) => {
-              const meta = CATEGORY_LABELS[insight.category] || {
+            {displayInsights.map((insight) => {
+              const meta = CATEGORY_META[insight.category] || {
                 label: insight.category,
-                color: "border-gray-500/50 bg-gray-500/5",
-                icon: "💡",
+                accent: "border-gray-500",
+                bg: "bg-gray-500/5",
               };
+              const items = parseInsightItems(insight.content);
               return (
                 <div
                   key={insight.id}
-                  className={`rounded-xl border-l-4 p-4 ${meta.color}`}
+                  className={`rounded-xl border-t-2 ${meta.accent} ${meta.bg} p-4`}
                 >
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className="text-lg">{meta.icon}</span>
-                    <h3 className="text-sm font-semibold text-white">{meta.label}</h3>
-                  </div>
-                  <div className="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap">
-                    {insight.content}
+                  <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">
+                    {meta.label}
+                  </h3>
+                  <div className="space-y-3">
+                    {items.map((item, idx) => (
+                      <div key={idx}>
+                        <p className="text-sm font-semibold text-white">
+                          {item.title}
+                        </p>
+                        {item.body && (
+                          <p className="text-xs text-gray-400 mt-0.5 leading-relaxed">
+                            {item.body}
+                          </p>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 </div>
               );
             })}
           </div>
         ) : (
-          <div className="text-center py-8 text-gray-500">
-            <p className="text-sm">AI示唆がまだ生成されていません</p>
-            <p className="text-xs mt-1">「AI分析を実行」ボタンをクリックして生成してください</p>
+          <div className="text-center py-6 text-gray-500">
+            <p className="text-sm">「AI分析を実行」で示唆を生成</p>
           </div>
         )}
       </div>

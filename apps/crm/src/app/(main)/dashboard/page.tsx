@@ -1,6 +1,6 @@
 import { fetchCustomersWithRelations } from "@/lib/data/customers";
 import {
-  computeFunnelMetrics,
+  computeFunnelMetricsBySegment,
   computeRevenueMetrics,
   computeThreeTierRevenue,
   fetchDashboardData,
@@ -43,7 +43,7 @@ export default async function DashboardPage() {
     fetchLatestInsights(),
   ]);
 
-  const funnelMetrics = computeFunnelMetrics(customers);
+  const funnelBySegment = computeFunnelMetricsBySegment(customers);
   const revenueMetrics = computeRevenueMetrics(customers);
   const threeTierRevenue = computeThreeTierRevenue(customers);
 
@@ -51,7 +51,9 @@ export default async function DashboardPage() {
     <DashboardClient
       totalCustomers={dashboardData.totalCustomers}
       closedCount={dashboardData.closedCount}
-      funnelMetrics={funnelMetrics}
+      funnelMetrics={funnelBySegment.all}
+      funnelKisotsu={funnelBySegment.kisotsu}
+      funnelShinsotsu={funnelBySegment.shinsotsu}
       revenueMetrics={revenueMetrics}
       threeTierRevenue={threeTierRevenue}
       insights={insights}

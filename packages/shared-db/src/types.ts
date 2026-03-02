@@ -580,13 +580,16 @@ export interface PLChannelData {
   isPaid: boolean;
   funnel: Record<string, PLFunnelCounts>;
   totals: PLFunnelCounts;
+  revenue: number;
 }
 
 export interface PLSegmentData {
   revenue: Record<string, number>;
   confirmedRevenue: Record<string, number>;
+  forecastRevenue: Record<string, number>;
   revenueTotal: number;
   confirmedRevenueTotal: number;
+  forecastRevenueTotal: number;
   channels: PLChannelData[];
   totals: Record<string, PLFunnelCounts>;
   grandTotals: PLFunnelCounts;
@@ -594,6 +597,8 @@ export interface PLSegmentData {
   ltvWithAgent: Record<string, number>;
   cumulativeLtvSchool: number;
   cumulativeLtvWithAgent: number;
+  agentConfirmedByPeriod: Record<string, number>;
+  agentProjectedByPeriod: Record<string, number>;
   agentConfirmed: number;
   agentProjected: number;
   ltvPerApp: number;
@@ -611,7 +616,7 @@ export interface PLSheetData {
 
 export interface AiInsight {
   id: string;
-  category: "marketing" | "management" | "sales";
+  category: "marketing" | "sales";
   content: string;
   data_snapshot: Record<string, unknown> | null;
   generated_at: string;

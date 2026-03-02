@@ -32,9 +32,7 @@ interface TableRow {
   format: RowFormat;
   values: (number | null)[];
   totalValue: number | null;
-  /** 折りたたみ可能な行の場合、グループIDを指定 */
   collapsibleGroup?: string;
-  /** この行が属する折りたたみグループID */
   parentGroup?: string;
 }
 
@@ -62,11 +60,23 @@ function buildRows(
   showGradYear?: boolean
 ): TableRow[] {
   const rows: TableRow[] = [];
+  const organicChannels = data.channels.filter((ch) => !ch.isPaid);
+  const paidChannels = data.channels.filter((ch) => ch.isPaid);
 
-  // --- 売上 ---
+  // --- 3段階売上 ---
+  rows.push({
+    key: "confirmed_revenue",
+    label: "確定売上（スクールのみ）",
+    indent: 0,
+    style: "total",
+    format: "currency",
+    values: periods.map((p) => data.confirmedRevenue[p] || null),
+    totalValue: data.confirmedRevenueTotal,
+  });
+
   rows.push({
     key: "revenue",
-    label: "売上（確定+人材見込）",
+    label: "確定+人材見込",
     indent: 0,
     style: "total",
     format: "currency",
@@ -75,13 +85,13 @@ function buildRows(
   });
 
   rows.push({
-    key: "confirmed_revenue",
-    label: "確定売上",
+    key: "forecast_revenue",
+    label: "予測売上（パイプライン期待値含む）",
     indent: 0,
     style: "total",
     format: "currency",
-    values: periods.map((p) => data.confirmedRevenue[p] || null),
-    totalValue: data.confirmedRevenueTotal,
+    values: periods.map((p) => data.forecastRevenue[p] || null),
+    totalValue: data.forecastRevenueTotal,
   });
 
   rows.push(sep("sep_rev"));
@@ -91,16 +101,14 @@ function buildRows(
     key: keyof PLFunnelCounts;
     label: string;
     rateLabel?: string;
+    rateSuffix?: string;
     denomKey?: keyof PLFunnelCounts;
   }[] = [
-    { key: "closed", label: "成約数", rateLabel: "成約率", denomKey: "conducted" },
-    { key: "conducted", label: "実施数", rateLabel: "実施率", denomKey: "scheduled" },
-    { key: "scheduled", label: "日程確定数", rateLabel: "日程確定率", denomKey: "applications" },
+    { key: "closed", label: "成約数", rateLabel: "成約率", rateSuffix: "（実施→成約）", denomKey: "conducted" },
+    { key: "conducted", label: "実施数", rateLabel: "実施率", rateSuffix: "（日程確定→実施）", denomKey: "scheduled" },
+    { key: "scheduled", label: "日程確定数", rateLabel: "日程確定率", rateSuffix: "（申込→日程確定）", denomKey: "applications" },
     { key: "applications", label: "申込数" },
   ];
-
-  const organicChannels = data.channels.filter((ch) => !ch.isPaid);
-  const paidChannels = data.channels.filter((ch) => ch.isPaid);
 
   for (const metric of funnelMetrics) {
     const organicGroupId = `${metric.key}_organic`;
@@ -128,24 +136,18 @@ function buildRows(
       totalValue: data.grandTotals[metric.key],
     });
 
-    // organic小計（折りたたみトグル）
+    // organic小計（折りたたみ）
     rows.push({
       key: organicGroupId,
       label: "organic計",
       indent: 1,
       style: "subtotal",
       format: "number",
-      values: periods.map((p) =>
-        sumChannels(organicChannels, p, metric.key)
-      ),
-      totalValue: organicChannels.reduce(
-        (s, ch) => s + ch.totals[metric.key],
-        0
-      ),
+      values: periods.map((p) => sumChannels(organicChannels, p, metric.key)),
+      totalValue: organicChannels.reduce((s, ch) => s + ch.totals[metric.key], 0),
       collapsibleGroup: organicGroupId,
     });
 
-    // organic個別チャネル（折りたたみ対象）
     for (const ch of organicChannels) {
       rows.push({
         key: `${metric.key}_o_${ch.name}`,
@@ -153,32 +155,24 @@ function buildRows(
         indent: 2,
         style: "channel",
         format: "number",
-        values: periods.map(
-          (p) => ch.funnel[p]?.[metric.key] || null
-        ),
+        values: periods.map((p) => ch.funnel[p]?.[metric.key] || null),
         totalValue: ch.totals[metric.key],
         parentGroup: organicGroupId,
       });
     }
 
-    // paid小計（折りたたみトグル）
+    // paid小計（折りたたみ）
     rows.push({
       key: paidGroupId,
       label: "paid計",
       indent: 1,
       style: "subtotal",
       format: "number",
-      values: periods.map((p) =>
-        sumChannels(paidChannels, p, metric.key)
-      ),
-      totalValue: paidChannels.reduce(
-        (s, ch) => s + ch.totals[metric.key],
-        0
-      ),
+      values: periods.map((p) => sumChannels(paidChannels, p, metric.key)),
+      totalValue: paidChannels.reduce((s, ch) => s + ch.totals[metric.key], 0),
       collapsibleGroup: paidGroupId,
     });
 
-    // paid個別チャネル（折りたたみ対象）
     for (const ch of paidChannels) {
       rows.push({
         key: `${metric.key}_p_${ch.name}`,
@@ -186,20 +180,22 @@ function buildRows(
         indent: 2,
         style: "channel",
         format: "number",
-        values: periods.map(
-          (p) => ch.funnel[p]?.[metric.key] || null
-        ),
+        values: periods.map((p) => ch.funnel[p]?.[metric.key] || null),
         totalValue: ch.totals[metric.key],
         parentGroup: paidGroupId,
       });
     }
 
-    // レート行
+    // レート行（チャネル別折りたたみ付き）
     if (metric.rateLabel && metric.denomKey) {
       const dk = metric.denomKey;
+      const rateOrganicGroup = `${metric.key}_rate_organic`;
+      const ratePaidGroup = `${metric.key}_rate_paid`;
+
+      // 全体レート
       rows.push({
         key: `${metric.key}_rate`,
-        label: `◆${metric.rateLabel}`,
+        label: `◆${metric.rateLabel}${metric.rateSuffix || ""}`,
         indent: 0,
         style: "rate",
         format: "percent",
@@ -214,6 +210,86 @@ function buildRows(
           return den > 0 ? num / den : null;
         })(),
       });
+
+      // organic率小計（折りたたみ）
+      rows.push({
+        key: rateOrganicGroup,
+        label: "organic計",
+        indent: 1,
+        style: "subtotal",
+        format: "percent",
+        values: periods.map((p) => {
+          const num = sumChannelsRaw(organicChannels, p, metric.key);
+          const den = sumChannelsRaw(organicChannels, p, dk);
+          return den > 0 ? num / den : null;
+        }),
+        totalValue: (() => {
+          const num = organicChannels.reduce((s, ch) => s + ch.totals[metric.key], 0);
+          const den = organicChannels.reduce((s, ch) => s + ch.totals[dk], 0);
+          return den > 0 ? num / den : null;
+        })(),
+        collapsibleGroup: rateOrganicGroup,
+      });
+
+      for (const ch of organicChannels) {
+        rows.push({
+          key: `${metric.key}_rate_o_${ch.name}`,
+          label: ch.name,
+          indent: 2,
+          style: "channel",
+          format: "percent",
+          values: periods.map((p) => {
+            const num = ch.funnel[p]?.[metric.key] || 0;
+            const den = ch.funnel[p]?.[dk] || 0;
+            return den > 0 ? num / den : null;
+          }),
+          totalValue: (() => {
+            const den = ch.totals[dk];
+            return den > 0 ? ch.totals[metric.key] / den : null;
+          })(),
+          parentGroup: rateOrganicGroup,
+        });
+      }
+
+      // paid率小計（折りたたみ）
+      rows.push({
+        key: ratePaidGroup,
+        label: "paid計",
+        indent: 1,
+        style: "subtotal",
+        format: "percent",
+        values: periods.map((p) => {
+          const num = sumChannelsRaw(paidChannels, p, metric.key);
+          const den = sumChannelsRaw(paidChannels, p, dk);
+          return den > 0 ? num / den : null;
+        }),
+        totalValue: (() => {
+          const num = paidChannels.reduce((s, ch) => s + ch.totals[metric.key], 0);
+          const den = paidChannels.reduce((s, ch) => s + ch.totals[dk], 0);
+          return den > 0 ? num / den : null;
+        })(),
+        collapsibleGroup: ratePaidGroup,
+      });
+
+      for (const ch of paidChannels) {
+        rows.push({
+          key: `${metric.key}_rate_p_${ch.name}`,
+          label: ch.name,
+          indent: 2,
+          style: "channel",
+          format: "percent",
+          values: periods.map((p) => {
+            const num = ch.funnel[p]?.[metric.key] || 0;
+            const den = ch.funnel[p]?.[dk] || 0;
+            return den > 0 ? num / den : null;
+          }),
+          totalValue: (() => {
+            const den = ch.totals[dk];
+            return den > 0 ? ch.totals[metric.key] / den : null;
+          })(),
+          parentGroup: ratePaidGroup,
+        });
+      }
     }
 
     rows.push(sep(`sep_${metric.key}`));
@@ -252,7 +328,7 @@ function buildRows(
 
   rows.push(sep("sep_ltv"));
 
-  // --- 人材紹介 ---
+  // --- 人材紹介（月別） ---
   rows.push({
     key: "agent_header",
     label: "◆人材紹介",
@@ -269,7 +345,7 @@ function buildRows(
     indent: 1,
     style: "value",
     format: "currency",
-    values: periods.map(() => null),
+    values: periods.map((p) => data.agentConfirmedByPeriod[p] || null),
     totalValue: data.agentConfirmed,
   });
 
@@ -279,17 +355,27 @@ function buildRows(
     indent: 1,
     style: "value",
     format: "currency",
-    values: periods.map(() => null),
+    values: periods.map((p) => data.agentProjectedByPeriod[p] || null),
     totalValue: data.agentProjected,
   });
 
   rows.push(sep("sep_agent"));
 
-  // --- 申込あたりLTV・ターゲットCPA ---
+  // --- チャネル別 申込あたりLTV・ターゲットCPA ---
   rows.push({
-    key: "ltv_per_app",
-    label: "◆申込あたりLTV",
+    key: "ltv_cpa_header",
+    label: "◆チャネル別 LTV/CPA",
     indent: 0,
+    style: "header",
+    format: "none",
+    values: [],
+    totalValue: null,
+  });
+
+  rows.push({
+    key: "ltv_per_app_total",
+    label: "全体 申込あたりLTV",
+    indent: 1,
     style: "total",
     format: "currency",
     values: periods.map(() => null),
@@ -297,18 +383,45 @@ function buildRows(
   });
 
   rows.push({
-    key: "target_cpa",
-    label: "◆ターゲットCPA (30%)",
-    indent: 0,
+    key: "target_cpa_total",
+    label: "全体 ターゲットCPA (30%)",
+    indent: 1,
     style: "total",
     format: "currency",
     values: periods.map(() => null),
     totalValue: data.targetCpa,
   });
 
+  // チャネル別LTV/CPA
+  const allChannels = [...organicChannels, ...paidChannels].filter(ch => ch.totals.applications >= 3);
+  for (const ch of allChannels) {
+    const chLtv = ch.totals.applications > 0 ? Math.round(ch.revenue / ch.totals.applications) : 0;
+    const chCpa = Math.round(chLtv * 0.3);
+    rows.push({
+      key: `ltv_cpa_${ch.name}`,
+      label: `${ch.name}`,
+      indent: 1,
+      style: "channel",
+      format: "none",
+      values: [],
+      totalValue: null,
+    });
+    // LTV/CPAをラベルに直接表示（values無し行）
+    rows[rows.length - 1] = {
+      key: `ltv_cpa_${ch.name}`,
+      label: `${ch.name}  LTV: ${formatCurrency(chLtv)} / CPA: ${formatCurrency(chCpa)}`,
+      indent: 1,
+      style: "channel",
+      format: "none",
+      values: [],
+      totalValue: null,
+    };
+  }
+
+  rows.push(sep("sep_ltv_cpa"));
+
   // --- 卒年別申込数（新卒のみ） ---
   if (showGradYear && data.graduationYearApps) {
-    rows.push(sep("sep_grad"));
     rows.push({
       key: "grad_header",
       label: "◆卒年別申込数",
@@ -359,6 +472,18 @@ function sumChannels(
     0
   );
   return total || null;
+}
+
+/** null を返さない版（レート計算用） */
+function sumChannelsRaw(
+  channels: { funnel: Record<string, PLFunnelCounts>; totals: PLFunnelCounts }[],
+  period: string,
+  metric: keyof PLFunnelCounts
+): number {
+  return channels.reduce(
+    (s, ch) => s + (ch.funnel[period]?.[metric] || 0),
+    0
+  );
 }
 
 // ================================================================
@@ -445,7 +570,6 @@ function PLSection({
     [data, periods, showGradYear]
   );
 
-  // デフォルトですべて折りたたんだ状態
   const allCollapsibleGroups = useMemo(() => {
     const groups = new Set<string>();
     for (const row of rows) {
@@ -484,7 +608,7 @@ function PLSection({
         <table className="w-full text-sm whitespace-nowrap">
           <thead>
             <tr className="border-b border-white/10">
-              <th className="text-left py-2 px-3 text-xs font-semibold text-gray-500 sticky left-0 bg-surface-card z-10 min-w-[180px]">
+              <th className="text-left py-2 px-3 text-xs font-semibold text-gray-500 sticky left-0 bg-surface-card z-10 min-w-[220px]">
                 項目
               </th>
               {periods.map((p) => (
@@ -502,7 +626,6 @@ function PLSection({
           </thead>
           <tbody>
             {rows.map((row) => {
-              // 折りたたまれたグループの子行はスキップ
               if (row.parentGroup && collapsedGroups.has(row.parentGroup)) {
                 return null;
               }
@@ -600,7 +723,7 @@ export function RevenueClient({ plData }: RevenueClientProps) {
         <div>
           <h1 className="text-2xl font-bold text-white">売上管理</h1>
           <p className="text-sm text-gray-500 mt-1">
-            P/L（Excel準拠）
+            P/L（Excel準拠） ※成約率の分母は実施数
           </p>
         </div>
         <div className="flex gap-1">

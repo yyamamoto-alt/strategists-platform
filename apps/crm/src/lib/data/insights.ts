@@ -10,7 +10,7 @@ async function fetchLatestInsightsRaw(): Promise<AiInsight[]> {
   const db = supabase as any;
 
   // 各カテゴリの最新1件を取得
-  const categories = ["marketing", "management", "sales"];
+  const categories = ["marketing", "sales"];
   const results: AiInsight[] = [];
 
   for (const category of categories) {
