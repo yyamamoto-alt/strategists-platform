@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import {
   formatDate,
@@ -24,10 +25,13 @@ import {
   getSubsidyAmount,
 } from "@/lib/calc-fields";
 import type { CustomerWithRelations, Activity } from "@strategy-school/shared-db";
+import type { CustomerEmail, ApplicationHistoryRecord } from "@/lib/data/spreadsheet-sync";
 
 interface CustomerDetailClientProps {
   customer: CustomerWithRelations;
   activities: Activity[];
+  emails: CustomerEmail[];
+  applicationHistory: ApplicationHistoryRecord[];
 }
 
 function InfoRow({ label, value }: { label: string; value: string }) {
@@ -42,7 +46,36 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 export function CustomerDetailClient({
   customer,
   activities,
+  emails,
+  applicationHistory,
 }: CustomerDetailClientProps) {
+  const [showAddEmail, setShowAddEmail] = useState(false);
+  const [newEmail, setNewEmail] = useState("");
+  const [emailList, setEmailList] = useState(emails);
+  const [isAddingEmail, setIsAddingEmail] = useState(false);
+
+  const addEmail = async () => {
+    if (!newEmail) return;
+    setIsAddingEmail(true);
+    try {
+      const res = await fetch(`/api/customers/${customer.id}/emails`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: newEmail }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setEmailList((prev) => [...prev, data]);
+        setNewEmail("");
+        setShowAddEmail(false);
+      } else {
+        const err = await res.json();
+        alert(err.error || "エラーが発生しました");
+      }
+    } finally {
+      setIsAddingEmail(false);
+    }
+  };
   return (
     <div className="p-6 space-y-6">
       {/* ヘッダー */}
@@ -270,6 +303,85 @@ export function CustomerDetailClient({
 
         {/* 右カラム */}
         <div className="space-y-6">
+          {/* メールアドレス */}
+          {emailList.length > 0 && (
+            <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-white">メールアドレス</h2>
+                <button
+                  onClick={() => setShowAddEmail(!showAddEmail)}
+                  className="text-xs text-brand hover:underline"
+                >
+                  + 追加
+                </button>
+              </div>
+              <div className="space-y-2">
+                {emailList.map((em) => (
+                  <div key={em.id} className="flex items-center gap-2 text-sm">
+                    <span className="text-gray-300">{em.email}</span>
+                    {em.is_primary && (
+                      <span className="px-1.5 py-0.5 text-[10px] bg-brand/20 text-brand rounded">メイン</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+              {showAddEmail && (
+                <div className="flex gap-2 mt-3">
+                  <input
+                    type="email"
+                    value={newEmail}
+                    onChange={(e) => setNewEmail(e.target.value)}
+                    placeholder="新しいメールアドレス"
+                    className="flex-1 px-2 py-1.5 bg-surface-elevated border border-white/10 rounded text-white text-sm focus:outline-none focus:border-brand"
+                  />
+                  <button
+                    onClick={addEmail}
+                    disabled={!newEmail || isAddingEmail}
+                    className="px-3 py-1.5 bg-brand text-white rounded text-xs disabled:opacity-50"
+                  >
+                    {isAddingEmail ? "..." : "追加"}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 申込履歴 */}
+          {applicationHistory.length > 0 && (
+            <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-6">
+              <h2 className="text-lg font-semibold text-white mb-4">申込履歴</h2>
+              <div className="space-y-3">
+                {applicationHistory.map((ah) => (
+                  <div key={ah.id} className="border-l-2 border-brand/30 pl-3 py-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      {ah.source && (
+                        <span className="text-xs font-medium bg-surface-elevated text-gray-300 px-2 py-0.5 rounded">
+                          {ah.source}
+                        </span>
+                      )}
+                      <span className="text-xs text-gray-400">
+                        {formatDate(ah.applied_at)}
+                      </span>
+                    </div>
+                    {ah.notes && (
+                      <p className="text-sm text-gray-300">{ah.notes}</p>
+                    )}
+                    {ah.raw_data && (
+                      <details className="mt-1">
+                        <summary className="text-[10px] text-gray-500 cursor-pointer hover:text-gray-400">
+                          元データ
+                        </summary>
+                        <pre className="mt-1 p-2 bg-surface-elevated rounded text-[10px] text-gray-400 overflow-x-auto max-h-32">
+                          {JSON.stringify(ah.raw_data, null, 2)}
+                        </pre>
+                      </details>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-6">
             <h2 className="text-lg font-semibold text-white mb-4">プロフィール</h2>
             <div className="space-y-3 text-sm">

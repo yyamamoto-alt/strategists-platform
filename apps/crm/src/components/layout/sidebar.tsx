@@ -29,6 +29,8 @@ const adminNavigation: NavItem[] = [
   { name: "学習管理", href: "/learning", icon: "📖", roles: ["admin", "mentor"] },
   { name: "エージェント", href: "/agents", icon: "🤝", roles: ["admin", "mentor"] },
   { name: "LMSアカウント", href: "/students", icon: "🎓", roles: ["admin"] },
+  { name: "マーケ設定", href: "/marketing-settings", icon: "⚙️", roles: ["admin"] },
+  { name: "データ連携", href: "/data-sync", icon: "🔗", roles: ["admin"] },
 ];
 
 function isItemActive(pathname: string | null, href: string): boolean {
