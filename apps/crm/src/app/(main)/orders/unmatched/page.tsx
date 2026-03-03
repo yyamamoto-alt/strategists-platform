@@ -230,7 +230,11 @@ export default function UnmatchedOrdersPage() {
                 {/* アクションボタン */}
                 <div className="flex flex-col gap-1">
                   <button
-                    onClick={() => handleAction(order.id, "create")}
+                    onClick={() => {
+                      if (window.confirm(`「${order.contact_name || "名前なし"}」を新規顧客として作成しますか？\n\n既存の顧客DBに同一人物がいないか確認してください。`)) {
+                        handleAction(order.id, "create");
+                      }
+                    }}
                     disabled={processing === order.id}
                     className="px-3 py-1 bg-blue-500/20 text-blue-400 text-xs rounded hover:bg-blue-500/30 disabled:opacity-50"
                   >

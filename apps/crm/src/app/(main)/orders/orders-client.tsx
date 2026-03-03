@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { formatDate, formatCurrency } from "@/lib/utils";
 import {
@@ -40,8 +41,11 @@ interface OrdersClientProps {
 }
 
 export function OrdersClient({ orders, reconciliation }: OrdersClientProps) {
+  const router = useRouter();
   const [pageTab, setPageTab] = useState<PageTab>("orders");
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
+  const [editingOrder, setEditingOrder] = useState<Order | null>(null);
+  const [processing, setProcessing] = useState(false);
 
   const filteredOrders = useMemo(() => {
     if (sourceFilter === "all") return orders;
@@ -56,25 +60,53 @@ export function OrdersClient({ orders, reconciliation }: OrdersClientProps) {
     return orders.filter((o) => o.source === sourceFilter);
   }, [orders, sourceFilter]);
 
-  // KPI計算
-  const stats = useMemo(() => {
-    const total = orders.reduce((s, o) => s + o.amount, 0);
-    const matchedCount = orders.filter(
-      (o) => o.match_status === "matched"
-    ).length;
-    const unmatchedCount = orders.filter(
-      (o) => o.match_status === "unmatched"
-    ).length;
-    const matchRate = orders.length > 0 ? matchedCount / orders.length : 0;
+  const unmatchedCount = useMemo(
+    () => orders.filter((o) => o.match_status === "unmatched").length,
+    [orders]
+  );
 
-    const sourceCounts: Record<string, number> = {};
-    for (const o of orders) {
-      const key = o.payment_method || o.source;
-      sourceCounts[key] = (sourceCounts[key] || 0) + 1;
+  const handleDeleteOrder = useCallback(async (orderId: string) => {
+    if (!window.confirm("この注文レコードを削除しますか？この操作は元に戻せません。")) return;
+    setProcessing(true);
+    try {
+      const res = await fetch(`/api/orders/${orderId}`, { method: "DELETE" });
+      if (res.ok) {
+        router.refresh();
+      } else {
+        const data = await res.json();
+        alert("削除に失敗しました: " + (data.error || "不明なエラー"));
+      }
+    } finally {
+      setProcessing(false);
     }
+  }, [router]);
 
-    return { total, matchedCount, unmatchedCount, matchRate, sourceCounts };
-  }, [orders]);
+  const handleSaveOrder = useCallback(async (order: Order) => {
+    setProcessing(true);
+    try {
+      const res = await fetch(`/api/orders/${order.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contact_name: order.contact_name,
+          contact_email: order.contact_email,
+          amount: order.amount,
+          product_name: order.product_name,
+          memo: order.memo,
+          status: order.status,
+        }),
+      });
+      if (res.ok) {
+        setEditingOrder(null);
+        router.refresh();
+      } else {
+        const data = await res.json();
+        alert("保存に失敗しました: " + (data.error || "不明なエラー"));
+      }
+    } finally {
+      setProcessing(false);
+    }
+  }, [router]);
 
   const orderColumns: SpreadsheetColumn<Order>[] = useMemo(
     () => [
@@ -175,8 +207,32 @@ export function OrdersClient({ orders, reconciliation }: OrdersClientProps) {
           </span>
         ),
       },
+      {
+        key: "actions",
+        label: "",
+        width: 80,
+        render: (r) => (
+          <div className="flex gap-1">
+            <button
+              onClick={(e) => { e.stopPropagation(); setEditingOrder({ ...r }); }}
+              className="px-1.5 py-0.5 text-[10px] text-blue-400 hover:bg-blue-500/20 rounded transition-colors"
+              title="編集"
+            >
+              編集
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); handleDeleteOrder(r.id); }}
+              disabled={processing}
+              className="px-1.5 py-0.5 text-[10px] text-red-400 hover:bg-red-500/20 rounded transition-colors disabled:opacity-50"
+              title="削除"
+            >
+              削除
+            </button>
+          </div>
+        ),
+      },
     ],
-    []
+    [handleDeleteOrder, processing]
   );
 
   const reconColumns: SpreadsheetColumn<ReconciliationItem>[] = useMemo(
@@ -253,12 +309,12 @@ export function OrdersClient({ orders, reconciliation }: OrdersClientProps) {
     <div className="p-4 space-y-2">
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-bold text-white">注文管理</h1>
-        {stats.unmatchedCount > 0 && (
+        {unmatchedCount > 0 && (
           <Link
             href="/orders/unmatched"
             className="px-3 py-1.5 bg-red-500/20 text-red-400 text-xs rounded-lg hover:bg-red-500/30 transition-colors"
           >
-            未マッチ {stats.unmatchedCount}件を管理
+            未マッチ {unmatchedCount}件を管理
           </Link>
         )}
       </div>
@@ -289,46 +345,6 @@ export function OrdersClient({ orders, reconciliation }: OrdersClientProps) {
 
       {pageTab === "orders" ? (
         <>
-          {/* KPIカード */}
-          <div className="grid grid-cols-4 gap-3">
-            <div className="bg-surface-card rounded-xl border border-white/10 p-3">
-              <p className="text-xs text-gray-500">総取引額</p>
-              <p className="text-lg font-bold text-white">
-                {formatCurrency(stats.total)}
-              </p>
-              <p className="text-xs text-gray-500">{orders.length}件</p>
-            </div>
-            <div className="bg-surface-card rounded-xl border border-white/10 p-3">
-              <p className="text-xs text-gray-500">マッチ率</p>
-              <p className="text-lg font-bold text-white">
-                {Math.round(stats.matchRate * 100)}%
-              </p>
-              <p className="text-xs text-gray-500">
-                {stats.matchedCount}件 紐付済
-              </p>
-            </div>
-            <div className="bg-surface-card rounded-xl border border-white/10 p-3">
-              <p className="text-xs text-gray-500">未紐付</p>
-              <p className="text-lg font-bold text-red-400">
-                {stats.unmatchedCount}件
-              </p>
-              <p className="text-xs text-gray-500">要確認</p>
-            </div>
-            <div className="bg-surface-card rounded-xl border border-white/10 p-3">
-              <p className="text-xs text-gray-500">ソース別</p>
-              <div className="text-xs text-gray-400 mt-1 space-y-0.5">
-                {Object.entries(stats.sourceCounts)
-                  .sort((a, b) => b[1] - a[1])
-                  .slice(0, 3)
-                  .map(([key, count]) => (
-                    <div key={key}>
-                      {SOURCE_LABELS[key] || key}: {count}件
-                    </div>
-                  ))}
-              </div>
-            </div>
-          </div>
-
           {/* フィルタータブ */}
           <div className="flex gap-0.5 bg-surface-elevated rounded-lg p-0.5 w-fit border border-white/10">
             {sourceFilterOptions.map((opt) => (
@@ -385,6 +401,88 @@ export function OrdersClient({ orders, reconciliation }: OrdersClientProps) {
             />
           )}
         </>
+      )}
+
+      {/* 編集モーダル */}
+      {editingOrder && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setEditingOrder(null)}>
+          <div className="bg-surface-card border border-white/10 rounded-xl p-6 w-full max-w-md space-y-4" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-white font-bold">注文を編集</h2>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-gray-400">顧客名</label>
+                <input
+                  value={editingOrder.contact_name || ""}
+                  onChange={(e) => setEditingOrder({ ...editingOrder, contact_name: e.target.value })}
+                  className="w-full mt-1 px-3 py-1.5 bg-surface-elevated border border-white/10 text-white rounded text-sm focus:outline-none focus:ring-1 focus:ring-brand"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-gray-400">メール</label>
+                <input
+                  value={editingOrder.contact_email || ""}
+                  onChange={(e) => setEditingOrder({ ...editingOrder, contact_email: e.target.value })}
+                  className="w-full mt-1 px-3 py-1.5 bg-surface-elevated border border-white/10 text-white rounded text-sm focus:outline-none focus:ring-1 focus:ring-brand"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-gray-400">金額</label>
+                <input
+                  type="number"
+                  value={editingOrder.amount}
+                  onChange={(e) => setEditingOrder({ ...editingOrder, amount: parseInt(e.target.value) || 0 })}
+                  className="w-full mt-1 px-3 py-1.5 bg-surface-elevated border border-white/10 text-white rounded text-sm focus:outline-none focus:ring-1 focus:ring-brand"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-gray-400">商品名</label>
+                <input
+                  value={editingOrder.product_name || ""}
+                  onChange={(e) => setEditingOrder({ ...editingOrder, product_name: e.target.value })}
+                  className="w-full mt-1 px-3 py-1.5 bg-surface-elevated border border-white/10 text-white rounded text-sm focus:outline-none focus:ring-1 focus:ring-brand"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-gray-400">ステータス</label>
+                <select
+                  value={editingOrder.status || "paid"}
+                  onChange={(e) => setEditingOrder({ ...editingOrder, status: e.target.value as Order["status"] })}
+                  className="w-full mt-1 px-3 py-1.5 bg-surface-elevated border border-white/10 text-white rounded text-sm focus:outline-none focus:ring-1 focus:ring-brand"
+                >
+                  <option value="pending">pending</option>
+                  <option value="paid">paid</option>
+                  <option value="partial">partial</option>
+                  <option value="refunded">refunded</option>
+                  <option value="cancelled">cancelled</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-gray-400">メモ</label>
+                <textarea
+                  value={editingOrder.memo || ""}
+                  onChange={(e) => setEditingOrder({ ...editingOrder, memo: e.target.value })}
+                  rows={2}
+                  className="w-full mt-1 px-3 py-1.5 bg-surface-elevated border border-white/10 text-white rounded text-sm focus:outline-none focus:ring-1 focus:ring-brand"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                onClick={() => setEditingOrder(null)}
+                className="px-4 py-1.5 text-sm text-gray-400 hover:text-white transition-colors"
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={() => handleSaveOrder(editingOrder)}
+                disabled={processing}
+                className="px-4 py-1.5 bg-brand text-white text-sm rounded-lg hover:bg-brand/80 disabled:opacity-50 transition-colors"
+              >
+                {processing ? "保存中..." : "保存"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
