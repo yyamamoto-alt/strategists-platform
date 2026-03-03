@@ -165,6 +165,7 @@ export async function upsertFromSpreadsheet(
       email: email ? email.trim().toLowerCase() : null,
       phone: phone || null,
       application_date: fields.application_date || new Date().toISOString(),
+      data_origin: "auto_sync",
     };
     if (fields.attribute) customerInsert.attribute = fields.attribute;
     if (fields.university) customerInsert.university = fields.university;
