@@ -160,11 +160,31 @@ export async function upsertFromSpreadsheet(
 
   // 未マッチ: LP申込などautoCreate=trueなら新規顧客を自動作成
   if (autoCreateCustomer && (email || name)) {
+    // 日付パース（「2026年3月1日」→ ISO形式）
+    let appDate = new Date().toISOString();
+    if (fields.application_date) {
+      const jpMatch = fields.application_date.match(/(\d{4})年(\d{1,2})月(\d{1,2})日/);
+      if (jpMatch) {
+        appDate = new Date(
+          parseInt(jpMatch[1]),
+          parseInt(jpMatch[2]) - 1,
+          parseInt(jpMatch[3])
+        ).toISOString();
+      } else {
+        try {
+          const parsed = new Date(fields.application_date);
+          if (!isNaN(parsed.getTime())) appDate = parsed.toISOString();
+        } catch {
+          // fallback to now
+        }
+      }
+    }
+
     const customerInsert: Record<string, unknown> = {
       name: name || "未入力",
       email: email ? email.trim().toLowerCase() : null,
       phone: phone || null,
-      application_date: fields.application_date || new Date().toISOString(),
+      application_date: appDate,
       data_origin: "auto_sync",
     };
     if (fields.attribute) customerInsert.attribute = fields.attribute;
