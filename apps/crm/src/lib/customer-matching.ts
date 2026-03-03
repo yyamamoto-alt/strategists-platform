@@ -95,14 +95,18 @@ export interface UpsertResult {
 }
 
 /**
- * スプレッドシート1行分を処理: マッチ → 更新/未マッチ → キュー追加
+ * スプレッドシート1行分を処理:
+ * マッチ → 更新
+ * 未マッチ + autoCreate → 新規顧客作成
+ * 未マッチ + !autoCreate → キュー追加
  */
 export async function upsertFromSpreadsheet(
   connectionId: string,
   syncLogId: string,
   fields: Record<string, string>,
   rawData: Record<string, string>,
-  sourceName: string
+  sourceName: string,
+  autoCreateCustomer?: boolean
 ): Promise<UpsertResult> {
   const supabase = createServiceClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -154,14 +158,66 @@ export async function upsertFromSpreadsheet(
     return { action: "updated", customer_id: match.customer_id, match_type: match.match_type };
   }
 
+  // 未マッチ: LP申込などautoCreate=trueなら新規顧客を自動作成
+  if (autoCreateCustomer && (email || name)) {
+    const customerInsert: Record<string, unknown> = {
+      name: name || "未入力",
+      email: email ? email.trim().toLowerCase() : null,
+      phone: phone || null,
+      application_date: fields.application_date || new Date().toISOString(),
+    };
+    if (fields.attribute) customerInsert.attribute = fields.attribute;
+    if (fields.university) customerInsert.university = fields.university;
+
+    const { data: newCustomer, error: createError } = await db
+      .from("customers")
+      .insert(customerInsert)
+      .select()
+      .single();
+
+    if (createError || !newCustomer) {
+      // 作成失敗 → 未マッチキューに入れる
+      await db.from("unmatched_records").insert({
+        sync_log_id: syncLogId,
+        connection_id: connectionId,
+        raw_data: rawData,
+        email, phone, name,
+      });
+      return { action: "unmatched" };
+    }
+
+    // customer_emails に登録
+    if (email) {
+      await db.from("customer_emails").upsert(
+        { customer_id: newCustomer.id, email: email.trim().toLowerCase(), is_primary: true },
+        { onConflict: "email" }
+      );
+    }
+
+    // sales_pipeline を作成
+    await db.from("sales_pipeline").insert({
+      customer_id: newCustomer.id,
+      stage: "問い合わせ",
+      deal_status: "未対応",
+    });
+
+    // application_history に履歴追加
+    await db.from("application_history").insert({
+      customer_id: newCustomer.id,
+      source: sourceName,
+      raw_data: rawData,
+      notes: `${sourceName}から自動作成`,
+    });
+
+    return { action: "created", customer_id: newCustomer.id };
+  }
+
   // 未マッチ → unmatched_records に追加
   await db.from("unmatched_records").insert({
     sync_log_id: syncLogId,
     connection_id: connectionId,
     raw_data: rawData,
-    email,
-    phone,
-    name,
+    email, phone, name,
   });
 
   return { action: "unmatched" };

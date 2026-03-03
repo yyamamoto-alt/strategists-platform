@@ -91,7 +91,8 @@ export async function POST(_request: Request, { params }: Props) {
         syncLog.id,
         fields,
         rawData,
-        connection.name
+        connection.name,
+        connection.auto_create_customer === true
       );
 
       if (result.action === "created") rowsCreated++;
