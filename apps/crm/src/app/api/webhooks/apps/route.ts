@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { createServiceClient } from "@/lib/supabase/server";
 import { matchCustomer } from "@/lib/customer-matching";
 import { upsertOrder } from "@/lib/data/orders";
 import { normalizeAppsPayment } from "@/lib/order-normalizers";
@@ -24,6 +25,15 @@ export async function POST(request: Request) {
       .update(rawBody)
       .digest("hex");
     if (signature !== expected) {
+      // デバッグ: 署名不一致でもraw_dataを保存
+      const dbg = createServiceClient();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (dbg as any).from("unmatched_records").insert({
+        connection_id: "00000000-0000-0000-0000-000000000000",
+        raw_data: { _debug: "signature_mismatch", body: rawBody.substring(0, 500) },
+        name: "apps_sig_debug",
+        status: "pending",
+      });
       return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
     }
   }
@@ -39,10 +49,20 @@ export async function POST(request: Request) {
   const normalized = normalizeAppsPayment(payload);
 
   if (!normalized.source_record_id) {
-    return NextResponse.json(
-      { error: "Could not extract source_record_id" },
-      { status: 400 }
-    );
+    // source_record_id が取れない場合 → raw_dataを保存して調査可能にする
+    const supabase = createServiceClient();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase as any).from("unmatched_records").insert({
+      connection_id: "00000000-0000-0000-0000-000000000000",
+      raw_data: payload,
+      name: "apps_webhook_debug",
+      status: "pending",
+    });
+    return NextResponse.json({
+      error: "Could not extract source_record_id",
+      received: true,
+      payload_keys: Object.keys(payload),
+    }, { status: 400 });
   }
 
   // 顧客マッチング

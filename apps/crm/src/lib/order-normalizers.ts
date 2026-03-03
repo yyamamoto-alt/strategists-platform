@@ -57,11 +57,26 @@ export function normalizeStripePayment(
 export function normalizeAppsPayment(
   payload: Record<string, unknown>
 ): Partial<Order> & { source: string; source_record_id: string } {
-  const amount = (payload.amount as number) || 0;
-  const paidAt = (payload.paid_at as string) || (payload.purchase_date as string) || null;
+  // Apps Webhook のネスト構造に対応（event: payment/refund/payment_error で構造が異なる）
+  const payment = (payload.payment as Record<string, unknown>) || {};
+  const customer = (payload.customer as Record<string, unknown>) || {};
+  const plan = (payload.plan as Record<string, unknown>) || {};
+  // カード情報: payment.card (payment/refund) or payload.card (payment_error)
+  const card = (payment.card as Record<string, unknown>) || (payload.card as Record<string, unknown>) || {};
+  const event = (payload.event as string) || "";
+
+  // 金額: payment.price (割引後) or payment.original_price (元値) or フラットなamount
+  const amount = (payment.price as number) || (payment.original_price as number) || (payload.amount as number) || 0;
+  const paidAt = (payload.create_at as string) || (payload.paid_at as string) || (payload.purchase_date as string) || null;
   const tax = calcTaxFields(amount, paidAt);
 
-  const planName = (payload.plan_name as string) || (payload.product_name as string) || null;
+  // ステータス: イベントタイプに応じて設定
+  let status: string = "paid";
+  if (event === "refund") status = "refunded";
+  else if (event === "payment_error") status = "cancelled";
+
+  // 商品名: plan.name or フラットなplan_name
+  const planName = (plan.name as string) || (payload.plan_name as string) || (payload.product_name as string) || null;
   let orderType: string = "other";
   if (planName) {
     if (/ライトプラン|スタンダード|プレミアム/i.test(planName)) orderType = "main_plan";
@@ -75,18 +90,21 @@ export function normalizeAppsPayment(
     source_contract_id: (payload.contract_id as string) || null,
     amount,
     ...tax,
-    status: "paid",
+    status: status as Order["status"],
     payment_method: "apps",
     paid_at: paidAt,
-    contact_email: (payload.email as string)?.trim().toLowerCase() || null,
-    contact_name: (payload.customer_name as string) || null,
-    contact_phone: (payload.phone as string) || null,
+    contact_email: ((customer.email as string) || (payload.email as string))?.trim().toLowerCase() || null,
+    contact_name: (customer.name as string) || (payload.name as string) || (payload.customer_name as string) || null,
+    contact_phone: (customer.phone_number as string) || (payload.phone as string) || null,
     product_name: planName,
     order_type: orderType as Order["order_type"],
+    card_brand: (card.brand as string) || null,
+    card_last4: (card.last4 as string) || null,
     installment_total: (payload.installment_count as number) || null,
     installment_index: (payload.installment_index as number) || null,
     installment_amount: (payload.installment_amount as number) || null,
     total_price: (payload.total_price as number) || null,
+    memo: event !== "payment" ? `Apps event: ${event}` : null,
     raw_data: payload as Record<string, unknown>,
   };
 }
@@ -98,25 +116,32 @@ export function normalizeAppsPayment(
 export function normalizeFreeeTransaction(
   payload: Record<string, unknown>
 ): Partial<Order> & { source: string; source_record_id: string } {
-  const amount = (payload.amount as number) || 0;
+  const amount = (payload.amount as number) || (payload.due_amount as number) || 0;
   const paidAt = (payload.issue_date as string) || (payload.date as string) || null;
   const tax = calcTaxFields(amount, paidAt);
 
-  const partnerName = (payload.partner_name as string) || null;
+  // partner_name があればそのまま、なければ description から振込人名を抽出
+  // description例: "振込  サトウ　シヨウタ" → "サトウ　シヨウタ"
+  let contactName = (payload.partner_name as string) || null;
+  const description = (payload.description as string) || null;
+  if (!contactName && description) {
+    const match = description.match(/振込\s+(.+)/);
+    if (match) contactName = match[1].trim();
+  }
 
   return {
     source: "freee",
-    source_record_id: (payload.id as string)?.toString() || "",
+    source_record_id: (payload.id as number | string)?.toString() || "",
     amount,
     ...tax,
     status: "paid",
     payment_method: "bank_transfer",
     paid_at: paidAt,
-    contact_name: partnerName,
-    contact_email: null, // Freee からはメールが来ないことが多い
-    product_name: (payload.description as string) || null,
+    contact_name: contactName,
+    contact_email: null,
+    product_name: description,
     order_type: "other",
-    memo: (payload.note as string) || null,
+    memo: (payload.note as string) || (payload.body as string) || null,
     raw_data: payload as Record<string, unknown>,
   };
 }
