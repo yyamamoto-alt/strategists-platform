@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import {
   formatDate,
@@ -26,6 +26,151 @@ import {
 } from "@/lib/calc-fields";
 import type { CustomerWithRelations, Activity } from "@strategy-school/shared-db";
 import type { CustomerEmail, ApplicationHistoryRecord } from "@/lib/data/spreadsheet-sync";
+
+// フォーム種類ごとに表示する主要フィールド
+const FORM_DISPLAY_FIELDS: Record<string, { key: string; label: string }[]> = {
+  "メンター指導報告": [
+    { key: "指導日", label: "指導日" },
+    { key: "メンター名", label: "メンター" },
+    { key: "回次（合計指導回数）", label: "回次" },
+    { key: "解いた問題", label: "解いた問題" },
+    { key: "よかった点・成長した点", label: "よかった点" },
+    { key: "課題・改善点", label: "課題" },
+  ],
+  "営業報告": [
+    { key: "実施日", label: "実施日" },
+    { key: "営業担当者名", label: "営業担当" },
+    { key: "結果", label: "結果" },
+    { key: "入会確度", label: "入会確度" },
+    { key: "購入希望/検討しているプラン", label: "検討プラン" },
+    { key: "フィードバック内容(簡単にでok)", label: "FB" },
+    { key: "ネックになりそうな要素（複数選択可）", label: "ネック" },
+  ],
+  "課題提出": [
+    { key: "タイムスタンプ", label: "提出日" },
+    { key: "問題タイプ", label: "問題タイプ" },
+    { key: "解いた問題", label: "解いた問題" },
+    { key: "担当メンター", label: "メンター" },
+    { key: "思考時間", label: "思考時間" },
+    { key: "前回メンタリングの満足度", label: "満足度" },
+  ],
+  "入塾フォーム": [
+    { key: "タイムスタンプ", label: "申込日" },
+    { key: "お名前", label: "名前" },
+    { key: "申込プラン", label: "プラン" },
+    { key: "エージェント利用", label: "エージェント" },
+  ],
+  "指導終了報告": [
+    { key: "タイムスタンプ", label: "報告日" },
+    { key: "担当メンター名", label: "メンター" },
+    { key: "受験予定企業", label: "受験予定企業" },
+    { key: "戦コンへの内定確度", label: "戦コン内定確度" },
+    { key: "追加指導のご提案", label: "追加指導" },
+    { key: "指導期間を通じたレベルアップ幅", label: "レベルアップ幅" },
+  ],
+  "面接終了後報告": [
+    { key: "タイムスタンプ", label: "報告日" },
+    { key: "受験企業", label: "受験企業" },
+    { key: "選考ステップ", label: "選考" },
+    { key: "面接内容", label: "面接内容" },
+    { key: "ケース面接で出題された問題", label: "ケース問題" },
+  ],
+};
+
+function FormDataSection({ records }: { records: ApplicationHistoryRecord[] }) {
+  const [activeSource, setActiveSource] = useState<string | null>(null);
+
+  // ソース別にグループ化
+  const grouped = useMemo(() => {
+    const map: Record<string, ApplicationHistoryRecord[]> = {};
+    for (const r of records) {
+      const src = r.source || "その他";
+      if (!map[src]) map[src] = [];
+      map[src].push(r);
+    }
+    return map;
+  }, [records]);
+
+  const sources = Object.keys(grouped);
+  const currentSource = activeSource || sources[0];
+  const currentRecords = grouped[currentSource] || [];
+  const displayFields = FORM_DISPLAY_FIELDS[currentSource];
+
+  return (
+    <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-6">
+      <h2 className="text-lg font-semibold text-white mb-3">
+        フォームデータ
+        <span className="text-xs text-gray-500 ml-2 font-normal">{records.length}件</span>
+      </h2>
+
+      {/* ソースタブ */}
+      <div className="flex flex-wrap gap-1 mb-4">
+        {sources.map((src) => (
+          <button
+            key={src}
+            onClick={() => setActiveSource(src)}
+            className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+              currentSource === src
+                ? "bg-brand text-white"
+                : "bg-surface-elevated text-gray-400 hover:text-gray-300"
+            }`}
+          >
+            {src.replace(/^LP申込\(/, "LP(")}{" "}
+            <span className="opacity-60">{grouped[src].length}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* レコード一覧 */}
+      <div className="space-y-3 max-h-[600px] overflow-y-auto">
+        {currentRecords.map((r) => {
+          const rd = (r.raw_data || {}) as Record<string, string>;
+          return (
+            <div
+              key={r.id}
+              className="border border-white/5 rounded-lg p-3 bg-surface-elevated"
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-xs text-gray-400">{formatDate(r.applied_at)}</span>
+                {r.notes && <span className="text-[10px] text-gray-500">{r.notes}</span>}
+              </div>
+              {displayFields ? (
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+                  {displayFields.map((f) => {
+                    const val = rd[f.key];
+                    if (!val) return null;
+                    return (
+                      <div key={f.key}>
+                        <p className="text-[10px] text-gray-500">{f.label}</p>
+                        <p className="text-xs text-gray-300 break-words">
+                          {val.length > 80 ? val.substring(0, 80) + "…" : val}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                /* 定義がないソースはキー/値をそのまま表示 */
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+                  {Object.entries(rd)
+                    .filter(([k]) => k !== "タイムスタンプ")
+                    .map(([k, v]) => (
+                      <div key={k}>
+                        <p className="text-[10px] text-gray-500">{k}</p>
+                        <p className="text-xs text-gray-300 break-words">
+                          {String(v).length > 80 ? String(v).substring(0, 80) + "…" : String(v)}
+                        </p>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 interface CustomerDetailClientProps {
   customer: CustomerWithRelations;
@@ -346,40 +491,9 @@ export function CustomerDetailClient({
             </div>
           )}
 
-          {/* 申込履歴 */}
+          {/* フォームデータ（ソース別タブ表示） */}
           {applicationHistory.length > 0 && (
-            <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-6">
-              <h2 className="text-lg font-semibold text-white mb-4">申込履歴</h2>
-              <div className="space-y-3">
-                {applicationHistory.map((ah) => (
-                  <div key={ah.id} className="border-l-2 border-brand/30 pl-3 py-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      {ah.source && (
-                        <span className="text-xs font-medium bg-surface-elevated text-gray-300 px-2 py-0.5 rounded">
-                          {ah.source}
-                        </span>
-                      )}
-                      <span className="text-xs text-gray-400">
-                        {formatDate(ah.applied_at)}
-                      </span>
-                    </div>
-                    {ah.notes && (
-                      <p className="text-sm text-gray-300">{ah.notes}</p>
-                    )}
-                    {ah.raw_data && (
-                      <details className="mt-1">
-                        <summary className="text-[10px] text-gray-500 cursor-pointer hover:text-gray-400">
-                          元データ
-                        </summary>
-                        <pre className="mt-1 p-2 bg-surface-elevated rounded text-[10px] text-gray-400 overflow-x-auto max-h-32">
-                          {JSON.stringify(ah.raw_data, null, 2)}
-                        </pre>
-                      </details>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
+            <FormDataSection records={applicationHistory} />
           )}
 
           <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-6">

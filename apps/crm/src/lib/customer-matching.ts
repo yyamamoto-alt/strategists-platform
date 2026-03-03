@@ -69,6 +69,128 @@ export async function matchCustomer(
 }
 
 /**
+ * フォームデータを関連テーブル（sales_pipeline / learning_records）に書き込む
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function syncFormFieldsToRelatedTables(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  db: any,
+  customerId: string,
+  sourceName: string,
+  rawData: Record<string, string>,
+): Promise<void> {
+  // --- 営業報告 → sales_pipeline ---
+  if (sourceName === "営業報告") {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const pipelineUpdate: Record<string, any> = {};
+    if (rawData["営業担当者名"]) pipelineUpdate.sales_person = rawData["営業担当者名"];
+    if (rawData["入会確度"]) {
+      const prob = parseInt(rawData["入会確度"].replace(/[^0-9]/g, ""), 10);
+      if (!isNaN(prob)) pipelineUpdate.probability = prob;
+    }
+    if (rawData["購入希望/検討しているプラン"]) pipelineUpdate.additional_plan = rawData["購入希望/検討しているプラン"];
+    if (rawData["ヒアリングメモ"]) pipelineUpdate.additional_notes = rawData["ヒアリングメモ"];
+    if (rawData["結果"]) pipelineUpdate.meeting_result = rawData["結果"];
+    if (rawData["フィードバック内容(簡単にでok)"]) pipelineUpdate.sales_content = rawData["フィードバック内容(簡単にでok)"];
+    if (rawData["ネックになりそうな要素（複数選択可）"]) pipelineUpdate.marketing_memo = rawData["ネックになりそうな要素（複数選択可）"];
+    if (rawData["実施日"]) pipelineUpdate.sales_date = rawData["実施日"];
+
+    if (Object.keys(pipelineUpdate).length > 0) {
+      pipelineUpdate.updated_at = new Date().toISOString();
+      await db
+        .from("sales_pipeline")
+        .update(pipelineUpdate)
+        .eq("customer_id", customerId);
+    }
+  }
+
+  // --- メンター指導報告 → learning_records ---
+  if (sourceName === "メンター指導報告") {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const learningUpdate: Record<string, any> = {};
+    if (rawData["メンター名"]) learningUpdate.mentor_name = rawData["メンター名"];
+    if (rawData["回次（合計指導回数）"]) {
+      const sessions = parseInt(rawData["回次（合計指導回数）"], 10);
+      if (!isNaN(sessions)) learningUpdate.completed_sessions = sessions;
+    }
+    if (rawData["指導日"]) learningUpdate.last_coaching_date = rawData["指導日"];
+
+    if (Object.keys(learningUpdate).length > 0) {
+      learningUpdate.updated_at = new Date().toISOString();
+      await db
+        .from("learning_records")
+        .update(learningUpdate)
+        .eq("customer_id", customerId);
+    }
+  }
+
+  // --- 入塾フォーム → sales_pipeline (stage更新) + learning_records ---
+  if (sourceName === "入塾フォーム") {
+    // 入塾 → パイプラインstageを「成約」に進める
+    await db
+      .from("sales_pipeline")
+      .update({
+        stage: "成約",
+        deal_status: "成約",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("customer_id", customerId);
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const learningUpdate: Record<string, any> = {};
+    if (rawData["申込プラン"]) learningUpdate.progress_text = rawData["申込プラン"];
+    if (rawData["エージェント利用"]) learningUpdate.selection_status = rawData["エージェント利用"];
+    if (rawData["Strategistsへの入会理由、（他社と比較した方）Strategistsを選んだ理由"]) {
+      learningUpdate.enrollment_reason = rawData["Strategistsへの入会理由、（他社と比較した方）Strategistsを選んだ理由"];
+    }
+    if (rawData["（任意）指導にあたっての要望、重点的にFBして欲しい点や、成長したいと考えているポイントなど"]) {
+      learningUpdate.coaching_requests = rawData["（任意）指導にあたっての要望、重点的にFBして欲しい点や、成長したいと考えているポイントなど"];
+    }
+
+    if (Object.keys(learningUpdate).length > 0) {
+      learningUpdate.updated_at = new Date().toISOString();
+      await db
+        .from("learning_records")
+        .update(learningUpdate)
+        .eq("customer_id", customerId);
+    }
+  }
+
+  // --- 指導終了報告 → learning_records ---
+  if (sourceName === "指導終了報告") {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const learningUpdate: Record<string, any> = {};
+    if (rawData["担当メンター名"]) learningUpdate.mentor_name = rawData["担当メンター名"];
+    if (rawData["指導期間を通じたレベルアップ幅"]) learningUpdate.level_up_range = rawData["指導期間を通じたレベルアップ幅"];
+    if (rawData["追加指導のご提案"]) learningUpdate.additional_coaching_proposal = rawData["追加指導のご提案"];
+    if (rawData["戦コンへの内定確度"]) learningUpdate.offer_probability_at_end = rawData["戦コンへの内定確度"];
+    if (rawData["受験予定企業"]) learningUpdate.target_companies_at_end = rawData["受験予定企業"];
+    if (rawData["【既卒のみ】面接予定時期"]) learningUpdate.interview_timing_at_end = rawData["【既卒のみ】面接予定時期"];
+
+    if (Object.keys(learningUpdate).length > 0) {
+      learningUpdate.updated_at = new Date().toISOString();
+      await db
+        .from("learning_records")
+        .update(learningUpdate)
+        .eq("customer_id", customerId);
+    }
+  }
+
+  // --- 課題提出 → learning_records (満足度) ---
+  if (sourceName === "課題提出") {
+    if (rawData["前回メンタリングの満足度"]) {
+      await db
+        .from("learning_records")
+        .update({
+          mentoring_satisfaction: rawData["前回メンタリングの満足度"],
+          updated_at: new Date().toISOString(),
+        })
+        .eq("customer_id", customerId);
+    }
+  }
+}
+
+/**
  * カラムマッピングに基づいてスプレッドシート行からCRMフィールドを抽出
  */
 export function extractFieldsFromRow(
@@ -146,6 +268,9 @@ export async function upsertFromSpreadsheet(
           { onConflict: "email" }
         );
     }
+
+    // ソース別: 関連テーブルにフィールドを書き込み
+    await syncFormFieldsToRelatedTables(db, match.customer_id, sourceName, rawData);
 
     // application_history に履歴追加
     await db.from("application_history").insert({
