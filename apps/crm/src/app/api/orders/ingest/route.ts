@@ -10,10 +10,21 @@ import type { Order } from "@strategy-school/shared-db";
 
 /**
  * POST /api/orders/ingest
+ * Headers: x-api-key: <INGEST_API_KEY>
  * body: { source: "stripe"|"apps"|"freee", payload: {...} }
  * → ソース別ノーマライズ → 税金計算 → 顧客マッチング → upsertOrder()
  */
 export async function POST(request: Request) {
+  // APIキー認証
+  const apiKey = request.headers.get("x-api-key");
+  const expectedKey = process.env.INGEST_API_KEY;
+  if (!expectedKey || apiKey !== expectedKey) {
+    return NextResponse.json(
+      { error: "Unauthorized" },
+      { status: 401 }
+    );
+  }
+
   let body: { source: string; payload: Record<string, unknown> };
   try {
     body = await request.json();

@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 // パブリックパス（認証不要）
-const PUBLIC_PATHS = ["/login", "/api/auth", "/api/spreadsheets"];
+const PUBLIC_PATHS = ["/login", "/api/auth", "/api/spreadsheets", "/api/orders/ingest", "/api/webhooks"];
 const STATIC_PREFIXES = ["/_next", "/favicon"];
 
 export async function middleware(request: NextRequest) {
