@@ -22,7 +22,7 @@ const mainNavigation: NavItem[] = [
 const databaseNavigation: NavItem[] = [
   { name: "顧客一覧", href: "/customers", icon: "👤", roles: ["admin", "mentor"] },
   { name: "指導報告DB", href: "/coaching-reports", icon: "📋", roles: ["admin", "mentor"] },
-  { name: "支払いDB", href: "/payments", icon: "💳", roles: ["admin"] },
+  { name: "注文管理", href: "/orders", icon: "💳", roles: ["admin"] },
 ];
 
 const adminNavigation: NavItem[] = [

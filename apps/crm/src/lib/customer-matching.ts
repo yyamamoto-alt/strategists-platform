@@ -4,7 +4,7 @@ import { createServiceClient } from "@/lib/supabase/server";
 
 export interface MatchResult {
   customer_id: string;
-  match_type: "email" | "phone";
+  match_type: "email" | "phone" | "name_kana";
 }
 
 /**
@@ -13,6 +13,7 @@ export interface MatchResult {
 export async function matchCustomer(
   email?: string | null,
   phone?: string | null,
+  nameKana?: string | null,
 ): Promise<MatchResult | null> {
   const supabase = createServiceClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -45,6 +46,21 @@ export async function matchCustomer(
 
     if (data) {
       return { customer_id: data.id, match_type: "phone" };
+    }
+  }
+
+  // Step 3: name_kana（カタカナ名）照合 — Freee銀行振込のカタカナ名マッチ用
+  if (nameKana) {
+    const normalizedKana = nameKana.trim().replace(/\s+/g, "");
+    const { data } = await db
+      .from("customers")
+      .select("id")
+      .eq("name_kana", normalizedKana)
+      .limit(1)
+      .single();
+
+    if (data) {
+      return { customer_id: data.id, match_type: "name_kana" };
     }
   }
 

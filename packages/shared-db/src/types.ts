@@ -455,6 +455,46 @@ export interface BankTransfer {
   customer_id: string | null;
 }
 
+// ---------- 統合取引テーブル (migration 009) ----------
+
+export type OrderType = 'main_plan' | 'video_course' | 'other' | 'additional_coaching';
+export type OrderStatus = 'pending' | 'paid' | 'partial' | 'refunded' | 'cancelled';
+export type OrderSource = 'stripe' | 'apps' | 'freee' | 'manual' | 'excel_migration';
+export type OrderMatchStatus = 'matched' | 'unmatched' | 'manual';
+export type PaymentMethodType = 'credit_card' | 'bank_transfer' | 'apps';
+
+export interface Order {
+  id: string;
+  customer_id: string | null;
+  order_type: OrderType;
+  product_name: string | null;
+  amount: number;
+  status: OrderStatus;
+  payment_method: PaymentMethodType | null;
+  ordered_at: string | null;
+  paid_at: string | null;
+  amount_excl_tax: number | null;
+  tax_amount: number;
+  tax_rate: number;
+  source: OrderSource;
+  source_record_id: string | null;
+  source_contract_id: string | null;
+  installment_total: number | null;
+  installment_index: number | null;
+  installment_amount: number | null;
+  total_price: number | null;
+  card_brand: string | null;
+  card_last4: string | null;
+  contact_email: string | null;
+  contact_name: string | null;
+  contact_phone: string | null;
+  memo: string | null;
+  raw_data: Record<string, unknown> | null;
+  match_status: OrderMatchStatus;
+  created_at: string;
+  updated_at: string;
+}
+
 // ---------- CRM 結合型 ----------
 
 export interface CustomerWithRelations extends Customer {

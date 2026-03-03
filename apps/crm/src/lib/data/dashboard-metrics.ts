@@ -1114,3 +1114,76 @@ export const fetchDashboardData = unstable_cache(
   ["dashboard-data"],
   { revalidate: 60 }
 );
+
+// ================================================================
+// Order-based Revenue（orders テーブルベース売上計算 — 移行期間は並行稼働）
+// ================================================================
+
+export interface OrderBasedRevenue {
+  period: string; // "YYYY/MM"
+  total_amount: number;
+  total_excl_tax: number;
+  order_count: number;
+  by_type: Record<string, { amount: number; count: number }>;
+  by_source: Record<string, { amount: number; count: number }>;
+}
+
+/**
+ * orders テーブルから月別売上を計算（段階的切替用）
+ * 既存の computeRevenueMetrics() と並行して比較するために使用
+ */
+export async function computeOrderBasedRevenue(): Promise<OrderBasedRevenue[]> {
+  const supabase = createServiceClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db = supabase as any;
+
+  const { data: orders, error } = await db
+    .from("orders")
+    .select("amount, amount_excl_tax, paid_at, order_type, source, status")
+    .in("status", ["paid", "partial"]);
+
+  if (error || !orders) {
+    console.error("Failed to fetch orders for revenue:", error);
+    return [];
+  }
+
+  const periodMap = new Map<string, OrderBasedRevenue>();
+
+  for (const o of orders) {
+    if (!o.paid_at) continue;
+    const d = new Date(o.paid_at);
+    const period = `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, "0")}`;
+
+    if (!periodMap.has(period)) {
+      periodMap.set(period, {
+        period,
+        total_amount: 0,
+        total_excl_tax: 0,
+        order_count: 0,
+        by_type: {},
+        by_source: {},
+      });
+    }
+
+    const entry = periodMap.get(period)!;
+    entry.total_amount += o.amount || 0;
+    entry.total_excl_tax += o.amount_excl_tax || o.amount || 0;
+    entry.order_count++;
+
+    // by_type
+    const typeKey = o.order_type || "other";
+    if (!entry.by_type[typeKey]) entry.by_type[typeKey] = { amount: 0, count: 0 };
+    entry.by_type[typeKey].amount += o.amount || 0;
+    entry.by_type[typeKey].count++;
+
+    // by_source
+    const srcKey = o.source || "unknown";
+    if (!entry.by_source[srcKey]) entry.by_source[srcKey] = { amount: 0, count: 0 };
+    entry.by_source[srcKey].amount += o.amount || 0;
+    entry.by_source[srcKey].count++;
+  }
+
+  const results = Array.from(periodMap.values());
+  results.sort((a, b) => a.period.localeCompare(b.period));
+  return results;
+}
