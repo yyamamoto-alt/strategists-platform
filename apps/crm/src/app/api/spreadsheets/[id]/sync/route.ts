@@ -3,6 +3,8 @@ import { NextResponse } from "next/server";
 import { fetchSheetData } from "@/lib/google-sheets";
 import { extractFieldsFromRow, upsertFromSpreadsheet } from "@/lib/customer-matching";
 
+export const maxDuration = 300; // 5分（Vercel Pro: 最大300秒）
+
 interface Props {
   params: Promise<{ id: string }>;
 }
