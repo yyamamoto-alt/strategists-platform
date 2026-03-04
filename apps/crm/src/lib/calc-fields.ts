@@ -96,8 +96,8 @@ export function calcClosingProbability(c: CustomerWithRelations): number {
   if (stage === "全額返金") return 0;
 
   // --- 失注系 ---
-  if (stage === "失注") return 0;
-  if (stage === "失注見込" || stage === "失注見込(自動)") return 0.02;
+  if (stage === "失注" || stage === "失注見込(自動)") return 0;
+  if (stage === "失注見込") return 0.02;
 
   // --- 未実施: 面談予定だが未実施。既卒/新卒で大幅に異なる ---
   if (stage === "未実施") {
@@ -127,11 +127,7 @@ export function calcClosingProbability(c: CustomerWithRelations): number {
 
 /** 売上見込（Excel Col N）= 確定売上 + 人材見込売上 + 補助金額 */
 export function calcSalesProjection(c: CustomerWithRelations): number {
-  // DB移行値を優先（Excelの計算済み値）
-  if (c.pipeline?.projected_amount && c.pipeline.projected_amount > 0) {
-    return c.pipeline.projected_amount;
-  }
-  // フォールバック: コンポーネントから再計算
+  // 常にコンポーネントから計算（projected_amount は Excel移行時の古い値で矛盾するため使用しない）
   const confirmed = c.contract?.confirmed_amount || 0;
   const agentRev = calcAgentProjectedRevenue(c);
   const subsidy = getSubsidyAmount(c);

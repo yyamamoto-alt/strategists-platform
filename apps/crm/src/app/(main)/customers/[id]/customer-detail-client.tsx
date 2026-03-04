@@ -97,15 +97,14 @@ function FormDataSection({ records }: { records: ApplicationHistoryRecord[] }) {
   const sources = Object.keys(grouped);
   const currentSource = activeSource || sources[0];
   const currentRecords = grouped[currentSource] || [];
-  const displayFields = FORM_DISPLAY_FIELDS[currentSource];
 
   return (
-    <div className="bg-indigo-950/20 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 border-l-4 border-l-indigo-500 p-4">
+    <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 border-l-2 border-l-gray-600 p-4">
       <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-1">
         フォームデータ
         <span className="text-xs text-gray-500 ml-2 font-normal">{records.length}件</span>
       </h2>
-      <p className="text-[10px] text-indigo-400 mb-3">フォーム連携データ</p>
+      <p className="text-[10px] text-gray-500 mb-3">フォーム連携データ</p>
 
       {/* ソースタブ */}
       <div className="flex flex-wrap gap-1 mb-4">
@@ -125,7 +124,7 @@ function FormDataSection({ records }: { records: ApplicationHistoryRecord[] }) {
         ))}
       </div>
 
-      {/* レコード一覧 */}
+      {/* レコード一覧（テーブル形式） */}
       <div className="space-y-3 max-h-[600px] overflow-y-auto">
         {currentRecords.map((r) => {
           const rd = (r.raw_data || {}) as Record<string, string>;
@@ -138,18 +137,20 @@ function FormDataSection({ records }: { records: ApplicationHistoryRecord[] }) {
                 <span className="text-xs text-gray-400">{formatDate(r.applied_at)}</span>
                 {r.notes && <span className="text-[10px] text-gray-500">{r.notes}</span>}
               </div>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
-                {Object.entries(rd)
-                  .filter(([, v]) => v)
-                  .map(([k, v]) => (
-                    <div key={k}>
-                      <p className="text-[10px] text-gray-500">{k}</p>
-                      <p className="text-xs text-gray-300 break-words">
-                        {String(v).length > 120 ? String(v).substring(0, 120) + "…" : String(v)}
-                      </p>
-                    </div>
-                  ))}
-              </div>
+              <table className="w-full">
+                <tbody>
+                  {Object.entries(rd)
+                    .filter(([, v]) => v)
+                    .map(([k, v]) => (
+                      <tr key={k} className="border-b border-white/5 last:border-0">
+                        <td className="text-[10px] text-gray-500 py-1 pr-3 align-top whitespace-nowrap w-1/4">{k}</td>
+                        <td className="text-xs text-gray-300 py-1 break-words">
+                          {String(v).length > 200 ? String(v).substring(0, 200) + "…" : String(v)}
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
             </div>
           );
         })}
@@ -277,7 +278,6 @@ function EditModal({
     setSaving(true);
     setError("");
     try {
-      // 変更があったフィールドだけ送る
       const payload: Record<string, Record<string, unknown>> = {};
       for (const section of Object.keys(EDITABLE_FIELDS) as EditSection[]) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -331,7 +331,6 @@ function EditModal({
           <h2 className="text-lg font-semibold text-white">顧客情報を編集</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-white text-xl">&times;</button>
         </div>
-        {/* タブ */}
         <div className="flex gap-1 px-4 pt-3 border-b border-white/10">
           {tabs.map((tab) => (
             <button
@@ -345,7 +344,6 @@ function EditModal({
             </button>
           ))}
         </div>
-        {/* フィールド */}
         <div className="p-4 space-y-3 max-h-[60vh] overflow-y-auto">
           {EDITABLE_FIELDS[activeTab].map((field) => (
             <div key={field.key}>
@@ -459,8 +457,9 @@ export function CustomerDetailClient({
       setIsAddingEmail(false);
     }
   };
+
   return (
-    <div className="p-4 space-y-3">
+    <div className="p-4 max-w-4xl mx-auto space-y-4">
       {showEditModal && (
         <EditModal customer={customer} onClose={() => setShowEditModal(false)} onSaved={handleEditSaved} />
       )}
@@ -475,7 +474,7 @@ export function CustomerDetailClient({
         </Link>
         <div className="flex-1">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-brand-muted text-brand rounded-full flex items-center justify-center font-bold text-lg">
+            <div className="w-14 h-14 bg-brand-muted text-brand rounded-full flex items-center justify-center font-bold text-xl">
               {customer.name.charAt(0)}
             </div>
             <div>
@@ -515,327 +514,287 @@ export function CustomerDetailClient({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2 space-y-3">
-          {/* 基本情報 */}
-          <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-4">
-            <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">基本情報</h2>
-            <div className="grid grid-cols-3 gap-3 text-sm">
-              <InfoRow label="申込日" value={formatDate(customer.application_date)} />
-              <InfoRow label="メール" value={customer.email || "-"} />
-              <InfoRow label="電話番号" value={customer.phone || "-"} />
-              <InfoRow label="流入元" value={`${customer.utm_source || "-"} / ${customer.utm_medium || "-"}`} />
-              <InfoRow label="大学" value={customer.university || "-"} />
-              <InfoRow label="学部" value={customer.faculty || "-"} />
-              <InfoRow label="優先度" value={customer.priority || "-"} />
-              <InfoRow label="初期レベル" value={customer.initial_level || "-"} />
-            </div>
-            {customer.career_history && (
-              <div className="mt-4">
-                <p className="text-xs text-gray-500 font-medium mb-1">経歴</p>
-                <p className="text-sm text-gray-300 whitespace-pre-line bg-surface-elevated p-3 rounded-lg">
-                  {customer.career_history}
-                </p>
-              </div>
-            )}
-            {customer.target_companies && (
-              <div className="mt-4">
-                <p className="text-xs text-gray-500 font-medium mb-1">志望企業</p>
-                <p className="text-sm text-gray-300 bg-surface-elevated p-3 rounded-lg">
-                  {customer.target_companies}
-                </p>
-              </div>
-            )}
-          </div>
-
-          {/* 営業・商談情報 */}
-          {customer.pipeline && (
-            <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-4">
-              <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">営業・商談情報</h2>
-              <div className="grid grid-cols-3 gap-3 text-sm">
-                <InfoRow label="面談予定日" value={formatDate(customer.pipeline.meeting_scheduled_date)} />
-                <InfoRow label="面談実施日" value={formatDate(customer.pipeline.meeting_conducted_date)} />
-                <InfoRow label="営業日" value={formatDate(customer.pipeline.sales_date)} />
-                <InfoRow label="成約日" value={formatDate(customer.pipeline.closing_date)} />
-                <InfoRow label="入金日" value={formatDate(customer.pipeline.payment_date)} />
-                <InfoRow label="エージェント希望" value={customer.pipeline.agent_interest_at_application ? "あり" : "なし"} />
-                <InfoRow label="決め手" value={customer.pipeline.decision_factor || "-"} />
-                <InfoRow label="比較サービス" value={customer.pipeline.comparison_services || "-"} />
-              </div>
-              {customer.pipeline.sales_content && (
-                <div className="mt-4">
-                  <p className="text-xs text-gray-500 font-medium mb-1">営業内容</p>
-                  <p className="text-sm text-gray-300 whitespace-pre-line bg-surface-elevated p-3 rounded-lg">
-                    {customer.pipeline.sales_content}
-                  </p>
-                </div>
-              )}
-              {customer.pipeline.sales_strategy && (
-                <div className="mt-4">
-                  <p className="text-xs text-gray-500 font-medium mb-1">営業方針</p>
-                  <p className="text-sm text-gray-300 whitespace-pre-line bg-surface-elevated p-3 rounded-lg">
-                    {customer.pipeline.sales_strategy}
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* 売上見込サマリー */}
-          {(customer.contract || customer.pipeline) && (
-            <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-4">
-              <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">売上見込</h2>
-              <div className="space-y-3">
-                {/* 売上見込の分解 */}
-                <div className="bg-surface-elevated rounded-lg p-3 space-y-1.5">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-400">確定売上（スクール）</span>
-                    <span className="text-white font-medium">{customer.contract?.confirmed_amount ? formatCurrency(customer.contract.confirmed_amount) : "¥0"}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-400">確定売上（人材）</span>
-                    <span className="text-white font-medium">{isAgentConfirmed(customer) ? formatCurrency(calcExpectedReferralFee(customer)) : "¥0"}</span>
-                  </div>
-                  <div className="border-t border-white/10 pt-1.5 flex justify-between text-sm">
-                    <span className="text-white font-semibold">確定売上 合計</span>
-                    <span className="text-green-400 font-bold">{(() => { const v = calcConfirmedRevenue(customer); return v > 0 ? formatCurrency(v) : "¥0"; })()}</span>
-                  </div>
-                </div>
-                <div className="bg-surface-elevated rounded-lg p-3 space-y-1.5">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-400">補助金額（リスキャリ）</span>
-                    <span className="text-white font-medium">{(() => { const s = getSubsidyAmount(customer); return s > 0 ? formatCurrency(s) : "¥0"; })()}{customer.contract?.subsidy_eligible ? " （対象）" : ""}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-400">人材見込売上</span>
-                    <span className="text-white font-medium">{(() => { const v = calcAgentProjectedRevenue(customer); return v > 0 ? formatCurrency(v) : "¥0"; })()}</span>
-                  </div>
-                  <div className="border-t border-white/10 pt-1.5 flex justify-between text-sm">
-                    <span className="text-white font-semibold">売上見込 合計</span>
-                    <span className="text-brand font-bold">{(() => { const v = calcSalesProjection(customer); return v > 0 ? formatCurrency(v) : "-"; })()}</span>
-                  </div>
-                </div>
-                {/* 見込LTV・成約見込率 */}
-                <div className="grid grid-cols-3 gap-3 text-sm mt-3">
-                  <InfoRow label="成約見込率" value={formatPercent(calcClosingProbability(customer))} />
-                  <InfoRow label="見込LTV" value={(() => { const v = calcExpectedLTV(customer); return v > 0 ? formatCurrency(v) : "-"; })()} />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* 契約情報 */}
-          {customer.contract && (
-            <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-4">
-              <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">契約・入金情報</h2>
-              <div className="grid grid-cols-3 gap-3 text-sm">
-                <InfoRow label="プラン" value={customer.contract.plan_name || "-"} />
-                <InfoRow label="変更プラン" value={customer.contract.changed_plan || "-"} />
-                <InfoRow label="一次金額" value={customer.contract.first_amount ? formatCurrency(customer.contract.first_amount) : "-"} />
-                <InfoRow label="確定売上" value={customer.contract.confirmed_amount ? formatCurrency(customer.contract.confirmed_amount) : "-"} />
-                <InfoRow label="割引" value={customer.contract.discount ? formatCurrency(customer.contract.discount) : "なし"} />
-                <InfoRow label="請求状況" value={customer.contract.billing_status} />
-                <InfoRow label="入金日" value={formatDate(customer.contract.payment_date)} />
-                <InfoRow label="補助金対象" value={customer.contract.subsidy_eligible ? "対象" : "非対象"} />
-                <InfoRow label="補助金額" value={(() => { const s = getSubsidyAmount(customer); return s > 0 ? formatCurrency(s) : "-"; })()} />
-              </div>
-            </div>
-          )}
-
-          {/* 学習情報 */}
-          {customer.learning && (
-            <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-4">
-              <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">学習状況</h2>
-              <div className="grid grid-cols-3 gap-3 text-sm">
-                <InfoRow label="指導メンター" value={customer.learning.mentor_name || "-"} />
-                <InfoRow label="契約月数" value={customer.learning.contract_months != null ? `${customer.learning.contract_months}ヶ月` : "-"} />
-                <InfoRow label="指導開始日" value={formatDate(customer.learning.coaching_start_date)} />
-                <InfoRow label="指導終了日" value={formatDate(customer.learning.coaching_end_date)} />
-                <InfoRow label="最終指導日" value={formatDate(customer.learning.last_coaching_date)} />
-                <InfoRow label="契約指導回数" value={customer.learning.total_sessions.toString()} />
-                <InfoRow label="指導完了数" value={customer.learning.completed_sessions != null ? customer.learning.completed_sessions.toString() : "-"} />
-                <InfoRow label="残指導回数" value={`${calcRemainingSessions(customer)}回`} />
-                <InfoRow label="日程消化率" value={(() => { const v = calcScheduleProgress(customer); return v !== null ? formatPercent(v) : "-"; })()} />
-                <InfoRow label="指導消化率" value={(() => { const v = calcSessionProgress(customer); return v !== null ? formatPercent(v) : "-"; })()} />
-                <InfoRow label="進捗ステータス" value={calcProgressStatus(customer)} />
-                <InfoRow label="現在のレベル" value={customer.learning.current_level || "-"} />
-                <InfoRow label="フェルミ" value={customer.learning.level_fermi || "-"} />
-                <InfoRow label="ケース" value={customer.learning.level_case || "-"} />
-                <InfoRow label="McK" value={customer.learning.level_mck || "-"} />
-                <InfoRow label="カリキュラム進捗" value={customer.learning.curriculum_progress !== null ? formatPercent(customer.learning.curriculum_progress) : "-"} />
-                <InfoRow label="最新評価" value={customer.learning.latest_evaluation || "-"} />
-              </div>
-              {customer.learning.case_interview_progress && (
-                <div className="mt-4">
-                  <p className="text-xs text-gray-500 font-medium mb-1">ケース面接対策状況</p>
-                  <p className="text-sm text-gray-300 whitespace-pre-line bg-surface-elevated p-3 rounded-lg">
-                    {customer.learning.case_interview_progress}
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* エージェント情報（新卒・非エージェントユーザーは非表示） */}
-          {customer.agent && customer.attribute !== "新卒" && isAgentCustomer(customer) && (
-            <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-4">
-              <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">エージェント・転職支援</h2>
-              <div className="grid grid-cols-3 gap-3 text-sm">
-                <InfoRow label="エージェント利用" value={isAgentCustomer(customer) ? "利用中" : "なし"} />
-                <InfoRow label="プラン" value={customer.agent.agent_plan || "-"} />
-                <InfoRow label="転職活動状況" value={customer.agent.job_search_status} />
-                <InfoRow label="選考状況" value={customer.agent.selection_status || "-"} />
-                <InfoRow label="内定先" value={customer.agent.offer_company || "-"} />
-                <InfoRow label="想定年収" value={customer.agent.offer_salary ? formatCurrency(customer.agent.offer_salary) : "-"} />
-                <InfoRow label="入社至る率" value={customer.agent.hire_rate != null ? formatPercent(customer.agent.hire_rate) : "-"} />
-                <InfoRow label="内定確度" value={customer.agent.offer_probability != null ? formatPercent(customer.agent.offer_probability) : "-"} />
-                <InfoRow label="紹介料率" value={customer.agent.referral_fee_rate ? formatPercent(customer.agent.referral_fee_rate) : "-"} />
-                <InfoRow label="マージン" value={customer.agent.margin != null ? `${customer.agent.margin}` : "-"} />
-                <InfoRow label="人材紹介報酬期待値" value={(() => { const v = calcExpectedReferralFee(customer); return v > 0 ? formatCurrency(v) : "-"; })()} />
-                <InfoRow label="人材見込売上" value={(() => { const v = calcAgentProjectedRevenue(customer); return v > 0 ? formatCurrency(v) : "-"; })()} />
-                <InfoRow label="人材確定" value={isAgentConfirmed(customer) ? "確定" : "未確定"} />
-                <InfoRow label="入社予定日" value={formatDate(customer.agent.placement_date ?? null)} />
-                <InfoRow label="外部エージェント" value={customer.agent.external_agents || "-"} />
-                <InfoRow label="レベルアップ確認" value={customer.agent.level_up_confirmed || "-"} />
-              </div>
-              {customer.agent.agent_memo && (
-                <div className="mt-4">
-                  <p className="text-xs text-gray-500 font-medium mb-1">エージェント業務メモ</p>
-                  <p className="text-sm text-gray-300 whitespace-pre-line bg-surface-elevated p-3 rounded-lg">
-                    {customer.agent.agent_memo}
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
+      {/* 基本情報 + 契約・実施（目立たせる） */}
+      <div className="bg-surface-card rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.5)] border border-brand/30 p-5">
+        <h2 className="text-base font-bold text-white mb-4">基本情報</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+          <InfoRow label="申込日" value={formatDate(customer.application_date)} />
+          <InfoRow label="メール" value={customer.email || "-"} />
+          <InfoRow label="電話番号" value={customer.phone || "-"} />
+          <InfoRow label="流入元" value={`${customer.utm_source || "-"} / ${customer.utm_medium || "-"}`} />
+          <InfoRow label="大学" value={customer.university || "-"} />
+          <InfoRow label="学部" value={customer.faculty || "-"} />
+          <InfoRow label="優先度" value={customer.priority || "-"} />
+          <InfoRow label="初期レベル" value={customer.initial_level || "-"} />
         </div>
-
-        {/* 右カラム */}
-        <div className="space-y-3">
-          {/* メールアドレス */}
-          {emailList.length > 0 && (
-            <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-4">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-white">メールアドレス</h2>
-                <button
-                  onClick={() => setShowAddEmail(!showAddEmail)}
-                  className="text-xs text-brand hover:underline"
-                >
-                  + 追加
-                </button>
-              </div>
-              <div className="space-y-2">
-                {emailList.map((em) => (
-                  <div key={em.id} className="flex items-center gap-2 text-sm">
-                    <span className="text-gray-300">{em.email}</span>
-                    {em.is_primary && (
-                      <span className="px-1.5 py-0.5 text-[10px] bg-brand/20 text-brand rounded">メイン</span>
-                    )}
-                  </div>
-                ))}
-              </div>
-              {showAddEmail && (
-                <div className="flex gap-2 mt-3">
-                  <input
-                    type="email"
-                    value={newEmail}
-                    onChange={(e) => setNewEmail(e.target.value)}
-                    placeholder="新しいメールアドレス"
-                    className="flex-1 px-2 py-1.5 bg-surface-elevated border border-white/10 rounded text-white text-sm focus:outline-none focus:border-brand"
-                  />
-                  <button
-                    onClick={addEmail}
-                    disabled={!newEmail || isAddingEmail}
-                    className="px-3 py-1.5 bg-brand text-white rounded text-xs disabled:opacity-50"
-                  >
-                    {isAddingEmail ? "..." : "追加"}
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* フォームデータ（ソース別タブ表示） */}
-          {applicationHistory.length > 0 && (
-            <FormDataSection records={applicationHistory} />
-          )}
-
-          <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-4">
-            <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">プロフィール</h2>
-            <div className="space-y-3 text-sm">
-              {customer.sns_accounts && (
-                <div>
-                  <p className="text-xs text-gray-500 font-medium">SNS</p>
-                  <p className="text-gray-300">{customer.sns_accounts}</p>
-                </div>
-              )}
-              {customer.reference_media && (
-                <div>
-                  <p className="text-xs text-gray-500 font-medium">参考メディア</p>
-                  <p className="text-gray-300">{customer.reference_media}</p>
-                </div>
-              )}
-              {customer.hobbies && (
-                <div>
-                  <p className="text-xs text-gray-500 font-medium">趣味・特技</p>
-                  <p className="text-gray-300">{customer.hobbies}</p>
-                </div>
-              )}
-              {customer.behavioral_traits && (
-                <div>
-                  <p className="text-xs text-gray-500 font-medium">行動特性</p>
-                  <p className="text-gray-300">{customer.behavioral_traits}</p>
-                </div>
-              )}
-              {customer.notes && (
-                <div>
-                  <p className="text-xs text-gray-500 font-medium">備考</p>
-                  <p className="text-gray-300 bg-yellow-900/20 p-2 rounded">{customer.notes}</p>
-                </div>
-              )}
-              {customer.caution_notes && (
-                <div>
-                  <p className="text-xs text-gray-500 font-medium">注意事項</p>
-                  <p className="text-gray-300 bg-red-900/20 p-2 rounded">{customer.caution_notes}</p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-4">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-white">活動履歴</h2>
-              <button className="text-xs text-brand hover:underline">
-                + 追加
-              </button>
-            </div>
-            <div className="space-y-4">
-              {activities.length === 0 && (
-                <p className="text-sm text-gray-400">活動履歴がありません</p>
-              )}
-              {activities.map((activity) => (
-                <div
-                  key={activity.id}
-                  className="border-l-2 border-brand/30 pl-3 py-1"
-                >
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-xs font-medium bg-surface-elevated text-gray-300 px-2 py-0.5 rounded">
-                      {activity.activity_type}
-                    </span>
-                    <span className="text-xs text-gray-400">
-                      {formatDate(activity.created_at)}
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-300">{activity.content}</p>
-                  {activity.created_by && (
-                    <p className="text-xs text-gray-400 mt-1">
-                      担当: {activity.created_by}
-                    </p>
-                  )}
-                </div>
+        {/* 追加メール */}
+        {emailList.length > 1 && (
+          <div className="mt-3 pt-3 border-t border-white/10">
+            <p className="text-[10px] text-gray-500 font-medium mb-1">その他メール</p>
+            <div className="flex flex-wrap gap-2">
+              {emailList.filter(em => !em.is_primary).map((em) => (
+                <span key={em.id} className="text-xs text-gray-300 bg-surface-elevated px-2 py-1 rounded">{em.email}</span>
               ))}
             </div>
           </div>
+        )}
+        {customer.career_history && (
+          <div className="mt-4">
+            <p className="text-xs text-gray-500 font-medium mb-1">経歴</p>
+            <p className="text-sm text-gray-300 whitespace-pre-line bg-surface-elevated p-3 rounded-lg">
+              {customer.career_history}
+            </p>
+          </div>
+        )}
+        {customer.target_companies && (
+          <div className="mt-4">
+            <p className="text-xs text-gray-500 font-medium mb-1">志望企業</p>
+            <p className="text-sm text-gray-300 bg-surface-elevated p-3 rounded-lg">
+              {customer.target_companies}
+            </p>
+          </div>
+        )}
+
+        {/* 契約・入金情報（基本情報と同じカード内、目立たせる） */}
+        {customer.contract && (
+          <div className="mt-5 pt-4 border-t border-white/10">
+            <h3 className="text-base font-bold text-white mb-3">契約・入金</h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+              <InfoRow label="プラン" value={customer.contract.plan_name || "-"} />
+              <InfoRow label="変更プラン" value={customer.contract.changed_plan || "-"} />
+              <InfoRow label="一次金額" value={customer.contract.first_amount ? formatCurrency(customer.contract.first_amount) : "-"} />
+              <InfoRow label="確定売上" value={customer.contract.confirmed_amount ? formatCurrency(customer.contract.confirmed_amount) : "-"} />
+              <InfoRow label="割引" value={customer.contract.discount ? formatCurrency(customer.contract.discount) : "なし"} />
+              <InfoRow label="請求状況" value={customer.contract.billing_status} />
+              <InfoRow label="入金日" value={formatDate(customer.contract.payment_date)} />
+              <InfoRow label="補助金対象" value={customer.contract.subsidy_eligible ? "対象" : "非対象"} />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* 売上見込サマリー */}
+      {(customer.contract || customer.pipeline) && (
+        <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-4">
+          <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">売上見込</h2>
+          <div className="space-y-3">
+            <div className="bg-surface-elevated rounded-lg p-3 space-y-1.5">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-400">確定売上（スクール）</span>
+                <span className="text-white font-medium">{customer.contract?.confirmed_amount ? formatCurrency(customer.contract.confirmed_amount) : "¥0"}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-400">確定売上（人材）</span>
+                <span className="text-white font-medium">{isAgentConfirmed(customer) ? formatCurrency(calcExpectedReferralFee(customer)) : "¥0"}</span>
+              </div>
+              <div className="border-t border-white/10 pt-1.5 flex justify-between text-sm">
+                <span className="text-white font-semibold">確定売上 合計</span>
+                <span className="text-green-400 font-bold">{(() => { const v = calcConfirmedRevenue(customer); return v > 0 ? formatCurrency(v) : "¥0"; })()}</span>
+              </div>
+            </div>
+            <div className="bg-surface-elevated rounded-lg p-3 space-y-1.5">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-400">補助金額（リスキャリ）</span>
+                <span className="text-white font-medium">{(() => { const s = getSubsidyAmount(customer); return s > 0 ? formatCurrency(s) : "¥0"; })()}{customer.contract?.subsidy_eligible ? " （対象）" : ""}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-400">人材見込売上</span>
+                <span className="text-white font-medium">{(() => { const v = calcAgentProjectedRevenue(customer); return v > 0 ? formatCurrency(v) : "¥0"; })()}</span>
+              </div>
+              <div className="border-t border-white/10 pt-1.5 flex justify-between text-sm">
+                <span className="text-white font-semibold">売上見込 合計</span>
+                <span className="text-brand font-bold">{(() => { const v = calcSalesProjection(customer); return v > 0 ? formatCurrency(v) : "-"; })()}</span>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3 text-sm mt-3">
+              <InfoRow label="成約見込率" value={formatPercent(calcClosingProbability(customer))} />
+              <InfoRow label="見込LTV" value={(() => { const v = calcExpectedLTV(customer); return v > 0 ? formatCurrency(v) : "-"; })()} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 営業・商談情報 */}
+      {customer.pipeline && (
+        <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-4">
+          <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">営業・商談情報</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+            <InfoRow label="面談予定日" value={formatDate(customer.pipeline.meeting_scheduled_date)} />
+            <InfoRow label="面談実施日" value={formatDate(customer.pipeline.meeting_conducted_date)} />
+            <InfoRow label="営業日" value={formatDate(customer.pipeline.sales_date)} />
+            <InfoRow label="成約日" value={formatDate(customer.pipeline.closing_date)} />
+            <InfoRow label="入金日" value={formatDate(customer.pipeline.payment_date)} />
+            <InfoRow label="エージェント希望" value={customer.pipeline.agent_interest_at_application ? "あり" : "なし"} />
+            <InfoRow label="決め手" value={customer.pipeline.decision_factor || "-"} />
+            <InfoRow label="比較サービス" value={customer.pipeline.comparison_services || "-"} />
+          </div>
+          {customer.pipeline.sales_content && (
+            <div className="mt-4">
+              <p className="text-xs text-gray-500 font-medium mb-1">営業内容</p>
+              <p className="text-sm text-gray-300 whitespace-pre-line bg-surface-elevated p-3 rounded-lg">
+                {customer.pipeline.sales_content}
+              </p>
+            </div>
+          )}
+          {customer.pipeline.sales_strategy && (
+            <div className="mt-4">
+              <p className="text-xs text-gray-500 font-medium mb-1">営業方針</p>
+              <p className="text-sm text-gray-300 whitespace-pre-line bg-surface-elevated p-3 rounded-lg">
+                {customer.pipeline.sales_strategy}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 学習情報 */}
+      {customer.learning && (
+        <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-4">
+          <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">学習状況</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+            <InfoRow label="指導メンター" value={customer.learning.mentor_name || "-"} />
+            <InfoRow label="契約月数" value={customer.learning.contract_months != null ? `${customer.learning.contract_months}ヶ月` : "-"} />
+            <InfoRow label="指導開始日" value={formatDate(customer.learning.coaching_start_date)} />
+            <InfoRow label="指導終了日" value={formatDate(customer.learning.coaching_end_date)} />
+            <InfoRow label="最終指導日" value={formatDate(customer.learning.last_coaching_date)} />
+            <InfoRow label="契約指導回数" value={customer.learning.total_sessions.toString()} />
+            <InfoRow label="指導完了数" value={customer.learning.completed_sessions != null ? customer.learning.completed_sessions.toString() : "-"} />
+            <InfoRow label="残指導回数" value={`${calcRemainingSessions(customer)}回`} />
+            <InfoRow label="日程消化率" value={(() => { const v = calcScheduleProgress(customer); return v !== null ? formatPercent(v) : "-"; })()} />
+            <InfoRow label="指導消化率" value={(() => { const v = calcSessionProgress(customer); return v !== null ? formatPercent(v) : "-"; })()} />
+            <InfoRow label="進捗ステータス" value={calcProgressStatus(customer)} />
+            <InfoRow label="現在のレベル" value={customer.learning.current_level || "-"} />
+            <InfoRow label="フェルミ" value={customer.learning.level_fermi || "-"} />
+            <InfoRow label="ケース" value={customer.learning.level_case || "-"} />
+            <InfoRow label="McK" value={customer.learning.level_mck || "-"} />
+            <InfoRow label="カリキュラム進捗" value={customer.learning.curriculum_progress !== null ? formatPercent(customer.learning.curriculum_progress) : "-"} />
+            <InfoRow label="最新評価" value={customer.learning.latest_evaluation || "-"} />
+          </div>
+          {customer.learning.case_interview_progress && (
+            <div className="mt-4">
+              <p className="text-xs text-gray-500 font-medium mb-1">ケース面接対策状況</p>
+              <p className="text-sm text-gray-300 whitespace-pre-line bg-surface-elevated p-3 rounded-lg">
+                {customer.learning.case_interview_progress}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* エージェント情報 */}
+      {customer.agent && customer.attribute !== "新卒" && isAgentCustomer(customer) && (
+        <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-4">
+          <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">エージェント・転職支援</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+            <InfoRow label="エージェント利用" value={isAgentCustomer(customer) ? "利用中" : "なし"} />
+            <InfoRow label="プラン" value={customer.agent.agent_plan || "-"} />
+            <InfoRow label="転職活動状況" value={customer.agent.job_search_status} />
+            <InfoRow label="選考状況" value={customer.agent.selection_status || "-"} />
+            <InfoRow label="内定先" value={customer.agent.offer_company || "-"} />
+            <InfoRow label="想定年収" value={customer.agent.offer_salary ? formatCurrency(customer.agent.offer_salary) : "-"} />
+            <InfoRow label="入社至る率" value={customer.agent.hire_rate != null ? formatPercent(customer.agent.hire_rate) : "-"} />
+            <InfoRow label="内定確度" value={customer.agent.offer_probability != null ? formatPercent(customer.agent.offer_probability) : "-"} />
+            <InfoRow label="紹介料率" value={customer.agent.referral_fee_rate ? formatPercent(customer.agent.referral_fee_rate) : "-"} />
+            <InfoRow label="マージン" value={customer.agent.margin != null ? `${customer.agent.margin}` : "-"} />
+            <InfoRow label="人材紹介報酬期待値" value={(() => { const v = calcExpectedReferralFee(customer); return v > 0 ? formatCurrency(v) : "-"; })()} />
+            <InfoRow label="人材見込売上" value={(() => { const v = calcAgentProjectedRevenue(customer); return v > 0 ? formatCurrency(v) : "-"; })()} />
+            <InfoRow label="人材確定" value={isAgentConfirmed(customer) ? "確定" : "未確定"} />
+            <InfoRow label="入社予定日" value={formatDate(customer.agent.placement_date ?? null)} />
+            <InfoRow label="外部エージェント" value={customer.agent.external_agents || "-"} />
+            <InfoRow label="レベルアップ確認" value={customer.agent.level_up_confirmed || "-"} />
+          </div>
+          {customer.agent.agent_memo && (
+            <div className="mt-4">
+              <p className="text-xs text-gray-500 font-medium mb-1">エージェント業務メモ</p>
+              <p className="text-sm text-gray-300 whitespace-pre-line bg-surface-elevated p-3 rounded-lg">
+                {customer.agent.agent_memo}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* プロフィール */}
+      <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-4">
+        <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">プロフィール</h2>
+        <div className="grid grid-cols-2 gap-4 text-sm">
+          {customer.sns_accounts && (
+            <div>
+              <p className="text-xs text-gray-500 font-medium">SNS</p>
+              <p className="text-gray-300">{customer.sns_accounts}</p>
+            </div>
+          )}
+          {customer.reference_media && (
+            <div>
+              <p className="text-xs text-gray-500 font-medium">参考メディア</p>
+              <p className="text-gray-300">{customer.reference_media}</p>
+            </div>
+          )}
+          {customer.hobbies && (
+            <div>
+              <p className="text-xs text-gray-500 font-medium">趣味・特技</p>
+              <p className="text-gray-300">{customer.hobbies}</p>
+            </div>
+          )}
+          {customer.behavioral_traits && (
+            <div>
+              <p className="text-xs text-gray-500 font-medium">行動特性</p>
+              <p className="text-gray-300">{customer.behavioral_traits}</p>
+            </div>
+          )}
+        </div>
+        {customer.notes && (
+          <div className="mt-3">
+            <p className="text-xs text-gray-500 font-medium mb-1">備考</p>
+            <p className="text-sm text-gray-300 bg-yellow-900/20 p-2 rounded">{customer.notes}</p>
+          </div>
+        )}
+        {customer.caution_notes && (
+          <div className="mt-3">
+            <p className="text-xs text-gray-500 font-medium mb-1">注意事項</p>
+            <p className="text-sm text-gray-300 bg-red-900/20 p-2 rounded">{customer.caution_notes}</p>
+          </div>
+        )}
+      </div>
+
+      {/* フォームデータ（常時展開、控えめ色、テーブル形式） */}
+      {applicationHistory.length > 0 && (
+        <FormDataSection records={applicationHistory} />
+      )}
+
+      {/* 活動履歴 */}
+      <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-4">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">活動履歴</h2>
+          <button className="text-xs text-brand hover:underline">
+            + 追加
+          </button>
+        </div>
+        <div className="space-y-4">
+          {activities.length === 0 && (
+            <p className="text-sm text-gray-400">活動履歴がありません</p>
+          )}
+          {activities.map((activity) => (
+            <div
+              key={activity.id}
+              className="border-l-2 border-brand/30 pl-3 py-1"
+            >
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-xs font-medium bg-surface-elevated text-gray-300 px-2 py-0.5 rounded">
+                  {activity.activity_type}
+                </span>
+                <span className="text-xs text-gray-400">
+                  {formatDate(activity.created_at)}
+                </span>
+              </div>
+              <p className="text-sm text-gray-300">{activity.content}</p>
+              {activity.created_by && (
+                <p className="text-xs text-gray-400 mt-1">
+                  担当: {activity.created_by}
+                </p>
+              )}
+            </div>
+          ))}
         </div>
       </div>
     </div>

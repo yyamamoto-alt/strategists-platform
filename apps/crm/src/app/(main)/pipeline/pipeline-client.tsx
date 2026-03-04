@@ -9,57 +9,103 @@ import {
   getAttributeColor,
   formatPercent,
 } from "@/lib/utils";
-import { calcClosingProbability } from "@/lib/calc-fields";
+import { calcClosingProbability, calcExpectedLTV, calcConfirmedRevenue } from "@/lib/calc-fields";
 import type { CustomerWithRelations } from "@strategy-school/shared-db";
 
-// 4ステージのみ（ビジネスフロー順）
-const KANBAN_STAGES = [
-  {
-    label: "未実施",
-    match: ["未実施", "日程未確", "日程確定", "問い合わせ"],
-    borderColor: "border-t-yellow-400",
-    rich: false,
-  },
-  {
-    label: "検討中",
-    match: ["検討中", "長期検討", "提案中", "面談実施"],
-    borderColor: "border-t-blue-400",
-    rich: true,
-  },
-  {
-    label: "追加指導",
-    matchPrefix: "追加指導",
-    match: [] as string[],
-    borderColor: "border-t-purple-400",
-    rich: false,
-  },
-  {
-    label: "成約（直近2週間のみ）",
-    match: ["成約", "入金済"],
-    borderColor: "border-t-green-400",
-    rich: false,
-    recentOnly: true,
-  },
-];
+interface StageDef {
+  label: string;
+  match: string[];
+  matchPrefix?: string;
+  borderColor: string;
+  rich: boolean;
+  recentOnly?: boolean;
+  filter?: (c: CustomerWithRelations, today: Date) => boolean;
+  width?: string;
+}
+
+function buildKanbanStages(today: Date): StageDef[] {
+  return [
+    {
+      label: "未実施（予定日前）",
+      match: ["未実施", "日程未確", "日程確定", "問い合わせ"],
+      borderColor: "border-t-yellow-400",
+      rich: false,
+      filter: (c) => {
+        const d = c.pipeline?.meeting_scheduled_date;
+        return !d || new Date(d) >= today;
+      },
+    },
+    {
+      label: "未実施（予定日後）",
+      match: ["未実施", "日程確定", "問い合わせ"],
+      borderColor: "border-t-red-400",
+      rich: false,
+      filter: (c) => {
+        const d = c.pipeline?.meeting_scheduled_date;
+        return !!d && new Date(d) < today;
+      },
+    },
+    {
+      label: "検討中",
+      match: ["検討中", "長期検討", "提案中", "面談実施"],
+      borderColor: "border-t-blue-400",
+      rich: true,
+      width: "w-96",
+    },
+    {
+      label: "追加指導",
+      matchPrefix: "追加指導",
+      match: [] as string[],
+      borderColor: "border-t-purple-400",
+      rich: true,
+      width: "w-96",
+    },
+    {
+      label: "成約（直近2週間のみ）",
+      match: ["成約", "入金済"],
+      borderColor: "border-t-green-400",
+      rich: false,
+      recentOnly: true,
+    },
+    {
+      label: "失注見込",
+      match: ["失注見込(自動)", "失注見込", "失注"],
+      borderColor: "border-t-gray-500",
+      rich: false,
+    },
+  ];
+}
 
 interface PipelineClientProps {
   customers: CustomerWithRelations[];
 }
 
 export function PipelineClient({ customers }: PipelineClientProps) {
+  const today = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
+
   const twoWeeksAgo = useMemo(() => {
     const d = new Date();
     d.setDate(d.getDate() - 14);
     return d.toISOString().slice(0, 10);
   }, []);
 
+  const kanbanStages = useMemo(() => buildKanbanStages(today), [today]);
+
   const byStage = useMemo(() => {
-    return KANBAN_STAGES.map((stageDef) => {
+    return kanbanStages.map((stageDef) => {
       let stageCustomers = customers.filter((c) => {
         const stage = c.pipeline?.stage;
         if (!stage) return false;
-        if (stageDef.matchPrefix && stage.startsWith(stageDef.matchPrefix)) return true;
-        return stageDef.match.includes(stage);
+        const matchesStage =
+          (stageDef.matchPrefix && stage.startsWith(stageDef.matchPrefix)) ||
+          stageDef.match.includes(stage);
+        if (!matchesStage) return false;
+        if (stageDef.filter) return stageDef.filter(c, today);
+        return true;
       });
 
       // 成約は直近2週間のみ
@@ -70,16 +116,23 @@ export function PipelineClient({ customers }: PipelineClientProps) {
         });
       }
 
+      // 成約見込率で降順ソート
+      stageCustomers.sort((a, b) => calcClosingProbability(b) - calcClosingProbability(a));
+
       return {
         ...stageDef,
         customers: stageCustomers,
       };
     });
-  }, [customers, twoWeeksAgo]);
+  }, [customers, twoWeeksAgo, today, kanbanStages]);
 
   const totalValue = customers
     .filter((c) => c.contract?.confirmed_amount)
     .reduce((sum, c) => sum + (c.contract?.confirmed_amount || 0), 0);
+
+  // 成約ステージの判定
+  const isSeiyakuStage = (stage: string | undefined) =>
+    stage === "成約" || stage === "入金済";
 
   return (
     <div className="p-6 space-y-4">
@@ -91,10 +144,10 @@ export function PipelineClient({ customers }: PipelineClientProps) {
       </div>
 
       <div className="flex gap-4 overflow-x-auto pb-4">
-        {byStage.map(({ label, borderColor, rich, customers }) => (
+        {byStage.map(({ label, borderColor, rich, customers, width }) => (
           <div
             key={label}
-            className={`flex-shrink-0 ${rich ? "w-96" : "w-72"} bg-surface rounded-xl border-t-4 ${borderColor}`}
+            className={`flex-shrink-0 ${width || (rich ? "w-96" : "w-72")} bg-surface rounded-xl border-t-4 ${borderColor}`}
           >
             <div className="p-3 border-b border-white/10 bg-surface-card rounded-t-xl">
               <div className="flex items-center justify-between">
@@ -105,9 +158,9 @@ export function PipelineClient({ customers }: PipelineClientProps) {
               </div>
               {customers.length > 0 && (
                 <p className="text-xs text-gray-400 mt-1">
-                  {formatCurrency(
+                  見込LTV合計: {formatCurrency(
                     customers.reduce(
-                      (sum, c) => sum + (c.contract?.confirmed_amount || 0),
+                      (sum, c) => sum + calcExpectedLTV(c),
                       0
                     )
                   )}
@@ -143,7 +196,7 @@ export function PipelineClient({ customers }: PipelineClientProps) {
                     )}
                   </div>
 
-                  {/* リッチ表示: 検討中ステージのみ */}
+                  {/* リッチ表示: 検討中・追加指導ステージ */}
                   {rich && customer.pipeline && (
                     <div className="mt-2 space-y-1.5 border-t border-white/[0.06] pt-2">
                       {/* 営業角度 */}
@@ -160,6 +213,13 @@ export function PipelineClient({ customers }: PipelineClientProps) {
                         <span className="text-[10px] text-gray-500">成約見込</span>
                         <span className="text-xs font-semibold text-amber-400">
                           {formatPercent(calcClosingProbability(customer))}
+                        </span>
+                      </div>
+                      {/* 見込LTV */}
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] text-gray-500">見込LTV</span>
+                        <span className="text-xs font-semibold text-brand">
+                          {formatCurrency(calcExpectedLTV(customer))}
                         </span>
                       </div>
                       {/* 実施状況 */}
@@ -233,12 +293,18 @@ export function PipelineClient({ customers }: PipelineClientProps) {
                     </div>
                   )}
 
-                  {/* 金額 + 日付 */}
-                  {customer.contract?.confirmed_amount ? (
-                    <p className="text-xs font-medium text-green-400 mt-1">
-                      {formatCurrency(customer.contract.confirmed_amount)}
+                  {/* 金額表示: 成約は確定売上、それ以外は見込LTV */}
+                  {isSeiyakuStage(customer.pipeline?.stage) ? (
+                    calcConfirmedRevenue(customer) > 0 && (
+                      <p className="text-xs font-medium text-green-400 mt-1">
+                        {formatCurrency(calcConfirmedRevenue(customer))}
+                      </p>
+                    )
+                  ) : (
+                    <p className="text-xs font-medium text-amber-400/80 mt-1">
+                      LTV: {formatCurrency(calcExpectedLTV(customer))}
                     </p>
-                  ) : null}
+                  )}
                   <p className="text-[10px] text-gray-400 mt-1">
                     {formatDate(customer.application_date)}
                   </p>
