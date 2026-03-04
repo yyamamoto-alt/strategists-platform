@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Search, Plus, BookOpen, Clock } from "lucide-react";
+import { Search, BookOpen, Clock } from "lucide-react";
 import type { Course } from "@/types/database";
 
 const levelLabels: Record<string, string> = {
@@ -32,10 +32,6 @@ export function CoursesClient({ courses }: { courses: Course[] }) {
           <h1 className="text-2xl font-bold text-white">コース一覧</h1>
           <p className="text-sm text-gray-400 mt-1">受講可能なコースを見る</p>
         </div>
-        <Link href="/courses/new" className="flex items-center gap-2 bg-brand hover:bg-brand-dark text-white px-4 py-2 rounded-lg text-sm transition-colors">
-          <Plus className="w-4 h-4" />
-          コースを作成
-        </Link>
       </div>
 
       <div className="flex gap-3 mb-6">

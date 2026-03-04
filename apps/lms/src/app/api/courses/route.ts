@@ -26,7 +26,6 @@ export async function GET() {
     .select("*")
     .order("sort_order", { ascending: true });
 
-  // admin以外は公開済みのみ
   if (session.role !== "admin") {
     query = query.eq("is_active", true);
   }
@@ -34,7 +33,8 @@ export async function GET() {
   const { data, error } = await query;
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("courses GET error:", error);
+    return NextResponse.json({ error: "データの取得に失敗しました" }, { status: 500 });
   }
 
   return NextResponse.json(data);
@@ -47,11 +47,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const body = await request.json();
+  let body: any;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "不正なリクエストです" }, { status: 400 });
+  }
+
   const { title, description, category, level, duration_weeks } = body;
 
-  if (!title) {
-    return NextResponse.json({ error: "Title is required" }, { status: 400 });
+  if (!title || typeof title !== "string" || !title.trim()) {
+    return NextResponse.json({ error: "コース名は必須です" }, { status: 400 });
   }
 
   const supabase = createAdminClient();
@@ -79,22 +85,23 @@ export async function POST(request: NextRequest) {
   const { data, error } = await supabase
     .from("courses")
     .insert({
-      title,
+      title: title.trim(),
       slug,
       description: description || null,
       category: category || null,
       level: level || "beginner",
-      duration_weeks: duration_weeks || 12,
+      duration_weeks: Math.max(1, Math.min(52, Number(duration_weeks) || 12)),
       total_lessons: 0,
       is_active: false,
-      sort_order: (maxOrder?.sort_order || 0) + 1,
+      sort_order: (maxOrder?.sort_order ?? 0) + 1,
       status: "draft",
     } as any)
     .select()
     .single();
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("courses POST error:", error);
+    return NextResponse.json({ error: "コース作成に失敗しました" }, { status: 500 });
   }
 
   return NextResponse.json(data, { status: 201 });

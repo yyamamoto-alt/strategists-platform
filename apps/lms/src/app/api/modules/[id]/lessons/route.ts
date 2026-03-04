@@ -13,11 +13,17 @@ export async function POST(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const body = await request.json();
+  let body: any;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "不正なリクエストです" }, { status: 400 });
+  }
+
   const { title, description, lesson_type, video_url, markdown_content, duration_minutes } = body;
 
-  if (!title) {
-    return NextResponse.json({ error: "Title is required" }, { status: 400 });
+  if (!title || typeof title !== "string" || !title.trim()) {
+    return NextResponse.json({ error: "レッスンタイトルは必須です" }, { status: 400 });
   }
 
   const supabase = createAdminClient();
@@ -30,7 +36,7 @@ export async function POST(
     .single();
 
   if (modError || !mod) {
-    return NextResponse.json({ error: "Module not found" }, { status: 404 });
+    return NextResponse.json({ error: "モジュールが見つかりません" }, { status: 404 });
   }
 
   // sort_order: 同モジュール内の既存最大値 + 1
@@ -40,20 +46,20 @@ export async function POST(
     .eq("module_id", moduleId)
     .order("sort_order", { ascending: false })
     .limit(1)
-    .maybeSingle();
+    .maybeSingle() as { data: { sort_order: number } | null };
 
   const { data, error } = await supabase
     .from("lessons")
     .insert({
       course_id: (mod as any).course_id,
       module_id: moduleId,
-      title,
+      title: title.trim(),
       description: description || null,
       lesson_type: lesson_type || "テキスト",
       video_url: video_url || null,
       markdown_content: markdown_content || null,
-      duration_minutes: duration_minutes || null,
-      sort_order: ((maxOrder as any)?.sort_order || 0) + 1,
+      duration_minutes: duration_minutes ? Math.max(0, Number(duration_minutes)) : null,
+      sort_order: (maxOrder?.sort_order ?? 0) + 1,
       is_active: true,
       copy_protected: true,
     } as any)
@@ -61,7 +67,8 @@ export async function POST(
     .single();
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("lessons POST error:", error);
+    return NextResponse.json({ error: "レッスン追加に失敗しました" }, { status: 500 });
   }
 
   return NextResponse.json(data, { status: 201 });

@@ -47,8 +47,12 @@ function NavSection({ title, items, role }: { title: string; items: NavItem[]; r
         </p>
       )}
       {filteredItems.map((item) => {
+        // /courses と /courses/manage の重複防止
         const isActive =
-          pathname === item.href || pathname?.startsWith(item.href + "/");
+          pathname === item.href ||
+          (pathname?.startsWith(item.href + "/") &&
+            // /courses/manage は /courses の子として誤判定しない
+            !(item.href === "/courses" && pathname?.startsWith("/courses/manage")));
         return (
           <Link
             key={item.href}

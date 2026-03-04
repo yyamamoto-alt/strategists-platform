@@ -33,4 +33,8 @@ export type {
   CustomerFilters,
   PaginationParams,
   Database,
+  Plan,
+  PlanTier,
+  CoursePlanAccess,
+  ContractPlanMapping,
 } from "@strategy-school/shared-db";

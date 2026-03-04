@@ -7,7 +7,7 @@ import { useAuth } from "@/lib/auth-context";
 import { MarkdownViewer } from "@/components/content/markdown-viewer";
 import {
   ArrowLeft, Plus, Trash2, GripVertical, Video, FileText, Save,
-  X, Upload, ChevronDown, ChevronRight,
+  X, Upload, ChevronDown, ChevronRight, Check, AlertCircle,
 } from "lucide-react";
 
 interface LessonData {
@@ -31,19 +31,6 @@ interface ModuleData {
   lessons: LessonData[];
 }
 
-interface CourseData {
-  id: string;
-  title: string;
-  description: string | null;
-  category: string | null;
-  level: string;
-  duration_weeks: number;
-  status: string;
-  is_active: boolean;
-  slug: string;
-  modules: ModuleData[];
-}
-
 // YouTube URL関連
 function isYouTubeUrl(url: string): boolean {
   return /(?:youtube\.com|youtu\.be)/.test(url);
@@ -57,44 +44,54 @@ function getYouTubeEmbedUrl(url: string): string {
 // Notionマークダウンクリーンアップ
 function cleanNotionMarkdown(md: string): string {
   let cleaned = md;
-  // Notionの空リンク除去: [text]() → text
   cleaned = cleaned.replace(/\[([^\]]+)\]\(\)/g, "$1");
-  // 連続する空行を1つに正規化
   cleaned = cleaned.replace(/\n{3,}/g, "\n\n");
-  // 先頭のプロパティ表記除去 (Notionエクスポートの先頭メタデータ)
   cleaned = cleaned.replace(/^(.*\n)+?(?=# )/m, "");
-  // Notionのコールアウト変換
-  cleaned = cleaned.replace(/> [💡🔥⚠️📌❗]\s*/g, "> ");
+  cleaned = cleaned.replace(/> [^\w\s<>&]{1,3}\s*/g, "> ");
   return cleaned.trim();
 }
 
-// マークダウンを簡易HTML変換
+// マークダウンを簡易HTML変換（サニタイズ付き）
 function markdownToHtml(md: string): string {
-  let html = md;
-  // ヘッダー
+  // HTMLタグをエスケープ（XSS防止）
+  let html = md
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+
   html = html.replace(/^### (.+)$/gm, "<h3>$1</h3>");
   html = html.replace(/^## (.+)$/gm, "<h2>$1</h2>");
   html = html.replace(/^# (.+)$/gm, "<h1>$1</h1>");
-  // Bold/Italic
   html = html.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
   html = html.replace(/\*(.+?)\*/g, "<em>$1</em>");
-  // コードブロック
   html = html.replace(/```[\s\S]*?```/g, (match) => {
     const code = match.replace(/```\w*\n?/, "").replace(/\n?```$/, "");
     return `<pre><code>${code}</code></pre>`;
   });
-  // インラインコード
   html = html.replace(/`([^`]+)`/g, "<code>$1</code>");
-  // リスト
   html = html.replace(/^- (.+)$/gm, "<li>$1</li>");
   html = html.replace(/(<li>.*<\/li>\n?)+/g, "<ul>$&</ul>");
-  // リンク
-  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
-  // 段落
+  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
   html = html.replace(/^(?!<[hupol]|<li|<pre)(.+)$/gm, "<p>$1</p>");
-  // 引用
-  html = html.replace(/^> (.+)$/gm, "<blockquote>$1</blockquote>");
+  html = html.replace(/^&gt; (.+)$/gm, "<blockquote>$1</blockquote>");
   return html;
+}
+
+// トースト通知コンポーネント
+function Toast({ message, type, onClose }: { message: string; type: "success" | "error"; onClose: () => void }) {
+  useEffect(() => {
+    const timer = setTimeout(onClose, 3000);
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
+  return (
+    <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg text-sm animate-in slide-in-from-bottom-2 ${
+      type === "success" ? "bg-green-900/90 text-green-200" : "bg-red-900/90 text-red-200"
+    }`}>
+      {type === "success" ? <Check className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+      {message}
+    </div>
+  );
 }
 
 export default function CourseEditPage() {
@@ -104,7 +101,6 @@ export default function CourseEditPage() {
   const courseId = params.id as string;
   const isNew = courseId === "new";
 
-  const [course, setCourse] = useState<CourseData | null>(null);
   const [form, setForm] = useState({
     title: "", description: "", category: "", level: "beginner",
     duration_weeks: 12, status: "draft",
@@ -113,6 +109,7 @@ export default function CourseEditPage() {
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   // レッスン編集パネル
   const [editingLesson, setEditingLesson] = useState<LessonData | null>(null);
@@ -120,9 +117,14 @@ export default function CourseEditPage() {
     title: "", description: "", lesson_type: "テキスト",
     video_url: "", markdown_content: "", duration_minutes: 0,
   });
+  const [lessonSaving, setLessonSaving] = useState(false);
   const [showNotionImport, setShowNotionImport] = useState(false);
   const [notionText, setNotionText] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const showToast = (message: string, type: "success" | "error") => {
+    setToast({ message, type });
+  };
 
   const fetchCourse = useCallback(async () => {
     if (isNew) return;
@@ -130,7 +132,6 @@ export default function CourseEditPage() {
       const res = await fetch(`/api/courses/${courseId}`);
       if (res.ok) {
         const data = await res.json();
-        setCourse(data);
         setForm({
           title: data.title || "",
           description: data.description || "",
@@ -140,8 +141,9 @@ export default function CourseEditPage() {
           status: data.status || "draft",
         });
         setModules(data.modules || []);
-        // 全モジュール展開
         setExpandedModules(new Set((data.modules || []).map((m: ModuleData) => m.id)));
+      } else {
+        showToast("コース情報の取得に失敗しました", "error");
       }
     } finally {
       setLoading(false);
@@ -156,7 +158,7 @@ export default function CourseEditPage() {
 
   // コース保存
   const handleSaveCourse = async () => {
-    if (!form.title.trim()) return alert("コース名を入力してください");
+    if (!form.title.trim()) { showToast("コース名を入力してください", "error"); return; }
     setSaving(true);
     try {
       if (isNew) {
@@ -167,15 +169,25 @@ export default function CourseEditPage() {
         });
         if (res.ok) {
           const data = await res.json();
+          showToast("コースを作成しました", "success");
           router.push(`/courses/manage/${data.id}`);
+        } else {
+          const err = await res.json();
+          showToast(err.error || "コース作成に失敗しました", "error");
         }
       } else {
-        await fetch(`/api/courses/${courseId}`, {
+        const res = await fetch(`/api/courses/${courseId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(form),
         });
-        await fetchCourse();
+        if (res.ok) {
+          showToast("保存しました", "success");
+          await fetchCourse();
+        } else {
+          const err = await res.json();
+          showToast(err.error || "保存に失敗しました", "error");
+        }
       }
     } finally {
       setSaving(false);
@@ -186,56 +198,81 @@ export default function CourseEditPage() {
   const handleTogglePublish = async () => {
     const newStatus = form.status === "published" ? "draft" : "published";
     const isActive = newStatus === "published";
-    await fetch(`/api/courses/${courseId}`, {
+    const res = await fetch(`/api/courses/${courseId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: newStatus, is_active: isActive }),
     });
-    setForm((f) => ({ ...f, status: newStatus }));
+    if (res.ok) {
+      setForm((f) => ({ ...f, status: newStatus }));
+      showToast(newStatus === "published" ? "コースを公開しました" : "下書きに戻しました", "success");
+    } else {
+      showToast("ステータス変更に失敗しました", "error");
+    }
   };
 
   // モジュール追加
   const handleAddModule = async () => {
-    if (isNew) return;
+    if (isNew) { showToast("先にコースを保存してください", "error"); return; }
     const title = prompt("モジュール名を入力してください:");
-    if (!title) return;
+    if (!title?.trim()) return;
     const res = await fetch(`/api/courses/${courseId}/modules`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ title }),
     });
-    if (res.ok) await fetchCourse();
+    if (res.ok) {
+      showToast("モジュールを追加しました", "success");
+      await fetchCourse();
+    } else {
+      showToast("モジュール追加に失敗しました", "error");
+    }
   };
 
   // モジュール名変更
   const handleEditModuleTitle = async (moduleId: string, currentTitle: string) => {
     const title = prompt("モジュール名:", currentTitle);
-    if (!title || title === currentTitle) return;
-    await fetch(`/api/modules/${moduleId}`, {
+    if (!title?.trim() || title === currentTitle) return;
+    const res = await fetch(`/api/modules/${moduleId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ title }),
     });
-    await fetchCourse();
+    if (res.ok) {
+      showToast("モジュール名を変更しました", "success");
+      await fetchCourse();
+    } else {
+      showToast("モジュール名の変更に失敗しました", "error");
+    }
   };
 
   // モジュール削除
   const handleDeleteModule = async (moduleId: string, title: string) => {
-    if (!confirm(`「${title}」を削除しますか？配下のレッスンは未分類になります。`)) return;
-    await fetch(`/api/modules/${moduleId}`, { method: "DELETE" });
-    await fetchCourse();
+    if (!confirm(`「${title}」を削除しますか？`)) return;
+    const res = await fetch(`/api/modules/${moduleId}`, { method: "DELETE" });
+    if (res.ok) {
+      showToast("モジュールを削除しました", "success");
+      await fetchCourse();
+    } else {
+      showToast("モジュール削除に失敗しました", "error");
+    }
   };
 
   // レッスン追加
   const handleAddLesson = async (moduleId: string) => {
     const title = prompt("レッスンタイトル:");
-    if (!title) return;
+    if (!title?.trim()) return;
     const res = await fetch(`/api/modules/${moduleId}/lessons`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ title, lesson_type: "テキスト" }),
     });
-    if (res.ok) await fetchCourse();
+    if (res.ok) {
+      showToast("レッスンを追加しました", "success");
+      await fetchCourse();
+    } else {
+      showToast("レッスン追加に失敗しました", "error");
+    }
   };
 
   // レッスン編集開始
@@ -254,37 +291,55 @@ export default function CourseEditPage() {
   // レッスン保存
   const handleSaveLesson = async () => {
     if (!editingLesson) return;
-    await fetch(`/api/lessons/${editingLesson.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        title: lessonForm.title,
-        description: lessonForm.description || null,
-        lesson_type: lessonForm.lesson_type,
-        video_url: lessonForm.video_url || null,
-        markdown_content: lessonForm.markdown_content || null,
-        duration_minutes: lessonForm.duration_minutes || null,
-      }),
-    });
-    setEditingLesson(null);
-    await fetchCourse();
+    if (!lessonForm.title.trim()) { showToast("レッスンタイトルを入力してください", "error"); return; }
+    setLessonSaving(true);
+    try {
+      const res = await fetch(`/api/lessons/${editingLesson.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: lessonForm.title.trim(),
+          description: lessonForm.description || null,
+          lesson_type: lessonForm.lesson_type,
+          video_url: lessonForm.video_url || null,
+          markdown_content: lessonForm.markdown_content || null,
+          duration_minutes: lessonForm.duration_minutes || null,
+        }),
+      });
+      if (res.ok) {
+        showToast("レッスンを保存しました", "success");
+        setEditingLesson(null);
+        await fetchCourse();
+      } else {
+        const err = await res.json();
+        showToast(err.error || "レッスン保存に失敗しました", "error");
+      }
+    } finally {
+      setLessonSaving(false);
+    }
   };
 
   // レッスン削除
   const handleDeleteLesson = async (lessonId: string) => {
     if (!confirm("このレッスンを削除しますか？")) return;
-    await fetch(`/api/lessons/${lessonId}`, { method: "DELETE" });
-    setEditingLesson(null);
-    await fetchCourse();
+    const res = await fetch(`/api/lessons/${lessonId}`, { method: "DELETE" });
+    if (res.ok) {
+      showToast("レッスンを削除しました", "success");
+      setEditingLesson(null);
+      await fetchCourse();
+    } else {
+      showToast("レッスン削除に失敗しました", "error");
+    }
   };
 
   // Notionインポート
   const handleNotionImport = () => {
-    if (!notionText.trim()) return;
+    if (!notionText.trim()) { showToast("マークダウンを入力してください", "error"); return; }
     const cleaned = cleanNotionMarkdown(notionText);
     setLessonForm((f) => ({ ...f, markdown_content: cleaned }));
     setShowNotionImport(false);
     setNotionText("");
+    showToast("マークダウンをインポートしました", "success");
   };
 
   // ファイルドロップ
@@ -293,12 +348,13 @@ export default function CourseEditPage() {
     const files = "dataTransfer" in e ? e.dataTransfer.files : e.target.files;
     if (!files || files.length === 0) return;
     const file = files[0];
-    if (!file.name.endsWith(".md")) return alert(".md ファイルのみ対応しています");
+    if (!file.name.endsWith(".md")) { showToast(".md ファイルのみ対応しています", "error"); return; }
     const reader = new FileReader();
     reader.onload = () => {
       const text = reader.result as string;
       const cleaned = cleanNotionMarkdown(text);
       setLessonForm((f) => ({ ...f, markdown_content: cleaned }));
+      showToast("ファイルを読み込みました", "success");
     };
     reader.readAsText(file);
   };
@@ -313,6 +369,9 @@ export default function CourseEditPage() {
 
   return (
     <div className="flex h-screen bg-surface overflow-hidden">
+      {/* トースト */}
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+
       {/* メインエリア */}
       <div className="flex-1 overflow-y-auto">
         <div className="p-6 max-w-4xl">
@@ -365,10 +424,10 @@ export default function CourseEditPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-1">期間(週)</label>
-                  <input type="number" value={form.duration_weeks} onChange={(e) => setForm({ ...form, duration_weeks: parseInt(e.target.value) || 12 })} className="w-full px-4 py-2 bg-surface border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-brand" />
+                  <input type="number" min={1} max={52} value={form.duration_weeks} onChange={(e) => setForm({ ...form, duration_weeks: parseInt(e.target.value) || 12 })} className="w-full px-4 py-2 bg-surface border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-brand" />
                 </div>
               </div>
-              <button onClick={handleSaveCourse} disabled={saving} className="bg-brand hover:bg-brand-dark text-white px-6 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 flex items-center gap-2">
+              <button onClick={handleSaveCourse} disabled={saving} className="bg-brand hover:bg-brand-dark text-white px-6 py-2.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 flex items-center gap-2">
                 <Save className="w-4 h-4" />
                 {saving ? "保存中..." : isNew ? "コースを作成" : "基本情報を保存"}
               </button>
@@ -380,17 +439,23 @@ export default function CourseEditPage() {
             <div className="bg-surface-elevated rounded-xl p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-white">カリキュラム構成</h2>
-                <button onClick={handleAddModule} className="flex items-center gap-1 text-sm text-brand-light hover:text-white transition-colors">
+                <button onClick={handleAddModule} className="flex items-center gap-1.5 text-sm bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white px-3 py-1.5 rounded-lg transition-colors">
                   <Plus className="w-4 h-4" />モジュール追加
                 </button>
               </div>
 
               {modules.length === 0 ? (
-                <p className="text-gray-400 text-sm text-center py-8">モジュールを追加してカリキュラムを構成しましょう</p>
+                <div className="text-center py-12">
+                  <p className="text-gray-500 text-sm mb-3">モジュールを追加してカリキュラムを構成しましょう</p>
+                  <button onClick={handleAddModule} className="text-sm text-brand-light hover:text-white transition-colors">
+                    <Plus className="w-4 h-4 inline mr-1" />最初のモジュールを追加
+                  </button>
+                </div>
               ) : (
                 <div className="space-y-3">
                   {modules.map((mod) => {
                     const isExpanded = expandedModules.has(mod.id);
+                    const sortedLessons = [...mod.lessons].sort((a, b) => a.sort_order - b.sort_order);
                     return (
                       <div key={mod.id} className="border border-white/10 rounded-lg overflow-hidden">
                         {/* モジュールヘッダー */}
@@ -401,10 +466,10 @@ export default function CourseEditPage() {
                             <span className="text-white font-medium">{mod.title}</span>
                             <span className="text-xs text-gray-500 ml-2">{mod.lessons.length}レッスン</span>
                           </button>
-                          <button onClick={() => handleEditModuleTitle(mod.id, mod.title)} className="p-1 text-gray-500 hover:text-white transition-colors" title="名前変更">
+                          <button onClick={() => handleEditModuleTitle(mod.id, mod.title)} className="p-2 text-gray-500 hover:text-white hover:bg-white/10 rounded transition-colors" title="名前変更">
                             <FileText className="w-3.5 h-3.5" />
                           </button>
-                          <button onClick={() => handleDeleteModule(mod.id, mod.title)} className="p-1 text-gray-500 hover:text-red-400 transition-colors" title="削除">
+                          <button onClick={() => handleDeleteModule(mod.id, mod.title)} className="p-2 text-gray-500 hover:text-red-400 hover:bg-red-900/20 rounded transition-colors" title="削除">
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
@@ -412,7 +477,7 @@ export default function CourseEditPage() {
                         {/* レッスン一覧 */}
                         {isExpanded && (
                           <div className="border-t border-white/10">
-                            {mod.lessons.map((lesson) => (
+                            {sortedLessons.map((lesson) => (
                               <button
                                 key={lesson.id}
                                 onClick={() => handleEditLesson(lesson)}
@@ -426,14 +491,16 @@ export default function CourseEditPage() {
                                   <FileText className="w-4 h-4 text-green-400 shrink-0" />
                                 )}
                                 <span className="text-sm text-gray-300 flex-1 truncate">{lesson.title}</span>
-                                {lesson.duration_minutes && (
+                                {lesson.duration_minutes ? (
                                   <span className="text-xs text-gray-500">{lesson.duration_minutes}分</span>
+                                ) : (
+                                  <span className="text-xs text-gray-600">未設定</span>
                                 )}
                               </button>
                             ))}
                             <button
                               onClick={() => handleAddLesson(mod.id)}
-                              className="w-full flex items-center gap-2 px-6 py-2.5 text-sm text-gray-500 hover:text-brand-light transition-colors"
+                              className="w-full flex items-center gap-2 px-6 py-2.5 text-sm text-gray-500 hover:text-brand-light hover:bg-white/[0.02] transition-colors"
                             >
                               <Plus className="w-3.5 h-3.5" />レッスン追加
                             </button>
@@ -455,10 +522,10 @@ export default function CourseEditPage() {
           <div className="p-4 border-b border-white/10 flex items-center justify-between sticky top-0 bg-surface-card z-10">
             <h3 className="text-white font-medium">レッスン編集</h3>
             <div className="flex items-center gap-2">
-              <button onClick={handleSaveLesson} className="bg-brand hover:bg-brand-dark text-white px-3 py-1.5 rounded text-sm transition-colors flex items-center gap-1">
-                <Save className="w-3.5 h-3.5" />保存
+              <button onClick={handleSaveLesson} disabled={lessonSaving} className="bg-brand hover:bg-brand-dark text-white px-3 py-1.5 rounded text-sm transition-colors disabled:opacity-50 flex items-center gap-1">
+                <Save className="w-3.5 h-3.5" />{lessonSaving ? "保存中..." : "保存"}
               </button>
-              <button onClick={() => setEditingLesson(null)} className="p-1.5 text-gray-400 hover:text-white transition-colors">
+              <button onClick={() => setEditingLesson(null)} className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded transition-colors">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -466,7 +533,7 @@ export default function CourseEditPage() {
 
           <div className="p-4 space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">タイトル</label>
+              <label className="block text-sm font-medium text-gray-300 mb-1">タイトル <span className="text-red-400">*</span></label>
               <input type="text" value={lessonForm.title} onChange={(e) => setLessonForm({ ...lessonForm, title: e.target.value })} className="w-full px-3 py-2 bg-surface border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-brand" />
             </div>
 
@@ -488,7 +555,7 @@ export default function CourseEditPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-1">所要時間 (分)</label>
-              <input type="number" value={lessonForm.duration_minutes} onChange={(e) => setLessonForm({ ...lessonForm, duration_minutes: parseInt(e.target.value) || 0 })} className="w-full px-3 py-2 bg-surface border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-brand" />
+              <input type="number" min={0} value={lessonForm.duration_minutes} onChange={(e) => setLessonForm({ ...lessonForm, duration_minutes: parseInt(e.target.value) || 0 })} className="w-full px-3 py-2 bg-surface border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-brand" />
             </div>
 
             {/* 動画レッスン: YouTube URL */}
@@ -497,7 +564,7 @@ export default function CourseEditPage() {
                 <label className="block text-sm font-medium text-gray-300 mb-1">YouTube限定公開URL</label>
                 <input type="url" value={lessonForm.video_url} onChange={(e) => setLessonForm({ ...lessonForm, video_url: e.target.value })} className="w-full px-3 py-2 bg-surface border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-brand" placeholder="https://www.youtube.com/watch?v=..." />
                 {lessonForm.video_url && isYouTubeUrl(lessonForm.video_url) && (
-                  <div className="mt-3 rounded-lg overflow-hidden aspect-video">
+                  <div className="mt-3 rounded-lg overflow-hidden aspect-video max-w-sm">
                     <iframe
                       src={getYouTubeEmbedUrl(lessonForm.video_url)}
                       className="w-full h-full"
@@ -505,6 +572,9 @@ export default function CourseEditPage() {
                       allowFullScreen
                     />
                   </div>
+                )}
+                {lessonForm.video_url && !isYouTubeUrl(lessonForm.video_url) && (
+                  <p className="mt-1 text-xs text-yellow-400">YouTube URLの形式で入力してください</p>
                 )}
               </div>
             )}
@@ -526,12 +596,12 @@ export default function CourseEditPage() {
                   value={lessonForm.markdown_content}
                   onChange={(e) => setLessonForm({ ...lessonForm, markdown_content: e.target.value })}
                   className="w-full px-3 py-2 bg-surface border border-white/10 rounded-lg text-white text-sm font-mono focus:outline-none focus:border-brand"
-                  placeholder="# タイトル\n\nマークダウンで教材を書く..."
+                  placeholder="# タイトル&#10;&#10;マークダウンで教材を書く..."
                 />
                 {lessonForm.markdown_content && (
                   <div className="mt-3">
                     <p className="text-xs text-gray-500 mb-2">プレビュー:</p>
-                    <div className="bg-surface rounded-lg p-4 border border-white/10 max-h-64 overflow-y-auto">
+                    <div className="bg-surface rounded-lg p-4 border border-white/10 max-h-80 overflow-y-auto">
                       <MarkdownViewer
                         content={markdownToHtml(lessonForm.markdown_content)}
                         protected={false}
@@ -544,19 +614,21 @@ export default function CourseEditPage() {
 
             {/* ファイルドロップ */}
             <div
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={handleFileDrop}
-              className="border-2 border-dashed border-white/10 rounded-lg p-4 text-center cursor-pointer hover:border-brand/50 transition-colors"
+              onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add("border-brand/50", "bg-brand/5"); }}
+              onDragLeave={(e) => { e.currentTarget.classList.remove("border-brand/50", "bg-brand/5"); }}
+              onDrop={(e) => { e.currentTarget.classList.remove("border-brand/50", "bg-brand/5"); handleFileDrop(e); }}
+              className="border-2 border-dashed border-white/10 rounded-lg p-4 text-center cursor-pointer hover:border-white/20 transition-colors"
               onClick={() => fileInputRef.current?.click()}
             >
               <input ref={fileInputRef} type="file" accept=".md" onChange={handleFileDrop} className="hidden" />
-              <p className="text-sm text-gray-500">.md ファイルをドラッグ&ドロップ</p>
+              <Upload className="w-5 h-5 text-gray-500 mx-auto mb-1" />
+              <p className="text-sm text-gray-500">.md ファイルをドラッグ&ドロップ、またはクリック</p>
             </div>
 
             {/* 削除ボタン */}
             <button
               onClick={() => handleDeleteLesson(editingLesson.id)}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm text-red-400 hover:bg-red-900/20 rounded-lg transition-colors"
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm bg-red-900/30 text-red-300 hover:bg-red-900/50 rounded-lg transition-colors"
             >
               <Trash2 className="w-4 h-4" />このレッスンを削除
             </button>
@@ -564,14 +636,14 @@ export default function CourseEditPage() {
 
           {/* Notionインポートモーダル */}
           {showNotionImport && (
-            <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+            <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={(e) => { if (e.target === e.currentTarget) { setShowNotionImport(false); setNotionText(""); } }}>
               <div className="bg-surface-elevated rounded-xl p-6 max-w-lg w-full max-h-[80vh] overflow-y-auto">
                 <h3 className="text-lg font-semibold text-white mb-4">Notionからインポート</h3>
-                <ol className="text-sm text-gray-400 space-y-1 mb-4">
-                  <li>1. Notionでページを開く</li>
-                  <li>2. 右上「...」→「エクスポート」</li>
-                  <li>3. 形式: Markdown & CSV を選択</li>
-                  <li>4. ダウンロードした .md の中身を貼り付け</li>
+                <ol className="text-sm text-gray-400 space-y-1 mb-4 list-decimal list-inside">
+                  <li>Notionでページを開く</li>
+                  <li>右上「...」→「エクスポート」</li>
+                  <li>形式: Markdown & CSV を選択</li>
+                  <li>ダウンロードした .md の中身を貼り付け</li>
                 </ol>
                 <textarea
                   rows={10}
@@ -579,10 +651,11 @@ export default function CourseEditPage() {
                   onChange={(e) => setNotionText(e.target.value)}
                   className="w-full px-3 py-2 bg-surface border border-white/10 rounded-lg text-white text-sm font-mono focus:outline-none focus:border-brand mb-4"
                   placeholder="マークダウンを貼り付け..."
+                  autoFocus
                 />
                 <div className="flex justify-end gap-3">
-                  <button onClick={() => { setShowNotionImport(false); setNotionText(""); }} className="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors">キャンセル</button>
-                  <button onClick={handleNotionImport} className="bg-brand hover:bg-brand-dark text-white px-4 py-2 rounded-lg text-sm transition-colors">インポート</button>
+                  <button onClick={() => { setShowNotionImport(false); setNotionText(""); }} className="px-4 py-2 text-sm text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors">キャンセル</button>
+                  <button onClick={handleNotionImport} disabled={!notionText.trim()} className="bg-brand hover:bg-brand-dark text-white px-4 py-2 rounded-lg text-sm transition-colors disabled:opacity-50">インポート</button>
                 </div>
               </div>
             </div>

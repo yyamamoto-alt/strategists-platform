@@ -13,14 +13,25 @@ export async function PATCH(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const body = await request.json();
+  let body: any;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "不正なリクエストです" }, { status: 400 });
+  }
+
   const updates: Record<string, any> = {};
 
-  if ("title" in body) updates.title = body.title;
+  if ("title" in body) {
+    if (!body.title || typeof body.title !== "string" || !body.title.trim()) {
+      return NextResponse.json({ error: "モジュール名は必須です" }, { status: 400 });
+    }
+    updates.title = body.title.trim();
+  }
   if ("sort_order" in body) updates.sort_order = body.sort_order;
 
   if (Object.keys(updates).length === 0) {
-    return NextResponse.json({ error: "No fields to update" }, { status: 400 });
+    return NextResponse.json({ error: "更新するフィールドがありません" }, { status: 400 });
   }
 
   const supabase = createAdminClient();
@@ -33,7 +44,8 @@ export async function PATCH(
     .single();
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("modules PATCH error:", error);
+    return NextResponse.json({ error: "モジュール更新に失敗しました" }, { status: 500 });
   }
 
   return NextResponse.json(data);
@@ -58,7 +70,8 @@ export async function DELETE(
     .eq("id", id);
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("modules DELETE error:", error);
+    return NextResponse.json({ error: "モジュール削除に失敗しました" }, { status: 500 });
   }
 
   return NextResponse.json({ success: true });

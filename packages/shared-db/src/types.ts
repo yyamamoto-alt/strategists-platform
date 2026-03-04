@@ -497,6 +497,38 @@ export interface Order {
   updated_at: string;
 }
 
+// ---------- プラン・アクセス制御 (migration 011) ----------
+
+export type PlanTier = 'premium' | 'standard' | 'light' | 'minimum' | 'senkomu' | 'soukon';
+
+export interface Plan {
+  id: string;
+  slug: string;
+  name: string;
+  target_attribute: CustomerAttribute;
+  tier: PlanTier;
+  mentoring_sessions: number;
+  sort_order: number;
+  is_active: boolean;
+  description: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CoursePlanAccess {
+  id: string;
+  course_id: string;
+  plan_id: string;
+  created_at: string;
+}
+
+export interface ContractPlanMapping {
+  id: string;
+  contract_plan_name: string;
+  plan_id: string;
+  created_at: string;
+}
+
 // ---------- CRM 結合型 ----------
 
 export interface CustomerWithRelations extends Customer {
@@ -747,6 +779,9 @@ export interface Database {
       payments: { Row: Payment; Insert: Partial<Payment>; Update: Partial<Payment> };
       bank_transfers: { Row: BankTransfer; Insert: Partial<BankTransfer>; Update: Partial<BankTransfer> };
       user_roles: { Row: { id: string; user_id: string; customer_id: string | null; role: UserRole; created_at: string }; Insert: { user_id: string; role: UserRole; customer_id?: string }; Update: Partial<{ role: UserRole; customer_id: string | null }> };
+      plans: { Row: Plan; Insert: Partial<Plan> & { slug: string; name: string; target_attribute: string; tier: string }; Update: Partial<Plan> };
+      course_plan_access: { Row: CoursePlanAccess; Insert: { course_id: string; plan_id: string }; Update: Partial<CoursePlanAccess> };
+      contract_plan_mapping: { Row: ContractPlanMapping; Insert: { contract_plan_name: string; plan_id: string }; Update: Partial<ContractPlanMapping> };
     };
   };
 }

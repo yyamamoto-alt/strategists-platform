@@ -32,7 +32,10 @@ export function LessonPlayerClient({ slug, lessonId, allLessons }: Props) {
   if (!lesson) {
     return (
       <div className="p-6 bg-surface min-h-screen text-center py-20">
-        <p className="text-gray-400">レッスンが見つかりません</p>
+        <p className="text-gray-400 mb-4">レッスンが見つかりません</p>
+        <Link href={`/courses/${slug}`} className="text-brand-light hover:underline text-sm">
+          コースに戻る
+        </Link>
       </div>
     );
   }
@@ -65,8 +68,24 @@ export function LessonPlayerClient({ slug, lessonId, allLessons }: Props) {
             </button>
           </div>
           <div className="flex justify-between border-t border-white/10 pt-6">
-            {prevLesson ? <Link href={`/courses/${slug}/learn/${prevLesson.id}`} className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"><ArrowLeft className="w-4 h-4" /><span className="text-sm">{prevLesson.title}</span></Link> : <div />}
-            {nextLesson ? <Link href={`/courses/${slug}/learn/${nextLesson.id}`} className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"><span className="text-sm">{nextLesson.title}</span><ArrowRight className="w-4 h-4" /></Link> : <div />}
+            {prevLesson ? (
+              <Link href={`/courses/${slug}/learn/${prevLesson.id}`} className="flex items-center gap-2 text-gray-400 hover:text-white hover:bg-white/5 px-3 py-2 rounded-lg transition-colors">
+                <ArrowLeft className="w-4 h-4 shrink-0" />
+                <div className="text-left">
+                  <span className="text-xs text-gray-500 block">前のレッスン</span>
+                  <span className="text-sm truncate max-w-[200px] block">{prevLesson.title}</span>
+                </div>
+              </Link>
+            ) : <div />}
+            {nextLesson ? (
+              <Link href={`/courses/${slug}/learn/${nextLesson.id}`} className="flex items-center gap-2 text-gray-400 hover:text-white hover:bg-white/5 px-3 py-2 rounded-lg transition-colors">
+                <div className="text-right">
+                  <span className="text-xs text-gray-500 block">次のレッスン</span>
+                  <span className="text-sm truncate max-w-[200px] block">{nextLesson.title}</span>
+                </div>
+                <ArrowRight className="w-4 h-4 shrink-0" />
+              </Link>
+            ) : <div />}
           </div>
         </div>
       </div>

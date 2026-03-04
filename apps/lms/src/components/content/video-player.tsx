@@ -17,22 +17,50 @@ function getYouTubeEmbedUrl(url: string): string {
   return match ? `https://www.youtube.com/embed/${match[1]}` : url;
 }
 
+function isGoogleDriveUrl(url: string): boolean {
+  return /drive\.google\.com/.test(url);
+}
+
+function getGoogleDriveEmbedUrl(url: string): string {
+  // drive.google.com/file/d/XXX/view → drive.google.com/file/d/XXX/preview
+  const match = url.match(/drive\.google\.com\/file\/d\/([^/]+)/);
+  return match ? `https://drive.google.com/file/d/${match[1]}/preview` : url;
+}
+
+type VideoType = "youtube" | "gdrive" | "native";
+
+function detectVideoType(url: string): VideoType {
+  if (isYouTubeUrl(url)) return "youtube";
+  if (isGoogleDriveUrl(url)) return "gdrive";
+  return "native";
+}
+
 export function VideoPlayer({
   src,
   watermarkText,
   protected: isProtected = true,
 }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const videoType = detectVideoType(src);
 
   return (
     <CopyProtectedWrapper enabled={isProtected}>
       <div className="relative rounded-lg overflow-hidden bg-black">
-        {isYouTubeUrl(src) ? (
+        {videoType === "youtube" ? (
           <div className="aspect-video">
             <iframe
               src={getYouTubeEmbedUrl(src)}
               className="w-full h-full"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            />
+          </div>
+        ) : videoType === "gdrive" ? (
+          <div className="aspect-video">
+            <iframe
+              src={getGoogleDriveEmbedUrl(src)}
+              className="w-full h-full"
+              allow="autoplay; encrypted-media"
               allowFullScreen
             />
           </div>

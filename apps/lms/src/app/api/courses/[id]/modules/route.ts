@@ -8,6 +8,11 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+  const session = await getLmsSession();
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const supabase = createAdminClient();
 
   const { data: modules, error } = await supabase
@@ -17,7 +22,8 @@ export async function GET(
     .order("sort_order", { ascending: true });
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("modules GET error:", error);
+    return NextResponse.json({ error: "モジュール取得に失敗しました" }, { status: 500 });
   }
 
   // 各モジュールにlessonsを紐付け
@@ -46,11 +52,17 @@ export async function POST(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const body = await request.json();
+  let body: any;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "不正なリクエストです" }, { status: 400 });
+  }
+
   const { title } = body;
 
-  if (!title) {
-    return NextResponse.json({ error: "Title is required" }, { status: 400 });
+  if (!title || typeof title !== "string" || !title.trim()) {
+    return NextResponse.json({ error: "モジュール名は必須です" }, { status: 400 });
   }
 
   const supabase = createAdminClient();
@@ -68,14 +80,15 @@ export async function POST(
     .from("modules")
     .insert({
       course_id: id,
-      title,
-      sort_order: (maxOrder?.sort_order || 0) + 1,
+      title: title.trim(),
+      sort_order: (maxOrder?.sort_order ?? 0) + 1,
     } as any)
     .select()
     .single();
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("modules POST error:", error);
+    return NextResponse.json({ error: "モジュール追加に失敗しました" }, { status: 500 });
   }
 
   return NextResponse.json(data, { status: 201 });
