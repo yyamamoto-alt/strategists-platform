@@ -78,9 +78,10 @@ export function computeFunnelMetrics(
   customers: CustomerWithRelations[]
 ): FunnelMetrics[] {
   const filtered = filterByAnalyticsPeriod(customers);
+  const today = new Date().toISOString().slice(0, 10);
   const byMonth = new Map<
     string,
-    { applications: number; scheduled: number; conducted: number; closed: number; additional_coaching: number }
+    { applications: number; scheduled: number; scheduled_actionable: number; conducted: number; closed: number; additional_coaching: number }
   >();
 
   for (const c of filtered) {
@@ -89,7 +90,7 @@ export function computeFunnelMetrics(
     const period = date.slice(0, 7).replace("-", "/");
 
     if (!byMonth.has(period)) {
-      byMonth.set(period, { applications: 0, scheduled: 0, conducted: 0, closed: 0, additional_coaching: 0 });
+      byMonth.set(period, { applications: 0, scheduled: 0, scheduled_actionable: 0, conducted: 0, closed: 0, additional_coaching: 0 });
     }
     const m = byMonth.get(period)!;
     m.applications++;
@@ -98,7 +99,15 @@ export function computeFunnelMetrics(
       const s = c.pipeline.stage;
       const dealStatus = c.pipeline.deal_status;
       // 日程確定以降（日程未確以外すべて）
-      if (s !== "日程未確") m.scheduled++;
+      if (s !== "日程未確") {
+        m.scheduled++;
+        // scheduled_actionable: 面談日が到来済み or 日付未設定 or 既に実施済みの場合のみカウント
+        const meetingDate = c.pipeline.meeting_scheduled_date;
+        const alreadyConducted = dealStatus === "実施" || isStageClosed(s);
+        if (alreadyConducted || !meetingDate || meetingDate <= today) {
+          m.scheduled_actionable++;
+        }
+      }
       // 面談実施: deal_status が「実施」を含む or 成約系ステージ
       if (
         dealStatus === "実施" ||
@@ -126,7 +135,7 @@ export function computeFunnelMetrics(
         period,
         ...m,
         scheduling_rate: m.applications > 0 ? m.scheduled / m.applications : 0,
-        conduct_rate: m.scheduled > 0 ? m.conducted / m.scheduled : 0,
+        conduct_rate: m.scheduled_actionable > 0 ? m.conducted / m.scheduled_actionable : 0,
         closing_rate: closingDenom > 0 ? m.closed / closingDenom : 0,
       };
     });

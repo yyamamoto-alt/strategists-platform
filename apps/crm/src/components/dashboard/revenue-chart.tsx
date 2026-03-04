@@ -31,11 +31,17 @@ export function RevenueChart({ data, threeTierData }: RevenueChartProps) {
   return <FallbackChart data={data} />;
 }
 
-/** 統合チャート: セグメント別積み上げ棒 + 3段階ライン */
+/** 統合チャート: セグメント別積み上げ棒（確定+見込み+予測） */
 function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
+  // forecast_uplift = forecast_total - projected_total（予測上積み分）
+  const chartData = data.map((d) => ({
+    ...d,
+    forecast_uplift: Math.max(0, d.forecast_total - d.projected_total),
+  }));
+
   return (
     <ResponsiveContainer width="100%" height={320}>
-      <ComposedChart data={data}>
+      <ComposedChart data={chartData}>
         <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
         <XAxis
           dataKey="period"
@@ -59,7 +65,7 @@ function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
         />
         <Legend iconSize={10} wrapperStyle={{ fontSize: 11, color: "#9ca3af" }} />
 
-        {/* 積み上げ棒: 確定売上セグメント内訳 */}
+        {/* 積み上げ棒: 確定売上セグメント内訳（ソリッド） */}
         <Bar
           dataKey="confirmed_school_kisotsu"
           name="既卒スクール"
@@ -84,28 +90,25 @@ function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
           name="補助金"
           fill="#a855f7"
           stackId="revenue"
+        />
+
+        {/* 見込み: 人材見込み上積み（半透明グレー） */}
+        <Bar
+          dataKey="projected_agent"
+          name="人材見込（見込）"
+          fill="#94a3b8"
+          fillOpacity={0.5}
+          stackId="revenue"
+        />
+
+        {/* 予測: 予測上積み（さらに半透明オレンジ） */}
+        <Bar
+          dataKey="forecast_uplift"
+          name="予測上積み（予測）"
+          fill="#f97316"
+          fillOpacity={0.35}
+          stackId="revenue"
           radius={[4, 4, 0, 0]}
-        />
-
-        {/* ライン: Tier 2 見込み含む（確定+人材見込） */}
-        <Line
-          type="monotone"
-          dataKey="projected_total"
-          name="確定+人材見込"
-          stroke="#94a3b8"
-          strokeWidth={2}
-          dot={{ r: 3, fill: "#94a3b8" }}
-        />
-
-        {/* ライン: Tier 3 予測（パイプライン期待値含む） */}
-        <Line
-          type="monotone"
-          dataKey="forecast_total"
-          name="予測売上"
-          stroke="#f97316"
-          strokeWidth={2}
-          strokeDasharray="6 3"
-          dot={{ r: 3, fill: "#f97316" }}
         />
       </ComposedChart>
     </ResponsiveContainer>

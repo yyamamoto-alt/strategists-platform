@@ -510,6 +510,8 @@ export interface FunnelMetrics {
   period: string;
   applications: number;
   scheduled: number;
+  /** 日程確定のうち面談日が到来済み（conduct_rate分母） */
+  scheduled_actionable: number;
   conducted: number;
   closed: number;
   /** 追加指導数（成約率分母から除外） */

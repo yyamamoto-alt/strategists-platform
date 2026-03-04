@@ -122,18 +122,18 @@ export function DashboardClient({
 
       {/* 直近のマーケティング状況分析 */}
       {channelTrends && channelTrends.length > 0 && (
-        <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-6">
-          <div className="mb-4">
+        <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-4">
+          <div className="mb-2">
             <h2 className="text-lg font-semibold text-white">直近のマーケティング状況分析</h2>
             <p className="text-xs text-gray-500 mt-1">
               直近2週間 vs 前6週間の週あたりペース比較
             </p>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
             {channelTrends.map((t) => (
               <div
                 key={t.channel}
-                className={`rounded-lg border p-3 ${
+                className={`rounded-lg border p-2 ${
                   t.trend === "up"
                     ? "border-green-500/30 bg-green-500/5"
                     : t.trend === "down"
@@ -146,7 +146,7 @@ export function DashboardClient({
                     {t.channel}
                   </span>
                   <span
-                    className={`text-lg font-bold ${
+                    className={`text-sm font-bold ${
                       t.trend === "up"
                         ? "text-green-400"
                         : t.trend === "down"
@@ -158,7 +158,7 @@ export function DashboardClient({
                   </span>
                 </div>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-xl font-bold text-white">
+                  <span className="text-lg font-bold text-white">
                     {t.recentCount}
                   </span>
                   <span className="text-xs text-gray-500">件/2週</span>

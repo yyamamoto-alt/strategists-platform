@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import {
-  LineChart,
+  ComposedChart,
+  Bar,
   Line,
   XAxis,
   YAxis,
@@ -62,7 +63,7 @@ export function FunnelChart({ data, kisotsuData, shinsotsuData }: FunnelChartPro
         </div>
       )}
       <ResponsiveContainer width="100%" height={hasSegments ? 270 : 300}>
-        <LineChart data={chartData}>
+        <ComposedChart data={chartData}>
           <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
           <XAxis dataKey="period" tick={{ fontSize: 11, fill: "#9ca3af" }} stroke="rgba(255,255,255,0.1)" />
           <YAxis
@@ -82,21 +83,19 @@ export function FunnelChart({ data, kisotsuData, shinsotsuData }: FunnelChartPro
             labelStyle={{ color: "#9ca3af" }}
           />
           <Legend iconSize={10} wrapperStyle={{ fontSize: 11, color: "#9ca3af" }} />
+          <Bar
+            yAxisId="left"
+            dataKey="closed"
+            name="成約数"
+            fill="#22c55e"
+            radius={[4, 4, 0, 0]}
+          />
           <Line
             yAxisId="left"
             type="monotone"
             dataKey="applications"
             name="申込数"
             stroke="#3b82f6"
-            strokeWidth={2}
-            dot={{ r: 3 }}
-          />
-          <Line
-            yAxisId="left"
-            type="monotone"
-            dataKey="closed"
-            name="成約数"
-            stroke="#22c55e"
             strokeWidth={2}
             dot={{ r: 3 }}
           />
@@ -110,7 +109,7 @@ export function FunnelChart({ data, kisotsuData, shinsotsuData }: FunnelChartPro
             strokeDasharray="5 5"
             dot={{ r: 3 }}
           />
-        </LineChart>
+        </ComposedChart>
       </ResponsiveContainer>
     </div>
   );
