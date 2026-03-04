@@ -5,6 +5,38 @@ interface Props {
   params: Promise<{ id: string }>;
 }
 
+export async function DELETE(_request: Request, { params }: Props) {
+  const { id } = await params;
+  const supabase = createServiceClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db = supabase as any;
+
+  // 関連テーブルを先に削除
+  const relatedTables = [
+    "application_history",
+    "customer_emails",
+    "activities",
+    "agent_records",
+    "learning_records",
+    "contracts",
+    "sales_pipeline",
+    "unmatched_records",
+  ];
+
+  for (const table of relatedTables) {
+    await db.from(table).delete().eq("customer_id", id);
+  }
+
+  // 顧客本体を削除
+  const { error } = await db.from("customers").delete().eq("id", id);
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ success: true });
+}
+
 export async function PATCH(request: Request, { params }: Props) {
   const { id } = await params;
   const body = await request.json();

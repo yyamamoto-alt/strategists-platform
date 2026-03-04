@@ -72,16 +72,13 @@ const VIEW_COLUMNS: Record<ViewTab, string[] | null> = {
   marketing: [
     "application_date", "name", "attribute", "stage", "deal_status",
     "rev_total",
-    "marketing_channel",
+    "marketing_channel", "initial_channel", "application_reason",
+    "sales_route", "comparison_services",
     "utm_source", "utm_medium", "utm_id", "utm_campaign",
-    "initial_channel", "application_reason",
-    "first_reward_category", "performance_reward_category",
-    "google_ads_target", "marketing_memo", "comparison_services",
-    "sales_route", "lead_time",
   ],
   sales: [
     "application_date", "name", "attribute", "stage", "deal_status",
-    "confirmed_amount", "rev_total", "projected_amount",
+    "confirmed_amount", "rev_agent", "rev_total", "projected_amount",
     "probability", "sales_date", "response_date",
     "first_amount", "discount",
     "sales_person", "sales_content", "sales_strategy",
@@ -90,10 +87,12 @@ const VIEW_COLUMNS: Record<ViewTab, string[] | null> = {
     "referral_category", "referral_status",
     "additional_sales_content", "additional_plan", "additional_discount_info",
     "alternative_application",
+    "payment_date", "additional_notes",
   ],
   education: [
     "application_date", "name", "attribute", "stage", "deal_status",
     "rev_total",
+    "offer_company",
     "enrollment_status", "plan_name", "mentor_name",
     "coaching_start", "coaching_end", "last_coaching",
     "contract_months", "total_sessions", "completed_sessions",
@@ -109,14 +108,13 @@ const VIEW_COLUMNS: Record<ViewTab, string[] | null> = {
     "interview_timing_at_end", "target_companies_at_end",
     "offer_probability_at_end", "additional_coaching_proposal",
     "mentoring_satisfaction", "start_email_sent",
+    "extension_days",
   ],
   agent: [
     "application_date", "name", "attribute", "stage", "deal_status",
-    "confirmed_amount", "rev_total", "projected_amount",
+    "confirmed_amount", "rev_agent", "rev_total", "projected_amount",
     "is_agent_customer", "referral_category", "referral_status",
-    "rev_agent", "rev_subsidy",
-    "expected_referral_fee", "agent_projected_revenue",
-    "offer_company", "external_agents",
+    "external_agents",
     "hire_rate", "offer_probability", "offer_salary",
     "referral_fee_rate", "margin",
     "placement_confirmed", "placement_date",
@@ -125,9 +123,12 @@ const VIEW_COLUMNS: Record<ViewTab, string[] | null> = {
   ],
 };
 
+const CLOSED_STAGES = new Set(["成約", "入金済", "追加指導", "その他購入", "動画講座購入", "成約(追加指導経由)", "途中解約(成約)"]);
+
 export function CustomersClient({ customers, attributionMap }: CustomersClientProps) {
   const [attributeFilter, setAttributeFilter] = useState<string>("");
   const [stageFilter, setStageFilter] = useState<string>("");
+  const [contractFilter, setContractFilter] = useState<string>("");
   const [activeTab, setActiveTab] = useState<ViewTab>("all");
 
   // フィルタ
@@ -143,32 +144,56 @@ export function CustomersClient({ customers, attributionMap }: CustomersClientPr
     if (stageFilter) {
       result = result.filter((c) => c.pipeline?.stage === stageFilter);
     }
+    if (contractFilter === "成約済み") {
+      result = result.filter((c) => CLOSED_STAGES.has(c.pipeline?.stage || ""));
+    } else if (contractFilter === "未成約") {
+      result = result.filter((c) => !CLOSED_STAGES.has(c.pipeline?.stage || ""));
+    }
     return result;
-  }, [customers, attributeFilter, stageFilter]);
+  }, [customers, attributeFilter, stageFilter, contractFilter]);
 
   // ================================================================
   // 全カラム定義（並び順が表示順）
   // ================================================================
   const allColumns: SpreadsheetColumn<CustomerWithRelations>[] = useMemo(
     () => [
-      // ─── 申込日（名前の左） ───
-      { key: "application_date", label: "申込日", width: 78, stickyLeft: 0,
+      // ─── 編集ボタン ───
+      { key: "_edit", label: "", width: 32, stickyLeft: 0,
+        render: (c) => (
+          <Link href={`/customers/${c.id}?edit=true`} className="text-gray-500 hover:text-brand transition-colors" title="編集">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </Link>
+        ) },
+
+      // ─── 申込日 ───
+      { key: "application_date", label: "申込日", width: 78, stickyLeft: 32,
         render: (c) => <span className="text-gray-400 text-xs">{fmtDate(c.application_date)}</span>,
         sortValue: (c) => c.application_date || "" },
 
       // ─── 名前 [sticky] ───
-      { key: "name", label: "名前", width: 120, stickyLeft: 78,
+      { key: "name", label: "名前", width: 120, stickyLeft: 110,
         render: (c) => (
           <Link href={`/customers/${c.id}`} className="text-brand hover:underline text-sm">{c.name}</Link>
         ), sortValue: (c) => c.name },
 
-      // ─── 属性（名前の右横） ───
+      // ─── 属性 ───
       { key: "attribute", label: "属性", width: 56, category: "base",
         render: (c) => (
           <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${getAttributeColor(c.attribute)}`}>{c.attribute.includes("既卒") ? "既卒" : "新卒"}</span>
         ), sortValue: (c) => c.attribute },
 
-      // ─── 検討状況（名前の右横） ───
+      // ─── 経歴（属性の右横） ───
+      { key: "career_history", label: "経歴", width: 180,
+        render: (c) => <Truncated value={c.career_history} width={180} /> },
+
+      // ─── 人材紹介利用 ───
+      { key: "is_agent_customer", label: "人材", width: 40, align: "center" as const,
+        render: (c) => isAgentCustomer(c)
+          ? <span className="text-purple-400 text-sm">&#9745;</span>
+          : <span className="text-gray-600 text-sm">&#9744;</span>,
+        sortValue: (c) => isAgentCustomer(c) ? 1 : 0 },
+
+      // ─── 検討状況 ───
       { key: "stage", label: "検討状況", width: 85, category: "sales",
         render: (c) => c.pipeline ? (
           <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${getStageColor(c.pipeline.stage)}`}>{c.pipeline.stage}</span>
@@ -180,10 +205,18 @@ export function CustomersClient({ customers, attributionMap }: CustomersClientPr
           <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${getDealStatusColor(c.pipeline.deal_status)}`}>{c.pipeline.deal_status}</span>
         ) : "-", sortValue: (c) => c.pipeline?.deal_status || "" },
 
-      // ═══ 売上3種（近接配置） ═══
+      // ═══ 売上4種（近接配置） ═══
       { key: "confirmed_amount", label: "確定売上", width: 100, align: "right" as const, category: "sales",
         render: (c) => c.contract?.confirmed_amount ? formatCurrency(c.contract.confirmed_amount) : "-",
         sortValue: (c) => c.contract?.confirmed_amount || 0 },
+
+      { key: "rev_agent", label: "人材見込売上", width: 110, align: "right" as const, computed: true, category: "sales",
+        formula: "想定年収 × 入社至る率 × 内定確度 × 紹介料率 × マージン",
+        render: (c) => {
+          if (!isAgentCustomer(c)) return "-";
+          const v = calcExpectedReferralFee(c);
+          return v > 0 ? formatCurrency(v) : "-";
+        }, sortValue: (c) => isAgentCustomer(c) ? calcExpectedReferralFee(c) : 0 },
 
       { key: "rev_total", label: "見込含む売上", width: 110, align: "right" as const, computed: true, category: "sales",
         formula: "確定売上 + 人材見込み売上 + 補助金",
@@ -212,7 +245,14 @@ export function CustomersClient({ customers, attributionMap }: CustomersClientPr
           const attr = attributionMap[c.id];
           return attr ? <span className="text-white font-medium text-xs">{attr.marketing_channel}</span> : <span className="text-gray-600 text-xs">-</span>;
         }, sortValue: (c) => attributionMap[c.id]?.marketing_channel || "" },
-
+      { key: "initial_channel", label: "初回認知経路", width: 110, category: "marketing",
+        render: (c) => <span className="text-xs">{c.pipeline?.initial_channel || "-"}</span> },
+      { key: "application_reason", label: "申し込みの決め手", width: 130, category: "marketing",
+        render: (c) => <Truncated value={c.application_reason} width={130} /> },
+      { key: "sales_route", label: "経路(営業)", width: 100, category: "marketing",
+        render: (c) => <span className="text-xs">{c.pipeline?.sales_route || c.pipeline?.route_by_sales || "-"}</span> },
+      { key: "comparison_services", label: "比較サービス", width: 120, category: "marketing",
+        render: (c) => <Truncated value={c.pipeline?.comparison_services} width={120} /> },
       { key: "utm_source", label: "utm_source", width: 90, category: "marketing",
         render: (c) => <span className="text-xs">{c.utm_source || "-"}</span>, sortValue: (c) => c.utm_source || "" },
       { key: "utm_medium", label: "utm_medium", width: 90, category: "marketing",
@@ -222,40 +262,16 @@ export function CustomersClient({ customers, attributionMap }: CustomersClientPr
       { key: "utm_campaign", label: "utm_campaign", width: 100, category: "marketing",
         render: (c) => <span className="text-xs">{c.utm_campaign || "-"}</span> },
 
-      { key: "initial_channel", label: "初回認知経路", width: 110, category: "marketing",
-        render: (c) => <span className="text-xs">{c.pipeline?.initial_channel || "-"}</span> },
-      { key: "application_reason", label: "申し込みの決め手", width: 130, category: "marketing",
-        render: (c) => <Truncated value={c.application_reason} width={130} /> },
-
-      { key: "first_reward_category", label: "一次報酬分類", width: 100, category: "marketing",
-        render: (c) => <span className="text-xs">{c.pipeline?.first_reward_category || "-"}</span> },
-      { key: "performance_reward_category", label: "成果報酬分類", width: 100, category: "marketing",
-        render: (c) => <span className="text-xs">{c.pipeline?.performance_reward_category || "-"}</span> },
-      { key: "google_ads_target", label: "Google広告", width: 100, category: "marketing",
-        render: (c) => <span className="text-xs">{c.pipeline?.google_ads_target || "-"}</span> },
-      { key: "marketing_memo", label: "マーケメモ", width: 130, category: "marketing",
-        render: (c) => <Truncated value={c.pipeline?.marketing_memo} width={130} /> },
-      { key: "comparison_services", label: "比較サービス", width: 120, category: "marketing",
-        render: (c) => <Truncated value={c.pipeline?.comparison_services} width={120} /> },
-      { key: "sales_route", label: "経路(営業)", width: 100, category: "marketing",
-        render: (c) => <span className="text-xs">{c.pipeline?.sales_route || c.pipeline?.route_by_sales || "-"}</span> },
-      { key: "lead_time", label: "リードタイム", width: 90, category: "marketing",
-        render: (c) => <span className="text-xs">{c.pipeline?.lead_time || "-"}</span> },
-
       // ═══ 営業（青） ═══
-      { key: "career_history", label: "経歴", width: 180, category: "base",
-        render: (c) => <Truncated value={c.career_history} width={180} /> },
-
-      { key: "agent_interest", label: "申込時エージェント", width: 80, category: "sales",
-        render: (c) => c.pipeline?.agent_interest_at_application
-          ? <span className="text-blue-400">○</span>
-          : <span className="text-gray-600">-</span> },
+      { key: "agent_interest", label: "申込時エージェント", width: 120, category: "sales",
+        render: (c) => <span className="text-xs">{c.pipeline?.agent_interest_at_application || "-"}</span>,
+        sortValue: (c) => String(c.pipeline?.agent_interest_at_application || "") },
 
       { key: "meeting_scheduled", label: "面接予定", width: 78, category: "sales",
         render: (c) => <span className="text-xs">{fmtDate(c.pipeline?.meeting_scheduled_date)}</span>,
         sortValue: (c) => c.pipeline?.meeting_scheduled_date || "" },
 
-      { key: "decision_factor", label: "検討・失注理由", width: 130, category: "sales",
+      { key: "decision_factor", label: "申込の決め手", width: 130, category: "sales",
         render: (c) => <Truncated value={c.pipeline?.decision_factor} width={130} /> },
 
       { key: "sales_date", label: "営業日", width: 78, category: "sales",
@@ -294,6 +310,12 @@ export function CustomersClient({ customers, attributionMap }: CustomersClientPr
       { key: "alternative_application", label: "別経由応募", width: 90, category: "sales",
         render: (c) => <span className="text-xs">{c.pipeline?.alternative_application || "-"}</span> },
 
+      { key: "payment_date", label: "入金日", width: 78, category: "sales",
+        render: (c) => <span className="text-xs">{fmtDate(c.contract?.payment_date)}</span>,
+        sortValue: (c) => c.contract?.payment_date || "" },
+      { key: "additional_notes", label: "[追加]学び", width: 110, category: "sales",
+        render: (c) => <Truncated value={c.pipeline?.additional_notes} width={110} /> },
+
       // ─── 追加指導（営業） ───
       { key: "additional_sales_content", label: "[追加]営業内容", width: 130, category: "sales",
         render: (c) => <Truncated value={c.pipeline?.additional_sales_content} width={130} /> },
@@ -308,46 +330,6 @@ export function CustomersClient({ customers, attributionMap }: CustomersClientPr
       { key: "referral_status", label: "紹介ステータス", width: 100, category: "agent",
         render: (c) => <span className="text-xs">{c.contract?.referral_status || "-"}</span> },
 
-      { key: "is_agent_customer", label: "人材紹介顧客", width: 90, align: "center" as const, computed: true, category: "agent",
-        formula: "人材紹介区分 = \"フル利用\" OR \"一部利用\"",
-        render: (c) => isAgentCustomer(c)
-          ? <span className="text-purple-400 font-medium text-xs">利用</span>
-          : <span className="text-gray-600 text-xs">-</span>,
-        sortValue: (c) => isAgentCustomer(c) ? 1 : 0 },
-
-      { key: "rev_agent", label: "人材見込売上", width: 110, align: "right" as const, computed: true, category: "agent",
-        formula: "想定年収 × 入社至る率 × 内定確度 × 紹介料率 × マージン",
-        render: (c) => {
-          if (!isAgentCustomer(c)) return "-";
-          const v = calcExpectedReferralFee(c);
-          return v > 0 ? formatCurrency(v) : "-";
-        }, sortValue: (c) => isAgentCustomer(c) ? calcExpectedReferralFee(c) : 0 },
-
-      { key: "rev_subsidy", label: "補助金売上", width: 100, align: "right" as const, computed: true, category: "agent",
-        formula: "IF(補助金対象=\"対象\", ¥203,636, 0)",
-        render: (c) => {
-          const v = getSubsidyAmount(c);
-          return v > 0 ? formatCurrency(v) : "-";
-        }, sortValue: (c) => getSubsidyAmount(c) },
-
-      { key: "agent_projected_revenue", label: "人材見込売上(DB)", width: 120, align: "right" as const, computed: true, category: "agent",
-        formula: "成約 AND 受講中 AND 人材紹介顧客 → 報酬期待値",
-        render: (c) => {
-          const dbVal = c.agent?.expected_agent_revenue;
-          const calcVal = calcAgentProjectedRevenue(c);
-          const v = (dbVal && dbVal > 0) ? dbVal : calcVal;
-          return v > 0 ? formatCurrency(v) : "-";
-        }, sortValue: (c) => c.agent?.expected_agent_revenue || calcAgentProjectedRevenue(c) },
-
-      { key: "expected_referral_fee", label: "報酬期待値", width: 120, align: "right" as const, computed: true, category: "agent",
-        formula: "想定年収 × 入社至る率 × 内定確度 × 紹介料率 × マージン",
-        render: (c) => {
-          const v = calcExpectedReferralFee(c);
-          return v > 0 ? formatCurrency(v) : "-";
-        }, sortValue: (c) => calcExpectedReferralFee(c) },
-
-      { key: "offer_company", label: "内定先", width: 120, category: "agent",
-        render: (c) => <span className="text-xs">{c.agent?.offer_company || "-"}</span> },
       { key: "external_agents", label: "利用エージェント", width: 110, category: "agent",
         render: (c) => <span className="text-xs">{c.agent?.external_agents || "-"}</span> },
       { key: "hire_rate", label: "入社至る率", width: 80, align: "right" as const, category: "agent",
@@ -380,6 +362,8 @@ export function CustomersClient({ customers, attributionMap }: CustomersClientPr
         render: (c) => c.contract?.subsidy_eligible ? <span className="text-purple-400 text-xs">対象</span> : "-" },
 
       // ═══ エデュケーション（緑） ═══
+      { key: "offer_company", label: "内定先", width: 120, category: "education",
+        render: (c) => <span className="text-xs">{c.agent?.offer_company || "-"}</span> },
       { key: "enrollment_status", label: "受講状況", width: 90, category: "education",
         render: (c) => <span className="text-xs">{c.contract?.enrollment_status || "-"}</span> },
       { key: "plan_name", label: "プラン名", width: 140, category: "education",
@@ -468,21 +452,10 @@ export function CustomersClient({ customers, attributionMap }: CustomersClientPr
         render: (c) => <span className="text-xs">{c.learning?.mentoring_satisfaction || "-"}</span> },
       { key: "start_email_sent", label: "開始メール送付", width: 100, category: "education",
         render: (c) => <span className="text-xs">{c.learning?.start_email_sent || "-"}</span> },
-
-      // ═══ その他基本情報 ═══
-      { key: "payment_date", label: "入金日", width: 78, category: "sales",
-        render: (c) => <span className="text-xs">{fmtDate(c.contract?.payment_date)}</span>,
-        sortValue: (c) => c.contract?.payment_date || "" },
-      { key: "progress_sheet", label: "Progress Sheet", width: 100,
-        render: (c) => c.contract?.progress_sheet_url
-          ? <a href={c.contract.progress_sheet_url} target="_blank" rel="noopener noreferrer" className="text-brand hover:underline text-xs">リンク</a>
-          : "-" },
       { key: "extension_days", label: "延長(日)", width: 70, align: "right" as const, category: "education",
         render: (c) => c.learning?.extension_days != null ? `${c.learning.extension_days}` : "-" },
-      { key: "additional_notes", label: "[追加]学び", width: 110, category: "sales",
-        render: (c) => <Truncated value={c.pipeline?.additional_notes} width={110} /> },
-      { key: "general_memo", label: "メモ", width: 140,
-        render: (c) => <Truncated value={c.agent?.general_memo} width={140} /> },
+
+      // ═══ その他基本情報 ═══
       { key: "university", label: "大学名", width: 110,
         render: (c) => <span className="text-xs">{c.university || "-"}</span>, sortValue: (c) => c.university || "" },
       { key: "target_companies", label: "志望企業", width: 140,
@@ -493,14 +466,12 @@ export function CustomersClient({ customers, attributionMap }: CustomersClientPr
         render: (c) => <span className="text-xs">{c.initial_level || "-"}</span> },
       { key: "transfer_intent", label: "転職意向", width: 80,
         render: (c) => <span className="text-xs">{c.transfer_intent || "-"}</span> },
-      { key: "billing_status", label: "請求状況", width: 80, category: "sales",
-        render: (c) => <span className="text-xs">{c.contract?.billing_status || "-"}</span> },
-      { key: "invoice_info", label: "請求書用", width: 110,
-        render: (c) => <Truncated value={c.contract?.invoice_info} width={110} /> },
-      { key: "notes", label: "備考", width: 160,
-        render: (c) => <Truncated value={c.notes} width={160} /> },
-      { key: "caution_notes", label: "注意事項", width: 120,
-        render: (c) => <Truncated value={c.caution_notes} width={120} /> },
+      { key: "progress_sheet", label: "Progress Sheet", width: 100,
+        render: (c) => c.contract?.progress_sheet_url
+          ? <a href={c.contract.progress_sheet_url} target="_blank" rel="noopener noreferrer" className="text-brand hover:underline text-xs">リンク</a>
+          : "-" },
+      { key: "general_memo", label: "メモ", width: 140,
+        render: (c) => <Truncated value={c.agent?.general_memo} width={140} /> },
     ],
     [attributionMap]
   );
@@ -532,6 +503,23 @@ export function CustomersClient({ customers, attributionMap }: CustomersClientPr
               }`}
             >
               {val || "全属性"}
+            </button>
+          ))}
+        </div>
+
+        {/* 成約/未成約フィルタ */}
+        <div className="flex gap-0.5 bg-surface-elevated rounded-md p-0.5 border border-white/10">
+          {["", "成約済み", "未成約"].map((val) => (
+            <button
+              key={val}
+              onClick={() => setContractFilter(val)}
+              className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+                contractFilter === val
+                  ? "bg-brand text-white"
+                  : "text-gray-400 hover:text-white"
+              }`}
+            >
+              {val || "全件"}
             </button>
           ))}
         </div>
@@ -586,13 +574,6 @@ export function CustomersClient({ customers, attributionMap }: CustomersClientPr
           </button>
         ))}
 
-        {/* カテゴリ凡例 */}
-        <div className="flex items-center gap-2 ml-3 pl-3 border-l border-white/10">
-          <span className="flex items-center gap-1 text-[10px] text-orange-400/70"><span className="w-2 h-2 rounded-sm bg-orange-500/30" />マーケ</span>
-          <span className="flex items-center gap-1 text-[10px] text-blue-400/70"><span className="w-2 h-2 rounded-sm bg-blue-500/30" />営業</span>
-          <span className="flex items-center gap-1 text-[10px] text-green-400/70"><span className="w-2 h-2 rounded-sm bg-green-500/30" />エデュ</span>
-          <span className="flex items-center gap-1 text-[10px] text-purple-400/70"><span className="w-2 h-2 rounded-sm bg-purple-500/30" />人材</span>
-        </div>
       </div>
 
       {/* テーブル */}

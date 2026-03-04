@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   formatDate,
@@ -16,6 +17,7 @@ import {
   calcClosingProbability,
   calcExpectedReferralFee,
   calcAgentProjectedRevenue,
+  calcConfirmedRevenue,
   calcRemainingSessions,
   calcSessionProgress,
   calcScheduleProgress,
@@ -24,6 +26,7 @@ import {
   isAgentConfirmed,
   getSubsidyAmount,
 } from "@/lib/calc-fields";
+import { useRouter } from "next/navigation";
 import type { CustomerWithRelations, Activity } from "@strategy-school/shared-db";
 import type { CustomerEmail, ApplicationHistoryRecord } from "@/lib/data/spreadsheet-sync";
 
@@ -97,11 +100,12 @@ function FormDataSection({ records }: { records: ApplicationHistoryRecord[] }) {
   const displayFields = FORM_DISPLAY_FIELDS[currentSource];
 
   return (
-    <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-6">
-      <h2 className="text-lg font-semibold text-white mb-3">
+    <div className="bg-indigo-950/20 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 border-l-4 border-l-indigo-500 p-4">
+      <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-1">
         フォームデータ
         <span className="text-xs text-gray-500 ml-2 font-normal">{records.length}件</span>
       </h2>
+      <p className="text-[10px] text-indigo-400 mb-3">フォーム連携データ</p>
 
       {/* ソースタブ */}
       <div className="flex flex-wrap gap-1 mb-4">
@@ -134,36 +138,18 @@ function FormDataSection({ records }: { records: ApplicationHistoryRecord[] }) {
                 <span className="text-xs text-gray-400">{formatDate(r.applied_at)}</span>
                 {r.notes && <span className="text-[10px] text-gray-500">{r.notes}</span>}
               </div>
-              {displayFields ? (
-                <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
-                  {displayFields.map((f) => {
-                    const val = rd[f.key];
-                    if (!val) return null;
-                    return (
-                      <div key={f.key}>
-                        <p className="text-[10px] text-gray-500">{f.label}</p>
-                        <p className="text-xs text-gray-300 break-words">
-                          {val.length > 80 ? val.substring(0, 80) + "…" : val}
-                        </p>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                /* 定義がないソースはキー/値をそのまま表示 */
-                <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
-                  {Object.entries(rd)
-                    .filter(([k]) => k !== "タイムスタンプ")
-                    .map(([k, v]) => (
-                      <div key={k}>
-                        <p className="text-[10px] text-gray-500">{k}</p>
-                        <p className="text-xs text-gray-300 break-words">
-                          {String(v).length > 80 ? String(v).substring(0, 80) + "…" : String(v)}
-                        </p>
-                      </div>
-                    ))}
-                </div>
-              )}
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+                {Object.entries(rd)
+                  .filter(([, v]) => v)
+                  .map(([k, v]) => (
+                    <div key={k}>
+                      <p className="text-[10px] text-gray-500">{k}</p>
+                      <p className="text-xs text-gray-300 break-words">
+                        {String(v).length > 120 ? String(v).substring(0, 120) + "…" : String(v)}
+                      </p>
+                    </div>
+                  ))}
+              </div>
             </div>
           );
         })}
@@ -180,10 +166,11 @@ interface CustomerDetailClientProps {
 }
 
 function InfoRow({ label, value }: { label: string; value: string }) {
+  if (value === "-") return <div />;
   return (
     <div>
-      <p className="text-xs text-gray-500 font-medium">{label}</p>
-      <p className="text-white mt-0.5">{value}</p>
+      <p className="text-[10px] text-gray-500 font-medium">{label}</p>
+      <p className="text-sm text-white mt-0.5">{value}</p>
     </div>
   );
 }
@@ -419,6 +406,31 @@ export function CustomerDetailClient({
   const [emailList, setEmailList] = useState(emails);
   const [isAddingEmail, setIsAddingEmail] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    if (searchParams.get("edit") === "true") {
+      setShowEditModal(true);
+    }
+  }, [searchParams]);
+
+  const handleDelete = async () => {
+    if (!confirm(`「${customer.name}」を削除しますか？\n関連データ（営業・契約・学習・エージェント・フォーム履歴）もすべて削除されます。`)) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/customers/${customer.id}`, { method: "DELETE" });
+      if (res.ok) {
+        router.push("/customers");
+      } else {
+        const data = await res.json();
+        alert(data.error || "削除に失敗しました");
+      }
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const handleEditSaved = () => {
     setShowEditModal(false);
@@ -448,7 +460,7 @@ export function CustomerDetailClient({
     }
   };
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 space-y-3">
       {showEditModal && (
         <EditModal customer={customer} onClose={() => setShowEditModal(false)} onSaved={handleEditSaved} />
       )}
@@ -486,20 +498,29 @@ export function CustomerDetailClient({
             </div>
           </div>
         </div>
-        <button
-          onClick={() => setShowEditModal(true)}
-          className="px-4 py-2 bg-brand text-white rounded-lg text-sm font-medium hover:bg-brand-dark transition-colors"
-        >
-          編集
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleDelete}
+            disabled={deleting}
+            className="px-3 py-2 text-red-400 hover:text-red-300 text-xs font-medium transition-colors disabled:opacity-50"
+          >
+            {deleting ? "削除中..." : "削除"}
+          </button>
+          <button
+            onClick={() => setShowEditModal(true)}
+            className="px-4 py-2 bg-brand text-white rounded-lg text-sm font-medium hover:bg-brand-dark transition-colors"
+          >
+            編集
+          </button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-2 space-y-3">
           {/* 基本情報 */}
-          <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-6">
-            <h2 className="text-lg font-semibold text-white mb-4">基本情報</h2>
-            <div className="grid grid-cols-2 gap-4 text-sm">
+          <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-4">
+            <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">基本情報</h2>
+            <div className="grid grid-cols-3 gap-3 text-sm">
               <InfoRow label="申込日" value={formatDate(customer.application_date)} />
               <InfoRow label="メール" value={customer.email || "-"} />
               <InfoRow label="電話番号" value={customer.phone || "-"} />
@@ -529,9 +550,9 @@ export function CustomerDetailClient({
 
           {/* 営業・商談情報 */}
           {customer.pipeline && (
-            <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-6">
-              <h2 className="text-lg font-semibold text-white mb-4">営業・商談情報</h2>
-              <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-4">
+              <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">営業・商談情報</h2>
+              <div className="grid grid-cols-3 gap-3 text-sm">
                 <InfoRow label="面談予定日" value={formatDate(customer.pipeline.meeting_scheduled_date)} />
                 <InfoRow label="面談実施日" value={formatDate(customer.pipeline.meeting_conducted_date)} />
                 <InfoRow label="営業日" value={formatDate(customer.pipeline.sales_date)} />
@@ -562,15 +583,25 @@ export function CustomerDetailClient({
 
           {/* 売上見込サマリー */}
           {(customer.contract || customer.pipeline) && (
-            <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-6">
-              <h2 className="text-lg font-semibold text-white mb-4">売上見込</h2>
+            <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-4">
+              <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">売上見込</h2>
               <div className="space-y-3">
                 {/* 売上見込の分解 */}
-                <div className="bg-surface-elevated rounded-lg p-4 space-y-2">
+                <div className="bg-surface-elevated rounded-lg p-3 space-y-1.5">
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-400">確定売上（スクール）</span>
                     <span className="text-white font-medium">{customer.contract?.confirmed_amount ? formatCurrency(customer.contract.confirmed_amount) : "¥0"}</span>
                   </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-400">確定売上（人材）</span>
+                    <span className="text-white font-medium">{isAgentConfirmed(customer) ? formatCurrency(calcExpectedReferralFee(customer)) : "¥0"}</span>
+                  </div>
+                  <div className="border-t border-white/10 pt-1.5 flex justify-between text-sm">
+                    <span className="text-white font-semibold">確定売上 合計</span>
+                    <span className="text-green-400 font-bold">{(() => { const v = calcConfirmedRevenue(customer); return v > 0 ? formatCurrency(v) : "¥0"; })()}</span>
+                  </div>
+                </div>
+                <div className="bg-surface-elevated rounded-lg p-3 space-y-1.5">
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-400">補助金額（リスキャリ）</span>
                     <span className="text-white font-medium">{(() => { const s = getSubsidyAmount(customer); return s > 0 ? formatCurrency(s) : "¥0"; })()}{customer.contract?.subsidy_eligible ? " （対象）" : ""}</span>
@@ -579,13 +610,13 @@ export function CustomerDetailClient({
                     <span className="text-gray-400">人材見込売上</span>
                     <span className="text-white font-medium">{(() => { const v = calcAgentProjectedRevenue(customer); return v > 0 ? formatCurrency(v) : "¥0"; })()}</span>
                   </div>
-                  <div className="border-t border-white/10 pt-2 flex justify-between text-sm">
+                  <div className="border-t border-white/10 pt-1.5 flex justify-between text-sm">
                     <span className="text-white font-semibold">売上見込 合計</span>
-                    <span className="text-brand font-bold text-base">{(() => { const v = calcSalesProjection(customer); return v > 0 ? formatCurrency(v) : "-"; })()}</span>
+                    <span className="text-brand font-bold">{(() => { const v = calcSalesProjection(customer); return v > 0 ? formatCurrency(v) : "-"; })()}</span>
                   </div>
                 </div>
                 {/* 見込LTV・成約見込率 */}
-                <div className="grid grid-cols-2 gap-4 text-sm mt-3">
+                <div className="grid grid-cols-3 gap-3 text-sm mt-3">
                   <InfoRow label="成約見込率" value={formatPercent(calcClosingProbability(customer))} />
                   <InfoRow label="見込LTV" value={(() => { const v = calcExpectedLTV(customer); return v > 0 ? formatCurrency(v) : "-"; })()} />
                 </div>
@@ -595,9 +626,9 @@ export function CustomerDetailClient({
 
           {/* 契約情報 */}
           {customer.contract && (
-            <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-6">
-              <h2 className="text-lg font-semibold text-white mb-4">契約・入金情報</h2>
-              <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-4">
+              <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">契約・入金情報</h2>
+              <div className="grid grid-cols-3 gap-3 text-sm">
                 <InfoRow label="プラン" value={customer.contract.plan_name || "-"} />
                 <InfoRow label="変更プラン" value={customer.contract.changed_plan || "-"} />
                 <InfoRow label="一次金額" value={customer.contract.first_amount ? formatCurrency(customer.contract.first_amount) : "-"} />
@@ -613,9 +644,9 @@ export function CustomerDetailClient({
 
           {/* 学習情報 */}
           {customer.learning && (
-            <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-6">
-              <h2 className="text-lg font-semibold text-white mb-4">学習状況</h2>
-              <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-4">
+              <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">学習状況</h2>
+              <div className="grid grid-cols-3 gap-3 text-sm">
                 <InfoRow label="指導メンター" value={customer.learning.mentor_name || "-"} />
                 <InfoRow label="契約月数" value={customer.learning.contract_months != null ? `${customer.learning.contract_months}ヶ月` : "-"} />
                 <InfoRow label="指導開始日" value={formatDate(customer.learning.coaching_start_date)} />
@@ -647,9 +678,9 @@ export function CustomerDetailClient({
 
           {/* エージェント情報（新卒・非エージェントユーザーは非表示） */}
           {customer.agent && customer.attribute !== "新卒" && isAgentCustomer(customer) && (
-            <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-6">
-              <h2 className="text-lg font-semibold text-white mb-4">エージェント・転職支援</h2>
-              <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-4">
+              <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">エージェント・転職支援</h2>
+              <div className="grid grid-cols-3 gap-3 text-sm">
                 <InfoRow label="エージェント利用" value={isAgentCustomer(customer) ? "利用中" : "なし"} />
                 <InfoRow label="プラン" value={customer.agent.agent_plan || "-"} />
                 <InfoRow label="転職活動状況" value={customer.agent.job_search_status} />
@@ -680,10 +711,10 @@ export function CustomerDetailClient({
         </div>
 
         {/* 右カラム */}
-        <div className="space-y-6">
+        <div className="space-y-3">
           {/* メールアドレス */}
           {emailList.length > 0 && (
-            <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-6">
+            <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-4">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-white">メールアドレス</h2>
                 <button
@@ -729,8 +760,8 @@ export function CustomerDetailClient({
             <FormDataSection records={applicationHistory} />
           )}
 
-          <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-6">
-            <h2 className="text-lg font-semibold text-white mb-4">プロフィール</h2>
+          <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-4">
+            <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">プロフィール</h2>
             <div className="space-y-3 text-sm">
               {customer.sns_accounts && (
                 <div>
@@ -771,7 +802,7 @@ export function CustomerDetailClient({
             </div>
           </div>
 
-          <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-6">
+          <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-4">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-white">活動履歴</h2>
               <button className="text-xs text-brand hover:underline">

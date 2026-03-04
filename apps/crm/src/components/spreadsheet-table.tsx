@@ -288,7 +288,7 @@ export function SpreadsheetTable<T>({
                         className={cn(
                           "py-1.5 px-2 text-sm overflow-hidden",
                           col.multiline
-                            ? "whitespace-pre-wrap text-xs leading-relaxed line-clamp-3"
+                            ? "whitespace-pre-wrap text-xs leading-relaxed line-clamp-5"
                             : "whitespace-nowrap text-ellipsis",
                           col.align === "right"
                             ? "text-right"

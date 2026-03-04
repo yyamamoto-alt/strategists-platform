@@ -95,6 +95,11 @@ async function syncFormFieldsToRelatedTables(
     if (rawData["ネックになりそうな要素（複数選択可）"]) pipelineUpdate.marketing_memo = rawData["ネックになりそうな要素（複数選択可）"];
     if (rawData["実施日"]) pipelineUpdate.sales_date = rawData["実施日"];
 
+    // 「結果」フィールドの値をstageに反映
+    if (rawData["結果"]) {
+      pipelineUpdate.stage = rawData["結果"];
+    }
+
     if (Object.keys(pipelineUpdate).length > 0) {
       pipelineUpdate.updated_at = new Date().toISOString();
       await db
@@ -343,8 +348,8 @@ export async function upsertFromSpreadsheet(
     // sales_pipeline を作成
     await db.from("sales_pipeline").insert({
       customer_id: newCustomer.id,
-      stage: "問い合わせ",
-      deal_status: "未対応",
+      stage: "日程未確",
+      deal_status: "進行中",
     });
 
     // application_history に履歴追加

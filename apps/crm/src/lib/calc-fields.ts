@@ -181,6 +181,13 @@ export function calcProgressStatus(c: CustomerWithRelations): "順調" | "遅延
   return schedule / session > 1.5 ? "遅延" : "順調";
 }
 
+/** 確定売上合計 = スクール確定売上 + 人材確定分 */
+export function calcConfirmedRevenue(c: CustomerWithRelations): number {
+  const schoolConfirmed = c.contract?.confirmed_amount || 0;
+  const agentConfirmed = isAgentConfirmed(c) ? calcExpectedReferralFee(c) : 0;
+  return schoolConfirmed + agentConfirmed;
+}
+
 /** 人材見込売上（人材紹介区分に基づく乗数）（Excel Col BU） */
 export function calcAgentProjectedRevenue(c: CustomerWithRelations): number {
   if (!isCurrentlyEnrolled(c) || !isAgentCustomer(c) || isAgentConfirmed(c)) return 0;
