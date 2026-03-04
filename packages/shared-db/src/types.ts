@@ -303,12 +303,14 @@ export interface Module {
   course_id: string;
   title: string;
   sort_order: number;
+  created_at?: string;
   lessons?: Lesson[];
 }
 
 export interface Lesson {
   id: string;
   course_id: string;
+  module_id?: string | null;
   created_at: string;
   updated_at: string;
   title: string;
@@ -737,6 +739,7 @@ export interface Database {
       agent_records: { Row: AgentRecord; Insert: Partial<AgentRecord> & { customer_id: string }; Update: Partial<AgentRecord> };
       activities: { Row: Activity; Insert: Partial<Activity> & { customer_id: string; content: string; activity_type: ActivityType }; Update: Partial<Activity> };
       courses: { Row: Course; Insert: Partial<Course> & { title: string }; Update: Partial<Course> };
+      modules: { Row: Module; Insert: Partial<Module> & { course_id: string; title: string }; Update: Partial<Module> };
       lessons: { Row: Lesson; Insert: Partial<Lesson> & { course_id: string; title: string }; Update: Partial<Lesson> };
       lesson_progress: { Row: LessonProgress; Insert: Partial<LessonProgress> & { customer_id: string; lesson_id: string }; Update: Partial<LessonProgress> };
       coaching_sessions: { Row: CoachingSession; Insert: Partial<CoachingSession> & { customer_id: string; scheduled_at: string }; Update: Partial<CoachingSession> };
