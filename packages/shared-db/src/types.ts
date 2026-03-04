@@ -399,17 +399,15 @@ export interface ProgressSheet {
   id: string;
   student_id: string;
   mentor_id: string;
-  session_date: string;
-  session_number: number;
-  understanding: number;
-  effort: number;
-  progress: number;
-  communication: number;
-  overall_rating: number;
-  feedback: string | null;
-  strengths: string | null;
-  improvements: string | null;
-  next_goals: string | null;
+  session_date: string;           // 添削日
+  session_number: number;         // 回次
+  problem_solved: string | null;  // 解いた問題
+  level_fermi: string | null;     // レベル(フェルミ)
+  level_case: string | null;      // レベル(ケース)
+  level_mck: string | null;       // レベル(McK)
+  progress_notes: string | null;  // 通過した足・買かった足・敗退・改善
+  pb_or_priority: string | null;  // PBもしくは最優先改善
+  next_assignment: string | null; // 次回までの課題
 }
 
 export interface Announcement {
