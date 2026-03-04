@@ -1,29 +1,34 @@
-"use client";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { AssignmentsClient } from "./assignments-client";
 
-import { ClipboardList } from "lucide-react";
+export const dynamic = "force-dynamic";
 
-export default function AssignmentsLmsPage() {
-  return (
-    <div className="min-h-screen bg-surface text-white p-6 space-y-6">
-      <div className="flex items-center gap-3">
-        <ClipboardList className="h-7 w-7 text-brand-light" />
-        <div>
-          <h1 className="text-2xl font-bold">課題管理</h1>
-          <p className="text-sm text-gray-400 mt-1">課題の提出状況とフィードバック</p>
-        </div>
-      </div>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {(["未提出", "提出済", "レビュー中", "フィードバック済"] as const).map((status) => (
-          <div key={status} className="bg-surface-card border border-white/10 rounded-lg p-4">
-            <p className="text-xs text-gray-400">{status}</p>
-            <p className="text-2xl font-bold mt-1">0</p>
-          </div>
-        ))}
-      </div>
-      <div className="text-center py-12 bg-surface-card border border-white/10 rounded-lg">
-        <ClipboardList className="h-12 w-12 text-gray-600 mx-auto mb-3" />
-        <p className="text-gray-400">モックモードでは課題データは表示されません</p>
-      </div>
-    </div>
-  );
+async function fetchAssignments() {
+  const supabase = createAdminClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db = supabase as any;
+
+  const { data, error } = await db
+    .from("application_history")
+    .select("id, source, raw_data, applied_at, customer_id, customers ( name )")
+    .eq("source", "課題提出")
+    .order("applied_at", { ascending: false })
+    .limit(1000);
+
+  if (error) {
+    console.error("assignments fetch error:", error);
+    return [];
+  }
+
+  return (data || []).map((row: Record<string, unknown>) => ({
+    id: row.id as string,
+    customer_name: (row.customers as { name: string } | null)?.name ?? null,
+    raw_data: (row.raw_data || {}) as Record<string, string>,
+    applied_at: row.applied_at as string,
+  }));
+}
+
+export default async function AssignmentsLmsPage() {
+  const assignments = await fetchAssignments();
+  return <AssignmentsClient assignments={assignments} />;
 }
