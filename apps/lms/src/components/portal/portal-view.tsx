@@ -1,16 +1,14 @@
 "use client";
 
-import { SectionHeader } from "./section-header";
-import { ContentCard } from "./content-card";
-import { ExternalLink, BookOpen } from "lucide-react";
+import Link from "next/link";
+import { ExternalLink, BookOpen, Video, FileText, ChevronRight, Lock } from "lucide-react";
 import type { Course } from "@/types/database";
 
 interface PortalViewProps {
   courses: Course[];
-  lockedCourses?: Course[];  // プラン外でロック表示するコース
+  lockedCourses?: Course[];
 }
 
-// カテゴリ別にグルーピング
 function groupByCategory(courses: Course[]): Record<string, Course[]> {
   const groups: Record<string, Course[]> = {};
   for (const course of courses) {
@@ -21,106 +19,133 @@ function groupByCategory(courses: Course[]): Record<string, Course[]> {
   return groups;
 }
 
-// セクション表示順とアイコン
-const sectionConfig: { category: string; icon: string; title: string }[] = [
-  { category: "教科書", icon: "📚", title: "教科書" },
-  { category: "動画講座", icon: "🎬", title: "動画講座" },
-  { category: "補助教材", icon: "📎", title: "補助教材" },
+const sectionConfig: { category: string; icon: string; color: string }[] = [
+  { category: "ガイド", icon: "📖", color: "bg-emerald-500" },
+  { category: "教科書", icon: "📚", color: "bg-blue-500" },
+  { category: "動画講座", icon: "🎬", color: "bg-purple-500" },
+  { category: "補助教材", icon: "📎", color: "bg-gray-500" },
+  { category: "カリキュラム", icon: "📋", color: "bg-amber-500" },
 ];
 
-// 外部フォームリンク
+const categoryIcons: Record<string, typeof BookOpen> = {
+  "教科書": BookOpen,
+  "動画講座": Video,
+  "補助教材": FileText,
+  "ガイド": BookOpen,
+  "カリキュラム": FileText,
+};
+
 const formLinks = [
-  { title: "教材アウトプットフォーム", url: "" },
-  { title: "自己振り返りフォーム", url: "" },
-  { title: "添削提出フォーム", url: "" },
-  { title: "面接振り返りフォーム", url: "" },
+  { title: "教材アウトプットフォーム", url: "https://docs.google.com/forms/d/e/1FAIpQLScwjVOoTGOJFWMWBiQrYJqjGBfrgH4pEzm0hTefpdIde0ApuA/viewform?usp=dialog" },
+  { title: "自己振り返りフォーム", url: "https://docs.google.com/forms/d/e/1FAIpQLSczLzNgT647SsVOy0dEma7u11WsUouNIabPrjMWJYOB9-iAtQ/viewform" },
+  { title: "添削提出フォーム", url: "https://forms.gle/RUHphJLJzDBGEjro7" },
+  { title: "面接振り返りフォーム", url: "https://forms.gle/aPrBN61BXQdm79Lr7" },
+  { title: "ビヘイビア対策お申込みフォーム", url: "https://docs.google.com/forms/d/e/1FAIpQLSfdULLLNu3mPO3y0lAwpq8P-N3-gJnX7R1ozVqRbejdm594WQ/viewform" },
 ];
+
+function CourseRow({ course, locked = false }: { course: Course; locked?: boolean }) {
+  const Icon = categoryIcons[course.category || ""] || FileText;
+  const slug = course.slug || course.id;
+
+  if (locked) {
+    return (
+      <div className="flex items-center gap-3 px-3 py-2 text-gray-500 cursor-not-allowed">
+        <Lock className="w-4 h-4 shrink-0" />
+        <span className="text-sm truncate">{course.title}</span>
+        <span className="text-xs text-gray-600 ml-auto shrink-0">プランアップグレードで利用可能</span>
+      </div>
+    );
+  }
+
+  return (
+    <Link
+      href={`/courses/${slug}`}
+      className="flex items-center gap-3 px-3 py-2 rounded hover:bg-white/[0.04] transition-colors group"
+    >
+      <Icon className="w-4 h-4 text-gray-500 shrink-0" />
+      <span className="text-sm text-gray-200 group-hover:text-white truncate">{course.title}</span>
+      {course.total_lessons > 0 && (
+        <span className="text-xs text-gray-600 shrink-0">{course.total_lessons}件</span>
+      )}
+      <ChevronRight className="w-3.5 h-3.5 text-gray-600 ml-auto shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+    </Link>
+  );
+}
 
 export function PortalView({ courses, lockedCourses = [] }: PortalViewProps) {
   const grouped = groupByCategory(courses);
   const lockedGrouped = groupByCategory(lockedCourses);
 
+  const allCategories = new Set([
+    ...Object.keys(grouped),
+    ...Object.keys(lockedGrouped),
+  ]);
+
+  // sectionConfigの順序に従い、未定義カテゴリは末尾に
+  const orderedCategories = [
+    ...sectionConfig.filter((s) => allCategories.has(s.category)).map((s) => s.category),
+    ...Array.from(allCategories).filter((c) => !sectionConfig.some((s) => s.category === c)),
+  ];
+
   return (
-    <div className="p-6 bg-surface min-h-screen">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-white">学習ポータル</h1>
-        <p className="text-sm text-gray-400 mt-1">教材や動画講座にアクセスできます</p>
-      </div>
+    <div className="p-5 bg-surface min-h-screen max-w-4xl">
+      <h1 className="text-lg font-bold text-white mb-4">学習ポータル</h1>
 
-      {/* 推奨学習方法 */}
-      <div className="bg-surface-elevated rounded-xl p-5 mb-8 border border-white/10">
-        <SectionHeader icon="📖" title="推奨学習方法" />
-        <p className="text-sm text-gray-300 leading-relaxed">
-          まずは教科書を一通り読み、動画講座で理解を深めてください。
-          メンタリングセッションで実践的なフィードバックを受けることで、効率的に学習を進められます。
-        </p>
-      </div>
+      {orderedCategories.map((category) => {
+        const catCourses = grouped[category] || [];
+        const catLocked = lockedGrouped[category] || [];
+        if (catCourses.length === 0 && catLocked.length === 0) return null;
 
-      {/* 教科書・動画講座・補助教材 */}
-      {sectionConfig.map(({ category, icon, title }) => {
-        const categoryCourses = grouped[category] || [];
-        const categoryLocked = lockedGrouped[category] || [];
-        if (categoryCourses.length === 0 && categoryLocked.length === 0) return null;
+        const config = sectionConfig.find((s) => s.category === category);
+        const icon = config?.icon || "📁";
+        const color = config?.color || "bg-gray-500";
 
         return (
-          <div key={category} className="mb-8">
-            <SectionHeader icon={icon} title={title} />
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {categoryCourses.map((course) => (
-                <ContentCard key={course.id} course={course} />
+          <div key={category} className="mb-5">
+            <div className="flex items-center gap-2 mb-1 px-1">
+              <span className={`w-1.5 h-4 rounded-sm ${color}`} />
+              <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                {icon} {category}
+              </span>
+              <span className="text-xs text-gray-600">{catCourses.length + catLocked.length}</span>
+            </div>
+            <div className="border border-white/[0.06] rounded-lg divide-y divide-white/[0.04] bg-white/[0.02]">
+              {catCourses.map((course) => (
+                <CourseRow key={course.id} course={course} />
               ))}
-              {categoryLocked.map((course) => (
-                <ContentCard key={course.id} course={course} locked />
+              {catLocked.map((course) => (
+                <CourseRow key={course.id} course={course} locked />
               ))}
             </div>
           </div>
         );
       })}
 
-      {/* カテゴリ未分類コース */}
-      {Object.entries(grouped)
-        .filter(([cat]) => !sectionConfig.some((s) => s.category === cat))
-        .map(([cat, catCourses]) => (
-          <div key={cat} className="mb-8">
-            <SectionHeader icon="📁" title={cat} />
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {catCourses.map((course) => (
-                <ContentCard key={course.id} course={course} />
-              ))}
-            </div>
-          </div>
-        ))}
-
       {/* 各種フォーム */}
-      {formLinks.some((f) => f.url) && (
-        <div className="mb-8">
-          <SectionHeader icon="📝" title="各種フォーム" />
-          <div className="space-y-2">
-            {formLinks.map((form) =>
-              form.url ? (
-                <a
-                  key={form.title}
-                  href={form.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 text-sm text-gray-300 hover:text-brand-light transition-colors px-3 py-2 rounded-lg hover:bg-white/[0.03]"
-                >
-                  <ExternalLink className="w-4 h-4 text-gray-500" />
-                  {form.title}
-                </a>
-              ) : (
-                <div
-                  key={form.title}
-                  className="flex items-center gap-2 text-sm text-gray-500 px-3 py-2"
-                >
-                  <ExternalLink className="w-4 h-4" />
-                  {form.title}（準備中）
-                </div>
-              )
-            )}
-          </div>
+      <div className="mb-5">
+        <div className="flex items-center gap-2 mb-1 px-1">
+          <span className="w-1.5 h-4 rounded-sm bg-orange-500" />
+          <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+            📝 各種フォーム
+          </span>
+          <span className="text-xs text-gray-600">{formLinks.length}</span>
         </div>
-      )}
+        <div className="border border-white/[0.06] rounded-lg divide-y divide-white/[0.04] bg-white/[0.02]">
+          {formLinks.map((form) => (
+            <a
+              key={form.title}
+              href={form.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-3 px-3 py-2 rounded hover:bg-white/[0.04] transition-colors group"
+            >
+              <ExternalLink className="w-4 h-4 text-gray-500 shrink-0" />
+              <span className="text-sm text-gray-200 group-hover:text-white">{form.title}</span>
+              <ChevronRight className="w-3.5 h-3.5 text-gray-600 ml-auto shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+            </a>
+          ))}
+        </div>
+      </div>
 
       {courses.length === 0 && lockedCourses.length === 0 && (
         <div className="text-center py-12 text-gray-400">

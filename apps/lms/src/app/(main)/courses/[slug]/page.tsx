@@ -1,4 +1,4 @@
-import { createLmsServerClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { mockCourses, mockModules } from "@/lib/mock-data";
 import { CourseDetailClient } from "./course-detail-client";
 
@@ -19,25 +19,29 @@ export default async function CourseDetailPage({
   }
 
   try {
-    const supabase = await createLmsServerClient();
+    const supabase = createAdminClient();
+
+    // slugをデコード（URL encoding対策）
+    const decodedSlug = decodeURIComponent(slug);
 
     // まずslugで検索、なければidで検索
     let { data: course } = await supabase
       .from("courses")
       .select("*")
-      .eq("slug", slug)
+      .eq("slug", decodedSlug)
       .maybeSingle() as { data: any };
 
     if (!course) {
       const { data: byId } = await supabase
         .from("courses")
         .select("*")
-        .eq("id", slug)
+        .eq("id", decodedSlug)
         .maybeSingle() as { data: any };
       course = byId;
     }
 
     if (!course) {
+      console.error(`Course not found: slug="${decodedSlug}"`);
       return <CourseDetailClient course={null} modules={[]} slug={slug} />;
     }
 
