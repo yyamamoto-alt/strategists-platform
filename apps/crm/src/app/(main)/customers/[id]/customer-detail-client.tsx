@@ -188,16 +188,242 @@ function InfoRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function CustomerDetailClient({
+// 編集可能フィールド定義
+const EDITABLE_FIELDS = {
+  customer: [
+    { key: "name", label: "名前", type: "text" },
+    { key: "email", label: "メール", type: "text" },
+    { key: "phone", label: "電話番号", type: "text" },
+    { key: "attribute", label: "属性", type: "select", options: ["既卒", "新卒"] },
+    { key: "priority", label: "優先度", type: "select", options: ["高", "中", "低", ""] },
+    { key: "university", label: "大学", type: "text" },
+    { key: "faculty", label: "学部", type: "text" },
+    { key: "notes", label: "備考", type: "textarea" },
+    { key: "caution_notes", label: "注意事項", type: "textarea" },
+  ],
+  pipeline: [
+    { key: "stage", label: "ステージ", type: "text" },
+    { key: "deal_status", label: "ディール状態", type: "select", options: ["進行中", "保留", "完了", "失注"] },
+    { key: "probability", label: "営業角度", type: "number" },
+    { key: "meeting_scheduled_date", label: "面談予定日", type: "date" },
+    { key: "meeting_conducted_date", label: "面談実施日", type: "date" },
+    { key: "sales_date", label: "営業日", type: "date" },
+    { key: "closing_date", label: "成約日", type: "date" },
+    { key: "decision_factor", label: "決め手", type: "text" },
+    { key: "sales_content", label: "営業内容", type: "textarea" },
+    { key: "sales_strategy", label: "営業方針", type: "textarea" },
+  ],
+  contract: [
+    { key: "plan_name", label: "プラン", type: "text" },
+    { key: "confirmed_amount", label: "確定売上", type: "number" },
+    { key: "first_amount", label: "一次金額", type: "number" },
+    { key: "discount", label: "割引", type: "number" },
+    { key: "billing_status", label: "請求状況", type: "select", options: ["未請求", "請求済", "入金済", "返金済"] },
+    { key: "subsidy_eligible", label: "補助金対象", type: "select", options: ["true", "false"] },
+  ],
+  learning: [
+    { key: "mentor_name", label: "指導メンター", type: "text" },
+    { key: "coaching_start_date", label: "指導開始日", type: "date" },
+    { key: "coaching_end_date", label: "指導終了日", type: "date" },
+    { key: "total_sessions", label: "契約指導回数", type: "number" },
+    { key: "completed_sessions", label: "指導完了数", type: "number" },
+    { key: "current_level", label: "現在のレベル", type: "text" },
+  ],
+  agent: [
+    { key: "job_search_status", label: "転職活動状況", type: "text" },
+    { key: "selection_status", label: "選考状況", type: "text" },
+    { key: "offer_company", label: "内定先", type: "text" },
+    { key: "offer_salary", label: "想定年収", type: "number" },
+    { key: "hire_rate", label: "入社至る率", type: "number" },
+    { key: "offer_probability", label: "内定確度", type: "number" },
+    { key: "referral_fee_rate", label: "紹介料率", type: "number" },
+    { key: "placement_confirmed", label: "人材確定", type: "select", options: ["true", "false"] },
+  ],
+} as const;
+
+type EditSection = keyof typeof EDITABLE_FIELDS;
+
+function EditModal({
   customer,
+  onClose,
+  onSaved,
+}: {
+  customer: CustomerWithRelations;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [activeTab, setActiveTab] = useState<EditSection>("customer");
+  const [formData, setFormData] = useState<Record<string, Record<string, string>>>(() => {
+    const init: Record<string, Record<string, string>> = {};
+    for (const section of Object.keys(EDITABLE_FIELDS) as EditSection[]) {
+      init[section] = {};
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const source: any = section === "customer" ? customer : (customer as any)[section];
+      if (source) {
+        for (const field of EDITABLE_FIELDS[section]) {
+          const val = source[field.key];
+          init[section][field.key] = val != null ? String(val) : "";
+        }
+      }
+    }
+    return init;
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const tabs = [
+    { key: "customer" as EditSection, label: "基本情報" },
+    { key: "pipeline" as EditSection, label: "営業", show: !!customer.pipeline },
+    { key: "contract" as EditSection, label: "契約", show: !!customer.contract },
+    { key: "learning" as EditSection, label: "学習", show: !!customer.learning },
+    { key: "agent" as EditSection, label: "エージェント", show: !!customer.agent && customer.attribute !== "新卒" },
+  ].filter((t) => t.show !== false);
+
+  const handleChange = (section: string, key: string, value: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      [section]: { ...prev[section], [key]: value },
+    }));
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    setError("");
+    try {
+      // 変更があったフィールドだけ送る
+      const payload: Record<string, Record<string, unknown>> = {};
+      for (const section of Object.keys(EDITABLE_FIELDS) as EditSection[]) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const source: any = section === "customer" ? customer : (customer as any)[section];
+        if (!source) continue;
+        const changes: Record<string, unknown> = {};
+        for (const field of EDITABLE_FIELDS[section]) {
+          const original = source[field.key];
+          const current = formData[section]?.[field.key] ?? "";
+          const origStr = original != null ? String(original) : "";
+          if (current !== origStr) {
+            if (field.type === "number") {
+              changes[field.key] = current ? Number(current) : null;
+            } else if (field.type === "select" && (current === "true" || current === "false")) {
+              changes[field.key] = current === "true";
+            } else {
+              changes[field.key] = current || null;
+            }
+          }
+        }
+        if (Object.keys(changes).length > 0) {
+          payload[section] = changes;
+        }
+      }
+
+      if (Object.keys(payload).length === 0) {
+        onClose();
+        return;
+      }
+
+      const res = await fetch(`/api/customers/${customer.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) {
+        onSaved();
+      } else {
+        const data = await res.json();
+        setError(data.error || "保存に失敗しました");
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/60 z-50 flex items-start justify-center pt-16 overflow-y-auto" onClick={onClose}>
+      <div className="bg-surface-card border border-white/10 rounded-xl shadow-xl w-full max-w-2xl mx-4 mb-8" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between p-4 border-b border-white/10">
+          <h2 className="text-lg font-semibold text-white">顧客情報を編集</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-white text-xl">&times;</button>
+        </div>
+        {/* タブ */}
+        <div className="flex gap-1 px-4 pt-3 border-b border-white/10">
+          {tabs.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`px-3 py-2 text-sm rounded-t-lg transition-colors ${
+                activeTab === tab.key ? "bg-surface-elevated text-white border-b-2 border-brand" : "text-gray-400 hover:text-gray-300"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+        {/* フィールド */}
+        <div className="p-4 space-y-3 max-h-[60vh] overflow-y-auto">
+          {EDITABLE_FIELDS[activeTab].map((field) => (
+            <div key={field.key}>
+              <label className="text-xs text-gray-400 block mb-1">{field.label}</label>
+              {field.type === "textarea" ? (
+                <textarea
+                  value={formData[activeTab]?.[field.key] ?? ""}
+                  onChange={(e) => handleChange(activeTab, field.key, e.target.value)}
+                  rows={3}
+                  className="w-full px-3 py-2 bg-surface-elevated border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-brand resize-none"
+                />
+              ) : field.type === "select" ? (
+                <select
+                  value={formData[activeTab]?.[field.key] ?? ""}
+                  onChange={(e) => handleChange(activeTab, field.key, e.target.value)}
+                  className="w-full px-3 py-2 bg-surface-elevated border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-brand"
+                >
+                  <option value="">-</option>
+                  {field.options.map((opt) => (
+                    <option key={opt} value={opt}>{opt === "true" ? "はい" : opt === "false" ? "いいえ" : opt}</option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  type={field.type}
+                  value={formData[activeTab]?.[field.key] ?? ""}
+                  onChange={(e) => handleChange(activeTab, field.key, e.target.value)}
+                  step={field.type === "number" ? "any" : undefined}
+                  className="w-full px-3 py-2 bg-surface-elevated border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-brand"
+                />
+              )}
+            </div>
+          ))}
+        </div>
+        {error && <p className="px-4 text-sm text-red-400">{error}</p>}
+        <div className="flex justify-end gap-2 p-4 border-t border-white/10">
+          <button onClick={onClose} className="px-4 py-2 text-gray-400 hover:text-white text-sm transition-colors">
+            キャンセル
+          </button>
+          <button onClick={handleSave} disabled={saving} className="px-6 py-2 bg-brand hover:bg-brand-dark text-white rounded-lg text-sm font-medium disabled:opacity-50 transition-colors">
+            {saving ? "保存中..." : "保存"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function CustomerDetailClient({
+  customer: initialCustomer,
   activities,
   emails,
   applicationHistory,
 }: CustomerDetailClientProps) {
+  const [customer, setCustomer] = useState(initialCustomer);
   const [showAddEmail, setShowAddEmail] = useState(false);
   const [newEmail, setNewEmail] = useState("");
   const [emailList, setEmailList] = useState(emails);
   const [isAddingEmail, setIsAddingEmail] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+
+  const handleEditSaved = () => {
+    setShowEditModal(false);
+    window.location.reload();
+  };
 
   const addEmail = async () => {
     if (!newEmail) return;
@@ -223,6 +449,10 @@ export function CustomerDetailClient({
   };
   return (
     <div className="p-6 space-y-6">
+      {showEditModal && (
+        <EditModal customer={customer} onClose={() => setShowEditModal(false)} onSaved={handleEditSaved} />
+      )}
+
       {/* ヘッダー */}
       <div className="flex items-center gap-4">
         <Link
@@ -256,7 +486,10 @@ export function CustomerDetailClient({
             </div>
           </div>
         </div>
-        <button className="px-4 py-2 bg-brand text-white rounded-lg text-sm font-medium hover:bg-brand-dark">
+        <button
+          onClick={() => setShowEditModal(true)}
+          className="px-4 py-2 bg-brand text-white rounded-lg text-sm font-medium hover:bg-brand-dark transition-colors"
+        >
           編集
         </button>
       </div>
@@ -412,8 +645,8 @@ export function CustomerDetailClient({
             </div>
           )}
 
-          {/* エージェント情報 */}
-          {customer.agent && (
+          {/* エージェント情報（新卒・非エージェントユーザーは非表示） */}
+          {customer.agent && customer.attribute !== "新卒" && isAgentCustomer(customer) && (
             <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-6">
               <h2 className="text-lg font-semibold text-white mb-4">エージェント・転職支援</h2>
               <div className="grid grid-cols-2 gap-4 text-sm">
