@@ -181,6 +181,30 @@ async function syncFormFieldsToRelatedTables(
     }
   }
 
+  // --- エージェント面談報告 → agent_records ---
+  if (sourceName === "エージェント面談報告フォーム") {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const agentUpdate: Record<string, any> = {};
+    if (rawData["担当CA"]) agentUpdate.agent_staff = rawData["担当CA"];
+    if (rawData["現時点での転職(入社)予定日"]) {
+      // 日付パース: "2026/04/01" 形式
+      try {
+        const parsed = new Date(rawData["現時点での転職(入社)予定日"]);
+        if (!isNaN(parsed.getTime())) agentUpdate.placement_date = parsed.toISOString();
+      } catch {
+        // skip
+      }
+    }
+
+    if (Object.keys(agentUpdate).length > 0) {
+      agentUpdate.updated_at = new Date().toISOString();
+      await db
+        .from("agent_records")
+        .update(agentUpdate)
+        .eq("customer_id", customerId);
+    }
+  }
+
   // --- 課題提出 → learning_records (満足度) ---
   if (sourceName === "課題提出") {
     if (rawData["前回メンタリングの満足度"]) {
