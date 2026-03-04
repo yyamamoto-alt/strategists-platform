@@ -53,10 +53,10 @@ export function LessonPlayerClient({ slug, lessonId, allLessons }: Props) {
         </div>
         <div className="p-6 max-w-4xl mx-auto">
           <h1 className="text-2xl font-bold text-white mb-6">{lesson.title}</h1>
-          {lesson.lesson_type === "動画" && lesson.video_url && (
+          {lesson.video_url && (
             <div className="mb-6"><VideoPlayer src={lesson.video_url} protected={lesson.copy_protected} /></div>
           )}
-          {lesson.lesson_type === "テキスト" && lesson.markdown_content && (
+          {lesson.markdown_content && (
             <div className="mb-6"><MarkdownViewer content={lesson.markdown_content} protected={lesson.copy_protected} /></div>
           )}
           {/* 外部リンク教材（note.com等） */}
