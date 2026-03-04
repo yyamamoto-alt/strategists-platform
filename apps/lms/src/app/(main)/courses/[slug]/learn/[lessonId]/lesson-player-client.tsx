@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { VideoPlayer } from "@/components/content/video-player";
 import { MarkdownViewer } from "@/components/content/markdown-viewer";
-import { ArrowLeft, ArrowRight, CheckCircle, Circle, Video, FileText, BookOpen, Users } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle, Circle, Video, FileText, BookOpen, Users, ExternalLink } from "lucide-react";
 import type { Lesson } from "@/types/database";
 
 const typeIcons: Record<string, typeof Video> = {
@@ -58,6 +58,20 @@ export function LessonPlayerClient({ slug, lessonId, allLessons }: Props) {
           )}
           {lesson.lesson_type === "テキスト" && lesson.markdown_content && (
             <div className="mb-6"><MarkdownViewer content={lesson.markdown_content} protected={lesson.copy_protected} /></div>
+          )}
+          {/* 外部リンク教材（note.com等） */}
+          {lesson.content_url && (
+            <div className="mb-6">
+              <a
+                href={lesson.content_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 bg-surface-elevated hover:bg-white/10 text-brand-light hover:text-white px-5 py-3 rounded-lg transition-colors border border-white/10"
+              >
+                <ExternalLink className="w-5 h-5" />
+                教材を開く（外部サイト）
+              </a>
+            </div>
           )}
           {lesson.description && (
             <div className="bg-surface-elevated rounded-lg p-6 mb-6"><p className="text-gray-300 whitespace-pre-wrap">{lesson.description}</p></div>

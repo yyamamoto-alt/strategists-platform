@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Search, BookOpen, Clock } from "lucide-react";
-import type { Course } from "@/types/database";
+import { Search, BookOpen, Clock, LayoutList, LayoutGrid } from "lucide-react";
+import { CurriculumTable } from "@/components/curriculum/curriculum-table";
+import { PortalView } from "@/components/portal/portal-view";
+import type { Course, Module, Lesson, LessonProgress } from "@/types/database";
 
 const levelLabels: Record<string, string> = {
   beginner: "初級", intermediate: "中級", advanced: "上級",
@@ -15,7 +17,76 @@ const levelColors: Record<string, string> = {
   advanced: "bg-red-900/50 text-red-300",
 };
 
-export function CoursesClient({ courses }: { courses: Course[] }) {
+interface CoursesClientProps {
+  courses: Course[];
+  viewMode: "curriculum" | "portal";
+  targetAttribute: string | null;
+  modules: Record<string, Module[]>;
+  lessons: Record<string, Lesson[]>;
+  progress: Record<string, LessonProgress>;
+}
+
+export function CoursesClient({
+  courses,
+  viewMode: initialViewMode,
+  targetAttribute,
+  modules,
+  lessons,
+  progress,
+}: CoursesClientProps) {
+  const [viewMode, setViewMode] = useState(initialViewMode);
+
+  // カリキュラムビュー
+  if (viewMode === "curriculum") {
+    return (
+      <div>
+        {/* ビュー切り替えボタン（両方のビューを体験可能に） */}
+        <div className="px-6 pt-4 flex justify-end">
+          <button
+            onClick={() => setViewMode("portal")}
+            className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-300 transition-colors"
+          >
+            <LayoutGrid className="w-3.5 h-3.5" />
+            ポータル表示
+          </button>
+        </div>
+        <CurriculumTable
+          courses={courses}
+          modules={modules}
+          lessons={lessons}
+          progress={progress}
+        />
+      </div>
+    );
+  }
+
+  // ポータルビュー
+  if (viewMode === "portal") {
+    return (
+      <div>
+        {/* 新卒ユーザーにカリキュラム表示への切り替えを提供 */}
+        {targetAttribute === "新卒" && (
+          <div className="px-6 pt-4 flex justify-end">
+            <button
+              onClick={() => setViewMode("curriculum")}
+              className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-300 transition-colors"
+            >
+              <LayoutList className="w-3.5 h-3.5" />
+              カリキュラム表示
+            </button>
+          </div>
+        )}
+        <PortalView courses={courses} />
+      </div>
+    );
+  }
+
+  // フォールバック: 既存のカードグリッドビュー
+  return <DefaultGridView courses={courses} />;
+}
+
+// 既存のグリッドビュー（フォールバック）
+function DefaultGridView({ courses }: { courses: Course[] }) {
   const [search, setSearch] = useState("");
   const [levelFilter, setLevelFilter] = useState("");
 

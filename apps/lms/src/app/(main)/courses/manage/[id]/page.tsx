@@ -122,6 +122,11 @@ export default function CourseEditPage() {
   const [notionText, setNotionText] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // プラン設定
+  const [allPlans, setAllPlans] = useState<{ id: string; name: string; slug: string; target_attribute: string }[]>([]);
+  const [selectedPlanIds, setSelectedPlanIds] = useState<Set<string>>(new Set());
+  const [planSaving, setPlanSaving] = useState(false);
+
   const showToast = (message: string, type: "success" | "error") => {
     setToast({ message, type });
   };
@@ -150,7 +155,57 @@ export default function CourseEditPage() {
     }
   }, [courseId, isNew]);
 
-  useEffect(() => { fetchCourse(); }, [fetchCourse]);
+  // プラン一覧を取得
+  const fetchPlans = useCallback(async () => {
+    try {
+      const res = await fetch("/api/plans");
+      if (res.ok) {
+        const data = await res.json();
+        setAllPlans(data);
+      }
+    } catch { /* ignore */ }
+  }, []);
+
+  // コースのプラン紐付けを取得
+  const fetchCoursePlans = useCallback(async () => {
+    if (isNew) return;
+    try {
+      const res = await fetch(`/api/courses/${courseId}/plans`);
+      if (res.ok) {
+        const planIds: string[] = await res.json();
+        setSelectedPlanIds(new Set(planIds));
+      }
+    } catch { /* ignore */ }
+  }, [courseId, isNew]);
+
+  // プラン紐付け保存
+  const handleSavePlans = async () => {
+    setPlanSaving(true);
+    try {
+      const res = await fetch(`/api/courses/${courseId}/plans`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan_ids: Array.from(selectedPlanIds) }),
+      });
+      if (res.ok) {
+        showToast("プラン設定を保存しました", "success");
+      } else {
+        showToast("プラン設定の保存に失敗しました", "error");
+      }
+    } finally {
+      setPlanSaving(false);
+    }
+  };
+
+  const togglePlan = (planId: string) => {
+    setSelectedPlanIds((prev) => {
+      const next = new Set(prev);
+      next.has(planId) ? next.delete(planId) : next.add(planId);
+      return next;
+    });
+  };
+
+  useEffect(() => { fetchCourse(); fetchPlans(); fetchCoursePlans(); }, [fetchCourse, fetchPlans, fetchCoursePlans]);
 
   if (role !== "admin") {
     return <div className="p-6 bg-surface min-h-screen text-center py-20"><p className="text-gray-400">管理者のみアクセスできます</p></div>;
@@ -513,6 +568,68 @@ export default function CourseEditPage() {
               )}
             </div>
           )}
+
+          {/* プラン別アクセス設定 */}
+          {!isNew && allPlans.length > 0 && (
+            <div className="bg-surface-elevated rounded-xl p-6 mt-6">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-lg font-semibold text-white">プラン別アクセス設定</h2>
+                  <p className="text-xs text-gray-500 mt-1">チェックなし = 全プランに公開</p>
+                </div>
+                <button
+                  onClick={handleSavePlans}
+                  disabled={planSaving}
+                  className="bg-brand hover:bg-brand-dark text-white px-4 py-1.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  {planSaving ? "保存中..." : "プラン設定を保存"}
+                </button>
+              </div>
+
+              {/* 既卒プラン */}
+              <div className="mb-4">
+                <h3 className="text-sm font-medium text-gray-400 mb-2">既卒プラン</h3>
+                <div className="grid grid-cols-2 gap-2">
+                  {allPlans.filter((p) => p.target_attribute === "既卒").map((plan) => (
+                    <label
+                      key={plan.id}
+                      className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/[0.03] cursor-pointer transition-colors"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedPlanIds.has(plan.id)}
+                        onChange={() => togglePlan(plan.id)}
+                        className="rounded border-gray-600 bg-surface text-brand focus:ring-brand/50"
+                      />
+                      <span className="text-sm text-gray-300">{plan.name}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* 新卒プラン */}
+              <div>
+                <h3 className="text-sm font-medium text-gray-400 mb-2">新卒プラン</h3>
+                <div className="grid grid-cols-2 gap-2">
+                  {allPlans.filter((p) => p.target_attribute === "新卒").map((plan) => (
+                    <label
+                      key={plan.id}
+                      className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/[0.03] cursor-pointer transition-colors"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedPlanIds.has(plan.id)}
+                        onChange={() => togglePlan(plan.id)}
+                        className="rounded border-gray-600 bg-surface text-brand focus:ring-brand/50"
+                      />
+                      <span className="text-sm text-gray-300">{plan.name}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -561,8 +678,8 @@ export default function CourseEditPage() {
             {/* 動画レッスン: YouTube URL */}
             {lessonForm.lesson_type === "動画" && (
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">YouTube限定公開URL</label>
-                <input type="url" value={lessonForm.video_url} onChange={(e) => setLessonForm({ ...lessonForm, video_url: e.target.value })} className="w-full px-3 py-2 bg-surface border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-brand" placeholder="https://www.youtube.com/watch?v=..." />
+                <label className="block text-sm font-medium text-gray-300 mb-1">動画URL（YouTube / Google Drive）</label>
+                <input type="url" value={lessonForm.video_url} onChange={(e) => setLessonForm({ ...lessonForm, video_url: e.target.value })} className="w-full px-3 py-2 bg-surface border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-brand" placeholder="https://www.youtube.com/watch?v=... or https://drive.google.com/file/d/..." />
                 {lessonForm.video_url && isYouTubeUrl(lessonForm.video_url) && (
                   <div className="mt-3 rounded-lg overflow-hidden aspect-video max-w-sm">
                     <iframe
