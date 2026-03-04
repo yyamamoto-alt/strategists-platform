@@ -81,7 +81,7 @@ export function calcClosingProbability(c: CustomerWithRelations): number {
 
   // --- 追加指導系（サブタイプ判定） ---
   if (stage.startsWith("追加指導")) {
-    if (stage.includes("CL") || stage.includes("noshow") || stage.includes("失注")) return 0;
+    if (stage.includes("CL") || stage.toLowerCase().includes("noshow") || stage.includes("失注")) return 0;
     if (stage.includes("検討中")) return 0.30;
     // 追加指導（一般）: 営業角度 × 80%
     return t * 0.80;
