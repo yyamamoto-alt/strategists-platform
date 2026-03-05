@@ -58,9 +58,10 @@ function Truncated({ value, width = 140 }: { value: string | null | undefined; w
 // ================================================================
 // ビュータブ定義
 // ================================================================
-type ViewTab = "all" | "marketing" | "sales" | "education" | "agent" | "subsidy";
+type ViewTab = "overview" | "all" | "marketing" | "sales" | "education" | "agent" | "subsidy";
 
 const VIEW_TABS: { key: ViewTab; label: string }[] = [
+  { key: "overview", label: "概要" },
   { key: "all", label: "全般" },
   { key: "marketing", label: "マーケ" },
   { key: "sales", label: "営業" },
@@ -71,16 +72,33 @@ const VIEW_TABS: { key: ViewTab; label: string }[] = [
 
 // タブごとに表示するカラムキーの定義
 const VIEW_COLUMNS: Record<ViewTab, string[] | null> = {
+  overview: [
+    // 基本 〜 見込みLTV
+    "_edit", "application_date", "name", "attribute", "career_history",
+    "is_agent_customer", "stage", "deal_status", "subsidy_eligible",
+    "confirmed_amount", "rev_agent", "rev_total", "projected_amount",
+    // プラン名
+    "plan_name",
+    // マーケ: 経路営業のみ
+    "sales_route",
+    // 営業: 営業日, 角度, 返答日, 営業担当
+    "sales_date", "probability", "response_date", "sales_person",
+    // 人材紹介: 全部
+    "referral_category", "referral_status", "external_agents",
+    "offer_rank", "offer_salary", "referral_fee_rate", "margin",
+    "placement_date", "placement_confirmed",
+    "agent_staff", "agent_memo", "loss_reason",
+  ],
   all: null, // 全カラム表示
   marketing: [
-    "application_date", "name", "attribute", "stage", "deal_status",
+    "application_date", "name", "attribute", "stage", "deal_status", "subsidy_eligible",
     "rev_total",
     "marketing_channel", "initial_channel", "application_reason",
     "sales_route", "comparison_services",
     "utm_source", "utm_medium", "utm_id", "utm_campaign",
   ],
   sales: [
-    "application_date", "name", "attribute", "stage", "deal_status",
+    "application_date", "name", "attribute", "stage", "deal_status", "subsidy_eligible",
     "confirmed_amount", "rev_agent", "rev_total", "projected_amount",
     "probability", "sales_date", "response_date",
     "first_amount", "discount",
@@ -93,7 +111,7 @@ const VIEW_COLUMNS: Record<ViewTab, string[] | null> = {
     "payment_date", "additional_notes",
   ],
   education: [
-    "application_date", "name", "attribute", "stage", "deal_status",
+    "application_date", "name", "attribute", "stage", "deal_status", "subsidy_eligible",
     "rev_total",
     "offer_company",
     "enrollment_status", "plan_name", "mentor_name",
@@ -114,7 +132,7 @@ const VIEW_COLUMNS: Record<ViewTab, string[] | null> = {
     "extension_days",
   ],
   agent: [
-    "application_date", "name", "attribute", "stage", "deal_status",
+    "application_date", "name", "attribute", "stage", "deal_status", "subsidy_eligible",
     "confirmed_amount", "rev_agent", "rev_total", "projected_amount",
     "is_agent_customer", "referral_category", "referral_status",
     "external_agents",
@@ -122,11 +140,10 @@ const VIEW_COLUMNS: Record<ViewTab, string[] | null> = {
     "referral_fee_rate", "margin",
     "placement_confirmed", "placement_date",
     "agent_staff", "agent_memo", "loss_reason",
-    "subsidy_eligible",
     "subsidy_period_eligible",
   ],
   subsidy: [
-    "application_date", "name", "attribute", "stage", "deal_status",
+    "application_date", "name", "attribute", "stage", "deal_status", "subsidy_eligible",
     "confirmed_amount", "rev_total",
     "plan_name", "enrollment_status",
     "sales_date", "meeting_conducted",
@@ -135,7 +152,7 @@ const VIEW_COLUMNS: Record<ViewTab, string[] | null> = {
   ],
 };
 
-const CLOSED_STAGES = new Set(["成約", "追加指導", "その他購入", "動画講座購入", "成約(追加指導経由)", "途中解約(成約)"]);
+const CLOSED_STAGES = new Set(["成約", "成約(追加指導経由)", "途中解約(成約)"]);
 
 const STAGE_OPTIONS = [
   { group: "アクティブ", options: ["日程未確", "検討中", "長期検討"] },
@@ -200,7 +217,7 @@ export function CustomersClient({ customers, attributionMap }: CustomersClientPr
   const [attributeFilter, setAttributeFilter] = useState<string>("");
   const [stageFilter, setStageFilter] = useState<string>("");
   const [contractFilter, setContractFilter] = useState<string>("");
-  const [activeTab, setActiveTab] = useState<ViewTab>("all");
+  const [activeTab, setActiveTab] = useState<ViewTab>("overview");
   const [subsidyFilter, setSubsidyFilter] = useState<string>("");
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -338,6 +355,10 @@ export function CustomersClient({ customers, attributionMap }: CustomersClientPr
         render: (c) => c.pipeline ? (
           <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${getDealStatusColor(c.pipeline.deal_status)}`}>{c.pipeline.deal_status}</span>
         ) : "-", sortValue: (c) => c.pipeline?.deal_status || "" },
+
+      // ─── 補助金対象（検討状況の右） ───
+      { key: "subsidy_eligible", label: "補助金", width: 50, align: "center" as const, category: "agent",
+        render: (c) => c.contract?.subsidy_eligible ? <span className="text-purple-400 text-xs">対象</span> : "-" },
 
       // ═══ 売上4種（近接配置） ═══
       { key: "confirmed_amount", label: "確定売上", width: 100, align: "right" as const, category: "sales",
@@ -491,8 +512,6 @@ export function CustomersClient({ customers, attributionMap }: CustomersClientPr
         render: (c) => <span className="text-xs">{c.agent?.agent_staff || "-"}</span> },
       { key: "agent_memo", label: "エージェント業務メモ", width: 150, category: "agent",        render: (c) => c.agent?.agent_memo || "-" },
       { key: "loss_reason", label: "失注理由", width: 140, category: "agent",        render: (c) => c.agent?.loss_reason || "-" },
-      { key: "subsidy_eligible", label: "補助金対象", width: 80, category: "agent",
-        render: (c) => c.contract?.subsidy_eligible ? <span className="text-purple-400 text-xs">対象</span> : "-" },
       { key: "subsidy_period_eligible", label: "補助金期間対象", width: 100, category: "agent",
         render: (c) => c.contract?.subsidy_period_eligible ? <span className="text-emerald-400 text-xs">対象</span> : "-" },
 
