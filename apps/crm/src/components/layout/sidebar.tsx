@@ -83,7 +83,6 @@ function SearchBox() {
       const q = query.trim();
       if (q) {
         router.push(`/customers?search=${encodeURIComponent(q)}`);
-        setQuery("");
       }
     },
     [query, router]
