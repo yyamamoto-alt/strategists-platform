@@ -242,7 +242,7 @@ export function SpreadsheetTable<T>({
                       key={col.key}
                       onClick={col.sortValue ? () => handleSort(col.key) : undefined}
                       className={cn(
-                        "py-2 px-2 text-[11px] font-semibold whitespace-nowrap select-none relative",
+                        "py-1.5 px-2 text-[11px] font-semibold whitespace-nowrap select-none relative",
                         col.computed
                           ? "text-amber-400/80 border-b-2 border-amber-500/40"
                           : CATEGORY_HEADER_TEXT[cat],
@@ -290,10 +290,7 @@ export function SpreadsheetTable<T>({
                       <td
                         key={col.key}
                         className={cn(
-                          "py-1.5 px-2 text-sm overflow-hidden",
-                          col.multiline
-                            ? "whitespace-pre-wrap text-xs leading-relaxed line-clamp-5"
-                            : "whitespace-nowrap text-ellipsis",
+                          "py-0.5 px-2 text-xs overflow-hidden whitespace-nowrap text-ellipsis",
                           col.align === "right"
                             ? "text-right"
                             : col.align === "center"
