@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { fetchCustomerById } from "@/lib/data/customers";
 import { fetchCustomerEmails, fetchApplicationHistory } from "@/lib/data/spreadsheet-sync";
+import { fetchOrdersByCustomer } from "@/lib/data/orders";
 import { CustomerDetailClient } from "./customer-detail-client";
 import { mockCustomers, mockActivities } from "@/lib/mock-data";
 
@@ -24,14 +25,15 @@ export default async function CustomerDetailPage({ params }: Props) {
       );
 
     return (
-      <CustomerDetailClient customer={customer} activities={activities} emails={[]} applicationHistory={[]} />
+      <CustomerDetailClient customer={customer} activities={activities} emails={[]} applicationHistory={[]} orders={[]} />
     );
   }
 
-  const [result, emails, applicationHistory] = await Promise.all([
+  const [result, emails, applicationHistory, orders] = await Promise.all([
     fetchCustomerById(id),
     fetchCustomerEmails(id),
     fetchApplicationHistory(id),
+    fetchOrdersByCustomer(id),
   ]);
   if (!result) return notFound();
 
@@ -41,6 +43,7 @@ export default async function CustomerDetailPage({ params }: Props) {
       activities={result.activities}
       emails={emails}
       applicationHistory={applicationHistory}
+      orders={orders}
     />
   );
 }

@@ -29,7 +29,7 @@ import {
   OFFER_RANK_META,
 } from "@/lib/calc-fields";
 import { useRouter } from "next/navigation";
-import type { CustomerWithRelations, Activity } from "@strategy-school/shared-db";
+import type { CustomerWithRelations, Activity, Order } from "@strategy-school/shared-db";
 import type { CustomerEmail, ApplicationHistoryRecord } from "@/lib/data/spreadsheet-sync";
 
 // ================================================================
@@ -376,7 +376,15 @@ function RevenueSection({ customer }: { customer: CustomerWithRelations }) {
         <div className="bg-surface-elevated rounded-lg p-3">
           <p className="text-[10px] font-semibold text-blue-400 uppercase tracking-wider mb-1">期待値</p>
           <Row label="成約見込率" value={formatPercent(closingProb)} sub />
-          <Row label="見込LTV × 見込率" value="" sub />
+          {salesProjection > 0 ? (
+            <>
+              <Row label="= 見込売上（成約済）" value="" sub />
+            </>
+          ) : (
+            <>
+              <Row label={`デフォルトLTV × ${formatPercent(closingProb)}`} value="" sub />
+            </>
+          )}
           <Divider />
           <Row label="見込LTV" value={expectedLtv > 0 ? formatCurrency(expectedLtv) : "-"} bold />
         </div>
@@ -524,6 +532,7 @@ interface CustomerDetailClientProps {
   activities: Activity[];
   emails: CustomerEmail[];
   applicationHistory: ApplicationHistoryRecord[];
+  orders: Order[];
 }
 
 export function CustomerDetailClient({
@@ -531,6 +540,7 @@ export function CustomerDetailClient({
   activities,
   emails,
   applicationHistory,
+  orders,
 }: CustomerDetailClientProps) {
   const [customer, setCustomer] = useState(initialCustomer);
   const [isEditing, setIsEditing] = useState(false);
