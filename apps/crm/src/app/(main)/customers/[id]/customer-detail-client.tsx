@@ -327,6 +327,93 @@ function calcFirstCoachingDate(applicationHistory: ApplicationHistoryRecord[]): 
   return mentorReports.length > 0 ? mentorReports[0] : null;
 }
 
+// ================================================================
+// 支払い履歴セクション
+// ================================================================
+
+const ORDER_TYPE_LABELS: Record<string, string> = {
+  main_plan: "メインプラン",
+  video_course: "動画講座",
+  additional_coaching: "追加指導",
+  other: "その他",
+};
+
+const ORDER_STATUS_LABELS: Record<string, { label: string; cls: string }> = {
+  paid: { label: "入金済", cls: "text-green-400 bg-green-400/10" },
+  partial: { label: "一部入金", cls: "text-amber-400 bg-amber-400/10" },
+  pending: { label: "未入金", cls: "text-gray-400 bg-gray-400/10" },
+  refunded: { label: "返金済", cls: "text-red-400 bg-red-400/10" },
+  cancelled: { label: "キャンセル", cls: "text-gray-500 bg-gray-500/10" },
+};
+
+function OrdersSection({ orders }: { orders: Order[] }) {
+  const totalPaid = orders
+    .filter((o) => o.status === "paid" || o.status === "partial")
+    .reduce((s, o) => s + (o.amount || 0), 0);
+
+  return (
+    <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-4">
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">
+          支払い履歴
+          <span className="text-xs text-gray-500 ml-2 font-normal normal-case">{orders.length}件</span>
+        </h2>
+        <span className="text-sm font-bold text-white">
+          合計 {formatCurrency(totalPaid)}
+        </span>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="border-b border-white/10 text-gray-500">
+              <th className="text-left py-1.5 pr-3 font-medium">入金日</th>
+              <th className="text-left py-1.5 pr-3 font-medium">種別</th>
+              <th className="text-left py-1.5 pr-3 font-medium">商品名</th>
+              <th className="text-right py-1.5 pr-3 font-medium">金額</th>
+              <th className="text-left py-1.5 pr-3 font-medium">決済方法</th>
+              <th className="text-left py-1.5 pr-3 font-medium">分割</th>
+              <th className="text-left py-1.5 font-medium">状態</th>
+            </tr>
+          </thead>
+          <tbody>
+            {orders.map((o) => {
+              const statusMeta = ORDER_STATUS_LABELS[o.status] || { label: o.status, cls: "text-gray-400" };
+              const installmentLabel = o.installment_total && o.installment_total > 1
+                ? `${o.installment_index || "?"}/${o.installment_total}`
+                : "-";
+              const paymentLabel = o.payment_method === "credit_card"
+                ? `カード${o.card_last4 ? ` *${o.card_last4}` : ""}`
+                : o.payment_method === "bank_transfer"
+                  ? "銀行振込"
+                  : o.payment_method || "-";
+
+              return (
+                <tr key={o.id} className="border-b border-white/[0.06] hover:bg-white/[0.03]">
+                  <td className="py-1.5 pr-3 text-gray-400">{formatDate(o.paid_at)}</td>
+                  <td className="py-1.5 pr-3 text-gray-300">{ORDER_TYPE_LABELS[o.order_type] || o.order_type}</td>
+                  <td className="py-1.5 pr-3 text-gray-300 max-w-[200px] truncate" title={o.product_name || ""}>
+                    {o.product_name || "-"}
+                  </td>
+                  <td className="py-1.5 pr-3 text-right font-medium text-white">
+                    {formatCurrency(o.amount)}
+                  </td>
+                  <td className="py-1.5 pr-3 text-gray-400">{paymentLabel}</td>
+                  <td className="py-1.5 pr-3 text-gray-400">{installmentLabel}</td>
+                  <td className="py-1.5">
+                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${statusMeta.cls}`}>
+                      {statusMeta.label}
+                    </span>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 /** 売上見込セクション（構造化表示） */
 function RevenueSection({ customer }: { customer: CustomerWithRelations }) {
   const schoolConfirmed = customer.contract?.confirmed_amount || 0;
@@ -788,6 +875,11 @@ export function CustomerDetailClient({
           </Section>
 
           <Section title="契約" fields={contractFields} customer={customer} isEditing={isEditing} editValues={editValues} onEditChange={handleEditChange} cols={4} />
+
+          {/* 支払い履歴 */}
+          {orders.length > 0 && (
+            <OrdersSection orders={orders} />
+          )}
 
           <RevenueSection customer={customer} />
 
