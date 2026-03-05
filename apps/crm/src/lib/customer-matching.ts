@@ -385,7 +385,7 @@ export async function upsertFromSpreadsheet(
   if (match) {
     // マッチ → 既存レコード更新
     const updateData: Record<string, string> = {};
-    const customerFields = ["name", "phone", "university", "faculty", "career_history", "attribute"];
+    const customerFields = ["name", "phone", "university", "faculty", "career_history", "attribute", "utm_source", "utm_medium", "utm_campaign", "utm_id"];
     for (const f of customerFields) {
       if (fields[f] && f !== "email") {
         updateData[f] = fields[f];
@@ -456,6 +456,10 @@ export async function upsertFromSpreadsheet(
     };
     if (fields.attribute) customerInsert.attribute = fields.attribute;
     if (fields.university) customerInsert.university = fields.university;
+    if (fields.utm_source) customerInsert.utm_source = fields.utm_source;
+    if (fields.utm_medium) customerInsert.utm_medium = fields.utm_medium;
+    if (fields.utm_campaign) customerInsert.utm_campaign = fields.utm_campaign;
+    if (fields.utm_id) customerInsert.utm_id = fields.utm_id;
 
     const { data: newCustomer, error: createError } = await db
       .from("customers")
