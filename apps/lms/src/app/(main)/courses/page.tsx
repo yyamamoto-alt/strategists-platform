@@ -13,6 +13,8 @@ export default async function CoursesPage() {
 
   try {
     const session = await getLmsSession();
+    const { createAdminClient } = await import("@/lib/supabase/admin");
+    const supabase = createAdminClient();
 
     // コース一覧取得
     const lmsClient = await createLmsServerClient();
@@ -25,11 +27,11 @@ export default async function CoursesPage() {
     // 受講生のプラン情報を取得
     let targetAttribute: string | null = null;
     let viewMode: "curriculum" | "portal" = "portal";
+    let planName: string | null = null;
+    let planId: string | null = null;
 
     if (session?.customerId) {
       try {
-        const { createAdminClient } = await import("@/lib/supabase/admin");
-        const supabase = createAdminClient();
         const { data: customer } = await supabase
           .from("customers")
           .select("attribute")
@@ -40,15 +42,98 @@ export default async function CoursesPage() {
         if (targetAttribute === "新卒") {
           viewMode = "curriculum";
         }
+
+        // 契約からプラン名を取得
+        const { data: contract } = await supabase
+          .from("contracts")
+          .select("plan_name")
+          .eq("customer_id", session.customerId)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle() as { data: { plan_name: string } | null };
+
+        if (contract?.plan_name) {
+          planName = contract.plan_name;
+
+          // plans テーブルからマッチするプランを探す
+          const { data: plans } = await supabase
+            .from("plans")
+            .select("id, slug, name")
+            .eq("is_active", true) as { data: any[] | null };
+
+          if (plans) {
+            const matchedPlan = plans.find((p: any) =>
+              planName!.includes(p.name) || p.name.includes(planName!)
+            );
+            if (matchedPlan) {
+              planId = matchedPlan.id;
+            }
+          }
+        }
       } catch (e) {
-        console.error("Failed to fetch customer attribute:", e);
+        console.error("Failed to fetch customer/plan:", e);
       }
     }
 
-    // admin/mentor はデフォルトでポータルビュー
-    if (session?.role === "admin" || session?.role === "mentor") {
+    // admin/mentor はデフォルトでポータルビュー（全コース閲覧可）
+    const isAdmin = session?.role === "admin" || session?.role === "mentor";
+    if (isAdmin) {
       viewMode = "portal";
       targetAttribute = null;
+    }
+
+    // course_plan_access でプラン別アクセス権を取得
+    let accessibleCourseIds: Set<string> | null = null; // null = 全アクセス
+    let lockedCourses: any[] = [];
+
+    if (!isAdmin && planId) {
+      // 自分のプランでアクセスできるコースID
+      const { data: myAccess } = await supabase
+        .from("course_plan_access")
+        .select("course_id")
+        .eq("plan_id", planId) as { data: { course_id: string }[] | null };
+
+      const myAccessIds = new Set((myAccess || []).map((a: any) => a.course_id));
+
+      // 他のプランでのみアクセスできるコースを特定
+      const { data: allAccess } = await supabase
+        .from("course_plan_access")
+        .select("course_id, plan_id, plans ( name, tier, sort_order )")
+        .neq("plan_id", planId) as { data: any[] | null };
+
+      const lockedIds = new Set<string>();
+      for (const access of allAccess || []) {
+        if (!myAccessIds.has(access.course_id)) {
+          lockedIds.add(access.course_id);
+        }
+      }
+
+      // ロックされたコースを特定
+      if (lockedIds.size > 0 && courses) {
+        lockedCourses = (courses as any[]).filter((c: any) => lockedIds.has(c.id));
+      }
+
+      // course_plan_access にエントリがあるコースのみフィルタ対象
+      // エントリがないコースは共通コース（全プランアクセス可）
+      const allPlanCourseIds = new Set(
+        (allAccess || []).map((a: any) => a.course_id).concat(
+          (myAccess || []).map((a: any) => a.course_id)
+        )
+      );
+
+      // アクセス可能: 共通コース + 自プランのコース
+      accessibleCourseIds = new Set<string>();
+      for (const course of (courses as any[]) || []) {
+        if (!allPlanCourseIds.has(course.id) || myAccessIds.has(course.id)) {
+          accessibleCourseIds.add(course.id);
+        }
+      }
+    }
+
+    // アクセス権でフィルタリング
+    let visibleCourses = (courses as any[]) || [];
+    if (accessibleCourseIds) {
+      visibleCourses = visibleCourses.filter((c: any) => accessibleCourseIds!.has(c.id));
     }
 
     // カリキュラムビューの場合: modules + lessons + progress も取得
@@ -56,10 +141,8 @@ export default async function CoursesPage() {
     let lessonsMap: Record<string, any[]> = {};
     let progressMap: Record<string, any> = {};
 
-    if (viewMode === "curriculum" && courses && courses.length > 0) {
+    if (viewMode === "curriculum" && courses && (courses as any[]).length > 0) {
       try {
-        const { createAdminClient } = await import("@/lib/supabase/admin");
-        const supabase = createAdminClient();
         const courseIds = (courses as any[]).map((c: any) => c.id);
 
         const { data: modules } = await supabase
@@ -100,16 +183,17 @@ export default async function CoursesPage() {
         }
       } catch (e) {
         console.error("Failed to fetch curriculum data:", e);
-        // カリキュラムデータ取得失敗 → ポータルにフォールバック
         viewMode = "portal";
       }
     }
 
     return (
       <CoursesClient
-        courses={(courses as any[]) || []}
+        courses={visibleCourses}
+        lockedCourses={lockedCourses}
         viewMode={viewMode}
         targetAttribute={targetAttribute}
+        planName={planName}
         modules={modulesMap}
         lessons={lessonsMap}
         progress={progressMap}
