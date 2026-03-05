@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -137,6 +137,61 @@ const VIEW_COLUMNS: Record<ViewTab, string[] | null> = {
 
 const CLOSED_STAGES = new Set(["成約", "入金済", "追加指導", "その他購入", "動画講座購入", "成約(追加指導経由)", "途中解約(成約)"]);
 
+const STAGE_OPTIONS = [
+  { group: "アクティブ", options: ["日程未確", "検討中", "長期検討"] },
+  { group: "成約", options: ["成約", "その他購入", "動画講座購入", "追加指導"] },
+  { group: "未実施", options: ["NoShow", "未実施", "実施不可", "非実施対象"] },
+  { group: "失注", options: ["失注", "失注見込", "失注見込(自動)", "CL", "全額返金"] },
+  { group: "その他", options: ["その他", "入金済", "成約(追加指導経由)", "途中解約(成約)", "日程確定", "面談実施", "問い合わせ", "提案中"] },
+];
+
+function InlineStageSelect({ customerId, currentStage, onUpdate }: { customerId: string; currentStage: string; onUpdate: (id: string, newStage: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
+        className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium cursor-pointer hover:ring-1 hover:ring-brand/50 ${getStageColor(currentStage)}`}
+      >
+        {currentStage}
+      </button>
+      {open && (
+        <div className="absolute z-50 top-full left-0 mt-1 bg-surface-elevated border border-white/10 rounded-lg shadow-xl py-1 w-44 max-h-64 overflow-y-auto">
+          {STAGE_OPTIONS.map((group) => (
+            <div key={group.group}>
+              <div className="px-2 py-1 text-[9px] text-gray-500 uppercase tracking-wider">{group.group}</div>
+              {group.options.map((opt) => (
+                <button
+                  key={opt}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (opt !== currentStage) onUpdate(customerId, opt);
+                    setOpen(false);
+                  }}
+                  className={`w-full text-left px-2 py-1 text-xs hover:bg-white/10 ${opt === currentStage ? "text-brand font-medium" : "text-gray-300"}`}
+                >
+                  {opt}
+                </button>
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function CustomersClient({ customers, attributionMap }: CustomersClientProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -148,6 +203,25 @@ export function CustomersClient({ customers, attributionMap }: CustomersClientPr
   const [subsidyFilter, setSubsidyFilter] = useState<string>("");
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [stageOverrides, setStageOverrides] = useState<Record<string, string>>({});
+
+  const handleStageUpdate = useCallback(async (customerId: string, newStage: string) => {
+    setStageOverrides((prev) => ({ ...prev, [customerId]: newStage }));
+    try {
+      const res = await fetch(`/api/customers/${customerId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pipeline: { stage: newStage } }),
+      });
+      if (!res.ok) {
+        setStageOverrides((prev) => { const next = { ...prev }; delete next[customerId]; return next; });
+        alert("ステージ更新に失敗しました");
+      }
+    } catch {
+      setStageOverrides((prev) => { const next = { ...prev }; delete next[customerId]; return next; });
+      alert("ステージ更新に失敗しました");
+    }
+  }, []);
 
   const handleCreate = useCallback(async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -233,7 +307,7 @@ export function CustomersClient({ customers, attributionMap }: CustomersClientPr
         ), sortValue: (c) => c.name },
 
       // ─── 属性 ───
-      { key: "attribute", label: "属性", width: 56, category: "base",
+      { key: "attribute", label: "属性", width: 44, category: "base",
         render: (c) => (
           <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${getAttributeColor(c.attribute)}`}>{c.attribute.includes("既卒") ? "既卒" : "新卒"}</span>
         ), sortValue: (c) => c.attribute },
@@ -243,7 +317,7 @@ export function CustomersClient({ customers, attributionMap }: CustomersClientPr
         render: (c) => <Truncated value={c.career_history} width={220} /> },
 
       // ─── 人材紹介利用 ───
-      { key: "is_agent_customer", label: "人材", width: 40, align: "center" as const,
+      { key: "is_agent_customer", label: "人材", width: 28, align: "center" as const,
         render: (c) => isAgentCustomer(c)
           ? <span className="text-purple-400 text-sm">&#9745;</span>
           : <span className="text-gray-600 text-sm">&#9744;</span>,
@@ -251,9 +325,12 @@ export function CustomersClient({ customers, attributionMap }: CustomersClientPr
 
       // ─── 検討状況 ───
       { key: "stage", label: "検討状況", width: 85, category: "sales",
-        render: (c) => c.pipeline ? (
-          <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${getStageColor(c.pipeline.stage)}`}>{c.pipeline.stage}</span>
-        ) : "-", sortValue: (c) => c.pipeline?.stage || "" },
+        render: (c) => {
+          const stage = stageOverrides[c.id] || c.pipeline?.stage;
+          return stage ? (
+            <InlineStageSelect customerId={c.id} currentStage={stage} onUpdate={handleStageUpdate} />
+          ) : "-";
+        }, sortValue: (c) => stageOverrides[c.id] || c.pipeline?.stage || "" },
 
       // ─── 実施状況（検討状況の横） ───
       { key: "deal_status", label: "実施状況", width: 80, category: "sales",
@@ -514,7 +591,7 @@ export function CustomersClient({ customers, attributionMap }: CustomersClientPr
           : "-" },
       { key: "general_memo", label: "メモ", width: 160,        render: (c) => c.agent?.general_memo || "-" },
     ],
-    [attributionMap]
+    [attributionMap, stageOverrides, handleStageUpdate]
   );
 
   // タブに応じたカラムフィルタリング
