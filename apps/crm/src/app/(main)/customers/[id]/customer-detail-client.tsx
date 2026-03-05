@@ -494,7 +494,13 @@ function RevenueSection({ customer }: { customer: CustomerWithRelations }) {
 function buildPipelineFields(c: CustomerWithRelations): FieldDef[] {
   if (!c.pipeline) return [];
   return [
-    { key: "stage", label: "ステージ", source: "manual", table: "pipeline", getValue: () => c.pipeline?.stage || "-" },
+    { key: "stage", label: "ステージ", source: "manual", type: "select", options: [
+      "日程未確", "検討中", "長期検討",
+      "成約", "その他購入", "動画講座購入", "追加指導",
+      "NoShow", "未実施", "実施不可", "非実施対象",
+      "失注", "失注見込", "失注見込(自動)", "CL", "全額返金",
+      "その他", "入金済", "成約(追加指導経由)", "途中解約(成約)", "日程確定", "面談実施", "問い合わせ", "提案中",
+    ], table: "pipeline", getValue: () => c.pipeline?.stage || "-" },
     { key: "deal_status", label: "実施状況", source: "manual", type: "select", options: ["進行中", "保留", "完了", "失注", "実施"], table: "pipeline", getValue: () => c.pipeline?.deal_status || "-" },
     { key: "probability", label: "営業角度", source: "manual", type: "number", table: "pipeline", getValue: () => c.pipeline?.probability != null ? formatPercent(c.pipeline.probability) : "-" },
     { key: "meeting_scheduled_date", label: "面談予定日", source: "manual", type: "date", table: "pipeline", getValue: () => formatDate(c.pipeline?.meeting_scheduled_date ?? null) },
