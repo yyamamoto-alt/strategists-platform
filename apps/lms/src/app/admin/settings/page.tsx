@@ -8,21 +8,10 @@ interface Setting {
   description: string | null;
 }
 
-const SETTINGS_CONFIG = [
-  {
-    key: "auto_invite_enabled",
-    label: "自動招待を有効にする",
-    description: "入塾フォーム受付時にSlack承認→自動でLMS招待メールを送信します",
-    type: "toggle" as const,
-  },
-  {
-    key: "auto_invite_slack_channel",
-    label: "Slack通知チャンネル",
-    description: "承認リクエストを送信するSlackチャンネル名（例: #lms-invites）",
-    type: "text" as const,
-    placeholder: "#lms-invites",
-  },
-];
+interface SlackChannel {
+  id: string;
+  name: string;
+}
 
 export default function AdminSettingsPage() {
   const [settings, setSettings] = useState<Record<string, string>>({});
@@ -30,6 +19,8 @@ export default function AdminSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [channels, setChannels] = useState<SlackChannel[]>([]);
+  const [channelsLoading, setChannelsLoading] = useState(true);
 
   useEffect(() => {
     fetch("/api/admin/settings")
@@ -44,21 +35,30 @@ export default function AdminSettingsPage() {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
+
+    fetch("/api/admin/slack-channels")
+      .then((r) => r.json())
+      .then((data: SlackChannel[]) => {
+        if (Array.isArray(data)) setChannels(data);
+      })
+      .catch(() => {})
+      .finally(() => setChannelsLoading(false));
   }, []);
 
   const handleChange = useCallback((key: string, value: string) => {
     setSettings((prev) => ({ ...prev, [key]: value }));
   }, []);
 
-  const hasChanges = SETTINGS_CONFIG.some((c) => settings[c.key] !== original[c.key]);
+  const settingKeys = ["auto_invite_enabled", "auto_invite_slack_channel"];
+  const hasChanges = settingKeys.some((k) => settings[k] !== original[k]);
 
   const handleSave = async () => {
     setSaving(true);
     setToast(null);
 
-    const updates = SETTINGS_CONFIG
-      .filter((c) => settings[c.key] !== original[c.key])
-      .map((c) => ({ key: c.key, value: settings[c.key] }));
+    const updates = settingKeys
+      .filter((k) => settings[k] !== original[k])
+      .map((k) => ({ key: k, value: settings[k] }));
 
     try {
       const res = await fetch("/api/admin/settings", {
@@ -86,6 +86,11 @@ export default function AdminSettingsPage() {
       </div>
     );
   }
+
+  const toggleValue = settings["auto_invite_enabled"] || "";
+  const toggleChanged = toggleValue !== (original["auto_invite_enabled"] || "");
+  const channelValue = (settings["auto_invite_slack_channel"] || "").replace(/"/g, "");
+  const channelChanged = channelValue !== (original["auto_invite_slack_channel"] || "").replace(/"/g, "");
 
   return (
     <div className="p-6 bg-surface min-h-screen">
@@ -126,60 +131,74 @@ export default function AdminSettingsPage() {
             </p>
           </div>
           <div className="divide-y divide-white/5">
-            {SETTINGS_CONFIG.map((config) => {
-              const value = settings[config.key] || "";
-              const isChanged = value !== (original[config.key] || "");
+            {/* 自動招待トグル */}
+            <div className="px-6 py-4 flex items-center gap-4">
+              <div className="flex-1 min-w-0">
+                <label className="block text-sm font-medium text-gray-200">
+                  自動招待を有効にする
+                  {toggleChanged && (
+                    <span className="ml-2 text-xs text-amber-400">(変更あり)</span>
+                  )}
+                </label>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  入塾フォーム受付時にSlack承認→自動でLMS招待メールを送信します
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleChange("auto_invite_enabled", toggleValue === "true" ? "false" : "true")}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  toggleValue === "true" ? "bg-brand" : "bg-gray-600"
+                } ${toggleChanged ? "ring-2 ring-amber-500/50" : ""}`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    toggleValue === "true" ? "translate-x-6" : "translate-x-1"
+                  }`}
+                />
+              </button>
+            </div>
 
-              return (
-                <div key={config.key} className="px-6 py-4 flex items-center gap-4">
-                  <div className="flex-1 min-w-0">
-                    <label className="block text-sm font-medium text-gray-200">
-                      {config.label}
-                      {isChanged && (
-                        <span className="ml-2 text-xs text-amber-400">(変更あり)</span>
-                      )}
-                    </label>
-                    <p className="text-xs text-gray-500 mt-0.5">{config.description}</p>
+            {/* Slackチャンネル選択 */}
+            <div className="px-6 py-4 flex items-center gap-4">
+              <div className="flex-1 min-w-0">
+                <label className="block text-sm font-medium text-gray-200">
+                  Slack通知チャンネル
+                  {channelChanged && (
+                    <span className="ml-2 text-xs text-amber-400">(変更あり)</span>
+                  )}
+                </label>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  承認リクエストを送信するSlackチャンネル
+                </p>
+              </div>
+              <div>
+                {channelsLoading ? (
+                  <div className="w-52 px-3 py-2 text-sm text-gray-500 bg-surface-elevated border border-white/10 rounded-lg">
+                    読み込み中...
                   </div>
-                  <div>
-                    {config.type === "toggle" ? (
-                      <button
-                        type="button"
-                        onClick={() => handleChange(config.key, value === "true" ? "false" : "true")}
-                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                          value === "true" ? "bg-brand" : "bg-gray-600"
-                        } ${isChanged ? "ring-2 ring-amber-500/50" : ""}`}
-                      >
-                        <span
-                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                            value === "true" ? "translate-x-6" : "translate-x-1"
-                          }`}
-                        />
-                      </button>
-                    ) : (
-                      <input
-                        type="text"
-                        value={value.replace(/"/g, "")}
-                        onChange={(e) => handleChange(config.key, e.target.value)}
-                        placeholder={config.placeholder}
-                        className={`w-48 px-3 py-2 text-sm rounded-lg border bg-surface-elevated text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-brand/50 ${
-                          isChanged ? "border-amber-500/50" : "border-white/10"
-                        }`}
-                      />
-                    )}
+                ) : channels.length === 0 ? (
+                  <div className="w-52 px-3 py-2 text-sm text-red-400 bg-surface-elevated border border-red-500/20 rounded-lg">
+                    チャンネル取得失敗
                   </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="mt-6 p-4 bg-surface-elevated border border-white/10 rounded-xl">
-          <h3 className="text-sm font-medium text-gray-300 mb-2">必要な環境変数</h3>
-          <div className="space-y-1 text-xs text-gray-500">
-            <p>RESEND_API_KEY — メール送信（設定済み）</p>
-            <p>SLACK_BOT_TOKEN — Slack通知送信（設定済み）</p>
-            <p>SLACK_SIGNING_SECRET — Slack承認ボタン署名検証（設定済み）</p>
+                ) : (
+                  <select
+                    value={channelValue}
+                    onChange={(e) => handleChange("auto_invite_slack_channel", e.target.value)}
+                    className={`w-52 px-3 py-2 text-sm rounded-lg border bg-surface-elevated text-white focus:outline-none focus:ring-2 focus:ring-brand/50 ${
+                      channelChanged ? "border-amber-500/50" : "border-white/10"
+                    }`}
+                  >
+                    <option value="" className="bg-gray-800">選択してください</option>
+                    {channels.map((ch) => (
+                      <option key={ch.id} value={`#${ch.name}`} className="bg-gray-800">
+                        #{ch.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </div>
