@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import type {
   SpreadsheetConnection,
   SyncLog,
@@ -57,7 +57,10 @@ export function DataSyncClient({
 
   // 顧客検索（未マッチ紐付け用）
   const [linkingId, setLinkingId] = useState<string | null>(null);
-  const [searchCustomerId, setSearchCustomerId] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<{ id: string; name: string; email: string | null; attribute: string }[]>([]);
+  const [selectedCustomerId, setSelectedCustomerId] = useState("");
+  const [isSearchingCustomer, setIsSearchingCustomer] = useState(false);
 
   const tabs: { key: Tab; label: string; count?: number }[] = [
     { key: "connections", label: "接続一覧" },
@@ -227,7 +230,9 @@ export function DataSyncClient({
       if (res.ok) {
         setUnmatched((prev) => prev.filter((r) => r.id !== recordId));
         setLinkingId(null);
-        setSearchCustomerId("");
+        setSearchQuery("");
+        setSearchResults([]);
+        setSelectedCustomerId("");
       } else {
         const data = await res.json();
         alert(`エラー: ${data.error}`);
@@ -235,6 +240,48 @@ export function DataSyncClient({
     },
     []
   );
+
+  // ================================================================
+  // 顧客名検索（debounce）
+  // ================================================================
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const searchCustomers = useCallback((query: string) => {
+    setSearchQuery(query);
+    setSelectedCustomerId("");
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    if (!query.trim()) {
+      setSearchResults([]);
+      return;
+    }
+    searchTimerRef.current = setTimeout(async () => {
+      setIsSearchingCustomer(true);
+      try {
+        const res = await fetch(`/api/customers/search?q=${encodeURIComponent(query.trim())}`);
+        if (res.ok) {
+          setSearchResults(await res.json());
+        }
+      } finally {
+        setIsSearchingCustomer(false);
+      }
+    }, 300);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    };
+  }, []);
+
+  // 紐付け開始時に名前でプリフィル
+  const startLinking = useCallback((record: UnmatchedRecord) => {
+    setLinkingId(record.id);
+    setSelectedCustomerId("");
+    setSearchResults([]);
+    if (record.name) {
+      searchCustomers(record.name);
+    }
+  }, [searchCustomers]);
 
   // ================================================================
   // マッピングフィールド更新
@@ -578,37 +625,65 @@ export function DataSyncClient({
                     </div>
                     <div className="flex gap-2">
                       {linkingId === record.id ? (
-                        <div className="flex gap-2 items-center">
-                          <input
-                            type="text"
-                            value={searchCustomerId}
-                            onChange={(e) => setSearchCustomerId(e.target.value)}
-                            placeholder="顧客ID (UUID)"
-                            className="px-2 py-1 bg-[#1a1a2e] border border-white/10 rounded text-white text-xs w-64 focus:outline-none focus:border-brand"
-                          />
-                          <button
-                            onClick={() =>
-                              resolveUnmatched(record.id, "link", searchCustomerId)
-                            }
-                            disabled={!searchCustomerId}
-                            className="px-2 py-1 text-xs bg-brand text-white rounded disabled:opacity-50"
-                          >
-                            紐付け
-                          </button>
-                          <button
-                            onClick={() => {
-                              setLinkingId(null);
-                              setSearchCustomerId("");
-                            }}
-                            className="px-2 py-1 text-xs text-gray-400"
-                          >
-                            取消
-                          </button>
+                        <div className="space-y-2 w-full">
+                          <div className="flex gap-2 items-center">
+                            <input
+                              type="text"
+                              value={searchQuery}
+                              onChange={(e) => searchCustomers(e.target.value)}
+                              placeholder="名前・メールで検索..."
+                              className="px-2 py-1 bg-[#1a1a2e] border border-white/10 rounded text-white text-xs w-64 focus:outline-none focus:border-brand"
+                              autoFocus
+                            />
+                            <button
+                              onClick={() =>
+                                resolveUnmatched(record.id, "link", selectedCustomerId)
+                              }
+                              disabled={!selectedCustomerId}
+                              className="px-2 py-1 text-xs bg-brand text-white rounded disabled:opacity-50"
+                            >
+                              紐付け
+                            </button>
+                            <button
+                              onClick={() => {
+                                setLinkingId(null);
+                                setSearchQuery("");
+                                setSearchResults([]);
+                                setSelectedCustomerId("");
+                              }}
+                              className="px-2 py-1 text-xs text-gray-400"
+                            >
+                              取消
+                            </button>
+                            {isSearchingCustomer && (
+                              <span className="w-3 h-3 border-2 border-brand/30 border-t-brand rounded-full animate-spin" />
+                            )}
+                          </div>
+                          {searchResults.length > 0 && (
+                            <div className="bg-[#1a1a2e] border border-white/10 rounded max-h-40 overflow-y-auto">
+                              {searchResults.map((c) => (
+                                <button
+                                  key={c.id}
+                                  onClick={() => setSelectedCustomerId(c.id)}
+                                  className={`w-full text-left px-3 py-1.5 text-xs hover:bg-white/10 flex items-center gap-2 ${
+                                    selectedCustomerId === c.id ? "bg-brand/20 text-white" : "text-gray-300"
+                                  }`}
+                                >
+                                  <span className="font-medium">{c.name}</span>
+                                  {c.email && <span className="text-gray-500">{c.email}</span>}
+                                  <span className="text-gray-600 ml-auto">{c.attribute}</span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                          {searchQuery && searchResults.length === 0 && !isSearchingCustomer && (
+                            <p className="text-xs text-gray-500 px-1">該当する顧客が見つかりません</p>
+                          )}
                         </div>
                       ) : (
                         <>
                           <button
-                            onClick={() => setLinkingId(record.id)}
+                            onClick={() => startLinking(record)}
                             className="px-3 py-1.5 text-xs text-brand border border-brand/30 rounded hover:bg-brand/10"
                           >
                             既存顧客に紐付け
