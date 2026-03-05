@@ -142,7 +142,7 @@ const STAGE_OPTIONS = [
   { group: "成約", options: ["成約", "その他購入", "動画講座購入", "追加指導"] },
   { group: "未実施", options: ["NoShow", "未実施", "実施不可", "非実施対象"] },
   { group: "失注", options: ["失注", "失注見込", "失注見込(自動)", "CL", "全額返金"] },
-  { group: "その他", options: ["その他", "入金済", "成約(追加指導経由)", "途中解約(成約)", "日程確定", "面談実施", "問い合わせ", "提案中"] },
+  { group: "その他", options: ["その他", "入金済", "成約(追加指導経由)", "途中解約(成約)", "日程確定", "面談実施", "問い合わせ", "提案中", "キャンセル", "直前キャンセル", "追加指導(NoShow)", "追加指導(CL)", "成約見込(未入金)", "Noshow"] },
 ];
 
 function InlineStageSelect({ customerId, currentStage, onUpdate }: { customerId: string; currentStage: string; onUpdate: (id: string, newStage: string) => void }) {

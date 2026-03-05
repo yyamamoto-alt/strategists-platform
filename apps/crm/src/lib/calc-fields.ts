@@ -92,9 +92,10 @@ export function calcClosingProbability(c: CustomerWithRelations): number {
   if (!stage) return 0;
 
   // 営業角度（T7）: DBではfloat 0–1。未設定時は既卒65%/新卒30%をデフォルト
-  const t = (c.pipeline?.probability != null && c.pipeline.probability > 0)
+  const raw = (c.pipeline?.probability != null && c.pipeline.probability > 0)
     ? c.pipeline.probability
     : (isShinsotsu(c.attribute) ? 0.30 : 0.65);
+  const t = Math.min(raw, 1.0);
 
   // --- 成約系 → 100% ---
   if (stage === "成約" || stage === "入金済") return 1.0;
