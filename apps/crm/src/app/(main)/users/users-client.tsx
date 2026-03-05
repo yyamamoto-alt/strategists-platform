@@ -65,7 +65,19 @@ export function UsersClient({ userRoles, invitations }: UsersClientProps) {
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [generatedLink, setGeneratedLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [copiedToken, setCopiedToken] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"users" | "invitations">("users");
+
+  const handleCopyInviteLink = async (token: string) => {
+    const url = `${window.location.origin}/invite/${token}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiedToken(token);
+      setTimeout(() => setCopiedToken(null), 2000);
+    } catch {
+      // フォールバック
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -210,18 +222,20 @@ export function UsersClient({ userRoles, invitations }: UsersClientProps) {
                 <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">ロール</th>
                 <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">有効期限</th>
                 <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">ステータス</th>
+                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">操作</th>
               </tr>
             </thead>
             <tbody>
               {invitations.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="py-8 text-center text-sm text-gray-500">
+                  <td colSpan={6} className="py-8 text-center text-sm text-gray-500">
                     招待がありません
                   </td>
                 </tr>
               )}
               {invitations.map((inv) => {
                 const status = getInvitationStatus(inv);
+                const isActive = !inv.used_at && new Date(inv.expires_at) >= new Date();
                 return (
                   <tr key={inv.id} className="border-b border-white/[0.08] hover:bg-white/5">
                     <td className="py-3 px-4 text-sm text-white">{inv.email}</td>
@@ -236,6 +250,20 @@ export function UsersClient({ userRoles, invitations }: UsersClientProps) {
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${status.color}`}>
                         {status.label}
                       </span>
+                    </td>
+                    <td className="py-3 px-4">
+                      {isActive && (
+                        <button
+                          onClick={() => handleCopyInviteLink(inv.token)}
+                          className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                            copiedToken === inv.token
+                              ? "bg-green-500/20 text-green-300"
+                              : "bg-surface-elevated border border-white/10 text-gray-300 hover:bg-white/5"
+                          }`}
+                        >
+                          {copiedToken === inv.token ? "コピー済み" : "リンクをコピー"}
+                        </button>
+                      )}
                     </td>
                   </tr>
                 );
