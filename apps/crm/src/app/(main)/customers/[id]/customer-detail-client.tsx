@@ -590,8 +590,6 @@ function buildAgentFields(c: CustomerWithRelations): FieldDef[] {
     { key: "expected_fee", label: "人材紹介報酬期待値", source: "calc", getValue: () => { const v = calcExpectedReferralFee(c); return v > 0 ? formatCurrency(v) : "-"; } },
     { key: "placement_confirmed", label: "人材確定", source: "manual", type: "select", options: ["確定", ""], table: "agent", getValue: () => isAgentConfirmed(c) ? "確定" : "未確定" },
     { key: "placement_date", label: "入社予定日", source: "manual", type: "date", table: "agent", getValue: () => formatDate(c.agent?.placement_date ?? null) },
-    { key: "hire_rate", label: "入社至る率", source: "manual", type: "number", table: "agent", getValue: () => c.agent?.hire_rate ? formatPercent(c.agent.hire_rate) : "-" },
-    { key: "offer_probability", label: "内定確度", source: "manual", type: "number", table: "agent", getValue: () => c.agent?.offer_probability ? formatPercent(c.agent.offer_probability) : "-" },
     { key: "external_agents", label: "外部エージェント", source: "manual", table: "agent", getValue: () => c.agent?.external_agents || "-" },
     { key: "agent_staff", label: "エージェント担当", source: "manual", table: "agent", getValue: () => c.agent?.agent_staff || "-" },
     { key: "agent_memo", label: "エージェント業務メモ", source: "manual", type: "textarea", table: "agent", getValue: () => c.agent?.agent_memo || "-" },
