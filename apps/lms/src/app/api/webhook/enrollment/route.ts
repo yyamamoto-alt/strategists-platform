@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { sendInviteApprovalRequest } from "@/lib/slack";
 import { NextResponse } from "next/server";
 
 /**
@@ -15,6 +16,7 @@ import { NextResponse } from "next/server";
  *     phone: e.namedValues["電話番号"] ? e.namedValues["電話番号"][0] : null,
  *     motivation: e.namedValues["志望動機"] ? e.namedValues["志望動機"][0] : null,
  *     experience: e.namedValues["経歴"] ? e.namedValues["経歴"][0] : null,
+ *     plan_name: e.namedValues["プラン"] ? e.namedValues["プラン"][0] : null,
  *     webhook_secret: "YOUR_WEBHOOK_SECRET",
  *   };
  *   UrlFetchApp.fetch("https://strategists-lms.vercel.app/api/webhook/enrollment", {
@@ -27,7 +29,7 @@ import { NextResponse } from "next/server";
  */
 export async function POST(request: Request) {
   const body = await request.json();
-  const { name, email, phone, motivation, experience, webhook_secret } = body;
+  const { name, email, phone, motivation, experience, plan_name, webhook_secret } = body;
 
   // Webhook認証
   const expectedSecret = process.env.WEBHOOK_SECRET;
@@ -65,7 +67,9 @@ export async function POST(request: Request) {
       phone: phone || null,
       motivation: motivation || null,
       experience: experience || null,
+      plan_name: plan_name || null,
       status: "pending",
+      invite_status: "none",
     })
     .select()
     .single();
@@ -77,9 +81,47 @@ export async function POST(request: Request) {
     );
   }
 
+  // 自動招待が有効か確認
+  let autoInviteTriggered = false;
+  try {
+    const { data: settings } = await supabase
+      .from("app_settings")
+      .select("key, value")
+      .in("key", ["auto_invite_enabled", "auto_invite_slack_channel"]);
+
+    const settingsMap: Record<string, string> = {};
+    for (const s of (settings || []) as { key: string; value: string }[]) {
+      settingsMap[s.key] = typeof s.value === "string" ? s.value : JSON.stringify(s.value);
+    }
+
+    const autoEnabled = settingsMap.auto_invite_enabled === "true";
+    const slackChannel = settingsMap.auto_invite_slack_channel?.replace(/"/g, "");
+
+    if (autoEnabled && slackChannel) {
+      // Slack承認リクエスト送信
+      await sendInviteApprovalRequest(slackChannel, {
+        id: data.id,
+        name,
+        email,
+        planName: plan_name,
+      });
+
+      // ステータスを更新
+      await supabase
+        .from("enrollment_applications")
+        .update({ invite_status: "pending_approval" })
+        .eq("id", data.id);
+
+      autoInviteTriggered = true;
+    }
+  } catch (e) {
+    console.error("Auto-invite flow error:", e);
+  }
+
   return NextResponse.json({
     success: true,
     application_id: data.id,
     message: "入塾申請を受け付けました",
+    auto_invite_triggered: autoInviteTriggered,
   });
 }

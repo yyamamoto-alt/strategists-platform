@@ -18,7 +18,7 @@ interface AppSetting {
 interface SettingFieldConfig {
   key: string;
   label: string;
-  type: "number" | "text";
+  type: "number" | "text" | "toggle";
   step?: string;
   min?: number;
   max?: number;
@@ -119,6 +119,29 @@ const SECTIONS: SettingsSectionConfig[] = [
       },
     ],
   },
+  {
+    title: "LMS自動招待",
+    description: "入塾フォーム受付時にSlack承認→自動でLMS招待メールを送信します。有効にするにはResend APIキー・Slack Bot Token・Signing Secretの環境変数設定が必要です。",
+    fields: [
+      {
+        key: "auto_invite_enabled",
+        label: "自動招待を有効にする",
+        type: "toggle",
+      },
+      {
+        key: "auto_invite_slack_channel",
+        label: "Slack通知チャンネル",
+        type: "text",
+        placeholder: "#lms-invites",
+      },
+      {
+        key: "auto_invite_default_course_ids",
+        label: "デフォルト付与コースID（JSON配列）",
+        type: "text",
+        placeholder: '["course-id-1","course-id-2"]',
+      },
+    ],
+  },
 ];
 
 // ================================================================
@@ -211,6 +234,8 @@ export function SettingsClient({ settings }: Props) {
       if (fieldConfig?.type === "number") {
         const num = Number(value);
         jsonValue = isNaN(num) ? value : num;
+      } else if (fieldConfig?.type === "toggle") {
+        jsonValue = value;
       }
 
       return { key, value: jsonValue };
@@ -358,28 +383,46 @@ export function SettingsClient({ settings }: Props) {
 
                       {/* Input */}
                       <div className="flex items-center gap-2">
-                        <input
-                          type={field.type}
-                          value={currentValue}
-                          onChange={(e) => handleChange(field.key, e.target.value)}
-                          step={field.step}
-                          min={field.min}
-                          max={field.max}
-                          placeholder={field.placeholder}
-                          className={`w-48 px-3 py-2 text-sm rounded-lg border transition-colors
-                            bg-surface-elevated text-white placeholder-gray-600
-                            focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand
-                            ${
-                              isChanged
-                                ? "border-amber-500/50"
-                                : "border-white/10"
-                            }
-                          `}
-                        />
-                        {field.suffix && (
-                          <span className="text-sm text-gray-400 w-8">
-                            {field.suffix}
-                          </span>
+                        {field.type === "toggle" ? (
+                          <button
+                            type="button"
+                            onClick={() => handleChange(field.key, currentValue === "true" ? "false" : "true")}
+                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                              currentValue === "true" ? "bg-brand" : "bg-gray-600"
+                            } ${isChanged ? "ring-2 ring-amber-500/50" : ""}`}
+                          >
+                            <span
+                              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                currentValue === "true" ? "translate-x-6" : "translate-x-1"
+                              }`}
+                            />
+                          </button>
+                        ) : (
+                          <>
+                            <input
+                              type={field.type}
+                              value={currentValue}
+                              onChange={(e) => handleChange(field.key, e.target.value)}
+                              step={field.step}
+                              min={field.min}
+                              max={field.max}
+                              placeholder={field.placeholder}
+                              className={`w-48 px-3 py-2 text-sm rounded-lg border transition-colors
+                                bg-surface-elevated text-white placeholder-gray-600
+                                focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand
+                                ${
+                                  isChanged
+                                    ? "border-amber-500/50"
+                                    : "border-white/10"
+                                }
+                              `}
+                            />
+                            {field.suffix && (
+                              <span className="text-sm text-gray-400 w-8">
+                                {field.suffix}
+                              </span>
+                            )}
+                          </>
                         )}
                       </div>
                     </div>
