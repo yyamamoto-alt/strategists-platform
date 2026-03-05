@@ -9,11 +9,15 @@ interface Props {
   params: Promise<{ id: string }>;
 }
 
-export async function POST(_request: Request, { params }: Props) {
+export async function POST(request: Request, { params }: Props) {
   const { id } = await params;
   const supabase = createServiceClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as any;
+
+  // クエリパラメータからバッチサイズを取得（大量行対応）
+  const url = new URL(request.url);
+  const batchSize = parseInt(url.searchParams.get("batch_size") || "0", 10);
 
   // 1. 接続設定を取得
   const { data: connection, error: connError } = await db
@@ -66,11 +70,19 @@ export async function POST(_request: Request, { params }: Props) {
         rows_created: 0,
         rows_updated: 0,
         rows_unmatched: 0,
+        has_more: false,
       });
     }
 
     const headers = allRows[0];
-    const dataRows = allRows.slice(1);
+    let dataRows = allRows.slice(1);
+
+    // バッチサイズ指定時は行数を制限
+    const hasMore = batchSize > 0 && dataRows.length > batchSize;
+    if (batchSize > 0 && dataRows.length > batchSize) {
+      dataRows = dataRows.slice(0, batchSize);
+    }
+
     const columnMapping = connection.column_mapping as Record<string, string>;
 
     let rowsCreated = 0;
@@ -135,6 +147,8 @@ export async function POST(_request: Request, { params }: Props) {
       rows_created: rowsCreated,
       rows_updated: rowsUpdated,
       rows_unmatched: rowsUnmatched,
+      has_more: hasMore,
+      next_row: hasMore ? totalRow + 1 : null,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Sync failed";

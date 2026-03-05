@@ -99,7 +99,7 @@ export async function GET(request: Request) {
           fields,
           rawData,
           connection.name,
-          true
+          connection.auto_create_customer === true
         );
 
         if (result.action === "created") rowsCreated++;
