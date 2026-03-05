@@ -5,7 +5,7 @@ import { mockCustomers } from "@/lib/mock-data";
 
 export const revalidate = 60;
 
-/** 自動ステージ変更: 予定日から2週間経過 → 失注見込(自動) / 予定日NULLかつ未実施 → 日程未確 */
+/** 自動ステージ変更ルール */
 async function applyAutoStageChanges() {
   const supabase = createServiceClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -14,6 +14,9 @@ async function applyAutoStageChanges() {
   const twoWeeksAgo = new Date(today);
   twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
   const twoWeeksAgoStr = twoWeeksAgo.toISOString().slice(0, 10);
+  const oneMonthAgo = new Date(today);
+  oneMonthAgo.setDate(oneMonthAgo.getDate() - 30);
+  const oneMonthAgoStr = oneMonthAgo.toISOString().slice(0, 10);
 
   // ルール1: 予定日から2週間経過 → 失注見込(自動)
   const { data: overdueRecords } = await db
@@ -31,18 +34,20 @@ async function applyAutoStageChanges() {
       .in("id", ids);
   }
 
-  // ルール2: meeting_scheduled_date が NULL かつ stage ∈ [未実施, 問い合わせ] → 日程未確
-  const { data: noDateRecords } = await db
+  // ルール2: 日程未設定 + 申込から1ヶ月経過 → 実施不可
+  // (未実施/日程未確/問い合わせで、meeting_scheduled_dateがNULL、application_dateが1ヶ月以上前)
+  const { data: staleRecords } = await db
     .from("sales_pipeline")
-    .select("id, stage, meeting_scheduled_date")
-    .in("stage", ["未実施", "問い合わせ"])
-    .is("meeting_scheduled_date", null) as { data: { id: string }[] | null };
+    .select("id, customer_id, stage, meeting_scheduled_date, customers!inner(application_date)")
+    .in("stage", ["未実施", "日程未確", "問い合わせ"])
+    .is("meeting_scheduled_date", null)
+    .lt("customers.application_date", oneMonthAgoStr) as { data: { id: string }[] | null };
 
-  if (noDateRecords && noDateRecords.length > 0) {
-    const ids = noDateRecords.map((r: { id: string }) => r.id);
+  if (staleRecords && staleRecords.length > 0) {
+    const ids = staleRecords.map((r: { id: string }) => r.id);
     await db
       .from("sales_pipeline")
-      .update({ stage: "日程未確" })
+      .update({ stage: "実施不可" })
       .in("id", ids);
   }
 }

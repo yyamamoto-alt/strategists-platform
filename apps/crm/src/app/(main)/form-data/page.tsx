@@ -19,18 +19,38 @@ async function fetchFormData(): Promise<FormRecord[]> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as any;
 
-  const { data, error } = await db
-    .from("application_history")
-    .select(`
-      id,
-      customer_id,
-      source,
-      raw_data,
-      applied_at,
-      customers ( name )
-    `)
-    .order("applied_at", { ascending: false })
-    .limit(5000);
+  // Supabaseのデフォルトrow limitは1000件。全件取得するためにページネーション
+  let allData: Record<string, unknown>[] = [];
+  const PAGE_SIZE = 1000;
+  let from = 0;
+  let hasMore = true;
+
+  while (hasMore) {
+    const { data: page, error: pageError } = await db
+      .from("application_history")
+      .select(`
+        id,
+        customer_id,
+        source,
+        raw_data,
+        applied_at,
+        customers ( name )
+      `)
+      .order("applied_at", { ascending: false })
+      .range(from, from + PAGE_SIZE - 1);
+
+    if (pageError || !page || page.length === 0) {
+      if (pageError) console.error("application_history fetch error:", pageError);
+      hasMore = false;
+    } else {
+      allData = allData.concat(page);
+      from += PAGE_SIZE;
+      if (page.length < PAGE_SIZE) hasMore = false;
+    }
+  }
+
+  const data = allData;
+  const error = null;
 
   if (error) {
     console.error("application_history fetch error:", error);

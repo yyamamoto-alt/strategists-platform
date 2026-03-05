@@ -59,8 +59,42 @@ function SourceBadge({ source }: { source: DataSource }) {
 // フォームデータセクション
 // ================================================================
 
-function FormDataSection({ records }: { records: ApplicationHistoryRecord[] }) {
+// 1回限りフォーム（専用ボックスに常時展開）
+const SINGLE_FORM_SOURCES = ["入塾フォーム", "営業報告"];
+
+/** 1回限りフォーム: 常時展開のkey-valueテーブル */
+function SingleFormSection({ title, record }: { title: string; record: ApplicationHistoryRecord }) {
+  const rd = (record.raw_data || {}) as Record<string, string>;
+  const entries = Object.entries(rd).filter(([, v]) => v);
+  if (entries.length === 0) return null;
+
+  return (
+    <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-4">
+      <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-1">
+        {title}
+        <span className="text-xs text-gray-500 ml-2 font-normal">{formatDate(record.applied_at)}</span>
+        <SourceBadge source="sync" />
+      </h2>
+      <table className="w-full mt-3">
+        <tbody>
+          {entries.map(([k, v]) => (
+            <tr key={k} className="border-b border-white/5 last:border-0">
+              <td className="text-[10px] text-gray-500 py-1.5 pr-3 align-top whitespace-nowrap w-1/4">{k}</td>
+              <td className="text-xs text-gray-300 py-1.5 break-words">
+                {String(v).length > 300 ? String(v).substring(0, 300) + "…" : String(v)}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/** 繰り返しフォーム: タブ切替 + 折りたたみリスト */
+function RepeatingFormSection({ records }: { records: ApplicationHistoryRecord[] }) {
   const [activeSource, setActiveSource] = useState<string | null>(null);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
   const grouped = useMemo(() => {
     const map: Record<string, ApplicationHistoryRecord[]> = {};
@@ -76,6 +110,16 @@ function FormDataSection({ records }: { records: ApplicationHistoryRecord[] }) {
   const currentSource = activeSource || sources[0];
   const currentRecords = grouped[currentSource] || [];
 
+  const toggleExpand = useCallback((id: string) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }, []);
+
+  if (sources.length === 0) return null;
+
   return (
     <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 border-l-2 border-l-gray-600 p-4">
       <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-1">
@@ -88,7 +132,7 @@ function FormDataSection({ records }: { records: ApplicationHistoryRecord[] }) {
         {sources.map((src) => (
           <button
             key={src}
-            onClick={() => setActiveSource(src)}
+            onClick={() => { setActiveSource(src); setExpandedIds(new Set()); }}
             className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
               currentSource === src
                 ? "bg-brand text-white"
@@ -101,29 +145,42 @@ function FormDataSection({ records }: { records: ApplicationHistoryRecord[] }) {
         ))}
       </div>
 
-      <div className="space-y-3 max-h-[600px] overflow-y-auto">
+      <div className="space-y-2 max-h-[600px] overflow-y-auto">
         {currentRecords.map((r) => {
           const rd = (r.raw_data || {}) as Record<string, string>;
+          const isExpanded = expandedIds.has(r.id);
+          const entries = Object.entries(rd).filter(([, v]) => v);
+          // プレビュー: 最初の2フィールドだけ表示
+          const preview = entries.slice(0, 2).map(([k, v]) => `${k}: ${String(v).substring(0, 40)}`).join(" / ");
+
           return (
-            <div key={r.id} className="border border-white/5 rounded-lg p-3 bg-surface-elevated">
-              <div className="flex items-center gap-2 mb-2">
+            <div key={r.id} className="border border-white/5 rounded-lg bg-surface-elevated">
+              <button
+                onClick={() => toggleExpand(r.id)}
+                className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-white/[0.03] transition-colors"
+              >
+                <span className="text-gray-500 text-xs w-4">{isExpanded ? "▾" : "▸"}</span>
                 <span className="text-xs text-gray-400">{formatDate(r.applied_at)}</span>
-                {r.notes && <span className="text-[10px] text-gray-500">{r.notes}</span>}
-              </div>
-              <table className="w-full">
-                <tbody>
-                  {Object.entries(rd)
-                    .filter(([, v]) => v)
-                    .map(([k, v]) => (
-                      <tr key={k} className="border-b border-white/5 last:border-0">
-                        <td className="text-[10px] text-gray-500 py-1 pr-3 align-top whitespace-nowrap w-1/4">{k}</td>
-                        <td className="text-xs text-gray-300 py-1 break-words">
-                          {String(v).length > 200 ? String(v).substring(0, 200) + "…" : String(v)}
-                        </td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
+                {!isExpanded && (
+                  <span className="text-[10px] text-gray-500 truncate">{preview}</span>
+                )}
+              </button>
+              {isExpanded && (
+                <div className="px-3 pb-3">
+                  <table className="w-full">
+                    <tbody>
+                      {entries.map(([k, v]) => (
+                        <tr key={k} className="border-b border-white/5 last:border-0">
+                          <td className="text-[10px] text-gray-500 py-1 pr-3 align-top whitespace-nowrap w-1/4">{k}</td>
+                          <td className="text-xs text-gray-300 py-1 break-words">
+                            {String(v).length > 200 ? String(v).substring(0, 200) + "…" : String(v)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           );
         })}
@@ -741,9 +798,18 @@ export function CustomerDetailClient({
             )}
           </div>
 
-          {/* フォームデータ */}
-          {applicationHistory.length > 0 && (
-            <FormDataSection records={applicationHistory} />
+          {/* 1回限りフォーム（入塾フォーム・営業報告） */}
+          {applicationHistory
+            .filter((r) => SINGLE_FORM_SOURCES.includes(r.source || ""))
+            .map((r) => (
+              <SingleFormSection key={r.id} title={r.source || "フォーム"} record={r} />
+            ))}
+
+          {/* 繰り返しフォーム（課題提出・メンター指導報告・エージェント面談報告等） */}
+          {applicationHistory.filter((r) => !SINGLE_FORM_SOURCES.includes(r.source || "")).length > 0 && (
+            <RepeatingFormSection
+              records={applicationHistory.filter((r) => !SINGLE_FORM_SOURCES.includes(r.source || ""))}
+            />
           )}
 
           {/* 活動履歴 */}

@@ -40,8 +40,9 @@ interface OrdersClientProps {
   reconciliation: ReconciliationItem[];
 }
 
-export function OrdersClient({ orders, reconciliation }: OrdersClientProps) {
+export function OrdersClient({ orders: initialOrders, reconciliation }: OrdersClientProps) {
   const router = useRouter();
+  const [orders, setOrders] = useState(initialOrders);
   const [pageTab, setPageTab] = useState<PageTab>("orders");
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
@@ -71,7 +72,7 @@ export function OrdersClient({ orders, reconciliation }: OrdersClientProps) {
     try {
       const res = await fetch(`/api/orders/${orderId}`, { method: "DELETE" });
       if (res.ok) {
-        router.refresh();
+        setOrders((prev) => prev.filter((o) => o.id !== orderId));
       } else {
         const data = await res.json();
         alert("削除に失敗しました: " + (data.error || "不明なエラー"));
@@ -79,7 +80,7 @@ export function OrdersClient({ orders, reconciliation }: OrdersClientProps) {
     } finally {
       setProcessing(false);
     }
-  }, [router]);
+  }, []);
 
   const handleSaveOrder = useCallback(async (order: Order) => {
     setProcessing(true);
@@ -98,7 +99,7 @@ export function OrdersClient({ orders, reconciliation }: OrdersClientProps) {
       });
       if (res.ok) {
         setEditingOrder(null);
-        router.refresh();
+        setOrders((prev) => prev.map((o) => o.id === order.id ? { ...o, ...order } : o));
       } else {
         const data = await res.json();
         alert("保存に失敗しました: " + (data.error || "不明なエラー"));
@@ -106,7 +107,7 @@ export function OrdersClient({ orders, reconciliation }: OrdersClientProps) {
     } finally {
       setProcessing(false);
     }
-  }, [router]);
+  }, []);
 
   const orderColumns: SpreadsheetColumn<Order>[] = useMemo(
     () => [
@@ -149,6 +150,15 @@ export function OrdersClient({ orders, reconciliation }: OrdersClientProps) {
         width: 180,
         render: (r) => r.product_name || "-",
         sortValue: (r) => r.product_name || "",
+      },
+      {
+        key: "installment",
+        label: "分割",
+        width: 70,
+        render: (r) => r.installment_total && r.installment_total > 1
+          ? `${r.installment_index || 1}/${r.installment_total}`
+          : "-",
+        sortValue: (r) => r.installment_total || 0,
       },
       {
         key: "order_type",

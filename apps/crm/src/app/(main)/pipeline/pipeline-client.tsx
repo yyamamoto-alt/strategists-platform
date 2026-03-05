@@ -27,7 +27,7 @@ function buildKanbanStages(today: Date): StageDef[] {
   return [
     {
       label: "未実施（予定日前）",
-      match: ["未実施", "日程未確", "日程確定", "問い合わせ"],
+      match: ["未実施", "日程確定", "問い合わせ"],
       borderColor: "border-t-yellow-400",
       rich: false,
       filter: (c) => {
