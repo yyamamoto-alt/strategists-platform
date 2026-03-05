@@ -19,7 +19,8 @@ async function fetchCustomersRaw(): Promise<CustomerWithRelations[]> {
   const { data, error } = await supabase
     .from("customers")
     .select(CUSTOMER_WITH_RELATIONS_QUERY)
-    .order("application_date", { ascending: false });
+    .order("application_date", { ascending: false })
+    .limit(5000);
 
   if (error) {
     console.error("Failed to fetch customers:", error);
