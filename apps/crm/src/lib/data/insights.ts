@@ -9,8 +9,8 @@ async function fetchLatestInsightsRaw(): Promise<AiInsight[]> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as any;
 
-  // 各カテゴリの最新1件を取得
-  const categories = ["marketing", "sales"];
+  // 新カテゴリ: revenue, funnel, channel + 旧カテゴリ: marketing, sales（後方互換）
+  const categories = ["revenue", "funnel", "channel", "marketing", "sales"];
   const results: AiInsight[] = [];
 
   for (const category of categories) {
@@ -31,7 +31,15 @@ async function fetchLatestInsightsRaw(): Promise<AiInsight[]> {
     }
   }
 
-  return results;
+  // 新カテゴリがあれば新カテゴリのみ返す、なければ旧カテゴリを返す
+  const newCategories = results.filter(
+    (r) => r.category === "revenue" || r.category === "funnel" || r.category === "channel"
+  );
+  if (newCategories.length > 0) return newCategories;
+
+  return results.filter(
+    (r) => r.category === "marketing" || r.category === "sales"
+  );
 }
 
 export const fetchLatestInsights = unstable_cache(

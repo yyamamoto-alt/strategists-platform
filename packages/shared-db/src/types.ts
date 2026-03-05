@@ -697,7 +697,7 @@ export interface PLSheetData {
 
 export interface AiInsight {
   id: string;
-  category: "marketing" | "sales";
+  category: "marketing" | "sales" | "revenue" | "funnel" | "channel" | "general";
   content: string;
   data_snapshot: Record<string, unknown> | null;
   generated_at: string;
