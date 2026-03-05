@@ -76,12 +76,33 @@ export async function PATCH(request: Request, { params }: Props) {
       }
     }
 
+    // Jicooデータの場合、パイプラインを日程確定に更新
+    if (record.raw_data?.event === "guest_booked" || record.raw_data?.event === "guest_rescheduled") {
+      const obj = record.raw_data?.object;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const pipelineUpdate: Record<string, any> = {
+        stage: "日程確定",
+        deal_status: "対応中",
+        updated_at: new Date().toISOString(),
+      };
+      if (obj?.startedAt) {
+        pipelineUpdate.meeting_scheduled_date = obj.startedAt;
+      }
+      await db
+        .from("sales_pipeline")
+        .update(pipelineUpdate)
+        .eq("customer_id", customer_id);
+    }
+
     // application_history に追加
+    const isJicoo = record.raw_data?.event && record.raw_data?.object?.contact;
     await db.from("application_history").insert({
       customer_id,
-      source: "manual_link",
+      source: isJicoo ? "Jicoo" : "manual_link",
       raw_data: record.raw_data,
-      notes: "未マッチレコードから手動紐付け",
+      notes: isJicoo
+        ? `Jicoo ${record.raw_data.event}: ${record.name || record.email || "unknown"} (未マッチから紐付け)`
+        : "未マッチレコードから手動紐付け",
     });
 
     // ステータス更新
