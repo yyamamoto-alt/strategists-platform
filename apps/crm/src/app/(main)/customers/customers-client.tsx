@@ -150,6 +150,7 @@ export function CustomersClient({ customers, attributionMap }: CustomersClientPr
   const [subsidyFilter, setSubsidyFilter] = useState<string>("");
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [isSearching, setIsSearching] = useState(!!initialSearch);
 
   const handleCreate = useCallback(async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -212,9 +213,9 @@ export function CustomersClient({ customers, attributionMap }: CustomersClientPr
   }, [customers, attributeFilter, stageFilter, contractFilter, subsidyFilter]);
 
   const displayFiltered = useMemo(() => {
-    if (displayLimit === "all") return baseFiltered;
+    if (isSearching || displayLimit === "all") return baseFiltered;
     return baseFiltered.slice(0, displayLimit);
-  }, [baseFiltered, displayLimit]);
+  }, [baseFiltered, displayLimit, isSearching]);
 
   // ================================================================
   // 全カラム定義（並び順が表示順）
@@ -697,6 +698,7 @@ export function CustomersClient({ customers, attributionMap }: CustomersClientPr
         storageKey={`customers-${activeTab}`}
         searchPlaceholder="名前・メール・大学・経歴・チャネルで検索..."
         initialSearch={initialSearch}
+        onSearchChange={(q) => setIsSearching(q.length > 0)}
         searchFilter={(c, q) =>
           c.name.toLowerCase().includes(q) ||
           (c.email?.toLowerCase().includes(q) ?? false) ||

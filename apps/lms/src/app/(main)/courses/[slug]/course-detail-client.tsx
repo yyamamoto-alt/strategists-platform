@@ -18,7 +18,9 @@ interface Props {
 }
 
 export function CourseDetailClient({ course, modules, slug }: Props) {
-  const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
+  const [expandedModules, setExpandedModules] = useState<Set<string>>(
+    () => new Set(modules.map((m) => m.id))
+  );
 
   const toggleModule = (id: string) => {
     setExpandedModules((prev) => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next; });

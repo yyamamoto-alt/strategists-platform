@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { mockCourses, mockModules } from "@/lib/mock-data";
 import { CourseDetailClient } from "./course-detail-client";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
@@ -64,8 +65,16 @@ export default async function CourseDetailPage({
       lessons: (lessons || []).filter((l: any) => l.module_id === mod.id),
     }));
 
+    // レッスンが1つだけの場合は直接レッスンページにリダイレクト
+    const allLessons = lessons || [];
+    if (allLessons.length === 1) {
+      redirect(`/courses/${slug}/learn/${allLessons[0].id}`);
+    }
+
     return <CourseDetailClient course={course} modules={modulesWithLessons} slug={slug} />;
   } catch (e) {
+    // redirect() throws a special error, re-throw it
+    if (e && typeof e === "object" && "digest" in e) throw e;
     console.error("CourseDetailPage error:", e);
     return <CourseDetailClient course={null} modules={[]} slug={slug} />;
   }

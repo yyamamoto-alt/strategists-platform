@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getLmsSession } from "@/lib/supabase/server";
 import { ProgressSheetsClient } from "./progress-sheets-client";
 
 export const dynamic = "force-dynamic";
@@ -14,7 +15,7 @@ export interface MentorReport {
   level_mck: string | null;
 }
 
-async function fetchMentorReports(): Promise<MentorReport[]> {
+async function fetchMentorReports(userEmail: string | null): Promise<MentorReport[]> {
   const supabase = createAdminClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as any;
@@ -50,7 +51,15 @@ async function fetchMentorReports(): Promise<MentorReport[]> {
     }
   }
 
-  return (reports || []).map((row: Record<string, unknown>) => {
+  // ログインユーザーのメールアドレスでフィルタリング
+  const filtered = userEmail
+    ? (reports || []).filter((row: Record<string, unknown>) => {
+        const raw = (row.raw_data || {}) as Record<string, string>;
+        return raw["顧客メールアドレス"]?.toLowerCase() === userEmail.toLowerCase();
+      })
+    : reports || [];
+
+  return filtered.map((row: Record<string, unknown>) => {
     const raw = (row.raw_data || {}) as Record<string, string>;
     const email = raw["顧客メールアドレス"] || "";
     const date = raw["指導日"] || "";
@@ -73,6 +82,9 @@ async function fetchMentorReports(): Promise<MentorReport[]> {
 }
 
 export default async function ProgressSheetsPage() {
-  const reports = await fetchMentorReports();
+  const session = await getLmsSession();
+  const isAdmin = session?.role === "admin" || session?.role === "mentor";
+  const userEmail = isAdmin ? null : session?.user?.email || null;
+  const reports = await fetchMentorReports(userEmail);
   return <ProgressSheetsClient reports={reports} />;
 }

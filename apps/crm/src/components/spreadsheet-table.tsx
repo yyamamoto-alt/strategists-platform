@@ -29,6 +29,7 @@ interface SpreadsheetTableProps<T> {
   searchFilter?: (item: T, query: string) => boolean;
   storageKey?: string;
   initialSearch?: string;
+  onSearchChange?: (query: string) => void;
 }
 
 // カテゴリ別のヘッダーとセルの色
@@ -107,6 +108,7 @@ export function SpreadsheetTable<T>({
   searchFilter,
   storageKey = "default",
   initialSearch = "",
+  onSearchChange,
 }: SpreadsheetTableProps<T>) {
   const [search, setSearch] = useState(initialSearch);
   const [sortKey, setSortKey] = useState<string | null>(null);
@@ -221,7 +223,7 @@ export function SpreadsheetTable<T>({
             type="text"
             placeholder={searchPlaceholder}
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => { setSearch(e.target.value); onSearchChange?.(e.target.value); }}
             className="flex-1 max-w-xs px-2 py-1 bg-surface-elevated border border-white/10 text-white placeholder-gray-500 rounded text-xs focus:outline-none focus:ring-1 focus:ring-brand"
           />
           <span className="text-xs text-gray-500">{filtered.length}件</span>
