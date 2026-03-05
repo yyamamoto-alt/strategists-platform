@@ -178,6 +178,7 @@ export interface Contract {
   payment_date: string | null;
   payment_form_url: string | null;
   subsidy_eligible: boolean;
+  subsidy_period_eligible: boolean;
   subsidy_amount: number | null;
   progress_sheet_url: string | null;
   // --- migration 004 追加フィールド ---

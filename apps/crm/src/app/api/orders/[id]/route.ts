@@ -22,6 +22,7 @@ export async function PATCH(request: Request, { params }: Props) {
     "contact_phone",
     "amount",
     "product_name",
+    "paid_at",
     "memo",
     "status",
     "payment_method",

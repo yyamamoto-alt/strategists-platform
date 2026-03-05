@@ -50,11 +50,12 @@ function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
         <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
         <XAxis
           dataKey="period"
-          tick={{ fontSize: 9, fill: "#9ca3af" }}
+          tick={{ fontSize: 8, fill: "#9ca3af" }}
           stroke="rgba(255,255,255,0.1)"
           angle={-45}
           textAnchor="end"
-          height={40}
+          height={45}
+          interval={0}
           tickFormatter={formatPeriodTick}
         />
         <YAxis
@@ -138,11 +139,12 @@ function FallbackChart({ data }: { data: RevenueMetrics[] }) {
         <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
         <XAxis
           dataKey="period"
-          tick={{ fontSize: 9, fill: "#9ca3af" }}
+          tick={{ fontSize: 8, fill: "#9ca3af" }}
           stroke="rgba(255,255,255,0.1)"
           angle={-45}
           textAnchor="end"
-          height={40}
+          height={45}
+          interval={0}
           tickFormatter={formatPeriodTick}
         />
         <YAxis

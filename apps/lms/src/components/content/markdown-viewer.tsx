@@ -2,7 +2,9 @@
 
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkBreaks from "remark-breaks";
 import { CopyProtectedWrapper } from "./copy-protected-wrapper";
+import { getYouTubeEmbedUrl, isYouTubeUrl } from "@/lib/content-utils";
 
 interface Props {
   content: string;
@@ -33,7 +35,33 @@ export function MarkdownViewer({
         prose-th:border prose-th:border-white/10 prose-th:bg-white/[0.05] prose-th:px-3 prose-th:py-2 prose-th:text-left
         prose-td:border prose-td:border-white/10 prose-td:px-3 prose-td:py-2
       ">
-        <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm, remarkBreaks]}
+          components={{
+            p: ({ children, ...props }) => {
+              // YouTube URL を自動的に埋め込みに変換
+              if (
+                typeof children === "string" &&
+                children.trim().match(/^https?:\/\//) &&
+                isYouTubeUrl(children.trim())
+              ) {
+                return (
+                  <div className="aspect-video rounded-lg overflow-hidden my-4">
+                    <iframe
+                      src={getYouTubeEmbedUrl(children.trim())}
+                      className="w-full h-full"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
+                  </div>
+                );
+              }
+              return <p {...props}>{children}</p>;
+            },
+          }}
+        >
+          {content}
+        </ReactMarkdown>
       </div>
     </CopyProtectedWrapper>
   );

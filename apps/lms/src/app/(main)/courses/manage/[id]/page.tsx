@@ -4,11 +4,12 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
-import { MarkdownViewer } from "@/components/content/markdown-viewer";
+import { RichEditor } from "@/components/content/rich-editor";
 import {
   ArrowLeft, Plus, Trash2, GripVertical, Video, FileText, Save,
   X, Upload, ChevronDown, ChevronRight, Check, AlertCircle,
 } from "lucide-react";
+import { cleanNotionMarkdown } from "@/lib/content-utils";
 
 interface LessonData {
   id: string;
@@ -17,6 +18,7 @@ interface LessonData {
   lesson_type: string;
   video_url: string | null;
   markdown_content: string | null;
+  content_format: string | null;
   duration_minutes: number | null;
   sort_order: number;
   is_active: boolean;
@@ -31,29 +33,10 @@ interface ModuleData {
   lessons: LessonData[];
 }
 
-// YouTube URL関連
-function isYouTubeUrl(url: string): boolean {
-  return /(?:youtube\.com|youtu\.be)/.test(url);
-}
+import { isYouTubeUrl, getYouTubeEmbedUrl } from "@/lib/content-utils";
 
-function getYouTubeEmbedUrl(url: string): string {
-  const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&?#]+)/);
-  return match ? `https://www.youtube.com/embed/${match[1]}` : url;
-}
-
-// Notionマークダウンクリーンアップ
-function cleanNotionMarkdown(md: string): string {
-  let cleaned = md;
-  cleaned = cleaned.replace(/\[([^\]]+)\]\(\)/g, "$1");
-  cleaned = cleaned.replace(/\n{3,}/g, "\n\n");
-  cleaned = cleaned.replace(/^(.*\n)+?(?=# )/m, "");
-  cleaned = cleaned.replace(/> [^\w\s<>&]{1,3}\s*/g, "> ");
-  return cleaned.trim();
-}
-
-// マークダウンを簡易HTML変換（サニタイズ付き）
+// マークダウンを簡易HTML変換（Tiptapへの読み込み用）
 function markdownToHtml(md: string): string {
-  // HTMLタグをエスケープ（XSS防止）
   let html = md
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -115,7 +98,8 @@ export default function CourseEditPage() {
   const [editingLesson, setEditingLesson] = useState<LessonData | null>(null);
   const [lessonForm, setLessonForm] = useState({
     title: "", description: "", lesson_type: "テキスト",
-    video_url: "", markdown_content: "", duration_minutes: 0,
+    video_url: "", markdown_content: "", content_format: "html" as string,
+    duration_minutes: 0,
   });
   const [lessonSaving, setLessonSaving] = useState(false);
   const [showNotionImport, setShowNotionImport] = useState(false);
@@ -333,12 +317,18 @@ export default function CourseEditPage() {
   // レッスン編集開始
   const handleEditLesson = (lesson: LessonData) => {
     setEditingLesson(lesson);
+    // 既存マークダウンコンテンツの場合、HTML変換してエディタに読み込む
+    const isMarkdown = !lesson.content_format || lesson.content_format === "markdown";
+    const htmlContent = isMarkdown && lesson.markdown_content
+      ? markdownToHtml(lesson.markdown_content)
+      : (lesson.markdown_content || "");
     setLessonForm({
       title: lesson.title,
       description: lesson.description || "",
       lesson_type: lesson.lesson_type,
       video_url: lesson.video_url || "",
-      markdown_content: lesson.markdown_content || "",
+      markdown_content: htmlContent,
+      content_format: "html",
       duration_minutes: lesson.duration_minutes || 0,
     });
   };
@@ -358,6 +348,7 @@ export default function CourseEditPage() {
           lesson_type: lessonForm.lesson_type,
           video_url: lessonForm.video_url || null,
           markdown_content: lessonForm.markdown_content || null,
+          content_format: "html",
           duration_minutes: lessonForm.duration_minutes || null,
         }),
       });
@@ -387,11 +378,12 @@ export default function CourseEditPage() {
     }
   };
 
-  // Notionインポート
+  // Notionインポート（マークダウン→HTML変換してエディタに流し込み）
   const handleNotionImport = () => {
     if (!notionText.trim()) { showToast("マークダウンを入力してください", "error"); return; }
     const cleaned = cleanNotionMarkdown(notionText);
-    setLessonForm((f) => ({ ...f, markdown_content: cleaned }));
+    const html = markdownToHtml(cleaned);
+    setLessonForm((f) => ({ ...f, markdown_content: html, content_format: "html" }));
     setShowNotionImport(false);
     setNotionText("");
     showToast("マークダウンをインポートしました", "success");
@@ -408,7 +400,8 @@ export default function CourseEditPage() {
     reader.onload = () => {
       const text = reader.result as string;
       const cleaned = cleanNotionMarkdown(text);
-      setLessonForm((f) => ({ ...f, markdown_content: cleaned }));
+      const html = markdownToHtml(cleaned);
+      setLessonForm((f) => ({ ...f, markdown_content: html, content_format: "html" }));
       showToast("ファイルを読み込みました", "success");
     };
     reader.readAsText(file);
@@ -696,38 +689,23 @@ export default function CourseEditPage() {
               </div>
             )}
 
-            {/* テキストレッスン: マークダウンエディタ */}
-            {(lessonForm.lesson_type === "テキスト" || lessonForm.lesson_type === "ケース演習") && (
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="block text-sm font-medium text-gray-300">マークダウン教材</label>
-                  <button
-                    onClick={() => setShowNotionImport(true)}
-                    className="flex items-center gap-1 text-xs text-brand-light hover:text-white transition-colors"
-                  >
-                    <Upload className="w-3 h-3" />Notionからインポート
-                  </button>
-                </div>
-                <textarea
-                  rows={12}
-                  value={lessonForm.markdown_content}
-                  onChange={(e) => setLessonForm({ ...lessonForm, markdown_content: e.target.value })}
-                  className="w-full px-3 py-2 bg-surface border border-white/10 rounded-lg text-white text-sm font-mono focus:outline-none focus:border-brand"
-                  placeholder="# タイトル&#10;&#10;マークダウンで教材を書く..."
-                />
-                {lessonForm.markdown_content && (
-                  <div className="mt-3">
-                    <p className="text-xs text-gray-500 mb-2">プレビュー:</p>
-                    <div className="bg-surface rounded-lg p-4 border border-white/10 max-h-80 overflow-y-auto">
-                      <MarkdownViewer
-                        content={markdownToHtml(lessonForm.markdown_content)}
-                        protected={false}
-                      />
-                    </div>
-                  </div>
-                )}
+            {/* リッチテキストエディタ（全レッスンタイプ対応） */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-sm font-medium text-gray-300">コンテンツ</label>
+                <button
+                  onClick={() => setShowNotionImport(true)}
+                  className="flex items-center gap-1 text-xs text-brand-light hover:text-white transition-colors"
+                >
+                  <Upload className="w-3 h-3" />Notionからインポート
+                </button>
               </div>
-            )}
+              <RichEditor
+                content={lessonForm.markdown_content}
+                onChange={(html) => setLessonForm((f) => ({ ...f, markdown_content: html }))}
+                placeholder="コンテンツを入力..."
+              />
+            </div>
 
             {/* ファイルドロップ */}
             <div

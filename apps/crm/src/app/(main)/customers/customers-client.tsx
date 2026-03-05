@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { useSearchParams } from "next/navigation";
+import { useState, useMemo, useCallback } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   formatCurrency,
@@ -58,7 +58,7 @@ function Truncated({ value, width = 140 }: { value: string | null | undefined; w
 // ================================================================
 // ビュータブ定義
 // ================================================================
-type ViewTab = "all" | "marketing" | "sales" | "education" | "agent";
+type ViewTab = "all" | "marketing" | "sales" | "education" | "agent" | "subsidy";
 
 const VIEW_TABS: { key: ViewTab; label: string }[] = [
   { key: "all", label: "全般" },
@@ -66,6 +66,7 @@ const VIEW_TABS: { key: ViewTab; label: string }[] = [
   { key: "sales", label: "営業" },
   { key: "education", label: "エデュ" },
   { key: "agent", label: "エージェント" },
+  { key: "subsidy", label: "補助金" },
 ];
 
 // タブごとに表示するカラムキーの定義
@@ -122,6 +123,14 @@ const VIEW_COLUMNS: Record<ViewTab, string[] | null> = {
     "placement_confirmed", "placement_date",
     "agent_staff", "agent_memo", "loss_reason",
     "subsidy_eligible",
+    "subsidy_period_eligible",
+  ],
+  subsidy: [
+    "application_date", "name", "attribute", "stage", "deal_status",
+    "confirmed_amount", "rev_total",
+    "plan_name", "enrollment_status",
+    "subsidy_eligible", "subsidy_period_eligible",
+    "referral_category",
   ],
 };
 
@@ -131,12 +140,47 @@ type DisplayLimit = 200 | 400 | 1000 | "all";
 
 export function CustomersClient({ customers, attributionMap }: CustomersClientProps) {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const initialSearch = searchParams.get("search") || "";
   const [attributeFilter, setAttributeFilter] = useState<string>("");
   const [stageFilter, setStageFilter] = useState<string>("");
   const [contractFilter, setContractFilter] = useState<string>("");
   const [activeTab, setActiveTab] = useState<ViewTab>("all");
   const [displayLimit, setDisplayLimit] = useState<DisplayLimit>(200);
+  const [subsidyFilter, setSubsidyFilter] = useState<string>("");
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [creating, setCreating] = useState(false);
+
+  const handleCreate = useCallback(async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setCreating(true);
+    const form = new FormData(e.currentTarget);
+    const body = {
+      name: form.get("name"),
+      email: form.get("email"),
+      phone: form.get("phone"),
+      attribute: form.get("attribute"),
+      application_date: form.get("application_date"),
+      stage: form.get("stage"),
+    };
+    try {
+      const res = await fetch("/api/customers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (res.ok) {
+        const { id } = await res.json();
+        setShowCreateModal(false);
+        router.push(`/customers/${id}`);
+      } else {
+        const err = await res.json();
+        alert(err.error || "作成に失敗しました");
+      }
+    } finally {
+      setCreating(false);
+    }
+  }, [router]);
 
   // フィルタ
   const baseFiltered = useMemo(() => {
@@ -156,8 +200,16 @@ export function CustomersClient({ customers, attributionMap }: CustomersClientPr
     } else if (contractFilter === "未成約") {
       result = result.filter((c) => !CLOSED_STAGES.has(c.pipeline?.stage || ""));
     }
+    // 補助金フィルタ
+    if (subsidyFilter === "subsidy") {
+      result = result.filter((c) => c.contract?.subsidy_eligible);
+    } else if (subsidyFilter === "period") {
+      result = result.filter((c) => c.contract?.subsidy_period_eligible);
+    } else if (subsidyFilter === "both") {
+      result = result.filter((c) => c.contract?.subsidy_eligible && c.contract?.subsidy_period_eligible);
+    }
     return result;
-  }, [customers, attributeFilter, stageFilter, contractFilter]);
+  }, [customers, attributeFilter, stageFilter, contractFilter, subsidyFilter]);
 
   const displayFiltered = useMemo(() => {
     if (displayLimit === "all") return baseFiltered;
@@ -372,6 +424,8 @@ export function CustomersClient({ customers, attributionMap }: CustomersClientPr
         render: (c) => <Truncated value={c.agent?.loss_reason} width={120} /> },
       { key: "subsidy_eligible", label: "補助金対象", width: 80, category: "agent",
         render: (c) => c.contract?.subsidy_eligible ? <span className="text-purple-400 text-xs">対象</span> : "-" },
+      { key: "subsidy_period_eligible", label: "補助金期間対象", width: 100, category: "agent",
+        render: (c) => c.contract?.subsidy_period_eligible ? <span className="text-emerald-400 text-xs">対象</span> : "-" },
 
       // ═══ エデュケーション（緑） ═══
       { key: "offer_company", label: "内定先", width: 120, category: "education",
@@ -506,6 +560,13 @@ export function CustomersClient({ customers, attributionMap }: CustomersClientPr
             : `${baseFiltered.length}件`}
         </span>
 
+        <button
+          onClick={() => setShowCreateModal(true)}
+          className="px-3 py-1.5 bg-brand text-white text-xs font-medium rounded-md hover:bg-brand/90 transition-colors shrink-0"
+        >
+          + 新規登録
+        </button>
+
         {/* 表示件数セレクタ */}
         <select
           value={String(displayLimit)}
@@ -604,21 +665,106 @@ export function CustomersClient({ customers, attributionMap }: CustomersClientPr
 
       </div>
 
+      {/* 補助金フィルタ（補助金タブ時のみ表示） */}
+      {activeTab === "subsidy" && (
+        <div className="flex gap-0.5 bg-surface-elevated rounded-md p-0.5 w-fit border border-white/10">
+          {[
+            { val: "", label: "全件" },
+            { val: "subsidy", label: "補助金対象" },
+            { val: "period", label: "補助金期間対象" },
+            { val: "both", label: "両方対象" },
+          ].map(({ val, label }) => (
+            <button
+              key={val}
+              onClick={() => setSubsidyFilter(val)}
+              className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+                subsidyFilter === val
+                  ? "bg-purple-600 text-white"
+                  : "text-gray-400 hover:text-white"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* テーブル */}
       <SpreadsheetTable
         columns={spreadsheetColumns}
         data={displayFiltered}
         getRowKey={(c) => c.id}
         storageKey={`customers-${activeTab}`}
-        searchPlaceholder="名前・大学・経歴・チャネルで検索..."
+        searchPlaceholder="名前・メール・大学・経歴・チャネルで検索..."
         initialSearch={initialSearch}
         searchFilter={(c, q) =>
           c.name.toLowerCase().includes(q) ||
+          (c.email?.toLowerCase().includes(q) ?? false) ||
           (c.university?.toLowerCase().includes(q) ?? false) ||
           (c.career_history?.toLowerCase().includes(q) ?? false) ||
           (attributionMap[c.id]?.marketing_channel?.toLowerCase().includes(q) ?? false)
         }
       />
+
+      {/* 新規登録モーダル */}
+      {showCreateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setShowCreateModal(false)}>
+          <div className="bg-surface-card border border-white/10 rounded-xl p-6 w-full max-w-md shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-lg font-bold text-white mb-4">新規顧客登録</h2>
+            <form onSubmit={handleCreate} className="space-y-3">
+              <div>
+                <label className="text-xs text-gray-400 block mb-1">名前 *</label>
+                <input name="name" required className="w-full px-3 py-2 bg-surface border border-white/10 rounded text-sm text-white focus:outline-none focus:ring-1 focus:ring-brand" />
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 block mb-1">メールアドレス</label>
+                <input name="email" type="email" className="w-full px-3 py-2 bg-surface border border-white/10 rounded text-sm text-white focus:outline-none focus:ring-1 focus:ring-brand" />
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 block mb-1">電話番号</label>
+                <input name="phone" className="w-full px-3 py-2 bg-surface border border-white/10 rounded text-sm text-white focus:outline-none focus:ring-1 focus:ring-brand" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-gray-400 block mb-1">属性 *</label>
+                  <select name="attribute" required className="w-full px-3 py-2 bg-surface border border-white/10 rounded text-sm text-white focus:outline-none focus:ring-1 focus:ring-brand">
+                    <option value="既卒">既卒</option>
+                    <option value="既卒・中途(3年目未満)">既卒・中途(3年目未満)</option>
+                    <option value="既卒・中途(3年目以上)">既卒・中途(3年目以上)</option>
+                    <option value="新卒">新卒</option>
+                    <option value="新卒(26卒)">新卒(26卒)</option>
+                    <option value="新卒(27卒)">新卒(27卒)</option>
+                    <option value="新卒(28卒)">新卒(28卒)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-gray-400 block mb-1">ステージ</label>
+                  <select name="stage" className="w-full px-3 py-2 bg-surface border border-white/10 rounded text-sm text-white focus:outline-none focus:ring-1 focus:ring-brand">
+                    <option value="問い合わせ">問い合わせ</option>
+                    <option value="未実施">未実施</option>
+                    <option value="日程確定">日程確定</option>
+                    <option value="検討中">検討中</option>
+                    <option value="成約">成約</option>
+                    <option value="実施不可">実施不可</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 block mb-1">申込日</label>
+                <input name="application_date" type="date" defaultValue={new Date().toISOString().slice(0, 10)} className="w-full px-3 py-2 bg-surface border border-white/10 rounded text-sm text-white focus:outline-none focus:ring-1 focus:ring-brand" />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button type="button" onClick={() => setShowCreateModal(false)} className="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors">
+                  キャンセル
+                </button>
+                <button type="submit" disabled={creating} className="px-4 py-2 bg-brand text-white text-sm font-medium rounded-md hover:bg-brand/90 transition-colors disabled:opacity-50">
+                  {creating ? "登録中..." : "登録"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -93,6 +93,7 @@ export function OrdersClient({ orders: initialOrders, reconciliation }: OrdersCl
           contact_email: order.contact_email,
           amount: order.amount,
           product_name: order.product_name,
+          paid_at: order.paid_at,
           memo: order.memo,
           status: order.status,
         }),
@@ -449,6 +450,15 @@ export function OrdersClient({ orders: initialOrders, reconciliation }: OrdersCl
                 <input
                   value={editingOrder.product_name || ""}
                   onChange={(e) => setEditingOrder({ ...editingOrder, product_name: e.target.value })}
+                  className="w-full mt-1 px-3 py-1.5 bg-surface-elevated border border-white/10 text-white rounded text-sm focus:outline-none focus:ring-1 focus:ring-brand"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-gray-400">決済日</label>
+                <input
+                  type="date"
+                  value={editingOrder.paid_at ? editingOrder.paid_at.slice(0, 10) : ""}
+                  onChange={(e) => setEditingOrder({ ...editingOrder, paid_at: e.target.value || null })}
                   className="w-full mt-1 px-3 py-1.5 bg-surface-elevated border border-white/10 text-white rounded text-sm focus:outline-none focus:ring-1 focus:ring-brand"
                 />
               </div>

@@ -397,12 +397,10 @@ export function computeThreeTierRevenue(
       const projectedTotal = confirmedTotal + m.projected_agent;
 
       // Tier 3: 見込み含む売上 + 未成約パイプラインの期待値（ステージ別確率）
-      // ベースは projectedTotal（確定+人材見込み）。予測は常に見込み以上になる
-      // 当月は月消化率で割り戻し（Excel Col DE 準拠）
+      // 月消化率補正は確定+見込みベースのみに適用（未成約パイプラインの期待値は確率補正済みのため不要）
       const monthMultiplier = getMonthProgressMultiplier(period);
-      const forecastRaw =
-        projectedTotal + m.forecast_school + m.forecast_agent + m.forecast_subsidy;
-      const forecastTotal = forecastRaw * monthMultiplier;
+      const forecastFromPipeline = m.forecast_school + m.forecast_agent + m.forecast_subsidy;
+      const forecastTotal = projectedTotal * monthMultiplier + forecastFromPipeline;
 
       return {
         period,
@@ -1028,10 +1026,9 @@ export function computePLSheetData(
 
 export interface ChannelTrend {
   channel: string;
-  recentCount: number;          // 直近2週間の申込数
-  recentWeeklyRate: number;     // 直近2週間の週あたり申込数
-  baselineCount: number;        // 前6週間の申込数
-  baselineWeeklyRate: number;   // 前6週間の週あたり申込数
+  recentCount: number;          // 直近1ヶ月の申込数
+  baselineCount: number;        // 前2ヶ月の申込数
+  baselineMonthlyRate: number;  // 前2ヶ月の月あたり申込数
   trendPct: number;             // 変化率 (%)
   trend: "up" | "down" | "stable";
 }
@@ -1041,11 +1038,11 @@ export function computeChannelTrends(
   attributionMap?: Record<string, ChannelAttribution>
 ): ChannelTrend[] {
   const now = new Date();
-  const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
-  const eightWeeksAgo = new Date(now.getTime() - 56 * 24 * 60 * 60 * 1000);
+  const oneMonthAgo = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+  const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
 
-  const twoWeeksStr = twoWeeksAgo.toISOString().slice(0, 10);
-  const eightWeeksStr = eightWeeksAgo.toISOString().slice(0, 10);
+  const oneMonthStr = oneMonthAgo.toISOString().slice(0, 10);
+  const threeMonthsStr = threeMonthsAgo.toISOString().slice(0, 10);
 
   const hasAttribution = attributionMap && Object.keys(attributionMap).length > 0;
 
@@ -1054,7 +1051,7 @@ export function computeChannelTrends(
   for (const c of customers) {
     const date = c.application_date;
     if (!date) continue;
-    if (date < eightWeeksStr) continue;
+    if (date < threeMonthsStr) continue;
 
     const channel = hasAttribution
       ? (attributionMap[c.id]?.marketing_channel || "不明")
@@ -1065,7 +1062,7 @@ export function computeChannelTrends(
     }
     const m = byChannel.get(channel)!;
 
-    if (date >= twoWeeksStr) {
+    if (date >= oneMonthStr) {
       m.recent++;
     } else {
       m.baseline++;
@@ -1074,14 +1071,13 @@ export function computeChannelTrends(
 
   return Array.from(byChannel.entries())
     .map(([channel, m]) => {
-      const recentWeeklyRate = m.recent / 2;
-      const baselineWeeklyRate = m.baseline / 6;
+      const baselineMonthlyRate = m.baseline / 2;
 
       let trendPct = 0;
       let trend: "up" | "down" | "stable" = "stable";
 
-      if (baselineWeeklyRate > 0) {
-        trendPct = ((recentWeeklyRate - baselineWeeklyRate) / baselineWeeklyRate) * 100;
+      if (baselineMonthlyRate > 0) {
+        trendPct = ((m.recent - baselineMonthlyRate) / baselineMonthlyRate) * 100;
         trend = trendPct > 15 ? "up" : trendPct < -15 ? "down" : "stable";
       } else if (m.recent > 0) {
         trendPct = 100;
@@ -1091,9 +1087,8 @@ export function computeChannelTrends(
       return {
         channel,
         recentCount: m.recent,
-        recentWeeklyRate: Math.round(recentWeeklyRate * 10) / 10,
         baselineCount: m.baseline,
-        baselineWeeklyRate: Math.round(baselineWeeklyRate * 10) / 10,
+        baselineMonthlyRate: Math.round(baselineMonthlyRate * 10) / 10,
         trendPct: Math.round(trendPct),
         trend,
       };

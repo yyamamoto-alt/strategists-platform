@@ -15,24 +15,24 @@ interface NavItem {
 }
 
 const mainNavigation: NavItem[] = [
-  { name: "ダッシュボード", href: "/dashboard", icon: "📊" },
-  { name: "PL", href: "/revenue", icon: "💰", roles: ["admin"] },
-  { name: "顧客DB", href: "/customers", icon: "👤", roles: ["admin", "mentor"] },
-  { name: "パイプライン", href: "/pipeline", icon: "🔄", roles: ["admin", "mentor"] },
+  { name: "ダッシュボード", href: "/dashboard", icon: "" },
+  { name: "PL", href: "/revenue", icon: "", roles: ["admin"] },
+  { name: "顧客DB", href: "/customers", icon: "", roles: ["admin", "mentor"] },
+  { name: "パイプライン", href: "/pipeline", icon: "", roles: ["admin", "mentor"] },
 ];
 
 const databaseNavigation: NavItem[] = [
-  { name: "フォームDB", href: "/form-data", icon: "📋", roles: ["admin", "mentor"] },
-  { name: "注文管理", href: "/orders", icon: "💳", roles: ["admin"] },
+  { name: "フォームDB", href: "/form-data", icon: "", roles: ["admin", "mentor"] },
+  { name: "注文管理", href: "/orders", icon: "", roles: ["admin"] },
 ];
 
 const adminNavigation: NavItem[] = [
-  { name: "学習管理", href: "/learning", icon: "📖", roles: ["admin", "mentor"] },
-  { name: "エージェント", href: "/agents", icon: "🤝", roles: ["admin", "mentor"] },
-  { name: "LMSアカウント", href: "/students", icon: "🎓", roles: ["admin"] },
-  { name: "ユーザー管理", href: "/users", icon: "👥", roles: ["admin"] },
-  { name: "設定", href: "/settings", icon: "⚙️", roles: ["admin"] },
-  { name: "データ連携", href: "/data-sync", icon: "🔗", roles: ["admin"] },
+  { name: "学習管理", href: "/learning", icon: "", roles: ["admin", "mentor"] },
+  { name: "エージェント", href: "/agents", icon: "", roles: ["admin", "mentor"] },
+  { name: "LMSアカウント", href: "/students", icon: "", roles: ["admin"] },
+  { name: "ユーザー管理", href: "/users", icon: "", roles: ["admin"] },
+  { name: "設定", href: "/settings", icon: "", roles: ["admin"] },
+  { name: "データ連携", href: "/data-sync", icon: "", roles: ["admin"] },
 ];
 
 function isItemActive(pathname: string | null, href: string): boolean {
@@ -67,7 +67,6 @@ function NavSection({ title, items, role }: { title: string; items: NavItem[]; r
                 : "text-gray-300 hover:bg-white/5 hover:text-white"
             )}
           >
-            <span className="text-lg">{item.icon}</span>
             <span>{item.name}</span>
           </Link>
         );

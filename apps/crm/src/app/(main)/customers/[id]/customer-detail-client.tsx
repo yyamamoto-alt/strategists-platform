@@ -39,8 +39,8 @@ type DataSource = "manual" | "calc" | "sync" | "migration";
 const SOURCE_CONFIG: Record<DataSource, { label: string; cls: string; title: string }> = {
   manual: { label: "編集", cls: "text-blue-400 bg-blue-400/10 border-blue-400/20", title: "手動で編集可能" },
   calc: { label: "fx", cls: "text-amber-400 bg-amber-400/10 border-amber-400/20", title: "自動計算値" },
-  sync: { label: "同期", cls: "text-green-400 bg-green-400/10 border-green-400/20", title: "フォーム同期で更新" },
-  migration: { label: "参照", cls: "text-gray-400 bg-gray-400/10 border-gray-400/20", title: "Excel移行データ（読み取り専用）" },
+  sync: { label: "同期", cls: "text-green-400 bg-green-400/10 border-green-400/20", title: "フォーム同期で更新（手動編集可）" },
+  migration: { label: "参照", cls: "text-gray-400 bg-gray-400/10 border-gray-400/20", title: "フォーム参照（読み取り専用）" },
 };
 
 function SourceBadge({ source }: { source: DataSource }) {
@@ -296,46 +296,91 @@ function buildContractFields(c: CustomerWithRelations): FieldDef[] {
   return [
     { key: "plan_name", label: "プラン", source: "manual", table: "contract", getValue: () => c.contract?.plan_name || "-" },
     { key: "changed_plan", label: "変更プラン", source: "manual", table: "contract", getValue: () => c.contract?.changed_plan || "-" },
-    { key: "confirmed_amount", label: "確定売上(a1)", source: "manual", type: "number", table: "contract", getValue: () => c.contract?.confirmed_amount ? formatCurrency(c.contract.confirmed_amount) : "-" },
+    { key: "confirmed_amount", label: "確定売上", source: "manual", type: "number", table: "contract", getValue: () => c.contract?.confirmed_amount ? formatCurrency(c.contract.confirmed_amount) : "-" },
     { key: "first_amount", label: "一次金額", source: "manual", type: "number", table: "contract", getValue: () => c.contract?.first_amount ? formatCurrency(c.contract.first_amount) : "-" },
     { key: "discount", label: "割引", source: "manual", type: "number", table: "contract", getValue: () => c.contract?.discount ? formatCurrency(c.contract.discount) : "なし" },
     { key: "billing_status", label: "請求状況", source: "manual", type: "select", options: ["未請求", "請求済", "入金済", "返金済"], table: "contract", getValue: () => c.contract?.billing_status || "-" },
     { key: "payment_date", label: "入金日", source: "manual", type: "date", table: "contract", getValue: () => formatDate(c.contract?.payment_date ?? null) },
     { key: "subsidy_eligible", label: "補助金対象", source: "manual", type: "select", options: ["true", "false"], table: "contract", getValue: () => c.contract?.subsidy_eligible ? "対象" : "非対象" },
+    { key: "subsidy_period_eligible", label: "補助金期間対象", source: "manual", type: "select", options: ["true", "false"], table: "contract", getValue: () => c.contract?.subsidy_period_eligible ? "対象" : "非対象" },
   ];
 }
 
-function buildRevenueFields(c: CustomerWithRelations): FieldDef[] {
-  return [
-    { key: "school_confirmed", label: "確定売上(スクール a)", source: "calc", getValue: () => {
-      const amt = (c.contract?.confirmed_amount || 0) + getSubsidyAmount(c);
-      return amt > 0 ? formatCurrency(amt) : "¥0";
-    }},
-    { key: "agent_projected", label: "人材見込売上(b)", source: "calc", getValue: () => {
-      const v = calcAgentProjectedRevenue(c);
-      return v > 0 ? formatCurrency(v) : "¥0";
-    }},
-    { key: "agent_confirmed", label: "確定売上(人材 c)", source: "calc", getValue: () => {
-      return isAgentConfirmed(c) ? formatCurrency(calcExpectedReferralFee(c)) : "¥0";
-    }},
-    { key: "sales_projection", label: "成約者見込LTV", source: "calc", getValue: () => {
-      const v = calcSalesProjection(c);
-      return v > 0 ? formatCurrency(v) : "-";
-    }},
-    { key: "confirmed_total", label: "確定売上合計(e=a+c)", source: "calc", getValue: () => {
-      const v = calcConfirmedRevenue(c);
-      return v > 0 ? formatCurrency(v) : "¥0";
-    }},
-    { key: "closing_prob", label: "成約見込率", source: "calc", getValue: () => formatPercent(calcClosingProbability(c)) },
-    { key: "expected_ltv", label: "見込LTV(d)", source: "calc", getValue: () => {
-      const v = calcExpectedLTV(c);
-      return v > 0 ? formatCurrency(v) : "-";
-    }},
-    { key: "subsidy", label: "補助金額(a2)", source: "calc", getValue: () => {
-      const s = getSubsidyAmount(c);
-      return s > 0 ? formatCurrency(s) : "¥0";
-    }},
-  ];
+/** メンター指導報告から最初のケース面接指導日を算出（アセスメント・ビヘイビア除外） */
+function calcFirstCoachingDate(applicationHistory: ApplicationHistoryRecord[]): string | null {
+  const EXCLUDE_PATTERNS = ["ビヘイビア", "アセスメント"];
+  const mentorReports = applicationHistory
+    .filter((r) => r.source === "メンター指導報告")
+    .filter((r) => {
+      const problem = (r.raw_data as Record<string, string>)?.["解いた問題"] || "";
+      return !EXCLUDE_PATTERNS.some((p) => problem.includes(p));
+    })
+    .map((r) => {
+      const dateStr = (r.raw_data as Record<string, string>)?.["指導日"];
+      return dateStr ? dateStr.replace(/\//g, "-") : null;
+    })
+    .filter((d): d is string => !!d)
+    .sort();
+
+  return mentorReports.length > 0 ? mentorReports[0] : null;
+}
+
+/** 売上見込セクション（構造化表示） */
+function RevenueSection({ customer }: { customer: CustomerWithRelations }) {
+  const schoolConfirmed = customer.contract?.confirmed_amount || 0;
+  const subsidy = getSubsidyAmount(customer);
+  const agentConfirmed = isAgentConfirmed(customer) ? calcExpectedReferralFee(customer) : 0;
+  const confirmedTotal = calcConfirmedRevenue(customer);
+
+  const agentProjected = calcAgentProjectedRevenue(customer);
+  const salesProjection = calcSalesProjection(customer);
+
+  const closingProb = calcClosingProbability(customer);
+  const expectedLtv = calcExpectedLTV(customer);
+
+  const Row = ({ label, value, bold, sub }: { label: string; value: string; bold?: boolean; sub?: boolean }) => (
+    <div className={`flex items-center justify-between py-1 ${sub ? "pl-4" : ""}`}>
+      <span className={`text-xs ${sub ? "text-gray-500" : "text-gray-400"}`}>{label}</span>
+      <span className={`text-sm ${bold ? "font-bold text-white" : "text-gray-300"}`}>{value}</span>
+    </div>
+  );
+
+  const Divider = () => <div className="border-t border-white/[0.06] my-1" />;
+
+  return (
+    <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-4">
+      <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">売上サマリー</h2>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* 確定売上 */}
+        <div className="bg-surface-elevated rounded-lg p-3">
+          <p className="text-[10px] font-semibold text-green-400 uppercase tracking-wider mb-1">確定売上</p>
+          <Row label="スクール" value={formatCurrency(schoolConfirmed)} sub />
+          {subsidy > 0 && <Row label="補助金" value={formatCurrency(subsidy)} sub />}
+          {agentConfirmed > 0 && <Row label="人材（確定）" value={formatCurrency(agentConfirmed)} sub />}
+          <Divider />
+          <Row label="合計" value={formatCurrency(confirmedTotal)} bold />
+        </div>
+
+        {/* 見込売上（成約者） */}
+        <div className="bg-surface-elevated rounded-lg p-3">
+          <p className="text-[10px] font-semibold text-amber-400 uppercase tracking-wider mb-1">見込売上</p>
+          <Row label="確定売上" value={formatCurrency(confirmedTotal)} sub />
+          {agentProjected > 0 && <Row label="人材（見込）" value={formatCurrency(agentProjected)} sub />}
+          <Divider />
+          <Row label="成約者見込LTV" value={salesProjection > 0 ? formatCurrency(salesProjection) : "-"} bold />
+        </div>
+
+        {/* 期待値（未成約含む） */}
+        <div className="bg-surface-elevated rounded-lg p-3">
+          <p className="text-[10px] font-semibold text-blue-400 uppercase tracking-wider mb-1">期待値</p>
+          <Row label="成約見込率" value={formatPercent(closingProb)} sub />
+          <Row label="見込LTV × 見込率" value="" sub />
+          <Divider />
+          <Row label="見込LTV" value={expectedLtv > 0 ? formatCurrency(expectedLtv) : "-"} bold />
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function buildPipelineFields(c: CustomerWithRelations): FieldDef[] {
@@ -356,16 +401,17 @@ function buildPipelineFields(c: CustomerWithRelations): FieldDef[] {
   ];
 }
 
-function buildLearningFields(c: CustomerWithRelations): FieldDef[] {
+function buildLearningFields(c: CustomerWithRelations, appHistory?: ApplicationHistoryRecord[]): FieldDef[] {
   if (!c.learning) return [];
+  const firstCoachingDate = appHistory ? calcFirstCoachingDate(appHistory) : null;
   return [
-    { key: "mentor_name", label: "指導メンター", source: "sync", getValue: () => c.learning?.mentor_name || "-" },
+    { key: "mentor_name", label: "指導メンター", source: "sync", table: "learning", getValue: () => c.learning?.mentor_name || "-" },
     { key: "contract_months", label: "契約月数", source: "migration", getValue: () => c.learning?.contract_months != null ? `${c.learning.contract_months}ヶ月` : "-" },
-    { key: "coaching_start_date", label: "指導開始日", source: "manual", type: "date", table: "learning", getValue: () => formatDate(c.learning?.coaching_start_date ?? null) },
+    { key: "coaching_start_date", label: "指導開始日", source: "calc", getValue: () => firstCoachingDate ? formatDate(firstCoachingDate) : "-" },
     { key: "coaching_end_date", label: "指導終了日", source: "manual", type: "date", table: "learning", getValue: () => formatDate(c.learning?.coaching_end_date ?? null) },
-    { key: "last_coaching_date", label: "最終指導日", source: "sync", getValue: () => formatDate(c.learning?.last_coaching_date ?? null) },
+    { key: "last_coaching_date", label: "最終指導日", source: "sync", type: "date", table: "learning", getValue: () => formatDate(c.learning?.last_coaching_date ?? null) },
     { key: "total_sessions", label: "契約指導回数", source: "manual", type: "number", table: "learning", getValue: () => c.learning?.total_sessions?.toString() || "-" },
-    { key: "completed_sessions", label: "指導完了数", source: "sync", getValue: () => c.learning?.completed_sessions != null ? c.learning.completed_sessions.toString() : "-" },
+    { key: "completed_sessions", label: "指導完了数", source: "sync", type: "number", table: "learning", getValue: () => c.learning?.completed_sessions != null ? c.learning.completed_sessions.toString() : "-" },
     { key: "remaining", label: "残指導回数", source: "calc", getValue: () => `${calcRemainingSessions(c)}回` },
     { key: "schedule_progress", label: "日程消化率", source: "calc", getValue: () => { const v = calcScheduleProgress(c); return v !== null ? formatPercent(v) : "-"; } },
     { key: "session_progress", label: "指導消化率", source: "calc", getValue: () => { const v = calcSessionProgress(c); return v !== null ? formatPercent(v) : "-"; } },
@@ -514,14 +560,14 @@ export function CustomerDetailClient({
     // contract fields
     if (customer.contract) {
       const ct = customer.contract as unknown as Record<string, unknown>;
-      for (const key of ["plan_name", "confirmed_amount", "first_amount", "discount", "billing_status", "subsidy_eligible", "payment_date", "changed_plan"]) {
+      for (const key of ["plan_name", "confirmed_amount", "first_amount", "discount", "billing_status", "subsidy_eligible", "subsidy_period_eligible", "payment_date", "changed_plan"]) {
         vals[`contract.${key}`] = ct[key] != null ? String(ct[key]) : "";
       }
     }
     // learning fields
     if (customer.learning) {
       const l = customer.learning as unknown as Record<string, unknown>;
-      for (const key of ["mentor_name", "coaching_start_date", "coaching_end_date", "total_sessions", "completed_sessions", "current_level"]) {
+      for (const key of ["mentor_name", "coaching_end_date", "last_coaching_date", "total_sessions", "completed_sessions", "current_level"]) {
         vals[`learning.${key}`] = l[key] != null ? String(l[key]) : "";
       }
     }
@@ -571,7 +617,7 @@ export function CustomerDetailClient({
         const numFields = ["confirmed_amount", "first_amount", "discount", "probability", "total_sessions", "completed_sessions", "offer_salary", "hire_rate", "offer_probability", "referral_fee_rate", "margin"];
         if (numFields.includes(key)) {
           payload[table][key] = val ? Number(val) : null;
-        } else if (key === "subsidy_eligible") {
+        } else if (key === "subsidy_eligible" || key === "subsidy_period_eligible") {
           payload[table][key] = val === "true";
         } else {
           payload[table][key] = val || null;
@@ -618,9 +664,8 @@ export function CustomerDetailClient({
 
   const basicFields = useMemo(() => buildBasicFields(customer), [customer]);
   const contractFields = useMemo(() => buildContractFields(customer), [customer]);
-  const revenueFields = useMemo(() => buildRevenueFields(customer), [customer]);
   const pipelineFields = useMemo(() => buildPipelineFields(customer), [customer]);
-  const learningFields = useMemo(() => buildLearningFields(customer), [customer]);
+  const learningFields = useMemo(() => buildLearningFields(customer, applicationHistory), [customer, applicationHistory]);
   const agentFields = useMemo(() => buildAgentFields(customer), [customer]);
 
   return (
@@ -727,9 +772,9 @@ export function CustomerDetailClient({
             )}
           </Section>
 
-          <Section title="契約・入金" fields={contractFields} customer={customer} isEditing={isEditing} editValues={editValues} onEditChange={handleEditChange} cols={4} />
+          <Section title="契約" fields={contractFields} customer={customer} isEditing={isEditing} editValues={editValues} onEditChange={handleEditChange} cols={4} />
 
-          <Section title="売上見込" fields={revenueFields} customer={customer} isEditing={isEditing} editValues={editValues} onEditChange={handleEditChange} cols={4} />
+          <RevenueSection customer={customer} />
 
           {/* エージェント */}
           <Section title="エージェント・転職支援" fields={agentFields} customer={customer} isEditing={isEditing} editValues={editValues} onEditChange={handleEditChange} cols={4}>

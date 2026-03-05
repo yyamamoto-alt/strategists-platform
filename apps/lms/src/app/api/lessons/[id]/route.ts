@@ -53,7 +53,7 @@ export async function PATCH(
 
   const allowedFields = [
     "title", "description", "lesson_type", "video_url",
-    "markdown_content", "duration_minutes", "sort_order",
+    "markdown_content", "content_format", "duration_minutes", "sort_order",
     "is_active", "copy_protected",
   ];
 

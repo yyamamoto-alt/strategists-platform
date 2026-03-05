@@ -28,16 +28,11 @@ function SingleFunnelChart({
   label: string;
   height?: number;
 }) {
-  // 最新月は暫定値 → 線を繋がず点のみ表示にするため、別キーに分離
   const chartData = data.map((d, i) => {
     const isLatest = i === data.length - 1;
     return {
       ...d,
-      // 確定値（最新月以外）
-      applications_confirmed: isLatest ? undefined : d.applications,
       closing_rate_confirmed: isLatest ? undefined : Math.round(d.closing_rate * 100),
-      // 暫定値（最新月のみ）
-      applications_latest: isLatest ? d.applications : undefined,
       closing_rate_latest: isLatest ? Math.round(d.closing_rate * 100) : undefined,
       closing_rate_pct: Math.round(d.closing_rate * 100),
     };
@@ -51,11 +46,12 @@ function SingleFunnelChart({
           <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
           <XAxis
             dataKey="period"
-            tick={{ fontSize: 9, fill: "#9ca3af" }}
+            tick={{ fontSize: 8, fill: "#9ca3af" }}
             stroke="rgba(255,255,255,0.1)"
             angle={-45}
             textAnchor="end"
-            height={40}
+            height={45}
+            interval={0}
             tickFormatter={(v: string) => {
               const [y, m] = v.split("/");
               return m === "01" ? `${y}/${m}` : m;
@@ -78,35 +74,21 @@ function SingleFunnelChart({
             labelStyle={{ color: "#9ca3af" }}
           />
           <Legend iconSize={10} wrapperStyle={{ fontSize: 10, color: "#9ca3af" }} />
+          {/* 申込数: 棒グラフ（成約数の後ろに重ねる） */}
+          <Bar
+            yAxisId="left"
+            dataKey="applications"
+            name="申込数"
+            fill="#3b82f6"
+            fillOpacity={0.35}
+            radius={[4, 4, 0, 0]}
+          />
           <Bar
             yAxisId="left"
             dataKey="closed"
             name="成約数"
             fill="#22c55e"
             radius={[4, 4, 0, 0]}
-          />
-          {/* 申込数: 確定月（線あり） */}
-          <Line
-            yAxisId="left"
-            type="monotone"
-            dataKey="applications_confirmed"
-            name="申込数"
-            stroke="#3b82f6"
-            strokeWidth={2}
-            dot={{ r: 2 }}
-            connectNulls={false}
-          />
-          {/* 申込数: 最新月（点のみ、線なし） */}
-          <Line
-            yAxisId="left"
-            type="monotone"
-            dataKey="applications_latest"
-            name="申込数(暫定)"
-            stroke="#3b82f6"
-            strokeWidth={0}
-            dot={{ r: 4, fill: "#3b82f6", strokeWidth: 2, stroke: "#fff" }}
-            legendType="none"
-            connectNulls={false}
           />
           {/* 成約率: 確定月（線あり） */}
           <Line
