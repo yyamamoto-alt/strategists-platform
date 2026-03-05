@@ -28,6 +28,7 @@ const adminNavigation: NavItem[] = [
   { name: "フォーム管理", href: "/admin/forms", icon: "📝", roles: ["admin"] },
   { name: "ユーザー管理", href: "/admin/students", icon: "🎓", roles: ["admin", "mentor"] },
   { name: "お知らせ管理", href: "/admin/announcements", icon: "🔔", roles: ["admin"] },
+  { name: "設定", href: "/admin/settings", icon: "⚙️", roles: ["admin"] },
 ];
 
 function NavSection({ title, items, role }: { title: string; items: NavItem[]; role: string | null }) {

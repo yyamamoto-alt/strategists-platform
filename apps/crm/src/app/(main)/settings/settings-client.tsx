@@ -119,23 +119,6 @@ const SECTIONS: SettingsSectionConfig[] = [
       },
     ],
   },
-  {
-    title: "LMS自動招待",
-    description: "入塾フォーム受付時にSlack承認→自動でLMS招待メールを送信します。有効にするにはResend APIキー・Slack Bot Token・Signing Secretの環境変数設定が必要です。",
-    fields: [
-      {
-        key: "auto_invite_enabled",
-        label: "自動招待を有効にする",
-        type: "toggle",
-      },
-      {
-        key: "auto_invite_slack_channel",
-        label: "Slack通知チャンネル",
-        type: "text",
-        placeholder: "#lms-invites",
-      },
-    ],
-  },
 ];
 
 // ================================================================
