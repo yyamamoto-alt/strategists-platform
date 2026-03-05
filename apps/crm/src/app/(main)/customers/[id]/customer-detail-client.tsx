@@ -184,6 +184,10 @@ function InlineField({
             className="w-full mt-0.5 px-2 py-1 bg-surface-elevated border border-brand/40 rounded text-sm text-white focus:outline-none focus:border-brand"
           >
             <option value="">-</option>
+            {/* 現在値がoptionsに含まれていない場合も表示 */}
+            {editValue && !field.options.includes(editValue) && (
+              <option key={editValue} value={editValue}>{editValue}（現在値）</option>
+            )}
             {field.options.map((opt) => (
               <option key={opt} value={opt}>{opt === "true" ? "はい" : opt === "false" ? "いいえ" : opt}</option>
             ))}
@@ -215,7 +219,12 @@ function buildBasicFields(c: CustomerWithRelations): FieldDef[] {
     { key: "name", label: "名前", source: "manual", table: "customer", getValue: () => c.name },
     { key: "email", label: "メール", source: "manual", table: "customer", getValue: () => c.email || "-" },
     { key: "phone", label: "電話番号", source: "manual", table: "customer", getValue: () => c.phone || "-" },
-    { key: "attribute", label: "属性", source: "manual", type: "select", options: ["既卒", "新卒"], table: "customer", getValue: () => c.attribute },
+    { key: "attribute", label: "属性", source: "manual", type: "select", options: [
+      "既卒", "既卒・中途", "既卒・中途(3年目未満)", "既卒・中途(3年目以上7年目未満)", "既卒・中途(7年目以上)", "中途",
+      "新卒", "24卒", "24卒(学部卒)", "24卒(院卒)", "25卒", "25卒(学部卒)", "25卒(院卒)",
+      "26卒", "26卒(学部卒)", "26卒(院卒)", "27卒", "27卒(学部卒)", "27卒(院卒)",
+      "28卒", "28卒(学部卒)", "28卒(院卒)", "不明",
+    ], table: "customer", getValue: () => c.attribute },
     { key: "application_date", label: "申込日", source: "sync", getValue: () => formatDate(c.application_date) },
     { key: "utm_source", label: "流入元", source: "sync", getValue: () => `${c.utm_source || "-"} / ${c.utm_medium || "-"}` },
     { key: "university", label: "大学", source: "manual", table: "customer", getValue: () => c.university || "-" },
