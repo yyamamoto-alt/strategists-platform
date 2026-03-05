@@ -23,6 +23,24 @@ const SOURCE_LABELS: Record<string, string> = {
   freee: "Freee",
 };
 
+const ORDER_STATUS_LABELS: Record<string, string> = {
+  paid: "入金済",
+  scheduled: "支払予定",
+  partial: "一部入金",
+  pending: "未入金",
+  refunded: "返金済",
+  cancelled: "キャンセル",
+};
+
+const ORDER_STATUS_STYLES: Record<string, string> = {
+  paid: "bg-green-500/20 text-green-400",
+  scheduled: "bg-blue-500/20 text-blue-400",
+  partial: "bg-amber-500/20 text-amber-400",
+  pending: "bg-gray-500/20 text-gray-400",
+  refunded: "bg-red-500/20 text-red-400",
+  cancelled: "bg-gray-600/20 text-gray-500",
+};
+
 const MATCH_STATUS_STYLES: Record<string, string> = {
   matched: "bg-green-500/20 text-green-400",
   unmatched: "bg-red-500/20 text-red-400",
@@ -192,7 +210,11 @@ export function OrdersClient({ orders: initialOrders, reconciliation }: OrdersCl
         key: "status",
         label: "ステータス",
         width: 80,
-        render: (r) => r.status || "-",
+        render: (r) => (
+          <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${ORDER_STATUS_STYLES[r.status] || ""}`}>
+            {ORDER_STATUS_LABELS[r.status] || r.status || "-"}
+          </span>
+        ),
       },
       {
         key: "match_status",
@@ -469,10 +491,12 @@ export function OrdersClient({ orders: initialOrders, reconciliation }: OrdersCl
                   onChange={(e) => setEditingOrder({ ...editingOrder, status: e.target.value as Order["status"] })}
                   className="w-full mt-1 px-3 py-1.5 bg-surface-elevated border border-white/10 text-white rounded text-sm focus:outline-none focus:ring-1 focus:ring-brand"
                 >
-                  <option value="pending">pending</option>
-                  <option value="paid">paid</option>
-                  <option value="partial">partial</option>
-                  <option value="refunded">refunded</option>
+                  <option value="paid">入金済</option>
+                  <option value="scheduled">支払予定</option>
+                  <option value="pending">未入金</option>
+                  <option value="partial">一部入金</option>
+                  <option value="refunded">返金済</option>
+                  <option value="cancelled">キャンセル</option>
                   <option value="cancelled">cancelled</option>
                 </select>
               </div>

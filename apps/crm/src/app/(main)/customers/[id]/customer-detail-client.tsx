@@ -340,6 +340,7 @@ const ORDER_TYPE_LABELS: Record<string, string> = {
 
 const ORDER_STATUS_LABELS: Record<string, { label: string; cls: string }> = {
   paid: { label: "入金済", cls: "text-green-400 bg-green-400/10" },
+  scheduled: { label: "支払予定", cls: "text-blue-400 bg-blue-400/10" },
   partial: { label: "一部入金", cls: "text-amber-400 bg-amber-400/10" },
   pending: { label: "未入金", cls: "text-gray-400 bg-gray-400/10" },
   refunded: { label: "返金済", cls: "text-red-400 bg-red-400/10" },
