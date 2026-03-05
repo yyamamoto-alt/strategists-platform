@@ -332,6 +332,7 @@ function calcFirstCoachingDate(applicationHistory: ApplicationHistoryRecord[]): 
 
 const ORDER_TYPE_LABELS: Record<string, string> = {
   main_plan: "メインプラン",
+  purchase: "購入",
   video_course: "動画講座",
   additional_coaching: "追加指導",
   other: "その他",
