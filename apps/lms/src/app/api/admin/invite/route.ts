@@ -58,6 +58,7 @@ export async function POST(request: Request) {
     token,
     expires_at: expiresAt.toISOString(),
     customer_id: customerId,
+    source: "lms",
   });
 
   if (error) {

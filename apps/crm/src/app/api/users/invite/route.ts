@@ -38,6 +38,7 @@ export async function POST(request: Request) {
     role,
     token,
     expires_at: expiresAt.toISOString(),
+    source: "crm",
   });
 
   if (error) {

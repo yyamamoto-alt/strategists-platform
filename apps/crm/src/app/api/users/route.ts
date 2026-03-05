@@ -38,10 +38,11 @@ export async function GET() {
     }
   }
 
-  // 招待一覧を取得
+  // 招待一覧を取得（CRMからの招待のみ）
   const { data: invitations, error: invError } = await supabase
     .from("invitations")
     .select("*")
+    .eq("source", "crm")
     .order("created_at", { ascending: false }) as {
       data: {
         id: string;
