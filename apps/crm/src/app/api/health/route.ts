@@ -1,4 +1,5 @@
 import { createServiceClient } from "@/lib/supabase/server";
+import { fetchCustomersWithRelations } from "@/lib/data/customers";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -22,5 +23,18 @@ export async function GET() {
     dbCheck.error = e instanceof Error ? e.message : "Unknown error";
   }
 
-  return NextResponse.json({ env: envCheck, db: dbCheck });
+  let fetchCheck = { ok: false, count: 0, error: "", sample: "" };
+  try {
+    const customers = await fetchCustomersWithRelations();
+    fetchCheck = {
+      ok: true,
+      count: customers.length,
+      error: "",
+      sample: customers.length > 0 ? customers[0].name : "(empty)",
+    };
+  } catch (e) {
+    fetchCheck.error = e instanceof Error ? e.message : "Unknown error";
+  }
+
+  return NextResponse.json({ env: envCheck, db: dbCheck, fetch: fetchCheck });
 }
