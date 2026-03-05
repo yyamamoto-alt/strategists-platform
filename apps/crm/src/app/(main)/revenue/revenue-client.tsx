@@ -66,7 +66,7 @@ function buildRows(
   // --- 3段階売上 ---
   rows.push({
     key: "confirmed_revenue",
-    label: "確定売上（スクールのみ）",
+    label: "確定売上（スクール+人材確定+補助金）",
     indent: 0,
     style: "total",
     format: "currency",
@@ -76,7 +76,7 @@ function buildRows(
 
   rows.push({
     key: "revenue",
-    label: "確定+人材見込",
+    label: "確定+人材見込（受講中）",
     indent: 0,
     style: "total",
     format: "currency",

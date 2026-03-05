@@ -750,6 +750,10 @@ function computeSegmentData(
   const agentConfirmedByPeriod: Record<string, number> = {};
   const agentProjectedByPeriod: Record<string, number> = {};
 
+  // 確定売上に含める追加項目（ダッシュボードと整合）
+  const agentConfirmedRevByPeriod: Record<string, number> = {};
+  const subsidyByPeriod: Record<string, number> = {};
+
   // チャネル別売上
   const channelRevenue = new Map<string, number>();
 
@@ -830,20 +834,35 @@ function computeSegmentData(
         grandTotals.closed++;
 
         const amount = c.contract?.confirmed_amount || 0;
-        confirmedRevenue[period] = (confirmedRevenue[period] || 0) + amount;
-        confirmedRevenueTotal += amount;
         closedCountByPeriod[period] = (closedCountByPeriod[period] || 0) + 1;
         schoolRevByPeriod[period] = (schoolRevByPeriod[period] || 0) + amount;
+
+        // 確定売上 = スクール確定 + 人材確定 + 補助金（ダッシュボードと整合）
+        let periodConfirmed = amount;
+        // 人材確定分
+        if (isAgentCustomer(c) && isAgentConfirmed(c)) {
+          const agentFee = calcExpectedReferralFee(c);
+          periodConfirmed += agentFee;
+          agentConfirmedRevByPeriod[period] = (agentConfirmedRevByPeriod[period] || 0) + agentFee;
+        }
+        // 補助金
+        const subsidy = getSubsidyAmount(c);
+        if (subsidy > 0) {
+          periodConfirmed += subsidy;
+          subsidyByPeriod[period] = (subsidyByPeriod[period] || 0) + subsidy;
+        }
+        confirmedRevenue[period] = (confirmedRevenue[period] || 0) + periodConfirmed;
+        confirmedRevenueTotal += periodConfirmed;
       }
     }
 
-    // 人材紹介売上
+    // 人材紹介売上（見込み用: 確定は confirmedRevenue に計上済み）
     if (isAgentCustomer(c)) {
       const fee = calcExpectedReferralFee(c);
       if (isAgentConfirmed(c)) {
         agentConfirmed += fee;
         agentConfirmedByPeriod[period] = (agentConfirmedByPeriod[period] || 0) + fee;
-        agentRevByPeriod[period] = (agentRevByPeriod[period] || 0) + fee;
+        // agentRevByPeriod: 確定分は confirmedRevenue に含まれているので見込み用には追加しない
       } else if (isCurrentlyEnrolled(c)) {
         agentProjected += fee;
         agentProjectedByPeriod[period] = (agentProjectedByPeriod[period] || 0) + fee;
