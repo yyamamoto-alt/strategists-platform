@@ -22,6 +22,7 @@ const learningNavigation: NavItem[] = [
 ];
 
 const adminNavigation: NavItem[] = [
+  { name: "教材管理", href: "/admin/contents", icon: "📖", roles: ["admin"] },
   { name: "コース管理", href: "/admin/courses", icon: "📚", roles: ["admin"] },
   { name: "受講生管理", href: "/admin/students", icon: "🎓", roles: ["admin", "mentor"] },
   { name: "入塾申請", href: "/admin/applications", icon: "📨", roles: ["admin", "mentor"] },

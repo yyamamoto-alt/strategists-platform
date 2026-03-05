@@ -1,183 +1,181 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useAuth } from "@/lib/auth-context";
-import { Plus, Pencil, Trash2, BookOpen, Check, AlertCircle } from "lucide-react";
-import type { Course } from "@/types/database";
+import { Check, X } from "lucide-react";
 
-const statusLabels: Record<string, string> = {
-  draft: "下書き",
-  published: "公開中",
-  archived: "非公開",
-};
-
-const statusColors: Record<string, string> = {
-  draft: "bg-yellow-900/50 text-yellow-300",
-  published: "bg-green-900/50 text-green-300",
-  archived: "bg-gray-700/50 text-gray-400",
-};
-
-const levelLabels: Record<string, string> = {
-  beginner: "初級",
-  intermediate: "中級",
-  advanced: "上級",
-};
-
-function Toast({ message, type, onClose }: { message: string; type: "success" | "error"; onClose: () => void }) {
-  useEffect(() => {
-    const timer = setTimeout(onClose, 3000);
-    return () => clearTimeout(timer);
-  }, [onClose]);
-
-  return (
-    <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg text-sm ${
-      type === "success" ? "bg-green-900/90 text-green-200" : "bg-red-900/90 text-red-200"
-    }`}>
-      {type === "success" ? <Check className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
-      {message}
-    </div>
-  );
+interface Course {
+  id: string;
+  title: string;
+  target_attribute: string | null;
+  content_ids: string[];
 }
 
-export default function CourseManagePage() {
-  const { role } = useAuth();
-  const router = useRouter();
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+interface Content {
+  id: string;
+  title: string;
+  category: string | null;
+  target_attribute: string | null;
+}
 
-  const fetchCourses = useCallback(async () => {
-    try {
-      const res = await fetch("/api/courses");
-      if (res.ok) {
-        const data = await res.json();
-        setCourses(data);
-      }
-    } finally {
-      setLoading(false);
-    }
+export default function CoursesAdminPage() {
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [contents, setContents] = useState<Content[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editContentIds, setEditContentIds] = useState<string[]>([]);
+  const [saving, setSaving] = useState(false);
+
+  const fetchData = useCallback(async () => {
+    const [coursesRes, contentsRes] = await Promise.all([
+      fetch("/api/admin/courses"),
+      fetch("/api/admin/contents"),
+    ]);
+    if (coursesRes.ok) setCourses(await coursesRes.json());
+    if (contentsRes.ok) setContents(await contentsRes.json());
+    setLoading(false);
   }, []);
 
-  useEffect(() => {
-    fetchCourses();
-  }, [fetchCourses]);
+  useEffect(() => { fetchData(); }, [fetchData]);
 
-  if (role !== "admin") {
-    return (
-      <div className="p-6 bg-surface min-h-screen text-center py-20">
-        <p className="text-gray-400">管理者のみアクセスできます</p>
-      </div>
-    );
-  }
-
-  const handleDelete = async (id: string, title: string) => {
-    if (!confirm(`「${title}」を削除しますか？関連するモジュール・レッスンも全て削除されます。`)) return;
-    const res = await fetch(`/api/courses/${id}`, { method: "DELETE" });
-    if (res.ok) {
-      setCourses((prev) => prev.filter((c) => c.id !== id));
-      setToast({ message: `「${title}」を削除しました`, type: "success" });
-    } else {
-      setToast({ message: "削除に失敗しました", type: "error" });
-    }
+  const startEdit = (course: Course) => {
+    setEditingId(course.id);
+    setEditContentIds([...course.content_ids]);
   };
 
-  return (
-    <div className="p-6 bg-surface min-h-screen">
-      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+  const toggleContent = (contentId: string) => {
+    setEditContentIds((prev) =>
+      prev.includes(contentId)
+        ? prev.filter((c) => c !== contentId)
+        : [...prev, contentId]
+    );
+  };
 
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-white">コース管理</h1>
-          <p className="text-sm text-gray-400 mt-1">コースの作成・編集・削除</p>
-        </div>
-        <Link
-          href="/admin/courses/new"
-          className="flex items-center gap-2 bg-brand hover:bg-brand-dark text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          新規コース作成
-        </Link>
+  const saveContents = async () => {
+    if (!editingId) return;
+    setSaving(true);
+    await fetch(`/api/admin/courses/${editingId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content_ids: editContentIds }),
+    });
+    setCourses((prev) =>
+      prev.map((c) => (c.id === editingId ? { ...c, content_ids: editContentIds } : c))
+    );
+    setEditingId(null);
+    setSaving(false);
+  };
+
+  if (loading) return <div className="p-6 text-gray-400">読み込み中...</div>;
+
+  return (
+    <div className="p-6 bg-surface min-h-screen space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-white">コース管理</h1>
+        <p className="text-sm text-gray-400 mt-1">各コース（カリキュラム）に含める教材を選択</p>
       </div>
 
-      {loading ? (
-        <div className="text-center py-12 text-gray-400">読み込み中...</div>
-      ) : courses.length === 0 ? (
-        <div className="text-center py-16 text-gray-400">
-          <BookOpen className="w-16 h-16 mx-auto mb-4 opacity-30" />
-          <p className="text-lg mb-2">コースがまだありません</p>
-          <p className="text-sm text-gray-500 mb-6">最初のコースを作成しましょう</p>
-          <Link
-            href="/admin/courses/new"
-            className="inline-flex items-center gap-2 bg-brand hover:bg-brand-dark text-white px-6 py-3 rounded-lg text-sm font-medium transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            コースを作成
-          </Link>
-        </div>
-      ) : (
-        <div className="bg-surface-elevated rounded-xl overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-white/10">
-                  <th className="text-left px-4 py-3 text-gray-400 font-medium">タイトル</th>
-                  <th className="text-left px-4 py-3 text-gray-400 font-medium">レベル</th>
-                  <th className="text-left px-4 py-3 text-gray-400 font-medium">ステータス</th>
-                  <th className="text-left px-4 py-3 text-gray-400 font-medium">レッスン数</th>
-                  <th className="text-left px-4 py-3 text-gray-400 font-medium">作成日</th>
-                  <th className="text-right px-4 py-3 text-gray-400 font-medium">操作</th>
-                </tr>
-              </thead>
-              <tbody>
-                {courses.map((course) => (
-                  <tr key={course.id} className="border-b border-white/[0.06] hover:bg-white/[0.02] transition-colors">
-                    <td className="px-4 py-3">
-                      <Link href={`/admin/courses/${course.id}`} className="text-white hover:text-brand-light font-medium transition-colors">
-                        {course.title}
-                      </Link>
-                      {course.category && (
-                        <span className="ml-2 text-xs text-gray-500">{course.category}</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-gray-300">
-                      {levelLabels[course.level || ""] || course.level || "-"}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${statusColors[course.status || "draft"] || ""}`}>
-                        {statusLabels[course.status || "draft"] || course.status}
+      <div className="space-y-4">
+        {courses.map((course) => {
+          const isEditing = editingId === course.id;
+          const courseContents = contents.filter((c) => course.content_ids.includes(c.id));
+
+          return (
+            <div key={course.id} className="bg-surface-card border border-white/10 rounded-xl overflow-hidden">
+              {/* ヘッダー */}
+              <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <h2 className="text-base font-semibold text-white">{course.title}</h2>
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${
+                    course.target_attribute === "新卒"
+                      ? "bg-blue-900/30 text-blue-400"
+                      : "bg-amber-900/30 text-amber-400"
+                  }`}>
+                    {course.target_attribute}
+                  </span>
+                  <span className="text-xs text-gray-500">
+                    {course.content_ids.length}教材
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  {isEditing ? (
+                    <>
+                      <button
+                        onClick={saveContents}
+                        disabled={saving}
+                        className="flex items-center gap-1 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-medium disabled:opacity-50"
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                        保存
+                      </button>
+                      <button
+                        onClick={() => setEditingId(null)}
+                        className="flex items-center gap-1 px-3 py-1.5 text-gray-400 hover:text-white text-xs"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                        キャンセル
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      onClick={() => startEdit(course)}
+                      className="px-3 py-1.5 bg-brand/20 text-brand hover:bg-brand/30 rounded-lg text-xs font-medium transition-colors"
+                    >
+                      教材を選択
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* 教材一覧 */}
+              <div className="p-4">
+                {isEditing ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                    {contents.map((content) => {
+                      const selected = editContentIds.includes(content.id);
+                      return (
+                        <button
+                          key={content.id}
+                          onClick={() => toggleContent(content.id)}
+                          className={`text-left p-3 rounded-lg border transition-colors ${
+                            selected
+                              ? "bg-brand/10 border-brand/30 text-white"
+                              : "bg-surface-elevated border-white/5 text-gray-400 hover:border-white/20"
+                          }`}
+                        >
+                          <div className="flex items-start gap-2">
+                            <div className={`w-4 h-4 mt-0.5 rounded border flex items-center justify-center shrink-0 ${
+                              selected ? "bg-brand border-brand" : "border-white/20"
+                            }`}>
+                              {selected && <Check className="w-3 h-3 text-white" />}
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium">{content.title}</p>
+                              <p className="text-[10px] text-gray-500 mt-0.5">
+                                {content.category} / {content.target_attribute}
+                              </p>
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : courseContents.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {courseContents.map((c) => (
+                      <span key={c.id} className="text-xs px-2.5 py-1 rounded-lg bg-surface-elevated border border-white/10 text-gray-300">
+                        {c.title}
+                        {c.category && <span className="text-gray-500 ml-1">({c.category})</span>}
                       </span>
-                    </td>
-                    <td className="px-4 py-3 text-gray-300">{course.total_lessons}</td>
-                    <td className="px-4 py-3 text-gray-400">
-                      {new Date(course.created_at).toLocaleDateString("ja-JP")}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <button
-                          onClick={() => router.push(`/admin/courses/${course.id}`)}
-                          className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
-                          title="編集"
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(course.id, course.title)}
-                          className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-900/20 rounded-lg transition-colors"
-                          title="削除"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500">教材が選択されていません</p>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
