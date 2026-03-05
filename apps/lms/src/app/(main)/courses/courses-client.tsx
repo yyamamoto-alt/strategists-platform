@@ -16,6 +16,7 @@ interface CoursesClientProps {
   modules: Record<string, Module[]>;
   lessons: Record<string, Lesson[]>;
   progress: Record<string, LessonProgress>;
+  noAccessMessage?: string | null;
 }
 
 export function CoursesClient({
@@ -28,8 +29,23 @@ export function CoursesClient({
   modules,
   lessons,
   progress,
+  noAccessMessage,
 }: CoursesClientProps) {
   const [viewMode, setViewMode] = useState(initialViewMode);
+
+  // コースアクセス権なしの場合
+  if (noAccessMessage && courses.length === 0) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center px-6">
+        <div className="text-center space-y-3">
+          <div className="w-16 h-16 mx-auto rounded-full bg-surface-elevated border border-white/10 flex items-center justify-center">
+            <LayoutList className="w-7 h-7 text-gray-500" />
+          </div>
+          <p className="text-gray-400 text-sm">{noAccessMessage}</p>
+        </div>
+      </div>
+    );
+  }
 
   // カリキュラムビュー
   if (viewMode === "curriculum") {

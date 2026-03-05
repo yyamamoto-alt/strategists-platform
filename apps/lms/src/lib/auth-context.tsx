@@ -7,6 +7,8 @@ interface AuthContextType {
   user: { email: string; id: string } | null;
   role: UserRole | null;
   displayName: string | null;
+  avatarUrl: string | null;
+  setAvatarUrl: (url: string) => void;
   loading: boolean;
   signOut: () => Promise<void>;
 }
@@ -15,6 +17,8 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   role: null,
   displayName: null,
+  avatarUrl: null,
+  setAvatarUrl: () => {},
   loading: false,
   signOut: async () => {},
 });
@@ -24,11 +28,13 @@ export function AuthProvider({
   initialUser,
   initialRole,
   initialDisplayName,
+  initialAvatarUrl,
 }: {
   children: ReactNode;
   initialUser?: { email: string; id: string } | null;
   initialRole?: UserRole | null;
   initialDisplayName?: string | null;
+  initialAvatarUrl?: string | null;
 }) {
   const useMock = process.env.NEXT_PUBLIC_USE_MOCK === "true";
 
@@ -43,6 +49,9 @@ export function AuthProvider({
   const [displayName] = useState<string | null>(
     useMock ? "テスト受講生" : initialDisplayName ?? null
   );
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(
+    useMock ? null : initialAvatarUrl ?? null
+  );
   const [loading] = useState(false);
 
   const signOut = async () => {
@@ -55,7 +64,7 @@ export function AuthProvider({
   };
 
   return (
-    <AuthContext.Provider value={{ user, role, displayName, loading, signOut }}>
+    <AuthContext.Provider value={{ user, role, displayName, avatarUrl, setAvatarUrl, loading, signOut }}>
       {children}
     </AuthContext.Provider>
   );

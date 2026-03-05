@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
+import { useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
 
@@ -26,10 +27,7 @@ const adminNavigation: NavItem[] = [
   { name: "コース管理", href: "/admin/courses", icon: "📚", roles: ["admin"] },
   { name: "フォーム管理", href: "/admin/forms", icon: "📝", roles: ["admin"] },
   { name: "ユーザー管理", href: "/admin/students", icon: "🎓", roles: ["admin", "mentor"] },
-];
-
-const settingsNavigation: NavItem[] = [
-  { name: "設定", href: "/settings", icon: "⚙️" },
+  { name: "お知らせ管理", href: "/admin/announcements", icon: "🔔", roles: ["admin"] },
 ];
 
 function NavSection({ title, items, role }: { title: string; items: NavItem[]; role: string | null }) {
@@ -75,11 +73,38 @@ function NavSection({ title, items, role }: { title: string; items: NavItem[]; r
 }
 
 export function Sidebar() {
-  const { user, role, displayName, signOut } = useAuth();
+  const { user, role, displayName, avatarUrl, setAvatarUrl, signOut } = useAuth();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
 
   const roleLabel = role === "admin" ? "管理者" : role === "mentor" ? "メンター" : "受講生";
   const nameDisplay = displayName || user?.email?.split("@")[0] || "ゲスト";
   const nameInitial = displayName ? displayName.charAt(0) : (user?.email?.charAt(0)?.toUpperCase() || "?");
+
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/avatar", { method: "POST", body: formData });
+      if (res.ok) {
+        const data = await res.json();
+        setAvatarUrl(data.avatarUrl);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
 
   return (
     <aside className="w-64 bg-surface-raised-lms text-white flex flex-col shrink-0 border-r border-red-900/30">
@@ -100,13 +125,46 @@ export function Sidebar() {
       <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
         <NavSection title="学習" items={learningNavigation} role={role} />
         <NavSection title="管理" items={adminNavigation} role={role} />
-        <NavSection title="設定" items={settingsNavigation} role={role} />
       </nav>
       <div className="p-4 border-t border-white/10">
         <div className="flex items-center gap-3 px-3 py-2">
-          <div className="w-9 h-9 bg-brand rounded-full flex items-center justify-center text-sm font-bold shrink-0">
-            {nameInitial}
-          </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            className="hidden"
+            onChange={handleFileChange}
+          />
+          <button
+            type="button"
+            onClick={handleAvatarClick}
+            disabled={uploading}
+            className="relative w-9 h-9 rounded-full shrink-0 group focus:outline-none focus:ring-2 focus:ring-brand"
+            title="プロフィール画像を変更"
+          >
+            {avatarUrl ? (
+              <img
+                src={avatarUrl}
+                alt="Avatar"
+                className="w-9 h-9 rounded-full object-cover"
+              />
+            ) : (
+              <div className="w-9 h-9 bg-brand rounded-full flex items-center justify-center text-sm font-bold">
+                {nameInitial}
+              </div>
+            )}
+            <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </div>
+            {uploading && (
+              <div className="absolute inset-0 rounded-full bg-black/60 flex items-center justify-center">
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              </div>
+            )}
+          </button>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium truncate">{nameDisplay}</p>
             <p className="text-xs text-gray-500 truncate">{roleLabel}</p>

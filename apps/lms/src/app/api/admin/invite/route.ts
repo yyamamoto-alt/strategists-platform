@@ -8,7 +8,7 @@ import crypto from "crypto";
  * 受講生招待URL生成（管理者のみ）
  */
 export async function POST(request: Request) {
-  const { email, displayName, role: requestedRole, sendEmail } = await request.json();
+  const { email, displayName, role: requestedRole, sendEmail, courseIds } = await request.json();
 
   if (!email) {
     return NextResponse.json({ error: "メールアドレスは必須です" }, { status: 400 });
@@ -52,6 +52,9 @@ export async function POST(request: Request) {
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + 30);
 
+  // courseIds のバリデーション
+  const validCourseIds = Array.isArray(courseIds) ? courseIds.filter((id: string) => typeof id === "string" && id.length > 0) : [];
+
   const { error } = await admin.from("invitations").insert({
     email,
     display_name: customerName,
@@ -60,6 +63,7 @@ export async function POST(request: Request) {
     expires_at: expiresAt.toISOString(),
     customer_id: customerId,
     source: "lms",
+    course_ids: validCourseIds,
   });
 
   if (error) {

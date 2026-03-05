@@ -29,7 +29,7 @@ export async function POST(request: Request) {
   // 1. 招待トークン検証
   const { data: invitation, error: invErr } = await admin
     .from("invitations")
-    .select("id, email, display_name, role, token, expires_at, used_at, customer_id")
+    .select("id, email, display_name, role, token, expires_at, used_at, customer_id, course_ids")
     .eq("token", token)
     .single();
 
@@ -87,6 +87,16 @@ export async function POST(request: Request) {
     role: invitation.role || "student",
     customer_id: invitation.customer_id || null,
   });
+
+  // 4.5. コースアクセス権の付与
+  const courseIds = Array.isArray(invitation.course_ids) ? invitation.course_ids : [];
+  if (courseIds.length > 0) {
+    const courseAccessRows = courseIds.map((courseId: string) => ({
+      user_id: newUser.user.id,
+      course_id: courseId,
+    }));
+    await admin.from("user_course_access").insert(courseAccessRows);
+  }
 
   // 5. 招待を使用済みにする
   await admin

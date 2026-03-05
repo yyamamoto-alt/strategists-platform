@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface Student {
   id: string;
@@ -29,6 +29,11 @@ interface Props {
   invitations: Invitation[];
 }
 
+interface Course {
+  id: string;
+  title: string;
+}
+
 export function StudentsAdminClient({ students, invitations }: Props) {
   const [showForm, setShowForm] = useState(false);
   const [email, setEmail] = useState("");
@@ -39,6 +44,21 @@ export function StudentsAdminClient({ students, invitations }: Props) {
   const [inviteUrl, setInviteUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [sendEmail, setSendEmail] = useState(false);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [selectedCourseIds, setSelectedCourseIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    fetch("/api/admin/courses/list")
+      .then((res) => res.json())
+      .then((data) => setCourses(data.courses || []))
+      .catch(() => {});
+  }, []);
+
+  const toggleCourse = (courseId: string) => {
+    setSelectedCourseIds((prev) =>
+      prev.includes(courseId) ? prev.filter((id) => id !== courseId) : [...prev, courseId]
+    );
+  };
 
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,7 +70,7 @@ export function StudentsAdminClient({ students, invitations }: Props) {
       const res = await fetch("/api/admin/invite", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, displayName: displayName || undefined, role: inviteRole, sendEmail }),
+        body: JSON.stringify({ email, displayName: displayName || undefined, role: inviteRole, sendEmail, courseIds: selectedCourseIds }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -64,6 +84,7 @@ export function StudentsAdminClient({ students, invitations }: Props) {
       setInviteUrl(data.invite_url);
       setEmail("");
       setDisplayName("");
+      setSelectedCourseIds([]);
     } catch {
       setMessage({ type: "error", text: "エラーが発生しました" });
     } finally {
@@ -148,6 +169,27 @@ export function StudentsAdminClient({ students, invitations }: Props) {
                 className="w-full px-3 py-2 bg-surface-elevated border border-white/10 rounded-lg text-white placeholder-gray-500 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
               />
             </div>
+
+            {/* コース選択 */}
+            {courses.length > 0 && (
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">アクセス可能コース</label>
+                <p className="text-xs text-gray-500 mb-2">選択しないとコースが表示されません</p>
+                <div className="space-y-2">
+                  {courses.map((course) => (
+                    <label key={course.id} className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={selectedCourseIds.includes(course.id)}
+                        onChange={() => toggleCourse(course.id)}
+                        className="w-4 h-4 rounded border-white/20 bg-surface-elevated text-brand focus:ring-brand"
+                      />
+                      <span className="text-sm text-gray-300">{course.title}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <label className="flex items-center gap-2 cursor-pointer">
               <input

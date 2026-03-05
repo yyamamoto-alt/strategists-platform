@@ -82,6 +82,40 @@ export default async function CoursesPage() {
       targetAttribute = null;
     }
 
+    // user_course_access によるコースレベルのアクセス制御
+    // admin/mentor 以外は user_course_access に登録されたコースのみ表示
+    let userCourseAccessIds: Set<string> | null = null; // null = チェック不要（admin/mentor）
+    if (!isAdmin && session?.user?.id) {
+      const { data: userAccess } = await supabase
+        .from("user_course_access")
+        .select("course_id")
+        .eq("user_id", session.user.id) as { data: { course_id: string }[] | null };
+
+      // user_course_access にエントリがない場合 → コースなし（空セット）
+      // エントリがある場合 → そのコースのみ
+      userCourseAccessIds = new Set((userAccess || []).map((a) => a.course_id));
+    }
+
+    // user_course_access でフィルタ（admin/mentor はスキップ）
+    let coursesAfterUserAccess = (courses as any[]) || [];
+    if (userCourseAccessIds !== null) {
+      if (userCourseAccessIds.size === 0) {
+        // アクセス権なし → 空状態を返す
+        return (
+          <CoursesClient
+            courses={[]}
+            viewMode={viewMode}
+            targetAttribute={targetAttribute}
+            modules={{}}
+            lessons={{}}
+            progress={{}}
+            noAccessMessage="コースが割り当てられていません。管理者にお問い合わせください。"
+          />
+        );
+      }
+      coursesAfterUserAccess = coursesAfterUserAccess.filter((c: any) => userCourseAccessIds!.has(c.id));
+    }
+
     // course_plan_access でプラン別アクセス権を取得
     let accessibleCourseIds: Set<string> | null = null; // null = 全アクセス
     let lockedCourses: any[] = [];
@@ -109,8 +143,8 @@ export default async function CoursesPage() {
       }
 
       // ロックされたコースを特定
-      if (lockedIds.size > 0 && courses) {
-        lockedCourses = (courses as any[]).filter((c: any) => lockedIds.has(c.id));
+      if (lockedIds.size > 0) {
+        lockedCourses = coursesAfterUserAccess.filter((c: any) => lockedIds.has(c.id));
       }
 
       // course_plan_access にエントリがあるコースのみフィルタ対象
@@ -123,7 +157,7 @@ export default async function CoursesPage() {
 
       // アクセス可能: 共通コース + 自プランのコース
       accessibleCourseIds = new Set<string>();
-      for (const course of (courses as any[]) || []) {
+      for (const course of coursesAfterUserAccess) {
         if (!allPlanCourseIds.has(course.id) || myAccessIds.has(course.id)) {
           accessibleCourseIds.add(course.id);
         }
@@ -131,7 +165,7 @@ export default async function CoursesPage() {
     }
 
     // アクセス権でフィルタリング
-    let visibleCourses = (courses as any[]) || [];
+    let visibleCourses = coursesAfterUserAccess;
     if (accessibleCourseIds) {
       visibleCourses = visibleCourses.filter((c: any) => accessibleCourseIds!.has(c.id));
     }
