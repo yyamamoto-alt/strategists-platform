@@ -593,6 +593,8 @@ export interface ThreeTierRevenue {
   projected_total: number;
   // Tier 3: 予測売上（パイプライン成約率ベース）
   forecast_total: number;
+  // MAXライン: 見込みLTV合計（当月のみ進捗率按分）
+  expected_ltv_total: number;
 }
 
 /** エージェント売上サマリー */

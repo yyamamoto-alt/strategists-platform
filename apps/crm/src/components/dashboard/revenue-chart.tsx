@@ -36,17 +36,11 @@ export function RevenueChart({ data, threeTierData }: RevenueChartProps) {
   return <FallbackChart data={data} />;
 }
 
-/** 統合チャート: セグメント別積み上げ棒（確定+見込み+予測） */
+/** 統合チャート: 確定売上（棒）+ 見込みLTVポテンシャル（折れ線MAXライン） */
 function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
-  // forecast_uplift = forecast_total - projected_total（予測上積み分）
-  const chartData = data.map((d) => ({
-    ...d,
-    forecast_uplift: Math.max(0, d.forecast_total - d.projected_total),
-  }));
-
   return (
     <ResponsiveContainer width="100%" height={400}>
-      <ComposedChart data={chartData}>
+      <ComposedChart data={data}>
         <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
         <XAxis
           dataKey="period"
@@ -75,7 +69,7 @@ function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
         />
         <Legend iconSize={10} wrapperStyle={{ fontSize: 11, color: "#9ca3af" }} />
 
-        {/* 積み上げ棒: 確定売上セグメント内訳（ソリッド） */}
+        {/* 積み上げ棒: 確定売上セグメント内訳 */}
         <Bar
           dataKey="confirmed_school_kisotsu"
           name="既卒スクール"
@@ -100,25 +94,19 @@ function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
           name="補助金"
           fill="#a855f7"
           stackId="revenue"
-        />
-
-        {/* 見込み: 人材見込み上積み（半透明オレンジ — 人材確定の黄色と同系統） */}
-        <Bar
-          dataKey="projected_agent"
-          name="人材見込（見込）"
-          fill="#f97316"
-          fillOpacity={0.5}
-          stackId="revenue"
-        />
-
-        {/* 予測: 予測上積み（半透明赤） */}
-        <Bar
-          dataKey="forecast_uplift"
-          name="予測上積み（予測）"
-          fill="#ef4444"
-          fillOpacity={0.35}
-          stackId="revenue"
           radius={[4, 4, 0, 0]}
+        />
+
+        {/* MAXライン: 見込みLTV合計（当月のみ進捗率按分） */}
+        <Line
+          type="monotone"
+          dataKey="expected_ltv_total"
+          name="見込みLTV（MAXポテンシャル）"
+          stroke="#f97316"
+          strokeWidth={2.5}
+          strokeDasharray="6 3"
+          dot={{ r: 3, fill: "#f97316", strokeWidth: 0 }}
+          activeDot={{ r: 5, fill: "#f97316" }}
         />
       </ComposedChart>
     </ResponsiveContainer>

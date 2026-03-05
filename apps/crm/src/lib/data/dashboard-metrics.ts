@@ -24,6 +24,7 @@ import type {
 import {
   calcExpectedReferralFee,
   calcClosingProbability,
+  calcExpectedLTV,
   isAgentCustomer,
   isCurrentlyEnrolled,
   isAgentConfirmed,
@@ -304,6 +305,8 @@ export function computeThreeTierRevenue(
       forecast_school: number;
       forecast_agent: number;
       forecast_subsidy: number;
+      // MAXライン: 見込みLTV合計
+      expected_ltv: number;
     }
   >();
 
@@ -322,11 +325,15 @@ export function computeThreeTierRevenue(
         forecast_school: 0,
         forecast_agent: 0,
         forecast_subsidy: 0,
+        expected_ltv: 0,
       });
     }
     const m = byMonth.get(period)!;
     const amount = c.contract?.confirmed_amount || 0;
     const closed = isStageClosed(c.pipeline?.stage);
+
+    // MAXライン: 全顧客の見込みLTV合計（成約済みも未成約も含む）
+    m.expected_ltv += calcExpectedLTV(c);
 
     // --- Tier 1: 確定売上 ---
     if (closed) {
@@ -386,6 +393,7 @@ export function computeThreeTierRevenue(
       confirmed_school_shinsotsu: 0, confirmed_agent: 0,
       confirmed_subsidy: 0, projected_agent: 0,
       forecast_school: 0, forecast_agent: 0, forecast_subsidy: 0,
+      expected_ltv: 0,
     });
   }
 
@@ -402,6 +410,12 @@ export function computeThreeTierRevenue(
       const forecastFromPipeline = m.forecast_school + m.forecast_agent + m.forecast_subsidy;
       const forecastTotal = projectedTotal * monthMultiplier + forecastFromPipeline;
 
+      // MAXライン: 過去月はフル値、当月のみ進捗率で按分
+      const monthProgress = period === currentPeriod
+        ? (new Date().getDate() / new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate())
+        : 1;
+      const expectedLtvTotal = Math.round(m.expected_ltv * monthProgress);
+
       return {
         period,
         confirmed_school: m.confirmed_school,
@@ -413,6 +427,7 @@ export function computeThreeTierRevenue(
         projected_agent: m.projected_agent,
         projected_total: projectedTotal,
         forecast_total: Math.round(forecastTotal),
+        expected_ltv_total: expectedLtvTotal,
       };
     });
 }
