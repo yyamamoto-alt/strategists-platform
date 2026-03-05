@@ -135,14 +135,15 @@ const VIEW_COLUMNS: Record<ViewTab, string[] | null> = {
   ],
 };
 
-const CLOSED_STAGES = new Set(["成約", "入金済", "追加指導", "その他購入", "動画講座購入", "成約(追加指導経由)", "途中解約(成約)"]);
+const CLOSED_STAGES = new Set(["成約", "追加指導", "その他購入", "動画講座購入", "成約(追加指導経由)", "途中解約(成約)", "成約見込(未入金)"]);
 
 const STAGE_OPTIONS = [
   { group: "アクティブ", options: ["日程未確", "検討中", "長期検討"] },
-  { group: "成約", options: ["成約", "その他購入", "動画講座購入", "追加指導"] },
-  { group: "未実施", options: ["NoShow", "未実施", "実施不可", "非実施対象"] },
+  { group: "成約", options: ["成約", "成約(追加指導経由)", "成約見込(未入金)", "途中解約(成約)"] },
+  { group: "購入・追加", options: ["その他購入", "動画講座購入", "追加指導", "追加指導(NoShow)", "追加指導(CL)"] },
+  { group: "未実施", options: ["NoShow", "Noshow", "未実施", "実施不可", "非実施対象"] },
   { group: "失注", options: ["失注", "失注見込", "失注見込(自動)", "CL", "全額返金"] },
-  { group: "その他", options: ["その他", "入金済", "成約(追加指導経由)", "途中解約(成約)", "日程確定", "面談実施", "問い合わせ", "提案中", "キャンセル", "直前キャンセル", "追加指導(NoShow)", "追加指導(CL)", "成約見込(未入金)", "Noshow"] },
+  { group: "その他", options: ["キャンセル", "直前キャンセル"] },
 ];
 
 function InlineStageSelect({ customerId, currentStage, onUpdate }: { customerId: string; currentStage: string; onUpdate: (id: string, newStage: string) => void }) {
@@ -664,12 +665,20 @@ export function CustomersClient({ customers, attributionMap }: CustomersClientPr
           </optgroup>
           <optgroup label="成約">
             <option value="成約">成約</option>
+            <option value="成約(追加指導経由)">成約(追加指導経由)</option>
+            <option value="成約見込(未入金)">成約見込(未入金)</option>
+            <option value="途中解約(成約)">途中解約(成約)</option>
+          </optgroup>
+          <optgroup label="購入・追加">
             <option value="その他購入">その他購入</option>
             <option value="動画講座購入">動画講座購入</option>
             <option value="追加指導">追加指導</option>
+            <option value="追加指導(NoShow)">追加指導(NoShow)</option>
+            <option value="追加指導(CL)">追加指導(CL)</option>
           </optgroup>
           <optgroup label="未実施">
             <option value="NoShow">NoShow</option>
+            <option value="Noshow">Noshow</option>
             <option value="未実施">未実施</option>
             <option value="実施不可">実施不可</option>
             <option value="非実施対象">非実施対象</option>
@@ -681,7 +690,10 @@ export function CustomersClient({ customers, attributionMap }: CustomersClientPr
             <option value="CL">CL</option>
             <option value="全額返金">全額返金</option>
           </optgroup>
-          <option value="その他">その他</option>
+          <optgroup label="その他">
+            <option value="キャンセル">キャンセル</option>
+            <option value="直前キャンセル">直前キャンセル</option>
+          </optgroup>
         </select>
       </div>
 
