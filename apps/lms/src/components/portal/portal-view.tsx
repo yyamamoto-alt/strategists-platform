@@ -1,12 +1,21 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { ExternalLink, BookOpen, Video, FileText, ChevronRight, Lock } from "lucide-react";
 import type { Course } from "@/types/database";
 
+interface FormItem {
+  id: string;
+  title: string;
+  url: string;
+  plan_ids: string[];
+}
+
 interface PortalViewProps {
   courses: Course[];
   lockedCourses?: Course[];
+  planId?: string | null;
 }
 
 function groupByCategory(courses: Course[]): Record<string, Course[]> {
@@ -35,13 +44,6 @@ const categoryIcons: Record<string, typeof BookOpen> = {
   "カリキュラム": FileText,
 };
 
-const formLinks = [
-  { title: "教材アウトプットフォーム", url: "https://docs.google.com/forms/d/e/1FAIpQLScwjVOoTGOJFWMWBiQrYJqjGBfrgH4pEzm0hTefpdIde0ApuA/viewform?usp=dialog" },
-  { title: "自己振り返りフォーム", url: "https://docs.google.com/forms/d/e/1FAIpQLSczLzNgT647SsVOy0dEma7u11WsUouNIabPrjMWJYOB9-iAtQ/viewform" },
-  { title: "添削提出フォーム", url: "https://forms.gle/RUHphJLJzDBGEjro7" },
-  { title: "面接振り返りフォーム", url: "https://forms.gle/aPrBN61BXQdm79Lr7" },
-  { title: "ビヘイビア対策お申込みフォーム", url: "https://docs.google.com/forms/d/e/1FAIpQLSfdULLLNu3mPO3y0lAwpq8P-N3-gJnX7R1ozVqRbejdm594WQ/viewform" },
-];
 
 function CourseRow({ course, locked = false }: { course: Course; locked?: boolean }) {
   const Icon = categoryIcons[course.category || ""] || FileText;
@@ -72,7 +74,22 @@ function CourseRow({ course, locked = false }: { course: Course; locked?: boolea
   );
 }
 
-export function PortalView({ courses, lockedCourses = [] }: PortalViewProps) {
+export function PortalView({ courses, lockedCourses = [], planId }: PortalViewProps) {
+  const [forms, setForms] = useState<FormItem[]>([]);
+
+  useEffect(() => {
+    fetch("/api/forms")
+      .then((r) => r.ok ? r.json() : [])
+      .then((data: FormItem[]) => {
+        // プランでフィルタ: plan_ids が空なら全員表示、あればマッチするもののみ
+        const filtered = data.filter((f) =>
+          f.plan_ids.length === 0 || !planId || f.plan_ids.includes(planId)
+        );
+        setForms(filtered);
+      })
+      .catch(() => {});
+  }, [planId]);
+
   const grouped = groupByCategory(courses);
   const lockedGrouped = groupByCategory(lockedCourses);
 
@@ -122,30 +139,32 @@ export function PortalView({ courses, lockedCourses = [] }: PortalViewProps) {
       })}
 
       {/* 各種フォーム */}
-      <div className="mb-5">
-        <div className="flex items-center gap-2 mb-1 px-1">
-          <span className="w-1.5 h-4 rounded-sm bg-orange-500" />
-          <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-            📝 各種フォーム
-          </span>
-          <span className="text-xs text-gray-600">{formLinks.length}</span>
+      {forms.length > 0 && (
+        <div className="mb-5">
+          <div className="flex items-center gap-2 mb-1 px-1">
+            <span className="w-1.5 h-4 rounded-sm bg-orange-500" />
+            <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+              📝 各種フォーム
+            </span>
+            <span className="text-xs text-gray-600">{forms.length}</span>
+          </div>
+          <div className="border border-white/[0.06] rounded-lg divide-y divide-white/[0.04] bg-white/[0.02]">
+            {forms.map((form) => (
+              <a
+                key={form.id}
+                href={form.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 px-3 py-2 rounded hover:bg-white/[0.04] transition-colors group"
+              >
+                <ExternalLink className="w-4 h-4 text-gray-500 shrink-0" />
+                <span className="text-sm text-gray-200 group-hover:text-white">{form.title}</span>
+                <ChevronRight className="w-3.5 h-3.5 text-gray-600 ml-auto shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+              </a>
+            ))}
+          </div>
         </div>
-        <div className="border border-white/[0.06] rounded-lg divide-y divide-white/[0.04] bg-white/[0.02]">
-          {formLinks.map((form) => (
-            <a
-              key={form.title}
-              href={form.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-3 px-3 py-2 rounded hover:bg-white/[0.04] transition-colors group"
-            >
-              <ExternalLink className="w-4 h-4 text-gray-500 shrink-0" />
-              <span className="text-sm text-gray-200 group-hover:text-white">{form.title}</span>
-              <ChevronRight className="w-3.5 h-3.5 text-gray-600 ml-auto shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
-            </a>
-          ))}
-        </div>
-      </div>
+      )}
 
       {courses.length === 0 && lockedCourses.length === 0 && (
         <div className="text-center py-12 text-gray-400">

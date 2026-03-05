@@ -12,6 +12,7 @@ interface CoursesClientProps {
   viewMode: "curriculum" | "portal";
   targetAttribute: string | null;
   planName?: string | null;
+  planId?: string | null;
   modules: Record<string, Module[]>;
   lessons: Record<string, Lesson[]>;
   progress: Record<string, LessonProgress>;
@@ -23,6 +24,7 @@ export function CoursesClient({
   viewMode: initialViewMode,
   targetAttribute,
   planName,
+  planId,
   modules,
   lessons,
   progress,
@@ -87,7 +89,7 @@ export function CoursesClient({
           </span>
         </div>
       )}
-      <PortalView courses={courses} lockedCourses={lockedCourses} />
+      <PortalView courses={courses} lockedCourses={lockedCourses} planId={planId} />
     </div>
   );
 }

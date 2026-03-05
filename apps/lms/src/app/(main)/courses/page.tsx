@@ -194,6 +194,7 @@ export default async function CoursesPage() {
         viewMode={viewMode}
         targetAttribute={targetAttribute}
         planName={planName}
+        planId={planId}
         modules={modulesMap}
         lessons={lessonsMap}
         progress={progressMap}
