@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import { Pencil, Trash2, Plus, Check, X, Shield } from "lucide-react";
 
 interface Plan {
@@ -192,7 +193,11 @@ export default function ContentsAdminPage() {
           <tbody>
             {filtered.map((content) => (
               <tr key={content.id} className="border-b border-white/[0.06] hover:bg-white/[0.02]">
-                <td className="py-3 px-4 text-sm text-white font-medium">{content.title}</td>
+                <td className="py-3 px-4 text-sm text-white font-medium">
+                  <Link href={`/admin/contents/${content.id}`} className="hover:text-brand transition-colors">
+                    {content.title}
+                  </Link>
+                </td>
                 <td className="py-3 px-4">
                   <span className="text-xs px-2 py-0.5 rounded-full bg-white/10 text-gray-300">
                     {content.category || "-"}

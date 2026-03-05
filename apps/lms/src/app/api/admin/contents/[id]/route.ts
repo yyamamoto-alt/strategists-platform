@@ -5,6 +5,24 @@ interface RouteContext {
   params: Promise<{ id: string }>;
 }
 
+// GET /api/admin/contents/[id] - 教材詳細
+export async function GET(_request: Request, context: RouteContext) {
+  const { id } = await context.params;
+  const admin = createAdminClient();
+
+  const { data, error } = await admin
+    .from("contents")
+    .select("*")
+    .eq("id", id)
+    .single();
+
+  if (error || !data) {
+    return NextResponse.json({ error: "教材が見つかりません" }, { status: 404 });
+  }
+
+  return NextResponse.json(data);
+}
+
 // PATCH /api/admin/contents/[id] - 教材更新
 export async function PATCH(request: Request, context: RouteContext) {
   const { id } = await context.params;

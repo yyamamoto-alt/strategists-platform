@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Check, X } from "lucide-react";
+import { Check, X, Plus } from "lucide-react";
 
 interface Course {
   id: string;
@@ -24,6 +24,10 @@ export default function CoursesAdminPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editContentIds, setEditContentIds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+  const [showCreate, setShowCreate] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
+  const [newTarget, setNewTarget] = useState("既卒");
+  const [creating, setCreating] = useState(false);
 
   const fetchData = useCallback(async () => {
     const [coursesRes, contentsRes] = await Promise.all([
@@ -36,6 +40,23 @@ export default function CoursesAdminPage() {
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  const handleCreate = async () => {
+    if (!newTitle.trim()) return;
+    setCreating(true);
+    const res = await fetch("/api/admin/courses", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: newTitle, target_attribute: newTarget }),
+    });
+    if (res.ok) {
+      const newCourse = await res.json();
+      setCourses((prev) => [...prev, newCourse]);
+      setNewTitle("");
+      setShowCreate(false);
+    }
+    setCreating(false);
+  };
 
   const startEdit = (course: Course) => {
     setEditingId(course.id);
@@ -69,10 +90,52 @@ export default function CoursesAdminPage() {
 
   return (
     <div className="p-6 bg-surface min-h-screen space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-white">コース管理</h1>
-        <p className="text-sm text-gray-400 mt-1">各コース（カリキュラム）に含める教材を選択</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-white">コース管理</h1>
+          <p className="text-sm text-gray-400 mt-1">各コース（カリキュラム）に含める教材を選択</p>
+        </div>
+        <button
+          onClick={() => setShowCreate(!showCreate)}
+          className="flex items-center gap-2 bg-brand hover:bg-brand-dark text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+        >
+          <Plus className="w-4 h-4" />
+          コースを追加
+        </button>
       </div>
+
+      {showCreate && (
+        <div className="bg-surface-card border border-white/10 rounded-xl p-4 flex gap-3 items-end">
+          <div className="flex-1">
+            <label className="block text-xs text-gray-400 mb-1">コース名</label>
+            <input
+              type="text"
+              value={newTitle}
+              onChange={(e) => setNewTitle(e.target.value)}
+              placeholder="例: 新卒スタンダード"
+              className="w-full px-3 py-2 bg-surface-elevated border border-white/10 rounded-lg text-white text-sm focus:ring-2 focus:ring-brand focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-400 mb-1">対象</label>
+            <select
+              value={newTarget}
+              onChange={(e) => setNewTarget(e.target.value)}
+              className="px-3 py-2 bg-surface-elevated border border-white/10 rounded-lg text-white text-sm"
+            >
+              <option value="既卒">既卒</option>
+              <option value="新卒">新卒</option>
+            </select>
+          </div>
+          <button
+            onClick={handleCreate}
+            disabled={creating}
+            className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium disabled:opacity-50"
+          >
+            {creating ? "作成中..." : "追加"}
+          </button>
+        </div>
+      )}
 
       <div className="space-y-4">
         {courses.map((course) => {

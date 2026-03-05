@@ -33,3 +33,27 @@ export async function GET() {
 
   return NextResponse.json(result);
 }
+
+// POST /api/admin/courses - コース作成
+export async function POST(request: Request) {
+  const body = await request.json();
+  const admin = createAdminClient();
+
+  const { data, error } = await admin
+    .from("courses")
+    .insert({
+      title: body.title,
+      target_attribute: body.target_attribute || null,
+      category: "カリキュラム",
+      status: "published",
+      sort_order: body.sort_order || 99,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ ...data, content_ids: [] });
+}
