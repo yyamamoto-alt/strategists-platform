@@ -135,7 +135,7 @@ const VIEW_COLUMNS: Record<ViewTab, string[] | null> = {
   ],
 };
 
-const CLOSED_STAGES = new Set(["成約", "追加指導", "その他購入", "動画講座購入", "成約(追加指導経由)", "途中解約(成約)", "成約見込(未入金)"]);
+const CLOSED_STAGES = new Set(["成約", "追加指導", "その他購入", "動画講座購入", "成約(追加指導経由)", "途中解約(成約)"]);
 
 const STAGE_OPTIONS = [
   { group: "アクティブ", options: ["日程未確", "検討中", "長期検討"] },
