@@ -8,6 +8,7 @@
     "start": "next start -p 3001"
   },
   "dependencies": {
+    "@floating-ui/dom": "^1.7.6",
     "@strategy-school/shared-db": "*",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.98.0",
