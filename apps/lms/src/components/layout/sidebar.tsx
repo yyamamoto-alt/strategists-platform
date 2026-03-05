@@ -17,7 +17,6 @@ const learningNavigation: NavItem[] = [
   { name: "コース", href: "/courses", icon: "📚" },
   { name: "課題", href: "/assignments-lms", icon: "📝" },
   { name: "プログレスシート", href: "/progress-sheets", icon: "📋" },
-  { name: "スケジュール", href: "/schedule", icon: "📅" },
   { name: "お知らせ", href: "/announcements", icon: "🔔" },
 ];
 
@@ -25,7 +24,6 @@ const adminNavigation: NavItem[] = [
   { name: "教材管理", href: "/admin/contents", icon: "📖", roles: ["admin"] },
   { name: "コース管理", href: "/admin/courses", icon: "📚", roles: ["admin"] },
   { name: "受講生管理", href: "/admin/students", icon: "🎓", roles: ["admin", "mentor"] },
-  { name: "入塾申請", href: "/admin/applications", icon: "📨", roles: ["admin", "mentor"] },
 ];
 
 const settingsNavigation: NavItem[] = [
