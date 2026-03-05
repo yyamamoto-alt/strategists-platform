@@ -1,8 +1,9 @@
 "use client";
 
+import { useState, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
 
@@ -75,6 +76,45 @@ function NavSection({ title, items, role }: { title: string; items: NavItem[]; r
   );
 }
 
+function SearchBox() {
+  const [query, setQuery] = useState("");
+  const router = useRouter();
+
+  const handleSubmit = useCallback(
+    (e: React.FormEvent) => {
+      e.preventDefault();
+      const q = query.trim();
+      if (q) {
+        router.push(`/customers?search=${encodeURIComponent(q)}`);
+        setQuery("");
+      }
+    },
+    [query, router]
+  );
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <div className="relative">
+        <svg
+          className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="顧客を検索..."
+          className="w-full pl-8 pr-3 py-1.5 text-xs bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-brand focus:border-brand"
+        />
+      </div>
+    </form>
+  );
+}
+
 export function Sidebar() {
   const { user, role, signOut } = useAuth();
 
@@ -93,6 +133,9 @@ export function Sidebar() {
           priority
         />
         <p className="text-xs text-gray-400 mt-2">経営管理システム</p>
+      </div>
+      <div className="px-4 pt-4 pb-2">
+        <SearchBox />
       </div>
       <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
         <NavSection title="メイン" items={mainNavigation} role={role} />

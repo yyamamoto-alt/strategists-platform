@@ -28,6 +28,7 @@ interface SpreadsheetTableProps<T> {
   searchPlaceholder?: string;
   searchFilter?: (item: T, query: string) => boolean;
   storageKey?: string;
+  initialSearch?: string;
 }
 
 // カテゴリ別のヘッダーとセルの色
@@ -105,8 +106,9 @@ export function SpreadsheetTable<T>({
   searchPlaceholder = "検索...",
   searchFilter,
   storageKey = "default",
+  initialSearch = "",
 }: SpreadsheetTableProps<T>) {
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(initialSearch);
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 

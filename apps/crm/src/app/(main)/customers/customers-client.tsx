@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   formatCurrency,
@@ -13,6 +14,7 @@ import type { CustomerWithRelations } from "@strategy-school/shared-db";
 import type { ChannelAttribution } from "@/lib/data/marketing-settings";
 import {
   calcSalesProjection,
+  calcExpectedLTV,
   calcRemainingSessions,
   calcProgressStatus,
   calcAgentProjectedRevenue,
@@ -125,11 +127,16 @@ const VIEW_COLUMNS: Record<ViewTab, string[] | null> = {
 
 const CLOSED_STAGES = new Set(["成約", "入金済", "追加指導", "その他購入", "動画講座購入", "成約(追加指導経由)", "途中解約(成約)"]);
 
+type DisplayLimit = 200 | 400 | 1000 | "all";
+
 export function CustomersClient({ customers, attributionMap }: CustomersClientProps) {
+  const searchParams = useSearchParams();
+  const initialSearch = searchParams.get("search") || "";
   const [attributeFilter, setAttributeFilter] = useState<string>("");
   const [stageFilter, setStageFilter] = useState<string>("");
   const [contractFilter, setContractFilter] = useState<string>("");
   const [activeTab, setActiveTab] = useState<ViewTab>("all");
+  const [displayLimit, setDisplayLimit] = useState<DisplayLimit>(200);
 
   // フィルタ
   const baseFiltered = useMemo(() => {
@@ -151,6 +158,11 @@ export function CustomersClient({ customers, attributionMap }: CustomersClientPr
     }
     return result;
   }, [customers, attributeFilter, stageFilter, contractFilter]);
+
+  const displayFiltered = useMemo(() => {
+    if (displayLimit === "all") return baseFiltered;
+    return baseFiltered.slice(0, displayLimit);
+  }, [baseFiltered, displayLimit]);
 
   // ================================================================
   // 全カラム定義（並び順が表示順）
@@ -232,12 +244,12 @@ export function CustomersClient({ customers, attributionMap }: CustomersClientPr
           return school + agent + getSubsidyAmount(c);
         } },
 
-      { key: "projected_amount", label: "予測売上", width: 100, align: "right" as const, computed: true, category: "sales",
-        formula: "確定売上 + 人材見込売上 + 補助金\n(成約確率ベース含む)",
+      { key: "projected_amount", label: "見込LTV", width: 100, align: "right" as const, computed: true, category: "sales",
+        formula: "成約者: 確定売上+人材売上+補助金\n未成約者: 見込み成約率×見込み単価",
         render: (c) => {
-          const v = calcSalesProjection(c);
+          const v = calcExpectedLTV(c);
           return v > 0 ? formatCurrency(v) : "-";
-        }, sortValue: (c) => calcSalesProjection(c) },
+        }, sortValue: (c) => calcExpectedLTV(c) },
 
       // ═══ マーケティング（オレンジ） ═══
       { key: "marketing_channel", label: "帰属チャネル", width: 110, category: "marketing",
@@ -488,7 +500,23 @@ export function CustomersClient({ customers, attributionMap }: CustomersClientPr
       {/* ヘッダー: タイトル + フィルタ */}
       <div className="flex items-center gap-3 flex-wrap">
         <h1 className="text-lg font-bold text-white shrink-0">顧客一覧</h1>
-        <span className="text-xs text-gray-500 shrink-0">{baseFiltered.length}件</span>
+        <span className="text-xs text-gray-500 shrink-0">
+          {displayLimit !== "all" && displayFiltered.length < baseFiltered.length
+            ? `${displayFiltered.length}/${baseFiltered.length}件`
+            : `${baseFiltered.length}件`}
+        </span>
+
+        {/* 表示件数セレクタ */}
+        <select
+          value={String(displayLimit)}
+          onChange={(e) => setDisplayLimit(e.target.value === "all" ? "all" : Number(e.target.value) as 200 | 400 | 1000)}
+          className="px-2 py-1 bg-surface-elevated border border-white/10 text-white rounded text-xs focus:outline-none focus:ring-1 focus:ring-brand"
+        >
+          <option value="200">200件</option>
+          <option value="400">400件</option>
+          <option value="1000">1000件</option>
+          <option value="all">全件</option>
+        </select>
 
         {/* 属性フィルタ */}
         <div className="flex gap-0.5 bg-surface-elevated rounded-md p-0.5 border border-white/10">
@@ -579,10 +607,11 @@ export function CustomersClient({ customers, attributionMap }: CustomersClientPr
       {/* テーブル */}
       <SpreadsheetTable
         columns={spreadsheetColumns}
-        data={baseFiltered}
+        data={displayFiltered}
         getRowKey={(c) => c.id}
         storageKey={`customers-${activeTab}`}
         searchPlaceholder="名前・大学・経歴・チャネルで検索..."
+        initialSearch={initialSearch}
         searchFilter={(c, q) =>
           c.name.toLowerCase().includes(q) ||
           (c.university?.toLowerCase().includes(q) ?? false) ||

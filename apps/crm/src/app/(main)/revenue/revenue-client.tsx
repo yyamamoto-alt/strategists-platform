@@ -741,19 +741,17 @@ export function RevenueClient({ plData }: RevenueClientProps) {
   const [periodRange, setPeriodRange] = useState<PeriodRange>("12m");
 
   const displayPeriods = useMemo(() => {
-    if (periodRange === "all") return plData.periods;
-    const n = periodRange === "6m" ? 6 : 12;
-    return plData.periods.slice(-n);
+    const periods = periodRange === "all"
+      ? plData.periods
+      : plData.periods.slice(-(periodRange === "6m" ? 6 : 12));
+    return [...periods].reverse();
   }, [plData.periods, periodRange]);
 
   return (
     <div className="p-6 space-y-8">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">売上管理</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            P/L（Excel準拠） ※成約率の分母は実施数-追加指導数
-          </p>
+          <h1 className="text-2xl font-bold text-white">PL</h1>
         </div>
         <div className="flex gap-1">
           {(["6m", "12m", "all"] as PeriodRange[]).map((range) => (

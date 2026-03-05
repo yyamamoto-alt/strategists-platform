@@ -30,6 +30,8 @@ import {
   getSubsidyAmount,
   calcAgentProjectedRevenue,
   isShinsotsu,
+  DEFAULT_LTV_CONFIG,
+  type LtvConfig,
 } from "@/lib/calc-fields";
 
 /** 集計対象開始日: これより前の申込は集計から除外（データはDB保持） */
@@ -363,7 +365,7 @@ export function computeThreeTierRevenue(
       if (prob > 0) {
         // スクール売上期待値
         const potentialSchool = amount > 0 ? amount :
-          (isShinsotsu(c.attribute) ? 240000 : 427636);
+          (isShinsotsu(c.attribute) ? DEFAULT_LTV_CONFIG.defaultLtvShinsotsu : DEFAULT_LTV_CONFIG.defaultLtvKisotsu);
         m.forecast_school += potentialSchool * prob;
         // エージェント売上期待値（Tier 2で計上済みの受講中顧客は除外）
         if (isAgentCustomer(c) && !enrolledAgent) {

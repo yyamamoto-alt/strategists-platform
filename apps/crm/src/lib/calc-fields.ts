@@ -11,13 +11,13 @@ export function isShinsotsu(attribute: string | null | undefined): boolean {
   return attribute.includes("卒");
 }
 
-/** 顧客のエージェント紹介報酬期待値を算出（Excel Col DX 再現） */
+/** 顧客のエージェント紹介報酬期待値を算出（Excel Col DX 再現）
+ *  常に式から計算（DB の expected_referral_fee は Excel移行時の古い値のため使用しない）
+ *  b = 想定年収 × 入社至る率 × 内定確度 × 紹介料率 × マージン
+ */
 export function calcExpectedReferralFee(c: CustomerWithRelations): number {
   const a = c.agent;
   if (!a) return 0;
-  if (a.expected_referral_fee && a.expected_referral_fee > 0) {
-    return a.expected_referral_fee;
-  }
   const salary = a.offer_salary || 0;
   const hireRate = a.hire_rate ?? 0.6;
   const offerProb = a.offer_probability ?? 0.3;
@@ -125,20 +125,42 @@ export function calcClosingProbability(c: CustomerWithRelations): number {
   return 0.20;
 }
 
-/** 売上見込（Excel Col N）= 確定売上 + 人材見込売上 + 補助金額 */
+/** 成約者見込LTV（ユーザー定義 c）= a + b（人材未確定時）OR a + c（人材確定時）
+ *  a = 確定売上(スクール受講料 + 補助金)
+ *  b = 人材見込売上
+ *  c = 確定売上(人材)
+ */
 export function calcSalesProjection(c: CustomerWithRelations): number {
-  // 常にコンポーネントから計算（projected_amount は Excel移行時の古い値で矛盾するため使用しない）
   const confirmed = c.contract?.confirmed_amount || 0;
-  const agentRev = calcAgentProjectedRevenue(c);
   const subsidy = getSubsidyAmount(c);
-  return confirmed + agentRev + subsidy;
+  const a = confirmed + subsidy;
+
+  // 人材確定時: a + c
+  if (isAgentCustomer(c) && isAgentConfirmed(c)) {
+    return a + calcExpectedReferralFee(c);
+  }
+  // 人材未確定時: a + b
+  const b = calcAgentProjectedRevenue(c);
+  return a + b;
 }
 
-/** 見込LTV（Excel Col DD）= IF(売上見込>0, 売上見込, デフォルトLTV×成約見込率) */
-export function calcExpectedLTV(c: CustomerWithRelations): number {
+/** デフォルトLTV設定 */
+export interface LtvConfig {
+  defaultLtvKisotsu: number;
+  defaultLtvShinsotsu: number;
+}
+
+export const DEFAULT_LTV_CONFIG: LtvConfig = {
+  defaultLtvKisotsu: 427636,
+  defaultLtvShinsotsu: 240000,
+};
+
+/** 見込LTV（d）= 成約者はc(成約者見込LTV)、未成約者は見込み成約率×見込み単価 */
+export function calcExpectedLTV(c: CustomerWithRelations, config?: LtvConfig): number {
+  const cfg = config || DEFAULT_LTV_CONFIG;
   const salesProjection = calcSalesProjection(c);
   if (salesProjection > 0) return salesProjection;
-  const defaultLTV = isShinsotsu(c.attribute) ? 240000 : 427636;
+  const defaultLTV = isShinsotsu(c.attribute) ? cfg.defaultLtvShinsotsu : cfg.defaultLtvKisotsu;
   return Math.round(defaultLTV * calcClosingProbability(c));
 }
 
@@ -177,11 +199,12 @@ export function calcProgressStatus(c: CustomerWithRelations): "順調" | "遅延
   return schedule / session > 1.5 ? "遅延" : "順調";
 }
 
-/** 確定売上合計 = スクール確定売上 + 人材確定分 */
+/** 確定売上合計（e）= a + c = スクール確定(a1) + 補助金(a2) + 人材確定(c) */
 export function calcConfirmedRevenue(c: CustomerWithRelations): number {
   const schoolConfirmed = c.contract?.confirmed_amount || 0;
+  const subsidy = getSubsidyAmount(c);
   const agentConfirmed = isAgentConfirmed(c) ? calcExpectedReferralFee(c) : 0;
-  return schoolConfirmed + agentConfirmed;
+  return schoolConfirmed + subsidy + agentConfirmed;
 }
 
 /** 人材見込売上（人材紹介区分に基づく乗数）（Excel Col BU） */
