@@ -1,5 +1,3 @@
-export const dynamic = "force-dynamic";
-
 import { createServiceClient } from "@/lib/supabase/server";
 import { PaymentsClient } from "./payments-client";
 

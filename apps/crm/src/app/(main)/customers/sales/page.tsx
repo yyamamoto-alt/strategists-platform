@@ -1,5 +1,3 @@
-export const dynamic = "force-dynamic";
-
 import { fetchCustomersWithRelations } from "@/lib/data/customers";
 import { SalesClient } from "./sales-client";
 import { mockCustomers } from "@/lib/mock-data";

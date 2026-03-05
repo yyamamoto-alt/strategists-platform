@@ -1,5 +1,3 @@
-export const dynamic = "force-dynamic";
-
 import { fetchCustomersWithRelations } from "@/lib/data/customers";
 import { fetchChannelAttributions } from "@/lib/data/marketing-settings";
 import { CustomersClient } from "./customers-client";
