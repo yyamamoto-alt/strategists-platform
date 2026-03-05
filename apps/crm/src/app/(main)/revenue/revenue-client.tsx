@@ -37,6 +37,7 @@ interface TableRow {
 }
 
 type PeriodRange = "6m" | "12m" | "all";
+type SegmentTab = "kisotsu" | "shinsotsu";
 
 // ================================================================
 // フォーマッター
@@ -60,8 +61,11 @@ function buildRows(
   showGradYear?: boolean
 ): TableRow[] {
   const rows: TableRow[] = [];
-  const organicChannels = data.channels.filter((ch) => !ch.isPaid);
-  const paidChannels = data.channels.filter((ch) => ch.isPaid);
+  // チャンネルを成約数降順にソート
+  const sortByClosedDesc = <T extends { totals: PLFunnelCounts }>(arr: T[]): T[] =>
+    [...arr].sort((a, b) => (b.totals.closed || 0) - (a.totals.closed || 0));
+  const organicChannels = sortByClosedDesc(data.channels.filter((ch) => !ch.isPaid));
+  const paidChannels = sortByClosedDesc(data.channels.filter((ch) => ch.isPaid));
 
   // --- 3段階売上 ---
   rows.push({
@@ -105,9 +109,9 @@ function buildRows(
     denomKey?: keyof PLFunnelCounts;
     excludeAC?: boolean;
   }[] = [
-    { key: "closed", label: "成約数", rateLabel: "成約率", rateSuffix: "（実施-追加指導→成約）", denomKey: "conducted", excludeAC: true },
-    { key: "conducted", label: "実施数", rateLabel: "実施率", rateSuffix: "（日程確定→実施）", denomKey: "scheduled" },
-    { key: "scheduled", label: "日程確定数", rateLabel: "日程確定率", rateSuffix: "（申込→日程確定）", denomKey: "applications" },
+    { key: "closed", label: "成約数", rateLabel: "成約率", rateSuffix: "（成約/営業完了）", denomKey: "conducted", excludeAC: true },
+    { key: "conducted", label: "実施数", rateLabel: "実施率", rateSuffix: "（実施/日程確定）", denomKey: "scheduled" },
+    { key: "scheduled", label: "日程確定数", rateLabel: "日程確定率", rateSuffix: "（日程確定/申込）", denomKey: "applications" },
     { key: "applications", label: "申込数" },
   ];
 
@@ -627,11 +631,6 @@ function PLSection({
     <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10">
       <div className="px-6 py-4 border-b border-white/10">
         <h2 className="text-lg font-semibold text-white">{label}</h2>
-        <p className="text-xs text-gray-500 mt-1">
-          申込 {data.grandTotals.applications} / 成約{" "}
-          {data.grandTotals.closed} / 確定売上{" "}
-          {formatCurrency(data.confirmedRevenueTotal)}
-        </p>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm whitespace-nowrap">
@@ -739,6 +738,7 @@ interface RevenueClientProps {
 
 export function RevenueClient({ plData }: RevenueClientProps) {
   const [periodRange, setPeriodRange] = useState<PeriodRange>("12m");
+  const [segmentTab, setSegmentTab] = useState<SegmentTab>("kisotsu");
 
   const displayPeriods = useMemo(() => {
     const periods = periodRange === "all"
@@ -747,11 +747,32 @@ export function RevenueClient({ plData }: RevenueClientProps) {
     return [...periods].reverse();
   }, [plData.periods, periodRange]);
 
+  const currentData = segmentTab === "kisotsu" ? plData.kisotsu : plData.shinsotsu;
+  const currentLabel = segmentTab === "kisotsu" ? "既卒スクール×エージェント事業" : "新卒スクール事業";
+
   return (
-    <div className="p-6 space-y-8">
+    <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <div>
+        <div className="flex items-center gap-4">
           <h1 className="text-2xl font-bold text-white">PL</h1>
+          <div className="flex gap-1 bg-white/5 rounded-lg p-0.5">
+            {([
+              { key: "kisotsu" as SegmentTab, label: "既卒" },
+              { key: "shinsotsu" as SegmentTab, label: "新卒" },
+            ]).map(({ key, label }) => (
+              <button
+                key={key}
+                onClick={() => setSegmentTab(key)}
+                className={`px-4 py-1.5 text-sm rounded-md transition-colors ${
+                  segmentTab === key
+                    ? "bg-brand text-white font-medium"
+                    : "text-gray-400 hover:text-white hover:bg-white/10"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
         <div className="flex gap-1">
           {(["6m", "12m", "all"] as PeriodRange[]).map((range) => (
@@ -775,16 +796,10 @@ export function RevenueClient({ plData }: RevenueClientProps) {
       </div>
 
       <PLSection
-        label="既卒スクール×エージェント事業"
-        data={plData.kisotsu}
+        label={currentLabel}
+        data={currentData}
         periods={displayPeriods}
-      />
-
-      <PLSection
-        label="新卒スクール事業"
-        data={plData.shinsotsu}
-        periods={displayPeriods}
-        showGradYear
+        showGradYear={segmentTab === "shinsotsu"}
       />
     </div>
   );

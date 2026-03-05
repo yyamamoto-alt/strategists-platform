@@ -92,20 +92,20 @@ function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
           stackId="revenue"
         />
 
-        {/* 見込み: 人材見込み上積み（半透明グレー） */}
+        {/* 見込み: 人材見込み上積み（半透明オレンジ — 人材確定の黄色と同系統） */}
         <Bar
           dataKey="projected_agent"
           name="人材見込（見込）"
-          fill="#94a3b8"
+          fill="#f97316"
           fillOpacity={0.5}
           stackId="revenue"
         />
 
-        {/* 予測: 予測上積み（さらに半透明オレンジ） */}
+        {/* 予測: 予測上積み（半透明赤） */}
         <Bar
           dataKey="forecast_uplift"
           name="予測上積み（予測）"
-          fill="#f97316"
+          fill="#ef4444"
           fillOpacity={0.35}
           stackId="revenue"
           radius={[4, 4, 0, 0]}
