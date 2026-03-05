@@ -17,11 +17,10 @@ export async function GET(request: Request) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as any;
 
-  // auto_create_customer=true の接続（LP系）を取得
+  // 全アクティブ接続を取得（LP系もフォーム系もすべて同期）
   const { data: connections, error: connError } = await db
     .from("spreadsheet_connections")
     .select("*")
-    .eq("auto_create_customer", true)
     .eq("is_active", true);
 
   if (connError || !connections || connections.length === 0) {
