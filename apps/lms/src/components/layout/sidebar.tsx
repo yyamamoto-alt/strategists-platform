@@ -81,7 +81,7 @@ export function Sidebar() {
   const roleInitial = role === "admin" ? "管" : role === "mentor" ? "メ" : "生";
 
   return (
-    <aside className="w-64 bg-surface-raised text-white flex flex-col shrink-0 border-r border-white/10">
+    <aside className="w-64 bg-surface-raised-lms text-white flex flex-col shrink-0 border-r border-red-900/30">
       <div className="p-6 border-b border-white/10">
         <Image
           src="/strategists-logo.png"
@@ -91,7 +91,10 @@ export function Sidebar() {
           className="h-10 w-auto object-contain"
           priority
         />
-        <p className="text-xs text-gray-400 mt-2">学習管理システム</p>
+        <div className="flex items-center gap-2 mt-2">
+          <span className="px-1.5 py-0.5 text-[10px] font-bold bg-red-700 text-white rounded">LMS</span>
+          <p className="text-xs text-gray-400">学習管理システム</p>
+        </div>
       </div>
       <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
         <NavSection title="学習" items={learningNavigation} role={role} />

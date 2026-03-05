@@ -21,6 +21,7 @@ const config: Config = {
         surface: {
           DEFAULT: "#0A0A0A",
           raised: "#0F0F0F",
+          "raised-lms": "#1A0C0B",
           card: "#141414",
           elevated: "#1A1A1A",
         },

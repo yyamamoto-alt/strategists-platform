@@ -129,7 +129,10 @@ export function Sidebar() {
           className="h-10 w-auto object-contain"
           priority
         />
-        <p className="text-xs text-gray-400 mt-2">経営管理システム</p>
+        <div className="flex items-center gap-2 mt-2">
+          <span className="px-1.5 py-0.5 text-[10px] font-bold bg-blue-600 text-white rounded">CRM</span>
+          <p className="text-xs text-gray-400">経営管理システム</p>
+        </div>
       </div>
       <div className="px-4 pt-4 pb-2">
         <SearchBox />
