@@ -4,16 +4,79 @@ import { createServiceClient } from "@/lib/supabase/server";
 
 export interface MatchResult {
   customer_id: string;
-  match_type: "email" | "phone" | "name_kana";
+  match_type: "email" | "phone" | "name_kana" | "fuzzy";
 }
 
+// ================================================================
+// 名前正規化ヘルパー
+// ================================================================
+
+/** スペース・全角スペース除去 + 小文字化 */
+function normalizeName(name: string): string {
+  return name.replace(/[\s\u3000]/g, "").toLowerCase();
+}
+
+/** ひらがな → カタカナ変換 */
+function hiraganaToKatakana(str: string): string {
+  return str.replace(/[\u3041-\u3096]/g, (ch) =>
+    String.fromCharCode(ch.charCodeAt(0) + 0x60)
+  );
+}
+
+/** 名前の類似判定（表記ゆれ対応） */
+function namesMatch(a: string | null, b: string | null): boolean {
+  if (!a || !b) return false;
+  const na = normalizeName(a);
+  const nb = normalizeName(b);
+  if (na === nb) return true;
+
+  // カタカナ統一比較
+  const ka = hiraganaToKatakana(na);
+  const kb = hiraganaToKatakana(nb);
+  if (ka === kb) return true;
+
+  // 姓名入れ替え（2文字以上の場合、半分で分割して逆順比較）
+  // "山本雄大" vs "雄大山本" → 各2文字ずつ
+  if (na.length >= 2 && nb.length >= 2) {
+    // 片方に含まれるもう片方の文字を全て含むか（順不同）
+    const charsA = na.split("").sort().join("");
+    const charsB = nb.split("").sort().join("");
+    if (charsA === charsB) return true;
+  }
+
+  return false;
+}
+
+/** 電話番号正規化 */
+function normalizePhone(phone: string): string {
+  return phone.replace(/[-\s\u3000()（）+]/g, "");
+}
+
+/** 電話番号の類似判定（下8桁一致） */
+function phonesMatch(a: string | null, b: string | null): boolean {
+  if (!a || !b) return false;
+  const na = normalizePhone(a);
+  const nb = normalizePhone(b);
+  if (na === nb) return true;
+  // 下8桁一致（国番号違いなど対応）
+  if (na.length >= 8 && nb.length >= 8) {
+    return na.slice(-8) === nb.slice(-8);
+  }
+  return false;
+}
+
+// ================================================================
+// メインマッチング関数
+// ================================================================
+
 /**
- * メールアドレス → 電話番号 の順で顧客を照合
+ * メールアドレス → 電話番号 → カナ名 → ファジー（直近60分）の順で顧客を照合
  */
 export async function matchCustomer(
   email?: string | null,
   phone?: string | null,
   nameKana?: string | null,
+  name?: string | null,
 ): Promise<MatchResult | null> {
   const supabase = createServiceClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -32,24 +95,38 @@ export async function matchCustomer(
     if (data) {
       return { customer_id: data.customer_id, match_type: "email" };
     }
+
+    // customers.email でもチェック
+    const { data: custByEmail } = await db
+      .from("customers")
+      .select("id")
+      .eq("email", normalizedEmail)
+      .limit(1)
+      .single();
+
+    if (custByEmail) {
+      return { customer_id: custByEmail.id, match_type: "email" };
+    }
   }
 
   // Step 2: customers.phone で電話番号照合
   if (phone) {
-    const normalizedPhone = phone.replace(/[-\s\u3000()（）]/g, "");
-    const { data } = await db
-      .from("customers")
-      .select("id")
-      .eq("phone", normalizedPhone)
-      .limit(1)
-      .single();
+    const normalizedPhone = normalizePhone(phone);
+    if (normalizedPhone.length >= 10) {
+      const { data } = await db
+        .from("customers")
+        .select("id")
+        .eq("phone", normalizedPhone)
+        .limit(1)
+        .single();
 
-    if (data) {
-      return { customer_id: data.id, match_type: "phone" };
+      if (data) {
+        return { customer_id: data.id, match_type: "phone" };
+      }
     }
   }
 
-  // Step 3: name_kana（カタカナ名）照合 — Freee銀行振込のカタカナ名マッチ用
+  // Step 3: name_kana（カタカナ名）照合
   if (nameKana) {
     const normalizedKana = nameKana.trim().replace(/\s+/g, "");
     const { data } = await db
@@ -61,6 +138,42 @@ export async function matchCustomer(
 
     if (data) {
       return { customer_id: data.id, match_type: "name_kana" };
+    }
+  }
+
+  // Step 4: ファジーマッチ — 直近60分以内に作成された顧客に対して
+  // 2つ以上の項目が一致する場合のみマッチとする（誤マッチ防止）
+  if (email || phone || name) {
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+
+    const { data: recentCustomers } = await db
+      .from("customers")
+      .select("id, name, email, phone")
+      .gte("created_at", oneHourAgo)
+      .limit(100);
+
+    if (recentCustomers && recentCustomers.length > 0) {
+      for (const cust of recentCustomers as { id: string; name: string | null; email: string | null; phone: string | null }[]) {
+        let score = 0;
+
+        // メールのローカルパート一致
+        if (email && cust.email) {
+          const localA = email.trim().toLowerCase().split("@")[0];
+          const localB = cust.email.trim().toLowerCase().split("@")[0];
+          if (localA && localB && localA === localB) score++;
+        }
+
+        // 電話番号ファジー一致
+        if (phonesMatch(phone || null, cust.phone)) score++;
+
+        // 名前ファジー一致
+        if (namesMatch(name || null, cust.name)) score++;
+
+        // 2つ以上一致で確定
+        if (score >= 2) {
+          return { customer_id: cust.id, match_type: "fuzzy" };
+        }
+      }
     }
   }
 
@@ -267,7 +380,7 @@ export async function upsertFromSpreadsheet(
   const phone = fields.phone || null;
   const name = fields.name || null;
 
-  const match = await matchCustomer(email, phone);
+  const match = await matchCustomer(email, phone, null, name);
 
   if (match) {
     // マッチ → 既存レコード更新

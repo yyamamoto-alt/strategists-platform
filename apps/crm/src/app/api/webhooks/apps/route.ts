@@ -29,8 +29,7 @@ export async function POST(request: Request) {
       const dbg = createServiceClient();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (dbg as any).from("unmatched_records").insert({
-        connection_id: "00000000-0000-0000-0000-000000000000",
-        raw_data: { _debug: "signature_mismatch", body: rawBody.substring(0, 500) },
+          raw_data: { _debug: "signature_mismatch", body: rawBody.substring(0, 500) },
         name: "apps_sig_debug",
         status: "pending",
       });
@@ -53,7 +52,6 @@ export async function POST(request: Request) {
     const supabase = createServiceClient();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (supabase as any).from("unmatched_records").insert({
-      connection_id: "00000000-0000-0000-0000-000000000000",
       raw_data: payload,
       name: "apps_webhook_debug",
       status: "pending",

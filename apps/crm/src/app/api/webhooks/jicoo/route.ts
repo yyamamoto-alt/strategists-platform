@@ -29,7 +29,6 @@ export async function POST(request: Request) {
         .digest("hex");
 
       if (sig !== expected) {
-        // TODO: Jicoo署名アルゴリズム要調査 — 一旦スキップしてデータを通す
         console.warn("Jicoo signature mismatch, skipping verification");
       }
     }
@@ -49,10 +48,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Missing object" }, { status: 400 });
   }
 
-  const contact = obj.contact as { email?: string; name?: string } | undefined;
+  const contact = obj.contact as { email?: string; name?: string; phone?: string } | undefined;
   const email = contact?.email?.trim().toLowerCase() || null;
   const name = contact?.name || null;
-  const bookingUid = obj.uid as string;
+  const phone = (contact?.phone || null) as string | null;
   const startedAt = obj.startedAt as string | null;
   const status = obj.status as string;
 
@@ -60,8 +59,8 @@ export async function POST(request: Request) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as any;
 
-  // 顧客マッチ
-  const match = await matchCustomer(email);
+  // 顧客マッチ（ファジーマッチ対応）
+  const match = await matchCustomer(email, phone, null, name);
 
   if (match) {
     // 予約作成 → 面談日程をsales_pipelineに記録
@@ -108,23 +107,71 @@ export async function POST(request: Request) {
       customer_id: match.customer_id,
       source: "Jicoo",
       raw_data: body,
-      notes: `Jicoo ${event}: ${name || email || "unknown"}`,
+      notes: `Jicoo ${event}: ${name || email || "unknown"} (${match.match_type}マッチ)`,
     });
 
     return NextResponse.json({
       success: true,
       matched: true,
+      match_type: match.match_type,
       customer_id: match.customer_id,
       event,
     });
   }
 
-  // 未マッチ → application_historyには保存しない（customer_id必須）
-  // unmatched_recordsに記録（Jicoo用の仮connection_id不要 — sync_log_idなしで挿入）
-  // ただし、LPフォームで自動作成された顧客がまだ同期されていない可能性もある
-  // → 未マッチログとして記録
+  // 未マッチ → 顧客を自動作成
+  if (email || name) {
+    const customerInsert: Record<string, unknown> = {
+      name: name || "未入力",
+      email: email || null,
+      phone: phone || null,
+      application_date: new Date().toISOString(),
+      data_origin: "jicoo",
+    };
+
+    const { data: newCustomer, error: createError } = await db
+      .from("customers")
+      .insert(customerInsert)
+      .select()
+      .single();
+
+    if (newCustomer && !createError) {
+      // customer_emails に登録
+      if (email) {
+        await db.from("customer_emails").upsert(
+          { customer_id: newCustomer.id, email, is_primary: true },
+          { onConflict: "email" }
+        );
+      }
+
+      // sales_pipeline を作成（Jicoo予約 → 日程確定）
+      await db.from("sales_pipeline").insert({
+        customer_id: newCustomer.id,
+        stage: "日程確定",
+        deal_status: "対応中",
+        meeting_scheduled_date: startedAt || null,
+      });
+
+      // application_history
+      await db.from("application_history").insert({
+        customer_id: newCustomer.id,
+        source: "Jicoo",
+        raw_data: body,
+        notes: `Jicoo ${event}: 自動作成`,
+      });
+
+      return NextResponse.json({
+        success: true,
+        matched: false,
+        auto_created: true,
+        customer_id: newCustomer.id,
+        event,
+      });
+    }
+  }
+
+  // 作成も失敗 → 未マッチキューへ
   await db.from("unmatched_records").insert({
-    connection_id: "00000000-0000-0000-0000-000000000000", // Jicoo placeholder
     raw_data: body,
     email,
     name,
@@ -134,6 +181,7 @@ export async function POST(request: Request) {
   return NextResponse.json({
     success: true,
     matched: false,
+    auto_created: false,
     event,
     message: "Customer not found, queued for manual review",
   });
