@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { formatDate, formatCurrency, formatPercent } from "@/lib/utils";
+import { formatCurrency } from "@/lib/utils";
+import { calcExpectedReferralFee, getOfferRankRate, OFFER_RANK_META } from "@/lib/calc-fields";
 import type { CustomerWithRelations, AgentRevenueSummary } from "@strategy-school/shared-db";
 
 interface AgentsClientProps {
@@ -9,19 +10,16 @@ interface AgentsClientProps {
   agentSummary?: AgentRevenueSummary;
 }
 
-/** 顧客のエージェント紹介報酬期待値を算出 */
-function calcExpectedFee(c: CustomerWithRelations): number {
-  const a = c.agent;
-  if (!a) return 0;
-  if (a.expected_referral_fee && a.expected_referral_fee > 0) {
-    return a.expected_referral_fee;
-  }
-  const salary = a.offer_salary || 0;
-  const hireRate = a.hire_rate ?? 0.6;
-  const offerProb = a.offer_probability ?? 0.3;
-  const feeRate = a.referral_fee_rate ?? 0.3;
-  const margin = a.margin ?? 1.0;
-  return salary * hireRate * offerProb * feeRate * margin;
+/** 内定ランクの色バッジ */
+function RankBadge({ rank }: { rank: string | null | undefined }) {
+  const r = rank || "B";
+  const meta = OFFER_RANK_META[r];
+  if (!meta) return <span className="text-xs text-gray-500">-</span>;
+  return (
+    <span className={`px-1.5 py-0.5 rounded text-xs font-bold ${meta.color} ${meta.bgColor}`}>
+      {r}
+    </span>
+  );
 }
 
 export function AgentsClient({ customers, agentSummary }: AgentsClientProps) {
@@ -102,17 +100,16 @@ export function AgentsClient({ customers, agentSummary }: AgentsClientProps) {
                 <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">顧客</th>
                 <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">ステータス</th>
                 <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">確定</th>
+                <th className="text-center py-3 px-4 text-xs font-semibold text-gray-500">内定ランク</th>
                 <th className="text-right py-3 px-4 text-xs font-semibold text-gray-500">想定年収</th>
                 <th className="text-right py-3 px-4 text-xs font-semibold text-gray-500">紹介報酬期待値</th>
-                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">手数料率</th>
-                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">プラン</th>
                 <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">選考状況</th>
                 <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">外部エージェント</th>
               </tr>
             </thead>
             <tbody>
               {enrolled.map((c) => {
-                const fee = calcExpectedFee(c);
+                const fee = calcExpectedReferralFee(c);
                 return (
                   <tr key={c.id} className="border-b border-white/[0.08] hover:bg-white/5">
                     <td className="py-3 px-4">
@@ -134,6 +131,9 @@ export function AgentsClient({ customers, agentSummary }: AgentsClientProps) {
                         <span className="text-xs text-gray-500">見込み</span>
                       )}
                     </td>
+                    <td className="py-3 px-4 text-center">
+                      <RankBadge rank={c.agent.offer_rank} />
+                    </td>
                     <td className="py-3 px-4 text-sm text-right text-gray-300">
                       {c.agent.offer_salary ? formatCurrency(c.agent.offer_salary) : "-"}
                     </td>
@@ -141,12 +141,6 @@ export function AgentsClient({ customers, agentSummary }: AgentsClientProps) {
                       <span className={fee > 0 ? "text-amber-400" : "text-gray-500"}>
                         {fee > 0 ? formatCurrency(fee) : "-"}
                       </span>
-                    </td>
-                    <td className="py-3 px-4 text-sm text-gray-300">
-                      {c.agent.referral_fee_rate ? `${(c.agent.referral_fee_rate * 100).toFixed(0)}%` : "-"}
-                    </td>
-                    <td className="py-3 px-4 text-sm text-gray-400 max-w-[200px] truncate">
-                      {c.agent.agent_plan || "-"}
                     </td>
                     <td className="py-3 px-4 text-sm text-gray-400 max-w-[200px] truncate">
                       {c.agent.selection_status || "-"}
@@ -157,7 +151,7 @@ export function AgentsClient({ customers, agentSummary }: AgentsClientProps) {
               })}
               {enrolled.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="py-8 text-center text-gray-500">
+                  <td colSpan={8} className="py-8 text-center text-gray-500">
                     エージェント利用者がいません
                   </td>
                 </tr>

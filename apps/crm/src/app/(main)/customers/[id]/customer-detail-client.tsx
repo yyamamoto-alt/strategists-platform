@@ -25,6 +25,8 @@ import {
   isAgentCustomer,
   isAgentConfirmed,
   getSubsidyAmount,
+  getOfferRankRate,
+  OFFER_RANK_META,
 } from "@/lib/calc-fields";
 import { useRouter } from "next/navigation";
 import type { CustomerWithRelations, Activity } from "@strategy-school/shared-db";
@@ -430,14 +432,17 @@ function buildAgentFields(c: CustomerWithRelations): FieldDef[] {
     { key: "selection_status", label: "選考状況", source: "manual", table: "agent", getValue: () => c.agent?.selection_status || "-" },
     { key: "offer_company", label: "内定先", source: "manual", table: "agent", getValue: () => c.agent?.offer_company || "-" },
     { key: "offer_salary", label: "想定年収", source: "manual", type: "number", table: "agent", getValue: () => c.agent?.offer_salary ? formatCurrency(c.agent.offer_salary) : "-" },
-    { key: "hire_rate", label: "入社至る率", source: "manual", type: "number", table: "agent", getValue: () => c.agent?.hire_rate != null ? formatPercent(c.agent.hire_rate) : "-" },
-    { key: "offer_probability", label: "内定確度", source: "manual", type: "number", table: "agent", getValue: () => c.agent?.offer_probability != null ? formatPercent(c.agent.offer_probability) : "-" },
+    { key: "offer_rank", label: "内定ランク", source: "manual", type: "select", options: ["S", "A", "B", "C", "D"], table: "agent", getValue: () => {
+      const rank = c.agent?.offer_rank || "B";
+      const meta = OFFER_RANK_META[rank];
+      return meta ? `${rank}（${meta.label}・${formatPercent(getOfferRankRate(rank))}）` : rank;
+    }},
     { key: "referral_fee_rate", label: "紹介料率", source: "manual", type: "number", table: "agent", getValue: () => c.agent?.referral_fee_rate ? formatPercent(c.agent.referral_fee_rate) : "-" },
     { key: "margin", label: "マージン", source: "manual", type: "number", table: "agent", getValue: () => {
       const m = c.agent?.margin && c.agent.margin > 0 ? c.agent.margin : 0.75;
       return formatPercent(m);
     }},
-    { key: "expected_fee", label: "人材紹介報酬期待値(b)", source: "calc", getValue: () => { const v = calcExpectedReferralFee(c); return v > 0 ? formatCurrency(v) : "-"; } },
+    { key: "expected_fee", label: "人材紹介報酬期待値", source: "calc", getValue: () => { const v = calcExpectedReferralFee(c); return v > 0 ? formatCurrency(v) : "-"; } },
     { key: "placement_confirmed", label: "人材確定", source: "manual", type: "select", options: ["確定", ""], table: "agent", getValue: () => isAgentConfirmed(c) ? "確定" : "未確定" },
     { key: "placement_date", label: "入社予定日", source: "manual", type: "date", table: "agent", getValue: () => formatDate(c.agent?.placement_date ?? null) },
     { key: "external_agents", label: "外部エージェント", source: "migration", getValue: () => c.agent?.external_agents || "-" },
@@ -574,7 +579,7 @@ export function CustomerDetailClient({
     // agent fields
     if (customer.agent) {
       const a = customer.agent as unknown as Record<string, unknown>;
-      for (const key of ["job_search_status", "selection_status", "offer_company", "offer_salary", "hire_rate", "offer_probability", "referral_fee_rate", "placement_confirmed", "placement_date", "margin"]) {
+      for (const key of ["job_search_status", "selection_status", "offer_company", "offer_salary", "offer_rank", "referral_fee_rate", "placement_confirmed", "placement_date", "margin"]) {
         vals[`agent.${key}`] = a[key] != null ? String(a[key]) : "";
       }
     }
@@ -614,7 +619,7 @@ export function CustomerDetailClient({
         if (!payload[table]) payload[table] = {};
 
         // 型変換
-        const numFields = ["confirmed_amount", "first_amount", "discount", "probability", "total_sessions", "completed_sessions", "offer_salary", "hire_rate", "offer_probability", "referral_fee_rate", "margin"];
+        const numFields = ["confirmed_amount", "first_amount", "discount", "probability", "total_sessions", "completed_sessions", "offer_salary", "referral_fee_rate", "margin"];
         if (numFields.includes(key)) {
           payload[table][key] = val ? Number(val) : null;
         } else if (key === "subsidy_eligible" || key === "subsidy_period_eligible") {

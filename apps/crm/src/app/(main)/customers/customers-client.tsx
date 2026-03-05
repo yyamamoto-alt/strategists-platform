@@ -118,7 +118,7 @@ const VIEW_COLUMNS: Record<ViewTab, string[] | null> = {
     "confirmed_amount", "rev_agent", "rev_total", "projected_amount",
     "is_agent_customer", "referral_category", "referral_status",
     "external_agents",
-    "hire_rate", "offer_probability", "offer_salary",
+    "offer_rank", "offer_salary",
     "referral_fee_rate", "margin",
     "placement_confirmed", "placement_date",
     "agent_staff", "agent_memo", "loss_reason",
@@ -397,10 +397,13 @@ export function CustomersClient({ customers, attributionMap }: CustomersClientPr
 
       { key: "external_agents", label: "利用エージェント", width: 110, category: "agent",
         render: (c) => <span className="text-xs">{c.agent?.external_agents || "-"}</span> },
-      { key: "hire_rate", label: "入社至る率", width: 80, align: "right" as const, category: "agent",
-        render: (c) => c.agent?.hire_rate != null ? formatPercent(c.agent.hire_rate) : "-" },
-      { key: "offer_probability", label: "内定確度", width: 80, align: "right" as const, category: "agent",
-        render: (c) => c.agent?.offer_probability != null ? formatPercent(c.agent.offer_probability) : "-" },
+      { key: "offer_rank", label: "内定ランク", width: 90, category: "agent",
+        render: (c) => {
+          const rank = c.agent?.offer_rank || "-";
+          if (rank === "-") return "-";
+          return <span className="text-xs font-bold">{rank}</span>;
+        },
+        sortValue: (c) => ({ S: 5, A: 4, B: 3, C: 2, D: 1 }[c.agent?.offer_rank || "B"] || 0) },
       { key: "offer_salary", label: "想定年収", width: 100, align: "right" as const, category: "agent",
         render: (c) => c.agent?.offer_salary ? formatCurrency(c.agent.offer_salary) : "-",
         sortValue: (c) => c.agent?.offer_salary || 0 },

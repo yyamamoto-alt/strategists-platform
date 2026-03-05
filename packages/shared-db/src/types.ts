@@ -216,6 +216,7 @@ export interface AgentRecord {
   expected_agent_revenue?: number | null;
   hire_rate?: number | null;
   offer_probability?: number | null;
+  offer_rank?: string | null;
   expected_referral_fee?: number | null;
   agent_staff?: string | null;
   placement_confirmed?: string | null;

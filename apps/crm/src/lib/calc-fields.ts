@@ -11,20 +11,41 @@ export function isShinsotsu(attribute: string | null | undefined): boolean {
   return attribute.includes("卒");
 }
 
-/** 顧客のエージェント紹介報酬期待値を算出（Excel Col DX 再現）
- *  常に式から計算（DB の expected_referral_fee は Excel移行時の古い値のため使用しない）
- *  b = 想定年収 × 入社至る率 × 内定確度 × 紹介料率 × マージン
+/** 内定ランク → 通過率マッピング */
+const OFFER_RANK_RATE: Record<string, number> = {
+  S: 0.60,
+  A: 0.40,
+  B: 0.20,
+  C: 0.10,
+  D: 0.00,
+};
+
+export const OFFER_RANK_META: Record<string, { label: string; color: string; bgColor: string }> = {
+  S: { label: "内定確実", color: "text-yellow-400", bgColor: "bg-yellow-400/10" },
+  A: { label: "内定十分可能", color: "text-gray-300", bgColor: "bg-gray-300/10" },
+  B: { label: "内定可能性あり", color: "text-amber-600", bgColor: "bg-amber-600/10" },
+  C: { label: "内定厳しい", color: "text-gray-500", bgColor: "bg-gray-500/10" },
+  D: { label: "内定不可能", color: "text-gray-700", bgColor: "bg-gray-700/10" },
+};
+
+/** 内定ランクから通過率を取得 */
+export function getOfferRankRate(rank: string | null | undefined): number {
+  if (!rank) return OFFER_RANK_RATE.B; // デフォルトBランク
+  return OFFER_RANK_RATE[rank] ?? OFFER_RANK_RATE.B;
+}
+
+/** 顧客のエージェント紹介報酬期待値を算出
+ *  b = 想定年収 × 内定ランク通過率 × 紹介料率 × マージン
  */
 export function calcExpectedReferralFee(c: CustomerWithRelations): number {
   const a = c.agent;
   if (!a) return 0;
   const salary = a.offer_salary || 0;
-  const hireRate = a.hire_rate ?? 0.6;
-  const offerProb = a.offer_probability ?? 0.3;
+  const rankRate = getOfferRankRate(a.offer_rank);
   const feeRate = a.referral_fee_rate ?? 0.3;
   // DB の margin は integer型で 0.75 → 0 に切り捨てられている。0 は不正値なので 0.75 をデフォルト使用
   const margin = (a.margin && a.margin > 0) ? a.margin : 0.75;
-  return salary * hireRate * offerProb * feeRate * margin;
+  return salary * rankRate * feeRate * margin;
 }
 
 /** 顧客が人材紹介利用者か判定: 人材紹介区分が「フル利用」or「一部利用」のみ */
