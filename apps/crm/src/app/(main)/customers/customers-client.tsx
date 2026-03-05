@@ -263,8 +263,11 @@ export function CustomersClient({ customers, attributionMap }: CustomersClientPr
 
       // ═══ 売上4種（近接配置） ═══
       { key: "confirmed_amount", label: "確定売上", width: 100, align: "right" as const, category: "sales",
-        render: (c) => c.contract?.confirmed_amount ? formatCurrency(c.contract.confirmed_amount) : "-",
-        sortValue: (c) => c.contract?.confirmed_amount || 0 },
+        render: (c) => {
+          const amt = (c.contract?.confirmed_amount || 0) + getSubsidyAmount(c);
+          return amt > 0 ? formatCurrency(amt) : "-";
+        },
+        sortValue: (c) => (c.contract?.confirmed_amount || 0) + getSubsidyAmount(c) },
 
       { key: "rev_agent", label: "人材見込売上", width: 110, align: "right" as const, computed: true, category: "sales",
         formula: "想定年収 × 入社至る率 × 内定確度 × 紹介料率 × マージン",
