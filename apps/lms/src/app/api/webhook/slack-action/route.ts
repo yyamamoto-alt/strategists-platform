@@ -1,11 +1,12 @@
 import { createClient } from "@supabase/supabase-js";
 import { sendInviteEmail } from "@/lib/email";
+import { mapPlanToCourseIds } from "@/lib/slack";
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 
 /**
  * POST /api/webhook/slack-action
- * Slack Interactive Components (承認ボタン) のコールバック
+ * Slack Interactive Components (承認ボタン・コース選択) のコールバック
  *
  * Slack App設定:
  * - Interactivity & Shortcuts → Request URL: https://strategists-lms.vercel.app/api/webhook/slack-action
@@ -31,7 +32,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing signature" }, { status: 401 });
     }
 
-    // リプレイ攻撃防止（5分以内）
     if (Math.abs(Date.now() / 1000 - Number(timestamp)) > 300) {
       return NextResponse.json({ error: "Request too old" }, { status: 401 });
     }
@@ -46,11 +46,17 @@ export async function POST(request: Request) {
 
   const action = payload.actions?.[0];
   if (!action) {
-    return NextResponse.json({ ok: true });
+    return new Response("", { status: 200 });
+  }
+
+  const actionId = action.action_id;
+
+  // コース選択のドロップダウン変更 → 何もしない（承認ボタン押下時に state から取得）
+  if (actionId === "select_course") {
+    return new Response("", { status: 200 });
   }
 
   const applicationId = action.value;
-  const actionId = action.action_id;
   const userName = payload.user?.name || payload.user?.username || "不明";
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
@@ -85,19 +91,31 @@ export async function POST(request: Request) {
       .update({ invite_status: "rejected", approved_by: userName })
       .eq("id", applicationId);
 
-    return respondToSlack(payload, `却下されました (by ${userName})\n${application.name} (${application.email})`);
+    return respondToSlack(payload, `❌ 却下されました (by ${userName})\n${application.name} (${application.email})`);
   }
 
   if (actionId === "approve_invite") {
     try {
-      // デフォルトコースIDを取得
-      const { data: coursesSetting } = await supabase
-        .from("app_settings")
-        .select("value")
-        .eq("key", "auto_invite_default_course_ids")
-        .single();
+      // Slackメッセージ内のドロップダウンの選択値を取得
+      // payload.state.values にブロックIDごとの選択状態が入る
+      let selectedCourseId: string | null = null;
+      const stateValues = payload.state?.values || {};
+      for (const blockId of Object.keys(stateValues)) {
+        if (blockId.startsWith("course_select_")) {
+          const selectAction = stateValues[blockId]?.select_course;
+          if (selectAction?.selected_option?.value) {
+            selectedCourseId = selectAction.selected_option.value;
+          }
+        }
+      }
 
-      const courseIds = coursesSetting?.value ? (Array.isArray(coursesSetting.value) ? coursesSetting.value : JSON.parse(coursesSetting.value as string)) : [];
+      // コースID決定: Slack選択 > フォームプラン名からの自動マッピング
+      let courseIds: string[];
+      if (selectedCourseId) {
+        courseIds = [selectedCourseId];
+      } else {
+        courseIds = mapPlanToCourseIds(application.plan_name);
+      }
 
       // 招待レコード作成
       const token = crypto.randomUUID();
@@ -128,7 +146,7 @@ export async function POST(request: Request) {
       });
 
       if (invErr) {
-        return respondToSlack(payload, `招待作成エラー: ${invErr.message}`);
+        return respondToSlack(payload, `❌ 招待作成エラー: ${invErr.message}`);
       }
 
       // 招待メール送信
@@ -159,14 +177,15 @@ export async function POST(request: Request) {
         })
         .eq("id", applicationId);
 
-      const emailStatus = emailSent ? "メール送信済み" : "メール送信失敗（URLは生成済み）";
+      const emailStatus = emailSent ? "✅ メール送信済み" : "⚠️ メール送信失敗（URLは生成済み）";
+      const courseLabel = courseIds.length > 0 ? `コース: ${courseIds.join(", ")}` : "コース: 未指定";
       return respondToSlack(
         payload,
-        `承認されました (by ${userName})\n${application.name} (${application.email})\n招待URL: ${inviteUrl}\n${emailStatus}`
+        `✅ 承認されました (by ${userName})\n*${application.name}* (${application.email})\n${courseLabel}\n招待URL: ${inviteUrl}\n${emailStatus}`
       );
     } catch (e) {
       console.error("Approve error:", e);
-      return respondToSlack(payload, `エラーが発生しました: ${e}`);
+      return respondToSlack(payload, `❌ エラーが発生しました: ${e}`);
     }
   }
 
@@ -174,7 +193,6 @@ export async function POST(request: Request) {
 }
 
 function respondToSlack(payload: { response_url?: string }, text: string) {
-  // Slack response_urlに応答を返す（非同期でOK）
   if (payload.response_url) {
     fetch(payload.response_url, {
       method: "POST",

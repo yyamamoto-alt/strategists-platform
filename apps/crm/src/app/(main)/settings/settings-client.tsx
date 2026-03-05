@@ -134,12 +134,6 @@ const SECTIONS: SettingsSectionConfig[] = [
         type: "text",
         placeholder: "#lms-invites",
       },
-      {
-        key: "auto_invite_default_course_ids",
-        label: "デフォルト付与コースID（JSON配列）",
-        type: "text",
-        placeholder: '["course-id-1","course-id-2"]',
-      },
     ],
   },
 ];

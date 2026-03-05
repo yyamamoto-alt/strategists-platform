@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { sendInviteApprovalRequest } from "@/lib/slack";
+import { sendInviteApprovalRequest, mapPlanToCourseIds } from "@/lib/slack";
 import { NextResponse } from "next/server";
 
 /**
