@@ -7,11 +7,13 @@ import crypto from "crypto";
  * 受講生招待URL生成（管理者のみ）
  */
 export async function POST(request: Request) {
-  const { email, displayName } = await request.json();
+  const { email, displayName, role: requestedRole } = await request.json();
 
   if (!email) {
     return NextResponse.json({ error: "メールアドレスは必須です" }, { status: 400 });
   }
+
+  const role = ["admin", "mentor", "student"].includes(requestedRole) ? requestedRole : "student";
 
   const admin = createAdminClient();
 
@@ -52,7 +54,7 @@ export async function POST(request: Request) {
   const { error } = await admin.from("invitations").insert({
     email,
     display_name: customerName,
-    role: "student",
+    role,
     token,
     expires_at: expiresAt.toISOString(),
     customer_id: customerId,

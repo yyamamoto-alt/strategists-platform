@@ -39,11 +39,10 @@ export default async function StudentsAdminPage() {
     }
   }
 
-  // 招待一覧
+  // 招待一覧（全ロール）
   const { data: invitations } = await admin
     .from("invitations")
-    .select("id, email, display_name, token, expires_at, used_at, customer_id, created_at")
-    .eq("role", "student")
+    .select("id, email, display_name, role, token, expires_at, used_at, customer_id, created_at")
     .order("created_at", { ascending: false });
 
   return (
