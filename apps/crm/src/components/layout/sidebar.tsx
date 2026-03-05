@@ -27,9 +27,7 @@ const databaseNavigation: NavItem[] = [
 ];
 
 const adminNavigation: NavItem[] = [
-  { name: "学習管理", href: "/learning", icon: "", roles: ["admin", "mentor"] },
   { name: "エージェント", href: "/agents", icon: "", roles: ["admin", "mentor"] },
-  { name: "LMSアカウント", href: "/students", icon: "", roles: ["admin"] },
   { name: "ユーザー管理", href: "/users", icon: "", roles: ["admin"] },
   { name: "設定", href: "/settings", icon: "", roles: ["admin"] },
   { name: "データ連携", href: "/data-sync", icon: "", roles: ["admin"] },
