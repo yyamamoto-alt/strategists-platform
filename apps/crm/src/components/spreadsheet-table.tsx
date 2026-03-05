@@ -30,6 +30,8 @@ interface SpreadsheetTableProps<T> {
   storageKey?: string;
   initialSearch?: string;
   onSearchChange?: (query: string) => void;
+  /** 初期表示件数（無限スクロール用） */
+  pageSize?: number;
 }
 
 // カテゴリ別のヘッダーとセルの色
@@ -109,10 +111,14 @@ export function SpreadsheetTable<T>({
   storageKey = "default",
   initialSearch = "",
   onSearchChange,
+  pageSize = 100,
 }: SpreadsheetTableProps<T>) {
   const [search, setSearch] = useState(initialSearch);
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [visibleCount, setVisibleCount] = useState(pageSize);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>(
     () => {
@@ -199,6 +205,30 @@ export function SpreadsheetTable<T>({
     return result;
   }, [data, search, searchFilter, sortKey, sortDir, columns]);
 
+  // フィルタ/検索変更時にvisibleCountをリセット
+  useEffect(() => {
+    setVisibleCount(pageSize);
+  }, [search, sortKey, sortDir, pageSize]);
+
+  const visibleData = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount]);
+  const hasMore = visibleCount < filtered.length;
+
+  // IntersectionObserverで末尾到達を検知して追加読み込み
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore) {
+          setVisibleCount((prev) => Math.min(prev + pageSize, filtered.length));
+        }
+      },
+      { root: scrollContainerRef.current, threshold: 0, rootMargin: "200px" }
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMore, pageSize, filtered.length]);
+
   const handleSort = useCallback((key: string) => {
     setSortKey((prev) => {
       if (prev === key) {
@@ -230,7 +260,7 @@ export function SpreadsheetTable<T>({
         </div>
       )}
       <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 overflow-hidden">
-        <div className="overflow-auto max-h-[calc(100vh-180px)]">
+        <div ref={scrollContainerRef} className="overflow-auto max-h-[calc(100vh-180px)]">
           <table className="min-w-max w-full">
             <thead className="bg-surface-elevated border-b border-white/10 sticky top-0 z-30">
               <tr>
@@ -275,7 +305,7 @@ export function SpreadsheetTable<T>({
               </tr>
             </thead>
             <tbody>
-              {filtered.map((item, rowIdx) => (
+              {visibleData.map((item, rowIdx) => (
                 <tr
                   key={getRowKey(item)}
                   className={cn(
@@ -313,7 +343,7 @@ export function SpreadsheetTable<T>({
                   })}
                 </tr>
               ))}
-              {filtered.length === 0 && (
+              {visibleData.length === 0 && (
                 <tr>
                   <td colSpan={columns.length} className="py-8 text-center text-gray-500 text-sm">
                     データがありません
@@ -322,6 +352,12 @@ export function SpreadsheetTable<T>({
               )}
             </tbody>
           </table>
+          <div ref={sentinelRef} className="h-1" />
+          {hasMore && (
+            <div className="py-2 text-center text-xs text-gray-500">
+              {visibleCount} / {filtered.length}件 表示中
+            </div>
+          )}
         </div>
       </div>
     </div>

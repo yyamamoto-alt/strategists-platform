@@ -137,8 +137,6 @@ const VIEW_COLUMNS: Record<ViewTab, string[] | null> = {
 
 const CLOSED_STAGES = new Set(["成約", "入金済", "追加指導", "その他購入", "動画講座購入", "成約(追加指導経由)", "途中解約(成約)"]);
 
-type DisplayLimit = 200 | 400 | 1000 | "all";
-
 export function CustomersClient({ customers, attributionMap }: CustomersClientProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -147,11 +145,9 @@ export function CustomersClient({ customers, attributionMap }: CustomersClientPr
   const [stageFilter, setStageFilter] = useState<string>("");
   const [contractFilter, setContractFilter] = useState<string>("");
   const [activeTab, setActiveTab] = useState<ViewTab>("all");
-  const [displayLimit, setDisplayLimit] = useState<DisplayLimit>(200);
   const [subsidyFilter, setSubsidyFilter] = useState<string>("");
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [creating, setCreating] = useState(false);
-  const [isSearching, setIsSearching] = useState(!!initialSearch);
 
   const handleCreate = useCallback(async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -211,10 +207,6 @@ export function CustomersClient({ customers, attributionMap }: CustomersClientPr
     return result;
   }, [customers, attributeFilter, stageFilter, contractFilter, subsidyFilter]);
 
-  const displayFiltered = useMemo(() => {
-    if (isSearching || displayLimit === "all") return baseFiltered;
-    return baseFiltered.slice(0, displayLimit);
-  }, [baseFiltered, displayLimit, isSearching]);
 
   // ================================================================
   // 全カラム定義（並び順が表示順）
@@ -535,9 +527,7 @@ export function CustomersClient({ customers, attributionMap }: CustomersClientPr
       <div className="flex items-center gap-3 flex-wrap">
         <h1 className="text-lg font-bold text-white shrink-0">顧客一覧</h1>
         <span className="text-xs text-gray-500 shrink-0">
-          {displayLimit !== "all" && displayFiltered.length < baseFiltered.length
-            ? `${displayFiltered.length}/${baseFiltered.length}件`
-            : `${baseFiltered.length}件`}
+          {baseFiltered.length}件
         </span>
 
         <button
@@ -546,18 +536,6 @@ export function CustomersClient({ customers, attributionMap }: CustomersClientPr
         >
           + 新規登録
         </button>
-
-        {/* 表示件数セレクタ */}
-        <select
-          value={String(displayLimit)}
-          onChange={(e) => setDisplayLimit(e.target.value === "all" ? "all" : Number(e.target.value) as 200 | 400 | 1000)}
-          className="px-2 py-1 bg-surface-elevated border border-white/10 text-white rounded text-xs focus:outline-none focus:ring-1 focus:ring-brand"
-        >
-          <option value="200">200件</option>
-          <option value="400">400件</option>
-          <option value="1000">1000件</option>
-          <option value="all">全件</option>
-        </select>
 
         {/* 属性フィルタ */}
         <div className="flex gap-0.5 bg-surface-elevated rounded-md p-0.5 border border-white/10">
@@ -670,12 +648,12 @@ export function CustomersClient({ customers, attributionMap }: CustomersClientPr
       {/* テーブル */}
       <SpreadsheetTable
         columns={spreadsheetColumns}
-        data={displayFiltered}
+        data={baseFiltered}
         getRowKey={(c) => c.id}
         storageKey={`customers-${activeTab}`}
         searchPlaceholder="名前・メール・大学・経歴・チャネルで検索..."
         initialSearch={initialSearch}
-        onSearchChange={(q) => setIsSearching(q.length > 0)}
+        pageSize={100}
         searchFilter={(c, q) =>
           c.name.toLowerCase().includes(q) ||
           (c.email?.toLowerCase().includes(q) ?? false) ||
