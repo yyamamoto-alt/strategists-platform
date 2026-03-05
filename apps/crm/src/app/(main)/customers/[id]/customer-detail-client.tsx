@@ -283,7 +283,7 @@ function buildBasicFields(c: CustomerWithRelations): FieldDef[] {
       "26卒", "26卒(学部卒)", "26卒(院卒)", "27卒", "27卒(学部卒)", "27卒(院卒)",
       "28卒", "28卒(学部卒)", "28卒(院卒)", "不明",
     ], table: "customer", getValue: () => c.attribute },
-    { key: "application_date", label: "申込日", source: "sync", getValue: () => formatDate(c.application_date) },
+    { key: "application_date", label: "申込日", source: "manual", type: "date", table: "customer", getValue: () => c.application_date || "-" },
     { key: "utm_source", label: "流入元", source: "sync", getValue: () => `${c.utm_source || "-"} / ${c.utm_medium || "-"}` },
     { key: "university", label: "大学", source: "manual", table: "customer", getValue: () => c.university || "-" },
     { key: "faculty", label: "学部", source: "manual", table: "customer", getValue: () => c.faculty || "-" },
