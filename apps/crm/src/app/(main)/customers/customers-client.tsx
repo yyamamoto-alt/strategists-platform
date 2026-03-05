@@ -206,8 +206,6 @@ export function CustomersClient({ customers, attributionMap }: CustomersClientPr
       result = result.filter((c) => c.contract?.subsidy_eligible);
     } else if (subsidyFilter === "period") {
       result = result.filter((c) => c.contract?.subsidy_period_eligible);
-    } else if (subsidyFilter === "both") {
-      result = result.filter((c) => c.contract?.subsidy_eligible && c.contract?.subsidy_period_eligible);
     }
     return result;
   }, [customers, attributeFilter, stageFilter, contractFilter, subsidyFilter]);
@@ -656,7 +654,7 @@ export function CustomersClient({ customers, attributionMap }: CustomersClientPr
         {VIEW_TABS.map((tab) => (
           <button
             key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
+            onClick={() => { setActiveTab(tab.key); if (tab.key === "subsidy" && !subsidyFilter) setSubsidyFilter("subsidy"); }}
             className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
               activeTab === tab.key
                 ? "bg-brand text-white shadow-sm"
@@ -673,10 +671,8 @@ export function CustomersClient({ customers, attributionMap }: CustomersClientPr
       {activeTab === "subsidy" && (
         <div className="flex gap-0.5 bg-surface-elevated rounded-md p-0.5 w-fit border border-white/10">
           {[
-            { val: "", label: "全件" },
             { val: "subsidy", label: "補助金対象" },
             { val: "period", label: "補助金期間対象" },
-            { val: "both", label: "両方対象" },
           ].map(({ val, label }) => (
             <button
               key={val}
