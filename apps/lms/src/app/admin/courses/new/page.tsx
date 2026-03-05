@@ -25,7 +25,7 @@ export default function NewCoursePage() {
       if (res.ok) {
         const data = await res.json();
         // 作成後にコース編集ページ（モジュール/レッスン追加）へ
-        router.push(`/courses/manage/${data.id}`);
+        router.push(`/admin/courses/${data.id}`);
       } else {
         const err = await res.json();
         alert(err.error || "コース作成に失敗しました");

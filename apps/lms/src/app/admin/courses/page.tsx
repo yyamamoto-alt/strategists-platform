@@ -93,7 +93,7 @@ export default function CourseManagePage() {
           <p className="text-sm text-gray-400 mt-1">コースの作成・編集・削除</p>
         </div>
         <Link
-          href="/courses/manage/new"
+          href="/admin/courses/new"
           className="flex items-center gap-2 bg-brand hover:bg-brand-dark text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
         >
           <Plus className="w-4 h-4" />
@@ -109,7 +109,7 @@ export default function CourseManagePage() {
           <p className="text-lg mb-2">コースがまだありません</p>
           <p className="text-sm text-gray-500 mb-6">最初のコースを作成しましょう</p>
           <Link
-            href="/courses/manage/new"
+            href="/admin/courses/new"
             className="inline-flex items-center gap-2 bg-brand hover:bg-brand-dark text-white px-6 py-3 rounded-lg text-sm font-medium transition-colors"
           >
             <Plus className="w-4 h-4" />
@@ -134,7 +134,7 @@ export default function CourseManagePage() {
                 {courses.map((course) => (
                   <tr key={course.id} className="border-b border-white/[0.06] hover:bg-white/[0.02] transition-colors">
                     <td className="px-4 py-3">
-                      <Link href={`/courses/manage/${course.id}`} className="text-white hover:text-brand-light font-medium transition-colors">
+                      <Link href={`/admin/courses/${course.id}`} className="text-white hover:text-brand-light font-medium transition-colors">
                         {course.title}
                       </Link>
                       {course.category && (
@@ -156,7 +156,7 @@ export default function CourseManagePage() {
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-1">
                         <button
-                          onClick={() => router.push(`/courses/manage/${course.id}`)}
+                          onClick={() => router.push(`/admin/courses/${course.id}`)}
                           className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
                           title="編集"
                         >

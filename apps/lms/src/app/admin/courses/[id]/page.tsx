@@ -209,7 +209,7 @@ export default function CourseEditPage() {
         if (res.ok) {
           const data = await res.json();
           showToast("コースを作成しました", "success");
-          router.push(`/courses/manage/${data.id}`);
+          router.push(`/admin/courses/${data.id}`);
         } else {
           const err = await res.json();
           showToast(err.error || "コース作成に失敗しました", "error");
@@ -423,7 +423,7 @@ export default function CourseEditPage() {
       {/* メインエリア */}
       <div className="flex-1 overflow-y-auto">
         <div className="p-6 max-w-4xl">
-          <Link href="/courses/manage" className="inline-flex items-center gap-2 text-gray-400 hover:text-white text-sm mb-6 transition-colors">
+          <Link href="/admin/courses" className="inline-flex items-center gap-2 text-gray-400 hover:text-white text-sm mb-6 transition-colors">
             <ArrowLeft className="w-4 h-4" />コース管理に戻る
           </Link>
 

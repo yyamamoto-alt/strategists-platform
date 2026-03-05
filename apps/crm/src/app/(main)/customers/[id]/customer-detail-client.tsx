@@ -634,10 +634,6 @@ export function CustomerDetailClient({
   const [editValues, setEditValues] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [inviteLoading, setInviteLoading] = useState(false);
-  const [inviteUrl, setInviteUrl] = useState<string | null>(null);
-  const [inviteCopied, setInviteCopied] = useState(false);
-  const [inviteError, setInviteError] = useState<string | null>(null);
   const [emailList] = useState(emails);
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -752,41 +748,6 @@ export function CustomerDetailClient({
     }
   }, [editValues, customer]);
 
-  const handleInvite = async () => {
-    const email = customer.email;
-    if (!email) {
-      setInviteError("この顧客にメールアドレスが登録されていません");
-      return;
-    }
-    setInviteLoading(true);
-    setInviteError(null);
-    setInviteUrl(null);
-    try {
-      const res = await fetch("/api/students/invite", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setInviteError(data.error);
-        return;
-      }
-      setInviteUrl(data.invite_url);
-    } catch {
-      setInviteError("招待URLの生成に失敗しました");
-    } finally {
-      setInviteLoading(false);
-    }
-  };
-
-  const handleCopyInvite = async () => {
-    if (!inviteUrl) return;
-    await navigator.clipboard.writeText(inviteUrl);
-    setInviteCopied(true);
-    setTimeout(() => setInviteCopied(false), 2000);
-  };
-
   const handleDelete = async () => {
     if (!confirm(`「${customer.name}」を削除しますか？\n関連データもすべて削除されます。`)) return;
     setDeleting(true);
@@ -867,13 +828,6 @@ export function CustomerDetailClient({
           ) : (
             <>
               <button
-                onClick={handleInvite}
-                disabled={inviteLoading}
-                className="px-3 py-2 bg-green-600/20 text-green-400 hover:bg-green-600/30 rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
-              >
-                {inviteLoading ? "生成中..." : "LMS招待"}
-              </button>
-              <button
                 onClick={handleDelete}
                 disabled={deleting}
                 className="px-3 py-2 text-red-400 hover:text-red-300 text-xs font-medium transition-colors disabled:opacity-50"
@@ -890,32 +844,6 @@ export function CustomerDetailClient({
           )}
         </div>
       </div>
-
-      {/* LMS招待URL表示 */}
-      {(inviteUrl || inviteError) && (
-        <div className={`p-3 rounded-lg text-sm ${inviteUrl ? "bg-green-500/10 border border-green-500/20" : "bg-red-500/10 border border-red-500/20"}`}>
-          {inviteError && <p className="text-red-400">{inviteError}</p>}
-          {inviteUrl && (
-            <div className="space-y-2">
-              <p className="text-green-400">招待URLを生成しました。受講生に共有してください。</p>
-              <div className="flex gap-2 items-center">
-                <input
-                  type="text"
-                  readOnly
-                  value={inviteUrl}
-                  className="flex-1 px-3 py-2 bg-surface border border-white/10 rounded text-xs text-gray-300 font-mono"
-                />
-                <button
-                  onClick={handleCopyInvite}
-                  className="px-3 py-2 bg-brand/20 text-brand rounded text-xs font-medium hover:bg-brand/30 transition-colors whitespace-nowrap"
-                >
-                  {inviteCopied ? "コピー済み" : "コピー"}
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
 
       {/* 2カラムレイアウト: 左=基本+契約+売上、右=営業+学習 */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">

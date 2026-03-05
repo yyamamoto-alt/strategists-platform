@@ -22,9 +22,9 @@ const learningNavigation: NavItem[] = [
 ];
 
 const adminNavigation: NavItem[] = [
-  { name: "コース管理", href: "/courses/manage", icon: "📚", roles: ["admin"] },
-  { name: "受講生管理", href: "/students", icon: "🎓", roles: ["admin", "mentor"] },
-  { name: "入塾申請", href: "/applications", icon: "📨", roles: ["admin", "mentor"] },
+  { name: "コース管理", href: "/admin/courses", icon: "📚", roles: ["admin"] },
+  { name: "受講生管理", href: "/admin/students", icon: "🎓", roles: ["admin", "mentor"] },
+  { name: "入塾申請", href: "/admin/applications", icon: "📨", roles: ["admin", "mentor"] },
 ];
 
 const settingsNavigation: NavItem[] = [
