@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { fetchCustomersWithRelations } from "@/lib/data/customers";
 import { createServiceClient } from "@/lib/supabase/server";
 import { PipelineClient } from "./pipeline-client";

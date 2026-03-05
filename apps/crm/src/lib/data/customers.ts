@@ -3,6 +3,7 @@ import "server-only";
 import { createServiceClient } from "@/lib/supabase/server";
 import { transformCustomerRows, transformCustomerRow } from "./transforms";
 import type { CustomerWithRelations, Activity } from "@strategy-school/shared-db";
+import { unstable_cache } from "next/cache";
 
 const CUSTOMER_WITH_RELATIONS_QUERY = `
   *,
@@ -29,10 +30,12 @@ async function fetchCustomersRaw(): Promise<CustomerWithRelations[]> {
   return transformCustomerRows(data as any[]);
 }
 
-/** 顧客データ取得（キャッシュなし - 毎回最新データ取得） */
-export async function fetchCustomersWithRelations(): Promise<CustomerWithRelations[]> {
-  return fetchCustomersRaw();
-}
+/** キャッシュ付き顧客データ取得（60秒間キャッシュ） */
+export const fetchCustomersWithRelations = unstable_cache(
+  fetchCustomersRaw,
+  ["customers-with-relations"],
+  { revalidate: 60 }
+);
 
 export async function fetchCustomerById(
   id: string

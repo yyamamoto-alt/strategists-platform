@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { fetchCustomersWithRelations } from "@/lib/data/customers";
 import { computePLSheetData } from "@/lib/data/dashboard-metrics";
 import { fetchChannelAttributions } from "@/lib/data/marketing-settings";

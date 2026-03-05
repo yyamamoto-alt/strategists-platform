@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { fetchCustomersWithRelations } from "@/lib/data/customers";
 import { EducationClient } from "./education-client";
 import { mockCustomers } from "@/lib/mock-data";
