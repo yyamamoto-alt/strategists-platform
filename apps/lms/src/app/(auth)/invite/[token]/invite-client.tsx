@@ -57,13 +57,17 @@ export function InviteClient({ token, email, displayName }: InviteClientProps) {
     <div className="w-full max-w-md px-6">
       <div className="bg-surface-card border border-white/10 rounded-2xl shadow-[0_8px_25px_rgba(0,0,0,0.5)] p-8">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">アカウント作成</h1>
-          <p className="text-gray-400">
-            {displayName ? (
-              <><span className="text-white font-medium">{displayName}</span> 様</>
-            ) : (
-              "パスワードを設定してください"
-            )}
+          <p className="text-sm text-brand font-medium tracking-wider mb-2">WELCOME</p>
+          <h1 className="text-3xl font-bold text-white mb-3">
+            ようこそ Strategists へ
+          </h1>
+          {displayName && (
+            <p className="text-lg text-gray-300">
+              <span className="text-white font-medium">{displayName}</span> 様
+            </p>
+          )}
+          <p className="text-sm text-gray-500 mt-3">
+            アカウント作成のため、お好きなパスワードを設定してください
           </p>
         </div>
 
@@ -88,11 +92,11 @@ export function InviteClient({ token, email, displayName }: InviteClientProps) {
 
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-1.5">
-              パスワード
+              パスワード（自由に設定してください）
             </label>
             <input
               type="password"
-              placeholder="8文字以上"
+              placeholder="お好きなパスワードを入力（8文字以上）"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
@@ -103,11 +107,11 @@ export function InviteClient({ token, email, displayName }: InviteClientProps) {
 
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-1.5">
-              パスワード（確認）
+              パスワード（確認用にもう一度）
             </label>
             <input
               type="password"
-              placeholder="もう一度入力"
+              placeholder="同じパスワードをもう一度入力"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               required

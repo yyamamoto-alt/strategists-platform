@@ -1,11 +1,12 @@
 import { createServiceClient } from "@/lib/supabase/server";
+import { sendInviteEmail } from "@/lib/email";
 import { NextResponse } from "next/server";
 import { headers } from "next/headers";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
-  const { email, display_name, role } = await request.json();
+  const { email, display_name, role, sendEmail } = await request.json();
 
   if (!email) {
     return NextResponse.json(
@@ -54,10 +55,32 @@ export async function POST(request: Request) {
   const protocol = headersList.get("x-forwarded-proto") || "http";
   const inviteUrl = `${protocol}://${host}/invite/${token}`;
 
+  let emailSent = false;
+  let emailError: string | null = null;
+
+  if (sendEmail) {
+    try {
+      await sendInviteEmail({
+        to: email,
+        displayName: display_name || null,
+        role,
+        inviteUrl,
+        appName: "CRM",
+      });
+      emailSent = true;
+    } catch (err) {
+      emailError = err instanceof Error ? err.message : "メール送信に失敗しました";
+    }
+  }
+
   return NextResponse.json({
-    message: "招待リンクを作成しました",
+    message: emailSent
+      ? "招待リンクを作成し、メールを送信しました"
+      : "招待リンクを作成しました",
     invite_url: inviteUrl,
     token,
     expires_at: expiresAt.toISOString(),
+    email_sent: emailSent,
+    email_error: emailError,
   });
 }

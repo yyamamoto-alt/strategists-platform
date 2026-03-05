@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { sendInviteEmail } from "@/lib/email";
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 
@@ -7,7 +8,7 @@ import crypto from "crypto";
  * 受講生招待URL生成（管理者のみ）
  */
 export async function POST(request: Request) {
-  const { email, displayName, role: requestedRole } = await request.json();
+  const { email, displayName, role: requestedRole, sendEmail } = await request.json();
 
   if (!email) {
     return NextResponse.json({ error: "メールアドレスは必須です" }, { status: 400 });
@@ -70,9 +71,29 @@ export async function POST(request: Request) {
     : "https://strategists-lms.vercel.app";
   const inviteUrl = `${lmsUrl}/invite/${token}`;
 
+  let emailSent = false;
+  let emailError: string | null = null;
+
+  if (sendEmail) {
+    try {
+      await sendInviteEmail({
+        to: email,
+        displayName: customerName,
+        role,
+        inviteUrl,
+        appName: "LMS",
+      });
+      emailSent = true;
+    } catch (err) {
+      emailError = err instanceof Error ? err.message : "メール送信に失敗しました";
+    }
+  }
+
   return NextResponse.json({
     invite_url: inviteUrl,
     customer_name: customerName,
     customer_id: customerId,
+    email_sent: emailSent,
+    email_error: emailError,
   });
 }

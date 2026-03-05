@@ -75,10 +75,11 @@ function NavSection({ title, items, role }: { title: string; items: NavItem[]; r
 }
 
 export function Sidebar() {
-  const { user, role, signOut } = useAuth();
+  const { user, role, displayName, signOut } = useAuth();
 
   const roleLabel = role === "admin" ? "管理者" : role === "mentor" ? "メンター" : "受講生";
-  const roleInitial = role === "admin" ? "管" : role === "mentor" ? "メ" : "生";
+  const nameDisplay = displayName || user?.email?.split("@")[0] || "ゲスト";
+  const nameInitial = displayName ? displayName.charAt(0) : (user?.email?.charAt(0)?.toUpperCase() || "?");
 
   return (
     <aside className="w-64 bg-surface-raised-lms text-white flex flex-col shrink-0 border-r border-red-900/30">
@@ -103,14 +104,12 @@ export function Sidebar() {
       </nav>
       <div className="p-4 border-t border-white/10">
         <div className="flex items-center gap-3 px-3 py-2">
-          <div className="w-8 h-8 bg-brand rounded-full flex items-center justify-center text-sm font-bold">
-            {roleInitial}
+          <div className="w-9 h-9 bg-brand rounded-full flex items-center justify-center text-sm font-bold shrink-0">
+            {nameInitial}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate">{roleLabel}</p>
-            <p className="text-xs text-gray-400 truncate">
-              {user?.email || "guest@example.com"}
-            </p>
+            <p className="text-sm font-medium truncate">{nameDisplay}</p>
+            <p className="text-xs text-gray-500 truncate">{roleLabel}</p>
           </div>
         </div>
         {process.env.NEXT_PUBLIC_BUILD_TIME && (

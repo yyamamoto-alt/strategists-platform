@@ -6,6 +6,7 @@ import type { UserRole } from "@strategy-school/shared-db";
 interface AuthContextType {
   user: { email: string; id: string } | null;
   role: UserRole | null;
+  displayName: string | null;
   loading: boolean;
   signOut: () => Promise<void>;
 }
@@ -13,6 +14,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType>({
   user: null,
   role: null,
+  displayName: null,
   loading: false,
   signOut: async () => {},
 });
@@ -21,10 +23,12 @@ export function AuthProvider({
   children,
   initialUser,
   initialRole,
+  initialDisplayName,
 }: {
   children: ReactNode;
   initialUser?: { email: string; id: string } | null;
   initialRole?: UserRole | null;
+  initialDisplayName?: string | null;
 }) {
   const useMock = process.env.NEXT_PUBLIC_USE_MOCK === "true";
 
@@ -35,6 +39,9 @@ export function AuthProvider({
   );
   const [role] = useState<UserRole | null>(
     useMock ? "admin" : initialRole ?? null
+  );
+  const [displayName] = useState<string | null>(
+    useMock ? "テスト受講生" : initialDisplayName ?? null
   );
   const [loading] = useState(false);
 
@@ -48,7 +55,7 @@ export function AuthProvider({
   };
 
   return (
-    <AuthContext.Provider value={{ user, role, loading, signOut }}>
+    <AuthContext.Provider value={{ user, role, displayName, loading, signOut }}>
       {children}
     </AuthContext.Provider>
   );

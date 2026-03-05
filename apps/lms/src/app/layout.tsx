@@ -18,6 +18,7 @@ export default async function RootLayout({
 
   let initialUser: { email: string; id: string } | null = null;
   let initialRole: "admin" | "mentor" | "student" | null = null;
+  let initialDisplayName: string | null = null;
 
   if (!useMock) {
     try {
@@ -25,6 +26,7 @@ export default async function RootLayout({
       if (session) {
         initialUser = session.user;
         initialRole = session.role;
+        initialDisplayName = session.displayName;
       }
     } catch {
       // Supabase 未設定の場合はスキップ
@@ -38,7 +40,7 @@ export default async function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
       <body>
-        <AuthProvider initialUser={initialUser} initialRole={initialRole}>
+        <AuthProvider initialUser={initialUser} initialRole={initialRole} initialDisplayName={initialDisplayName}>
           {children}
         </AuthProvider>
       </body>

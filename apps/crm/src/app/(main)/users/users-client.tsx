@@ -67,6 +67,7 @@ export function UsersClient({ userRoles, invitations }: UsersClientProps) {
   const [copied, setCopied] = useState(false);
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"users" | "invitations">("users");
+  const [sendEmail, setSendEmail] = useState(false);
 
   const handleCopyInviteLink = async (token: string) => {
     const url = `${window.location.origin}/invite/${token}`;
@@ -93,6 +94,7 @@ export function UsersClient({ userRoles, invitations }: UsersClientProps) {
           email,
           display_name: displayName || null,
           role,
+          sendEmail,
         }),
       });
       const data = await res.json();
@@ -100,7 +102,11 @@ export function UsersClient({ userRoles, invitations }: UsersClientProps) {
         setMessage({ type: "error", text: data.error });
         return;
       }
-      setMessage({ type: "success", text: data.message });
+      let msg = data.message;
+      if (data.email_error) {
+        msg += `（メール送信失敗: ${data.email_error}）`;
+      }
+      setMessage({ type: "success", text: msg });
       setGeneratedLink(data.invite_url);
     } catch {
       setMessage({ type: "error", text: "エラーが発生しました" });
@@ -125,6 +131,7 @@ export function UsersClient({ userRoles, invitations }: UsersClientProps) {
     setEmail("");
     setDisplayName("");
     setRole("mentor");
+    setSendEmail(false);
     setMessage(null);
     setGeneratedLink(null);
     setCopied(false);
@@ -331,6 +338,16 @@ export function UsersClient({ userRoles, invitations }: UsersClientProps) {
                   </select>
                 </div>
 
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={sendEmail}
+                    onChange={(e) => setSendEmail(e.target.checked)}
+                    className="w-4 h-4 rounded border-white/20 bg-surface-elevated text-brand focus:ring-brand"
+                  />
+                  <span className="text-sm text-gray-300">招待メールも同時に送信する</span>
+                </label>
+
                 {message && (
                   <div className={`p-3 rounded-lg text-sm ${
                     message.type === "success"
@@ -354,7 +371,7 @@ export function UsersClient({ userRoles, invitations }: UsersClientProps) {
                     disabled={loading}
                     className="px-6 py-2 bg-brand hover:bg-brand-dark text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
                   >
-                    {loading ? "作成中..." : "招待リンク作成"}
+                    {loading ? "作成中..." : sendEmail ? "招待リンク作成 & メール送信" : "招待リンク作成"}
                   </button>
                 </div>
               </form>

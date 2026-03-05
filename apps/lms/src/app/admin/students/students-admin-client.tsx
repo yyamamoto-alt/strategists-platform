@@ -38,6 +38,7 @@ export function StudentsAdminClient({ students, invitations }: Props) {
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [inviteUrl, setInviteUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [sendEmail, setSendEmail] = useState(false);
 
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,14 +50,17 @@ export function StudentsAdminClient({ students, invitations }: Props) {
       const res = await fetch("/api/admin/invite", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, displayName: displayName || undefined, role: inviteRole }),
+        body: JSON.stringify({ email, displayName: displayName || undefined, role: inviteRole, sendEmail }),
       });
       const data = await res.json();
       if (!res.ok) {
         setMessage({ type: "error", text: data.error });
         return;
       }
-      setMessage({ type: "success", text: "招待URLを生成しました" });
+      let msg = "招待URLを生成しました";
+      if (data.email_sent) msg += "（メールも送信済み）";
+      if (data.email_error) msg += `（メール送信失敗: ${data.email_error}）`;
+      setMessage({ type: "success", text: msg });
       setInviteUrl(data.invite_url);
       setEmail("");
       setDisplayName("");
@@ -145,6 +149,16 @@ export function StudentsAdminClient({ students, invitations }: Props) {
               />
             </div>
 
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={sendEmail}
+                onChange={(e) => setSendEmail(e.target.checked)}
+                className="w-4 h-4 rounded border-white/20 bg-surface-elevated text-brand focus:ring-brand"
+              />
+              <span className="text-sm text-gray-300">招待メールも同時に送信する</span>
+            </label>
+
             {message && (
               <div className={`p-3 rounded-lg text-sm ${
                 message.type === "success"
@@ -181,7 +195,7 @@ export function StudentsAdminClient({ students, invitations }: Props) {
               disabled={loading}
               className="px-6 py-2 bg-brand hover:bg-brand-dark text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
             >
-              {loading ? "生成中..." : "招待URLを生成"}
+              {loading ? "生成中..." : sendEmail ? "招待URL生成 & メール送信" : "招待URLを生成"}
             </button>
           </form>
         </div>

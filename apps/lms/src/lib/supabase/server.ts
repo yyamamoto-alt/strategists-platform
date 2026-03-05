@@ -42,13 +42,14 @@ export async function getLmsSession() {
 
   const { data: roleData } = await supabase
     .from("user_roles")
-    .select("role, customer_id")
+    .select("role, customer_id, display_name")
     .eq("user_id", user.id)
-    .single() as { data: { role: string; customer_id: string | null } | null };
+    .single() as { data: { role: string; customer_id: string | null; display_name: string | null } | null };
 
   return {
     user: { id: user.id, email: user.email || "" },
     role: (roleData?.role as "admin" | "mentor" | "student") || null,
     customerId: roleData?.customer_id || null,
+    displayName: roleData?.display_name || null,
   };
 }
