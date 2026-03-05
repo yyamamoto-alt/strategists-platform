@@ -351,6 +351,9 @@ function OrdersSection({ orders }: { orders: Order[] }) {
   const totalPaid = orders
     .filter((o) => o.status === "paid" || o.status === "partial")
     .reduce((s, o) => s + (o.amount || 0), 0);
+  const totalScheduled = orders
+    .filter((o) => o.status === "scheduled")
+    .reduce((s, o) => s + (o.amount || 0), 0);
 
   return (
     <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-4">
@@ -359,9 +362,16 @@ function OrdersSection({ orders }: { orders: Order[] }) {
           支払い履歴
           <span className="text-xs text-gray-500 ml-2 font-normal normal-case">{orders.length}件</span>
         </h2>
-        <span className="text-sm font-bold text-white">
-          合計 {formatCurrency(totalPaid)}
-        </span>
+        <div className="flex items-center gap-3">
+          {totalScheduled > 0 && (
+            <span className="text-xs text-blue-400">
+              支払予定 {formatCurrency(totalScheduled)}
+            </span>
+          )}
+          <span className="text-sm font-bold text-white">
+            入金済 {formatCurrency(totalPaid)}
+          </span>
+        </div>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-xs">

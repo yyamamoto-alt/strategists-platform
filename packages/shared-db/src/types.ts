@@ -459,8 +459,8 @@ export interface BankTransfer {
 
 // ---------- 統合取引テーブル (migration 009) ----------
 
-export type OrderType = 'main_plan' | 'video_course' | 'other' | 'additional_coaching';
-export type OrderStatus = 'pending' | 'paid' | 'partial' | 'refunded' | 'cancelled';
+export type OrderType = 'main_plan' | 'purchase' | 'video_course' | 'other' | 'additional_coaching';
+export type OrderStatus = 'pending' | 'paid' | 'scheduled' | 'partial' | 'refunded' | 'cancelled';
 export type OrderSource = 'stripe' | 'apps' | 'freee' | 'manual' | 'excel_migration';
 export type OrderMatchStatus = 'matched' | 'unmatched' | 'manual';
 export type PaymentMethodType = 'credit_card' | 'bank_transfer' | 'apps';
