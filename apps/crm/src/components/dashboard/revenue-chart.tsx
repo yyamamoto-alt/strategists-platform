@@ -94,10 +94,19 @@ function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
           name="補助金"
           fill="#a855f7"
           stackId="revenue"
+        />
+
+        {/* 人材見込売上（半透明オレンジ） */}
+        <Bar
+          dataKey="projected_agent"
+          name="人材見込"
+          fill="#f97316"
+          fillOpacity={0.5}
+          stackId="revenue"
           radius={[4, 4, 0, 0]}
         />
 
-        {/* MAXライン: 見込みLTV合計（当月のみ進捗率按分） */}
+        {/* MAXライン: 見込みLTV合計（当月は月末推定に拡大） */}
         <Line
           type="monotone"
           dataKey="expected_ltv_total"

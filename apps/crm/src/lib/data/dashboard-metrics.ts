@@ -410,11 +410,12 @@ export function computeThreeTierRevenue(
       const forecastFromPipeline = m.forecast_school + m.forecast_agent + m.forecast_subsidy;
       const forecastTotal = projectedTotal * monthMultiplier + forecastFromPipeline;
 
-      // MAXライン: 過去月はフル値、当月のみ進捗率で按分
-      const monthProgress = period === currentPeriod
-        ? (new Date().getDate() / new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate())
+      // MAXライン: 過去月はフル値、当月のみ日数按分で月末推定に拡大
+      // 例: 3/6時点 → 6日分のデータしかないので 31/6 ≈ 5.17倍して月全体を推定
+      const monthExtrapolation = period === currentPeriod
+        ? (new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate() / Math.max(1, new Date().getDate()))
         : 1;
-      const expectedLtvTotal = Math.round(m.expected_ltv * monthProgress);
+      const expectedLtvTotal = Math.round(m.expected_ltv * monthExtrapolation);
 
       return {
         period,
