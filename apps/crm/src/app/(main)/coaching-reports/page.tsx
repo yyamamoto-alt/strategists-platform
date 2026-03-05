@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { createServiceClient } from "@/lib/supabase/server";
 import { CoachingReportsClient } from "./coaching-reports-client";
 

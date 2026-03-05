@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { fetchCustomersWithRelations } from "@/lib/data/customers";
 import { computeAgentRevenueSummary } from "@/lib/data/dashboard-metrics";
 import { AgentsClient } from "./agents-client";

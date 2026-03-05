@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { notFound } from "next/navigation";
 import { fetchCustomerById } from "@/lib/data/customers";
 import { fetchCustomerEmails, fetchApplicationHistory } from "@/lib/data/spreadsheet-sync";
