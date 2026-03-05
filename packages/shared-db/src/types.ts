@@ -320,6 +320,7 @@ export interface Lesson {
   video_url?: string | null;
   markdown_content?: string | null;
   copy_protected?: boolean;
+  content_format?: "markdown" | "html";
   duration_minutes: number | null;
   sort_order: number;
   is_active: boolean;
@@ -659,6 +660,7 @@ export interface PLChannelData {
   funnel: Record<string, PLFunnelCounts>;
   totals: PLFunnelCounts;
   revenue: number;
+  revenueByPeriod: Record<string, number>;
 }
 
 export interface PLSegmentData {
@@ -680,7 +682,6 @@ export interface PLSegmentData {
   agentConfirmed: number;
   agentProjected: number;
   ltvPerApp: number;
-  targetCpa: number;
   graduationYearApps?: Record<string, Record<string, number>>;
 }
 

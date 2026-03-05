@@ -24,6 +24,11 @@ const formatYen = (value: number) => {
   return value.toString();
 };
 
+const formatPeriodTick = (v: string) => {
+  const [y, m] = v.split("/");
+  return m === "01" ? `${y}/${m}` : m;
+};
+
 export function RevenueChart({ data, threeTierData }: RevenueChartProps) {
   if (threeTierData && threeTierData.length > 0) {
     return <UnifiedChart data={threeTierData} />;
@@ -40,13 +45,17 @@ function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
   }));
 
   return (
-    <ResponsiveContainer width="100%" height={320}>
+    <ResponsiveContainer width="100%" height={400}>
       <ComposedChart data={chartData}>
         <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
         <XAxis
           dataKey="period"
-          tick={{ fontSize: 11, fill: "#9ca3af" }}
+          tick={{ fontSize: 9, fill: "#9ca3af" }}
           stroke="rgba(255,255,255,0.1)"
+          angle={-45}
+          textAnchor="end"
+          height={40}
+          tickFormatter={formatPeriodTick}
         />
         <YAxis
           tickFormatter={formatYen}
@@ -124,13 +133,17 @@ function FallbackChart({ data }: { data: RevenueMetrics[] }) {
   }));
 
   return (
-    <ResponsiveContainer width="100%" height={320}>
+    <ResponsiveContainer width="100%" height={400}>
       <ComposedChart data={chartData}>
         <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
         <XAxis
           dataKey="period"
-          tick={{ fontSize: 11, fill: "#9ca3af" }}
+          tick={{ fontSize: 9, fill: "#9ca3af" }}
           stroke="rgba(255,255,255,0.1)"
+          angle={-45}
+          textAnchor="end"
+          height={40}
+          tickFormatter={formatPeriodTick}
         />
         <YAxis
           tickFormatter={formatYen}

@@ -394,10 +394,10 @@ function buildRows(
 
   rows.push(sep("sep_agent"));
 
-  // --- チャネル別 申込あたりLTV・ターゲットCPA ---
+  // --- チャネル別 LTV ---
   rows.push({
-    key: "ltv_cpa_header",
-    label: "◆チャネル別 LTV/CPA",
+    key: "ch_ltv_header",
+    label: "◆チャネル別 LTV",
     indent: 0,
     style: "header",
     format: "none",
@@ -405,53 +405,115 @@ function buildRows(
     totalValue: null,
   });
 
+  // 全体 申込あたりLTV（月別）
   rows.push({
     key: "ltv_per_app_total",
     label: "全体 申込あたりLTV",
     indent: 1,
     style: "total",
     format: "currency",
-    values: periods.map(() => null),
+    values: periods.map((p) => {
+      const apps = data.totals[p]?.applications || 0;
+      const rev = data.confirmedRevenue[p] || 0;
+      return apps > 0 ? Math.round(rev / apps) : null;
+    }),
     totalValue: data.ltvPerApp,
   });
 
+  // 全体 成約あたりLTV（月別）
   rows.push({
-    key: "target_cpa_total",
-    label: "全体 ターゲットCPA (30%)",
+    key: "ltv_per_close_total",
+    label: "全体 成約あたりLTV",
     indent: 1,
     style: "total",
     format: "currency",
-    values: periods.map(() => null),
-    totalValue: data.targetCpa,
+    values: periods.map((p) => {
+      const closed = data.totals[p]?.closed || 0;
+      const rev = data.confirmedRevenue[p] || 0;
+      return closed > 0 ? Math.round(rev / closed) : null;
+    }),
+    totalValue: (() => {
+      const closed = data.grandTotals.closed;
+      return closed > 0 ? Math.round(data.confirmedRevenueTotal / closed) : null;
+    })(),
   });
 
-  // チャネル別LTV/CPA
-  const allChannels = [...organicChannels, ...paidChannels].filter(ch => ch.totals.applications >= 3);
+  // 全体 売上合計（月別）
+  rows.push({
+    key: "ch_rev_total",
+    label: "全体 売上合計",
+    indent: 1,
+    style: "total",
+    format: "currency",
+    values: periods.map((p) => data.confirmedRevenue[p] || null),
+    totalValue: data.confirmedRevenueTotal,
+  });
+
+  rows.push(sep("sep_ch_ltv_total"));
+
+  // チャネル別（申込3件以上のみ表示）
+  const allChannels = sortByClosedDesc([...organicChannels, ...paidChannels].filter(ch => ch.totals.applications >= 3));
   for (const ch of allChannels) {
-    const chLtv = ch.totals.applications > 0 ? Math.round(ch.revenue / ch.totals.applications) : 0;
-    const chCpa = Math.round(chLtv * 0.3);
+    const chLtvGroupId = `ch_ltv_${ch.name}`;
+
+    // チャネル名ヘッダー（折りたたみ）
     rows.push({
-      key: `ltv_cpa_${ch.name}`,
+      key: chLtvGroupId,
       label: `${ch.name}`,
       indent: 1,
-      style: "channel",
+      style: "subtotal",
       format: "none",
       values: [],
       totalValue: null,
+      collapsibleGroup: chLtvGroupId,
     });
-    // LTV/CPAをラベルに直接表示（values無し行）
-    rows[rows.length - 1] = {
-      key: `ltv_cpa_${ch.name}`,
-      label: `${ch.name}  LTV: ${formatCurrency(chLtv)} / CPA: ${formatCurrency(chCpa)}`,
-      indent: 1,
+
+    // 申込あたりLTV
+    rows.push({
+      key: `${chLtvGroupId}_per_app`,
+      label: "申込あたりLTV",
+      indent: 2,
       style: "channel",
-      format: "none",
-      values: [],
-      totalValue: null,
-    };
+      format: "currency",
+      values: periods.map((p) => {
+        const apps = ch.funnel[p]?.applications || 0;
+        const rev = ch.revenueByPeriod[p] || 0;
+        return apps > 0 ? Math.round(rev / apps) : null;
+      }),
+      totalValue: ch.totals.applications > 0 ? Math.round(ch.revenue / ch.totals.applications) : null,
+      parentGroup: chLtvGroupId,
+    });
+
+    // 成約あたりLTV
+    rows.push({
+      key: `${chLtvGroupId}_per_close`,
+      label: "成約あたりLTV",
+      indent: 2,
+      style: "channel",
+      format: "currency",
+      values: periods.map((p) => {
+        const closed = ch.funnel[p]?.closed || 0;
+        const rev = ch.revenueByPeriod[p] || 0;
+        return closed > 0 ? Math.round(rev / closed) : null;
+      }),
+      totalValue: ch.totals.closed > 0 ? Math.round(ch.revenue / ch.totals.closed) : null,
+      parentGroup: chLtvGroupId,
+    });
+
+    // 売上合計
+    rows.push({
+      key: `${chLtvGroupId}_rev`,
+      label: "売上合計",
+      indent: 2,
+      style: "channel",
+      format: "currency",
+      values: periods.map((p) => ch.revenueByPeriod[p] || null),
+      totalValue: ch.revenue || null,
+      parentGroup: chLtvGroupId,
+    });
   }
 
-  rows.push(sep("sep_ltv_cpa"));
+  rows.push(sep("sep_ch_ltv"));
 
   // --- 卒年別申込数（新卒のみ） ---
   if (showGradYear && data.graduationYearApps) {

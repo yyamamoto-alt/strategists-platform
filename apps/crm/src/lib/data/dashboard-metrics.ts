@@ -756,8 +756,9 @@ function computeSegmentData(
   const agentConfirmedRevByPeriod: Record<string, number> = {};
   const subsidyByPeriod: Record<string, number> = {};
 
-  // チャネル別売上
+  // チャネル別売上（合計 + 月別）
   const channelRevenue = new Map<string, number>();
+  const channelRevenueByPeriod = new Map<string, Record<string, number>>();
 
   // Tier 3 予測用
   const forecastByPeriod: Record<string, number> = {};
@@ -872,10 +873,13 @@ function computeSegmentData(
       }
     }
 
-    // チャネル別売上（成約のみ）
+    // チャネル別売上（成約のみ — 合計+月別）
     if (isStageClosed(c.pipeline?.stage)) {
-      const chRev = channelRevenue.get(channel) || 0;
-      channelRevenue.set(channel, chRev + (c.contract?.confirmed_amount || 0));
+      const amt = c.contract?.confirmed_amount || 0;
+      channelRevenue.set(channel, (channelRevenue.get(channel) || 0) + amt);
+      if (!channelRevenueByPeriod.has(channel)) channelRevenueByPeriod.set(channel, {});
+      const crp = channelRevenueByPeriod.get(channel)!;
+      crp[period] = (crp[period] || 0) + amt;
     }
 
     // Tier 3: 未成約パイプラインの期待値
@@ -938,7 +942,6 @@ function computeSegmentData(
   const cumulativeLtvWithAgent = totalClosedCount > 0 ? Math.round((totalSchoolRev + totalAgentRev) / totalClosedCount) : 0;
 
   const ltvPerApp = grandTotals.applications > 0 ? Math.round(confirmedRevenueTotal / grandTotals.applications) : 0;
-  const targetCpa = Math.round(ltvPerApp * 0.3);
 
   // チャネルデータ変換
   const channels: PLChannelData[] = [];
@@ -953,6 +956,7 @@ function computeSegmentData(
       funnel,
       totals: data.totals,
       revenue: channelRevenue.get(name) || 0,
+      revenueByPeriod: channelRevenueByPeriod.get(name) || {},
     });
   });
 
@@ -987,7 +991,6 @@ function computeSegmentData(
     agentConfirmed,
     agentProjected,
     ltvPerApp,
-    targetCpa,
     graduationYearApps: Object.keys(gradYearApps).length > 0 ? gradYearApps : undefined,
   };
 }
