@@ -60,31 +60,81 @@ export async function POST(request: Request) {
     );
   }
 
-  // 1. Supabase Auth でユーザー作成
+  // 1. Supabase Auth でユーザー作成（既存ユーザーならパスワード更新）
+  let userId: string;
+
   const { data: authData, error: authError } = await supabase.auth.admin.createUser({
     email: invitation.email,
     password,
     email_confirm: true,
   });
 
-  if (authError || !authData.user) {
+  if (authError) {
+    // 既にユーザーが存在する場合 → パスワード更新で対応
+    if (authError.message.includes("already") || authError.message.includes("exists")) {
+      const { data: users } = await supabase.auth.admin.listUsers();
+      const existingUser = users?.users?.find((u) => u.email === invitation.email);
+      if (!existingUser) {
+        return NextResponse.json(
+          { error: "ユーザー情報の取得に失敗しました" },
+          { status: 400 }
+        );
+      }
+      // パスワードを更新
+      const { error: updateError } = await supabase.auth.admin.updateUserById(existingUser.id, {
+        password,
+      });
+      if (updateError) {
+        return NextResponse.json(
+          { error: `パスワード更新に失敗しました: ${updateError.message}` },
+          { status: 400 }
+        );
+      }
+      userId = existingUser.id;
+    } else {
+      return NextResponse.json(
+        { error: authError.message || "ユーザー作成に失敗しました" },
+        { status: 400 }
+      );
+    }
+  } else if (!authData.user) {
     return NextResponse.json(
-      { error: authError?.message || "ユーザー作成に失敗しました" },
+      { error: "ユーザー作成に失敗しました" },
       { status: 400 }
     );
+  } else {
+    userId = authData.user.id;
   }
 
-  // 2. user_roles にロールを挿入
+  // 2. user_roles にロールを挿入（既存なら更新）
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error: roleError } = await (supabase.from("user_roles") as any).insert({
-    user_id: authData.user.id,
-    role: invitation.role,
-    display_name: invitation.display_name || null,
-  });
+  const db = supabase as any;
+  const { data: existingRole } = await db
+    .from("user_roles")
+    .select("id")
+    .eq("user_id", userId)
+    .single();
+
+  let roleError;
+  if (existingRole) {
+    // 既存ロールを更新
+    ({ error: roleError } = await db
+      .from("user_roles")
+      .update({
+        role: invitation.role,
+        display_name: invitation.display_name || null,
+      })
+      .eq("user_id", userId));
+  } else {
+    // 新規挿入
+    ({ error: roleError } = await db.from("user_roles").insert({
+      user_id: userId,
+      role: invitation.role,
+      display_name: invitation.display_name || null,
+    }));
+  }
 
   if (roleError) {
-    // ロール挿入失敗時はユーザーも削除
-    await supabase.auth.admin.deleteUser(authData.user.id);
     return NextResponse.json(
       { error: `ロール設定に失敗しました: ${roleError.message}` },
       { status: 500 }
@@ -100,8 +150,8 @@ export async function POST(request: Request) {
   return NextResponse.json({
     message: "アカウントが作成されました",
     user: {
-      id: authData.user.id,
-      email: authData.user.email,
+      id: userId,
+      email: invitation.email,
       role: invitation.role,
     },
   });
