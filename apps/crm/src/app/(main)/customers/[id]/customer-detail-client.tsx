@@ -295,6 +295,24 @@ function buildBasicFields(c: CustomerWithRelations): FieldDef[] {
     { key: "transfer_intent", label: "転職意向", source: "manual", table: "customer", getValue: () => c.transfer_intent || "-" },
     { key: "notes", label: "備考", source: "manual", type: "textarea", table: "customer", getValue: () => c.notes || "-" },
     { key: "caution_notes", label: "注意事項", source: "manual", type: "textarea", table: "customer", getValue: () => c.caution_notes || "-" },
+    { key: "name_kana", label: "フリガナ", source: "manual", table: "customer", getValue: () => c.name_kana || "-" },
+    { key: "birth_date", label: "生年月日", source: "manual", type: "date", table: "customer", getValue: () => formatDate(c.birth_date ?? null) },
+    { key: "karte_email", label: "メアド(カルテ)", source: "sync", getValue: () => c.karte_email || "-" },
+    { key: "karte_phone", label: "電話番号(カルテ)", source: "sync", getValue: () => c.karte_phone || "-" },
+    { key: "graduation_year", label: "卒業年", source: "manual", table: "customer", getValue: () => c.graduation_year?.toString() || "-" },
+    { key: "application_reason", label: "申し込みの決め手", source: "sync", getValue: () => c.application_reason || "-" },
+    { key: "application_reason_karte", label: "申込の決め手(カルテ)", source: "sync", getValue: () => c.application_reason_karte || "-" },
+    { key: "program_interest", label: "有料プログラムへの関心", source: "sync", getValue: () => c.program_interest || "-" },
+    { key: "desired_schedule", label: "希望期間・頻度", source: "sync", getValue: () => c.desired_schedule || "-" },
+    { key: "purchased_content", label: "購入コンテンツ", source: "sync", getValue: () => c.purchased_content || "-" },
+    { key: "parent_support", label: "親御様からの支援", source: "sync", getValue: () => c.parent_support || "-" },
+    { key: "sns_accounts", label: "就活アカウント(X)", source: "sync", getValue: () => c.sns_accounts || "-" },
+    { key: "reference_media", label: "参考メディア", source: "sync", getValue: () => c.reference_media || "-" },
+    { key: "hobbies", label: "趣味・特技", source: "sync", getValue: () => c.hobbies || "-" },
+    { key: "behavioral_traits", label: "行動特性", source: "sync", getValue: () => c.behavioral_traits || "-" },
+    { key: "other_background", label: "その他要望・特記事項", source: "sync", getValue: () => c.other_background || "-" },
+    { key: "utm_campaign", label: "utm_campaign", source: "sync", getValue: () => c.utm_campaign || "-" },
+    { key: "utm_id", label: "utm_id", source: "sync", getValue: () => c.utm_id || "-" },
   ];
 }
 
@@ -320,6 +338,12 @@ function buildContractFields(c: CustomerWithRelations): FieldDef[] {
       "MVプラン入会済", "MV利用開始済", "初回URL送付済", "面談予約済み", "検討中(URL送付済)", "予約URLを渡していない", "希望してこなかったので渡していない",
     ], table: "contract", getValue: () => c.contract?.referral_status || "-" },
     { key: "progress_sheet_url", label: "Progress Sheet", source: "manual", table: "contract", getValue: () => c.contract?.progress_sheet_url || "-" },
+    { key: "second_amount", label: "二次金額", source: "manual", type: "number", table: "contract", getValue: () => c.contract?.second_amount ? formatCurrency(c.contract.second_amount) : "-" },
+    { key: "contract_amount", label: "契約金額", source: "manual", type: "number", table: "contract", getValue: () => c.contract?.contract_amount ? formatCurrency(c.contract.contract_amount) : "-" },
+    { key: "sales_amount", label: "売上金額", source: "manual", type: "number", table: "contract", getValue: () => c.contract?.sales_amount ? formatCurrency(c.contract.sales_amount) : "-" },
+    { key: "subsidy_amount", label: "補助金額", source: "manual", type: "number", table: "contract", getValue: () => c.contract?.subsidy_amount ? formatCurrency(c.contract.subsidy_amount) : "-" },
+    { key: "payment_form_url", label: "支払いフォームURL", source: "manual", table: "contract", getValue: () => c.contract?.payment_form_url || "-" },
+    { key: "invoice_info", label: "請求書情報", source: "manual", table: "contract", getValue: () => c.contract?.invoice_info || "-" },
   ];
 }
 
@@ -537,6 +561,24 @@ function buildPipelineFields(c: CustomerWithRelations): FieldDef[] {
     { key: "alternative_application", label: "別経由応募", source: "manual", table: "pipeline", getValue: () => c.pipeline?.alternative_application || "-" },
     { key: "additional_sales_content", label: "[追加指導]営業内容", source: "manual", type: "textarea", table: "pipeline", getValue: () => c.pipeline?.additional_sales_content || "-" },
     { key: "additional_plan", label: "[追加指導]プラン", source: "manual", table: "pipeline", getValue: () => c.pipeline?.additional_plan || "-" },
+    { key: "projected_amount", label: "売上見込", source: "manual", type: "number", table: "pipeline", getValue: () => c.pipeline?.projected_amount ? formatCurrency(c.pipeline.projected_amount) : "-" },
+    { key: "meeting_result", label: "面談結果", source: "manual", type: "textarea", table: "pipeline", getValue: () => c.pipeline?.meeting_result || "-" },
+    { key: "second_meeting_category", label: "二次面談区分", source: "manual", table: "pipeline", getValue: () => c.pipeline?.second_meeting_category || "-" },
+    { key: "postponement_date", label: "延期日", source: "manual", type: "date", table: "pipeline", getValue: () => formatDate(c.pipeline?.postponement_date ?? null) },
+    { key: "lead_time", label: "リードタイム", source: "sync", getValue: () => c.pipeline?.lead_time || "-" },
+    { key: "initial_channel", label: "初回認知経路", source: "sync", getValue: () => c.pipeline?.initial_channel || "-" },
+    { key: "marketing_memo", label: "マーケメモ", source: "manual", type: "textarea", table: "pipeline", getValue: () => c.pipeline?.marketing_memo || "-" },
+    { key: "sales_route", label: "経路(営業)", source: "sync", getValue: () => c.pipeline?.sales_route || c.pipeline?.route_by_sales || "-" },
+    { key: "agent_confirmation", label: "エージェント利用意向", source: "sync", getValue: () => c.pipeline?.agent_confirmation || "-" },
+    { key: "first_reward_category", label: "一次報酬分類", source: "sync", getValue: () => c.pipeline?.first_reward_category || "-" },
+    { key: "performance_reward_category", label: "成果報酬分類", source: "sync", getValue: () => c.pipeline?.performance_reward_category || "-" },
+    { key: "google_ads_target", label: "Google広告成果対象", source: "sync", getValue: () => c.pipeline?.google_ads_target || "-" },
+    { key: "ninety_day_message", label: "90日メッセージ", source: "manual", type: "textarea", table: "pipeline", getValue: () => c.pipeline?.ninety_day_message || "-" },
+    { key: "sales_form_status", label: "営業フォーム提出状況", source: "sync", getValue: () => c.pipeline?.sales_form_status || "-" },
+    { key: "status_confirmed_date", label: "ステータス確定日", source: "sync", getValue: () => formatDate(c.pipeline?.status_confirmed_date ?? null) },
+    { key: "status_final_date", label: "ステータス最終確定日", source: "sync", getValue: () => formatDate(c.pipeline?.status_final_date ?? null) },
+    { key: "additional_discount_info", label: "[追加指導]割引案内", source: "manual", table: "pipeline", getValue: () => c.pipeline?.additional_discount_info || "-" },
+    { key: "additional_notes", label: "[追加指導]学び", source: "manual", table: "pipeline", getValue: () => c.pipeline?.additional_notes || "-" },
   ];
 }
 
@@ -567,6 +609,20 @@ function buildLearningFields(c: CustomerWithRelations, appHistory?: ApplicationH
     { key: "selection_status", label: "選考状況", source: "manual", table: "learning", getValue: () => c.learning?.selection_status || "-" },
     { key: "level_up_range", label: "レベルアップ幅", source: "sync", getValue: () => c.learning?.level_up_range || "-" },
     { key: "mentoring_satisfaction", label: "メンタリング満足度", source: "sync", getValue: () => c.learning?.mentoring_satisfaction || "-" },
+    { key: "initial_coaching_level", label: "指導開始時レベル", source: "sync", getValue: () => c.learning?.initial_coaching_level || "-" },
+    { key: "attendance_rate", label: "出席率", source: "sync", getValue: () => c.learning?.attendance_rate != null ? formatPercent(c.learning.attendance_rate) : "-" },
+    { key: "progress_text", label: "進捗テキスト", source: "sync", getValue: () => c.learning?.progress_text || "-" },
+    { key: "case_interview_progress", label: "ケース面接進捗", source: "sync", getValue: () => c.learning?.case_interview_progress || "-" },
+    { key: "case_interview_weaknesses", label: "ケース面接苦手", source: "sync", getValue: () => c.learning?.case_interview_weaknesses || "-" },
+    { key: "behavior_session1", label: "ビヘイビア1回目", source: "sync", getValue: () => c.learning?.behavior_session1 || "-" },
+    { key: "behavior_session2", label: "ビヘイビア2回目", source: "sync", getValue: () => c.learning?.behavior_session2 || "-" },
+    { key: "assessment_session1", label: "アセスメント1回目", source: "sync", getValue: () => c.learning?.assessment_session1 || "-" },
+    { key: "assessment_session2", label: "アセスメント2回目", source: "sync", getValue: () => c.learning?.assessment_session2 || "-" },
+    { key: "offer_probability_at_end", label: "内定確度判定(終了時)", source: "sync", getValue: () => c.learning?.offer_probability_at_end || "-" },
+    { key: "additional_coaching_proposal", label: "追加指導提案(終了時)", source: "sync", getValue: () => c.learning?.additional_coaching_proposal || "-" },
+    { key: "interview_timing_at_end", label: "面接予定(終了時)", source: "sync", getValue: () => c.learning?.interview_timing_at_end || "-" },
+    { key: "target_companies_at_end", label: "受験企業(終了時)", source: "sync", getValue: () => c.learning?.target_companies_at_end || "-" },
+    { key: "start_email_sent", label: "開始メール送付", source: "sync", getValue: () => c.learning?.start_email_sent || "-" },
   ];
 }
 
@@ -595,6 +651,13 @@ function buildAgentFields(c: CustomerWithRelations): FieldDef[] {
     { key: "agent_memo", label: "エージェント業務メモ", source: "manual", type: "textarea", table: "agent", getValue: () => c.agent?.agent_memo || "-" },
     { key: "loss_reason", label: "失注理由", source: "manual", type: "textarea", table: "agent", getValue: () => c.agent?.loss_reason || "-" },
     { key: "general_memo", label: "メモ", source: "manual", type: "textarea", table: "agent", getValue: () => c.agent?.general_memo || "-" },
+    { key: "agent_service_enrolled", label: "エージェント利用契約", source: "manual", type: "select", options: ["true", "false"], table: "agent", getValue: () => c.agent?.agent_service_enrolled ? "あり" : "なし" },
+    { key: "agent_plan", label: "エージェントプラン", source: "manual", table: "agent", getValue: () => c.agent?.agent_plan || "-" },
+    { key: "document_pass_rate", label: "書類通過率", source: "manual", type: "number", table: "agent", getValue: () => c.agent?.document_pass_rate ? formatPercent(c.agent.document_pass_rate) : "-" },
+    { key: "exam_count", label: "試験受験回数", source: "manual", type: "number", table: "agent", getValue: () => c.agent?.exam_count?.toString() || "-" },
+    { key: "loss_detail", label: "失注詳細", source: "manual", type: "textarea", table: "agent", getValue: () => c.agent?.loss_detail || "-" },
+    { key: "expected_agent_revenue", label: "人材見込売上", source: "sync", getValue: () => c.agent?.expected_agent_revenue ? formatCurrency(c.agent.expected_agent_revenue) : "-" },
+    { key: "expected_referral_fee", label: "人材紹介報酬期待値", source: "sync", getValue: () => c.agent?.expected_referral_fee ? formatCurrency(c.agent.expected_referral_fee) : "-" },
   ];
 }
 
