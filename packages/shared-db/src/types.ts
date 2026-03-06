@@ -171,6 +171,7 @@ export interface Contract {
   first_amount: number | null;
   second_amount: number | null;
   confirmed_amount: number | null;
+  contract_total?: number | null;
   discount: number | null;
   contract_amount: number | null;
   sales_amount: number | null;

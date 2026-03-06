@@ -29,6 +29,7 @@ import {
   isCurrentlyEnrolled,
   isAgentConfirmed,
   getSubsidyAmount,
+  getSchoolRevenue,
   calcAgentProjectedRevenue,
   isShinsotsu,
   DEFAULT_LTV_CONFIG,
@@ -179,7 +180,7 @@ export function computeRevenueMetrics(
       });
     }
     const m = byMonth.get(period)!;
-    const amount = c.contract?.confirmed_amount || 0;
+    const amount = getSchoolRevenue(c);
 
     const closed = isStageClosed(c.pipeline?.stage);
 
@@ -329,7 +330,7 @@ export function computeThreeTierRevenue(
       });
     }
     const m = byMonth.get(period)!;
-    const amount = c.contract?.confirmed_amount || 0;
+    const amount = getSchoolRevenue(c);
     const closed = isStageClosed(c.pipeline?.stage);
 
     // MAXライン: 全顧客の見込みLTV合計（成約済みも未成約も含む）
@@ -596,7 +597,7 @@ export function computeChannelMetrics(
 
     if (isStageClosed(c.pipeline?.stage)) {
       m.closings++;
-      m.revenue += c.contract?.confirmed_amount || 0;
+      m.revenue += getSchoolRevenue(c);
     }
   }
 
@@ -681,7 +682,7 @@ export function computeChannelFunnelPivot(
         ch.additional_coaching++;
       }
       if (isStageClosed(s)) {
-        const rev = c.contract?.confirmed_amount || 0;
+        const rev = getSchoolRevenue(c);
         p.closed++;
         ch.closed++;
         p.revenue += rev;
@@ -850,7 +851,7 @@ function computeSegmentData(
         pt.closed++;
         grandTotals.closed++;
 
-        const amount = c.contract?.confirmed_amount || 0;
+        const amount = getSchoolRevenue(c);
         closedCountByPeriod[period] = (closedCountByPeriod[period] || 0) + 1;
         schoolRevByPeriod[period] = (schoolRevByPeriod[period] || 0) + amount;
 
@@ -889,7 +890,7 @@ function computeSegmentData(
 
     // チャネル別売上（成約のみ — 合計+月別）
     if (isStageClosed(c.pipeline?.stage)) {
-      const amt = c.contract?.confirmed_amount || 0;
+      const amt = getSchoolRevenue(c);
       channelRevenue.set(channel, (channelRevenue.get(channel) || 0) + amt);
       if (!channelRevenueByPeriod.has(channel)) channelRevenueByPeriod.set(channel, {});
       const crp = channelRevenueByPeriod.get(channel)!;
@@ -901,8 +902,9 @@ function computeSegmentData(
     if (!isStageClosed(c.pipeline?.stage)) {
       const prob = calcClosingProbability(c);
       if (prob > 0) {
-        const potentialSchool = (c.contract?.confirmed_amount || 0) > 0
-          ? c.contract!.confirmed_amount!
+        const schoolRev = getSchoolRevenue(c);
+        const potentialSchool = schoolRev > 0
+          ? schoolRev
           : (isShinsotsu(c.attribute) ? 240000 : 427636);
         const isEnrolledAgent = isAgentCustomer(c) && !isAgentConfirmed(c) && isCurrentlyEnrolled(c);
         const potentialAgent = (isAgentCustomer(c) && !isEnrolledAgent) ? calcExpectedReferralFee(c) * prob : 0;

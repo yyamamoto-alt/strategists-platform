@@ -24,6 +24,7 @@ import {
   isAgentCustomer,
   isAgentConfirmed,
   getSubsidyAmount,
+  getSchoolRevenue,
 } from "@/lib/calc-fields";
 import {
   SpreadsheetTable,
@@ -363,10 +364,10 @@ export function CustomersClient({ customers, attributionMap }: CustomersClientPr
       // ═══ 売上4種（近接配置） ═══
       { key: "confirmed_amount", label: "確定売上", width: 100, align: "right" as const, category: "sales",
         render: (c) => {
-          const amt = (c.contract?.confirmed_amount || 0) + getSubsidyAmount(c);
+          const amt = getSchoolRevenue(c) + getSubsidyAmount(c);
           return amt > 0 ? formatCurrency(amt) : "-";
         },
-        sortValue: (c) => (c.contract?.confirmed_amount || 0) + getSubsidyAmount(c) },
+        sortValue: (c) => getSchoolRevenue(c) + getSubsidyAmount(c) },
 
       { key: "rev_agent", label: "人材見込売上", width: 110, align: "right" as const, computed: true, category: "sales",
         formula: "想定年収 × 入社至る率 × 内定確度 × 紹介料率 × マージン",
@@ -379,13 +380,13 @@ export function CustomersClient({ customers, attributionMap }: CustomersClientPr
       { key: "rev_total", label: "見込含む売上", width: 110, align: "right" as const, computed: true, category: "sales",
         formula: "確定売上 + 人材見込み売上 + 補助金",
         render: (c) => {
-          const school = c.contract?.confirmed_amount || 0;
+          const school = getSchoolRevenue(c);
           const agent = isAgentCustomer(c) ? calcExpectedReferralFee(c) : 0;
           const subsidy = getSubsidyAmount(c);
           const total = school + agent + subsidy;
           return total > 0 ? <span className="font-semibold text-brand">{formatCurrency(total)}</span> : "-";
         }, sortValue: (c) => {
-          const school = c.contract?.confirmed_amount || 0;
+          const school = getSchoolRevenue(c);
           const agent = isAgentCustomer(c) ? calcExpectedReferralFee(c) : 0;
           return school + agent + getSubsidyAmount(c);
         } },

@@ -26,6 +26,7 @@ import {
   isAgentConfirmed,
   getSubsidyAmount,
   getOfferRankRate,
+  getSchoolRevenue,
   OFFER_RANK_META,
 } from "@/lib/calc-fields";
 import { useRouter } from "next/navigation";
@@ -467,7 +468,7 @@ function OrdersSection({ orders }: { orders: Order[] }) {
 
 /** 売上見込セクション（構造化表示） */
 function RevenueSection({ customer }: { customer: CustomerWithRelations }) {
-  const schoolConfirmed = customer.contract?.confirmed_amount || 0;
+  const schoolConfirmed = getSchoolRevenue(customer);
   const subsidy = getSubsidyAmount(customer);
   const agentConfirmed = isAgentConfirmed(customer) ? calcExpectedReferralFee(customer) : 0;
   const confirmedTotal = calcConfirmedRevenue(customer);

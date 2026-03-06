@@ -9,7 +9,7 @@ import {
   getAttributeColor,
   formatPercent,
 } from "@/lib/utils";
-import { calcClosingProbability, calcExpectedLTV, calcConfirmedRevenue } from "@/lib/calc-fields";
+import { calcClosingProbability, calcExpectedLTV, calcConfirmedRevenue, getSchoolRevenue } from "@/lib/calc-fields";
 import type { CustomerWithRelations } from "@strategy-school/shared-db";
 
 interface StageDef {
@@ -127,8 +127,8 @@ export function PipelineClient({ customers }: PipelineClientProps) {
   }, [customers, twoWeeksAgo, today, kanbanStages]);
 
   const totalValue = customers
-    .filter((c) => c.contract?.confirmed_amount)
-    .reduce((sum, c) => sum + (c.contract?.confirmed_amount || 0), 0);
+    .filter((c) => getSchoolRevenue(c) > 0)
+    .reduce((sum, c) => sum + getSchoolRevenue(c), 0);
 
   // 成約ステージの判定
   const isSeiyakuStage = (stage: string | undefined) =>

@@ -35,11 +35,19 @@ export function getOfferRankRate(rank: string | null | undefined): number {
 }
 
 /** 顧客のエージェント紹介報酬期待値を算出
- *  b = 想定年収 × 内定ランク通過率 × 紹介料率 × マージン
+ *  確定済み: DB上のexpected_referral_fee（ベタ打ち確定額）を優先
+ *  未確定: 想定年収 × 内定ランク通過率 × 紹介料率 × マージン で計算
  */
 export function calcExpectedReferralFee(c: CustomerWithRelations): number {
   const a = c.agent;
   if (!a) return 0;
+
+  // 確定済みの場合: DBのexpected_referral_feeを優先（Excel移行値 or 手入力値）
+  if (a.placement_confirmed === "確定" && a.expected_referral_fee && a.expected_referral_fee > 0) {
+    return a.expected_referral_fee;
+  }
+
+  // 未確定: 計算で算出
   const salary = a.offer_salary || 0;
   const rankRate = getOfferRankRate(a.offer_rank);
   const feeRate = a.referral_fee_rate ?? 0.3;
@@ -147,13 +155,18 @@ export function calcClosingProbability(c: CustomerWithRelations): number {
   return 0.20;
 }
 
+/** スクール確定売上額を取得: contract_total（分割含む合計）を優先、なければconfirmed_amount */
+export function getSchoolRevenue(c: CustomerWithRelations): number {
+  return c.contract?.contract_total || c.contract?.confirmed_amount || 0;
+}
+
 /** 成約者見込LTV（ユーザー定義 c）= a + b（人材未確定時）OR a + c（人材確定時）
  *  a = 確定売上(スクール受講料 + 補助金)
  *  b = 人材見込売上
  *  c = 確定売上(人材)
  */
 export function calcSalesProjection(c: CustomerWithRelations): number {
-  const confirmed = c.contract?.confirmed_amount || 0;
+  const confirmed = getSchoolRevenue(c);
   const subsidy = getSubsidyAmount(c);
   const a = confirmed + subsidy;
 
@@ -223,7 +236,7 @@ export function calcProgressStatus(c: CustomerWithRelations): "順調" | "遅延
 
 /** 確定売上合計（e）= a + c = スクール確定(a1) + 補助金(a2) + 人材確定(c) */
 export function calcConfirmedRevenue(c: CustomerWithRelations): number {
-  const schoolConfirmed = c.contract?.confirmed_amount || 0;
+  const schoolConfirmed = getSchoolRevenue(c);
   const subsidy = getSubsidyAmount(c);
   const agentConfirmed = isAgentConfirmed(c) ? calcExpectedReferralFee(c) : 0;
   return schoolConfirmed + subsidy + agentConfirmed;
