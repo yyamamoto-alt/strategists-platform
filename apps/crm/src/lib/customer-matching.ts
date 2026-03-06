@@ -414,13 +414,37 @@ export async function upsertFromSpreadsheet(
     // ソース別: 関連テーブルにフィールドを書き込み
     await syncFormFieldsToRelatedTables(db, match.customer_id, sourceName, rawData);
 
-    // application_history に履歴追加
-    await db.from("application_history").insert({
-      customer_id: match.customer_id,
-      source: sourceName,
-      raw_data: rawData,
-      notes: `${sourceName}から同期 (${match.match_type}マッチ)`,
-    });
+    // application_history に履歴追加（重複チェック付き）
+    const rawText = JSON.stringify(rawData);
+    const { data: existingHistory } = await db
+      .from("application_history")
+      .select("id")
+      .eq("customer_id", match.customer_id)
+      .eq("source", sourceName)
+      .limit(1);
+
+    // 同じraw_dataが既にあればスキップ
+    let isDuplicate = false;
+    if (existingHistory && existingHistory.length > 0) {
+      const { data: allHistory } = await db
+        .from("application_history")
+        .select("id, raw_data")
+        .eq("customer_id", match.customer_id)
+        .eq("source", sourceName);
+      isDuplicate = allHistory?.some(
+        (h: { id: string; raw_data: Record<string, unknown> }) =>
+          JSON.stringify(h.raw_data) === rawText
+      ) ?? false;
+    }
+
+    if (!isDuplicate) {
+      await db.from("application_history").insert({
+        customer_id: match.customer_id,
+        source: sourceName,
+        raw_data: rawData,
+        notes: `${sourceName}から同期 (${match.match_type}マッチ)`,
+      });
+    }
 
     return { action: "updated", customer_id: match.customer_id, match_type: match.match_type };
   }
@@ -493,7 +517,7 @@ export async function upsertFromSpreadsheet(
       deal_status: "進行中",
     });
 
-    // application_history に履歴追加
+    // application_history に履歴追加（新規作成なので重複なし）
     await db.from("application_history").insert({
       customer_id: newCustomer.id,
       source: sourceName,

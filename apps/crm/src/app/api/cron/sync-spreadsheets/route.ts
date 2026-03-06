@@ -35,6 +35,18 @@ export async function GET(request: Request) {
 
   for (const connection of connections) {
     try {
+      // 同時実行チェック: 既にrunning中のsync_logがあればスキップ
+      const { data: runningLogs } = await db
+        .from("sync_logs")
+        .select("id")
+        .eq("connection_id", connection.id)
+        .eq("status", "running")
+        .limit(1);
+      if (runningLogs && runningLogs.length > 0) {
+        results.push({ connection: connection.name, skipped: "already running" });
+        continue;
+      }
+
       // 同期ログを作成
       const { data: syncLog } = await db
         .from("sync_logs")
@@ -100,37 +112,42 @@ export async function GET(request: Request) {
       for (const row of dataRows) {
         if (row.every((cell: string) => !cell || cell.trim() === "")) continue;
 
-        const fields = extractFieldsFromRow(row, headers, columnMapping);
-        const rawData: Record<string, string> = {};
-        headers.forEach((h: string, i: number) => {
-          if (i < row.length && row[i]) rawData[h] = row[i];
-        });
-
-        const result = await upsertFromSpreadsheet(
-          connection.id,
-          syncLog?.id,
-          fields,
-          rawData,
-          connection.name,
-          connection.auto_create_customer === true
-        );
-
-        if (result.action === "created") rowsCreated++;
-        else if (result.action === "updated") rowsUpdated++;
-        else if (result.action === "unmatched") rowsUnmatched++;
-
-        if (syncedRecords.length < 100) {
-          const summaryKeys = headers.slice(0, 5);
-          const summary: Record<string, string> = {};
-          for (const k of summaryKeys) {
-            if (rawData[k]) summary[k] = String(rawData[k]).substring(0, 100);
-          }
-          syncedRecords.push({
-            action: result.action,
-            name: fields.name || null,
-            email: fields.email || null,
-            summary,
+        try {
+          const fields = extractFieldsFromRow(row, headers, columnMapping);
+          const rawData: Record<string, string> = {};
+          headers.forEach((h: string, i: number) => {
+            if (i < row.length && row[i]) rawData[h] = row[i];
           });
+
+          const result = await upsertFromSpreadsheet(
+            connection.id,
+            syncLog?.id,
+            fields,
+            rawData,
+            connection.name,
+            connection.auto_create_customer === true
+          );
+
+          if (result.action === "created") rowsCreated++;
+          else if (result.action === "updated") rowsUpdated++;
+          else if (result.action === "unmatched") rowsUnmatched++;
+
+          if (syncedRecords.length < 100) {
+            const summaryKeys = headers.slice(0, 5);
+            const summary: Record<string, string> = {};
+            for (const k of summaryKeys) {
+              if (rawData[k]) summary[k] = String(rawData[k]).substring(0, 100);
+            }
+            syncedRecords.push({
+              action: result.action,
+              name: fields.name || null,
+              email: fields.email || null,
+              summary,
+            });
+          }
+        } catch (rowErr) {
+          console.error(`Row processing error in ${connection.name}:`, rowErr);
+          // 1行のエラーで全体を止めない
         }
       }
 
@@ -171,6 +188,32 @@ export async function GET(request: Request) {
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Sync failed";
+      console.error(`Sync error for ${connection.name}:`, err);
+
+      // sync_logが作成済みなら failed に更新
+      try {
+        const { data: latestLog } = await db
+          .from("sync_logs")
+          .select("id")
+          .eq("connection_id", connection.id)
+          .eq("status", "running")
+          .order("started_at", { ascending: false })
+          .limit(1)
+          .single();
+        if (latestLog) {
+          await db
+            .from("sync_logs")
+            .update({
+              finished_at: new Date().toISOString(),
+              status: "failed",
+              error_message: message.substring(0, 500),
+            })
+            .eq("id", latestLog.id);
+        }
+      } catch {
+        // sync_log更新失敗は無視
+      }
+
       results.push({
         connection: connection.name,
         error: message,
