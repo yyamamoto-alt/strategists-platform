@@ -20,6 +20,7 @@ const mainNavigation: NavItem[] = [
   { name: "PL", href: "/revenue", icon: "", roles: ["admin"] },
   { name: "顧客DB", href: "/customers", icon: "", roles: ["admin", "mentor"] },
   { name: "パイプライン", href: "/pipeline", icon: "", roles: ["admin", "mentor"] },
+  { name: "補助金", href: "/subsidy", icon: "", roles: ["admin"] },
 ];
 
 const databaseNavigation: NavItem[] = [
