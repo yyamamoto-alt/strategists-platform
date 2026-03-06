@@ -216,12 +216,6 @@ export async function GET(request: Request) {
         rows_updated: rowsUpdated,
         rows_unmatched: rowsUnmatched,
         rows_skipped: rowsSkipped,
-        _debug: {
-          startRow: startRow ?? null,
-          prevLastSyncedRow: connection.last_synced_row,
-          totalRow,
-          updateError: updateError?.message || null,
-        },
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Sync failed";
@@ -261,8 +255,6 @@ export async function GET(request: Request) {
   return NextResponse.json({
     success: true,
     synced: results.length,
-    total_connections: connections.length,
-    connection_names: connections.map((c: { name: string }) => c.name),
     results,
   });
 }
