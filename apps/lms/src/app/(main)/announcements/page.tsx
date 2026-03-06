@@ -16,6 +16,24 @@ const priorityColors: Record<AnnouncementPriority, string> = { low: "border-l-gr
 const priorityBadges: Record<AnnouncementPriority, string> = { low: "bg-gray-700 text-gray-300", normal: "bg-brand-muted text-brand-light", high: "bg-orange-900/50 text-orange-300", urgent: "bg-red-900/50 text-red-300" };
 const priorityLabels: Record<AnnouncementPriority, string> = { low: "低", normal: "通常", high: "高", urgent: "緊急" };
 
+function AutoLinkedText({ text }: { text: string }) {
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  const parts = text.split(urlRegex);
+  return (
+    <>
+      {parts.map((part, i) =>
+        urlRegex.test(part) ? (
+          <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="text-brand-light hover:underline break-all">
+            {part}
+          </a>
+        ) : (
+          <span key={i}>{part}</span>
+        )
+      )}
+    </>
+  );
+}
+
 export default function AnnouncementsPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
@@ -61,7 +79,7 @@ export default function AnnouncementsPage() {
                     {isExpanded ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
                   </div>
                 </button>
-                {isExpanded && <div className="px-4 pb-4 border-t border-white/10 pt-3"><p className="text-sm text-gray-300 whitespace-pre-wrap">{a.content}</p></div>}
+                {isExpanded && <div className="px-4 pb-4 border-t border-white/10 pt-3"><p className="text-sm text-gray-300 whitespace-pre-wrap"><AutoLinkedText text={a.content} /></p></div>}
               </div>
             );
           })}

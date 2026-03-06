@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Plus, Trash2, ChevronUp, ChevronDown, ArrowLeft, GripVertical } from "lucide-react";
+import { RichEditor } from "@/components/content/rich-editor";
 
 interface Lesson {
   id: string;
@@ -251,13 +252,11 @@ export default function ContentDetailPage() {
                   )}
 
                   <div>
-                    <label className="block text-xs text-gray-400 mb-1">コンテンツ（HTML / マークダウン）</label>
-                    <textarea
-                      value={editForm.markdown_content || ""}
-                      onChange={(e) => setEditForm((p) => ({ ...p, markdown_content: e.target.value }))}
-                      rows={12}
-                      className="w-full px-3 py-2 bg-surface-elevated border border-white/10 rounded-lg text-white text-sm font-mono focus:ring-2 focus:ring-brand focus:outline-none"
-                      placeholder="HTMLまたはマークダウンでコンテンツを記述..."
+                    <label className="block text-xs text-gray-400 mb-1">コンテンツ</label>
+                    <RichEditor
+                      content={editForm.markdown_content || ""}
+                      onChange={(html) => setEditForm((p) => ({ ...p, markdown_content: html, content_format: "html" }))}
+                      placeholder="ここにコンテンツを入力..."
                     />
                   </div>
 

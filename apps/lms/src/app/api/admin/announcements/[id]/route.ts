@@ -21,7 +21,7 @@ export async function PATCH(
     return NextResponse.json({ error: "不正なリクエストです" }, { status: 400 });
   }
 
-  const allowedFields = ["title", "content", "priority", "published_at", "is_active"];
+  const allowedFields = ["title", "content", "priority", "published_at", "is_active", "target_plan_ids"];
   const updates: Record<string, any> = {};
   for (const key of allowedFields) {
     if (body[key] !== undefined) {

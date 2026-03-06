@@ -16,51 +16,51 @@ export default async function CoursesPage() {
     const { createAdminClient } = await import("@/lib/supabase/admin");
     const supabase = createAdminClient();
 
-    // コース一覧取得
+    // コース一覧 + 受講生情報を並列取得
     const lmsClient = await createLmsServerClient();
-    const { data: courses } = await lmsClient
+    const coursesPromise = lmsClient
       .from("courses")
-      .select("*")
+      .select("id, title, slug, description, category, level, duration_weeks, is_active, sort_order")
       .eq("is_active", true)
       .order("sort_order", { ascending: true });
 
-    // 受講生のプラン情報を取得
     let targetAttribute: string | null = null;
     let viewMode: "curriculum" | "portal" = "portal";
     let planName: string | null = null;
     let planId: string | null = null;
 
+    // 受講生情報を並列取得
+    const customerPromise = session?.customerId
+      ? supabase.from("customers").select("attribute").eq("id", session.customerId).single()
+      : null;
+    const contractPromise = session?.customerId
+      ? supabase.from("contracts").select("plan_name").eq("customer_id", session.customerId).order("created_at", { ascending: false }).limit(1).maybeSingle()
+      : null;
+    const plansPromise = session?.customerId
+      ? supabase.from("plans").select("id, slug, name").eq("is_active", true)
+      : null;
+
+    const [coursesResult, customerResult, contractResult, plansResult] = await Promise.all([
+      coursesPromise,
+      customerPromise,
+      contractPromise,
+      plansPromise,
+    ]);
+
+    const courses = coursesResult.data;
+
     if (session?.customerId) {
       try {
-        const { data: customer } = await supabase
-          .from("customers")
-          .select("attribute")
-          .eq("id", session.customerId)
-          .single() as { data: { attribute: string } | null };
-
+        const customer = (customerResult as any)?.data as { attribute: string } | null;
         targetAttribute = customer?.attribute || null;
         if (targetAttribute === "新卒") {
           viewMode = "curriculum";
         }
 
-        // 契約からプラン名を取得
-        const { data: contract } = await supabase
-          .from("contracts")
-          .select("plan_name")
-          .eq("customer_id", session.customerId)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle() as { data: { plan_name: string } | null };
-
+        const contract = (contractResult as any)?.data as { plan_name: string } | null;
         if (contract?.plan_name) {
           planName = contract.plan_name;
-
-          // plans テーブルからマッチするプランを探す
-          const { data: plans } = await supabase
-            .from("plans")
-            .select("id, slug, name")
-            .eq("is_active", true) as { data: any[] | null };
-
+          const plans = (plansResult as any)?.data as any[] | null;
           if (plans) {
             const matchedPlan = plans.find((p: any) =>
               planName!.includes(p.name) || p.name.includes(planName!)
@@ -179,41 +179,39 @@ export default async function CoursesPage() {
       try {
         const courseIds = (courses as any[]).map((c: any) => c.id);
 
-        const { data: modules } = await supabase
-          .from("modules")
-          .select("*")
-          .in("course_id", courseIds)
-          .order("sort_order", { ascending: true });
+        // modules, lessons, progress を並列取得
+        const [modulesRes, lessonsRes, progressRes] = await Promise.all([
+          supabase
+            .from("modules")
+            .select("id, title, course_id, sort_order")
+            .in("course_id", courseIds)
+            .order("sort_order", { ascending: true }),
+          supabase
+            .from("lessons")
+            .select("id, title, lesson_type, module_id, sort_order, duration_minutes")
+            .in("course_id", courseIds)
+            .eq("is_active", true)
+            .order("sort_order", { ascending: true }),
+          session?.customerId
+            ? supabase
+                .from("lesson_progress")
+                .select("lesson_id, status")
+                .eq("customer_id", session.customerId)
+            : Promise.resolve({ data: [] }),
+        ]);
 
-        for (const mod of (modules || []) as any[]) {
+        for (const mod of ((modulesRes.data || []) as any[])) {
           if (!modulesMap[mod.course_id]) modulesMap[mod.course_id] = [];
           modulesMap[mod.course_id].push(mod);
         }
 
-        const moduleIds = (modules || []).map((m: any) => m.id);
-        if (moduleIds.length > 0) {
-          const { data: lessons } = await supabase
-            .from("lessons")
-            .select("*")
-            .in("module_id", moduleIds)
-            .eq("is_active", true)
-            .order("sort_order", { ascending: true });
-
-          for (const lesson of (lessons || []) as any[]) {
-            if (!lessonsMap[lesson.module_id]) lessonsMap[lesson.module_id] = [];
-            lessonsMap[lesson.module_id].push(lesson);
-          }
+        for (const lesson of ((lessonsRes.data || []) as any[])) {
+          if (!lessonsMap[lesson.module_id]) lessonsMap[lesson.module_id] = [];
+          lessonsMap[lesson.module_id].push(lesson);
         }
 
-        if (session?.customerId) {
-          const { data: progressList } = await supabase
-            .from("lesson_progress")
-            .select("*")
-            .eq("customer_id", session.customerId);
-
-          for (const p of (progressList || []) as any[]) {
-            progressMap[p.lesson_id] = p;
-          }
+        for (const p of ((progressRes.data || []) as any[])) {
+          progressMap[p.lesson_id] = p;
         }
       } catch (e) {
         console.error("Failed to fetch curriculum data:", e);

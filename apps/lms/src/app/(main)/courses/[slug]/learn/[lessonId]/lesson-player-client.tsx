@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { VideoPlayer } from "@/components/content/video-player";
+import { MultiVideoPlayer } from "@/components/content/multi-video-player";
 import { MarkdownViewer } from "@/components/content/markdown-viewer";
 import { RichContentViewer } from "@/components/content/rich-content-viewer";
 import { ArrowLeft, ArrowRight, CheckCircle, Circle, Video, FileText, BookOpen, Users, ExternalLink } from "lucide-react";
@@ -54,17 +55,29 @@ export function LessonPlayerClient({ slug, lessonId, allLessons }: Props) {
         </div>
         <div className="p-6 max-w-4xl mx-auto">
           <h1 className="text-2xl font-bold text-white mb-6">{lesson.title}</h1>
-          {lesson.video_url && (
-            <div className="mb-6"><VideoPlayer src={lesson.video_url} protected={lesson.copy_protected} /></div>
-          )}
-          {lesson.markdown_content && (
+          {lesson.video_url && lesson.markdown_content && lesson.lesson_type === "動画" ? (
             <div className="mb-6">
-              {(lesson as any).content_format === "html" ? (
-                <RichContentViewer content={lesson.markdown_content} protected={lesson.copy_protected} />
-              ) : (
-                <MarkdownViewer content={lesson.markdown_content} protected={lesson.copy_protected} />
-              )}
+              <MultiVideoPlayer
+                mainVideoUrl={lesson.video_url}
+                htmlContent={lesson.markdown_content}
+                copyProtected={lesson.copy_protected}
+              />
             </div>
+          ) : (
+            <>
+              {lesson.video_url && (
+                <div className="mb-6"><VideoPlayer src={lesson.video_url} protected={lesson.copy_protected} /></div>
+              )}
+              {lesson.markdown_content && (
+                <div className="mb-6">
+                  {(lesson as any).content_format === "html" ? (
+                    <RichContentViewer content={lesson.markdown_content} protected={lesson.copy_protected} />
+                  ) : (
+                    <MarkdownViewer content={lesson.markdown_content} protected={lesson.copy_protected} />
+                  )}
+                </div>
+              )}
+            </>
           )}
           {/* 外部リンク教材（note.com等） */}
           {lesson.content_url && (

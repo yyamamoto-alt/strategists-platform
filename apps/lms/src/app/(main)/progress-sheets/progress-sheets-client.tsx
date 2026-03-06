@@ -66,6 +66,7 @@ export function ProgressSheetsClient({ reports }: { reports: MentorReport[] }) {
               <tr className="bg-[#1a1f3d]">
                 <th className="border-b border-white/10 px-3 py-2.5 text-left text-xs font-semibold text-gray-300 whitespace-nowrap">指導日</th>
                 <th className="border-b border-white/10 px-3 py-2.5 text-center text-xs font-semibold text-gray-300 whitespace-nowrap">回次</th>
+                <th className="border-b border-white/10 px-3 py-2.5 text-left text-xs font-semibold text-gray-300 whitespace-nowrap">担当メンター</th>
                 <th className="border-b border-white/10 px-3 py-2.5 text-left text-xs font-semibold text-gray-300 whitespace-nowrap">解いた問題</th>
                 <th className="border-b border-white/10 px-3 py-2.5 text-left text-xs font-semibold text-gray-300 whitespace-nowrap min-w-[160px]">レベル(フェルミ)</th>
                 <th className="border-b border-white/10 px-3 py-2.5 text-left text-xs font-semibold text-gray-300 whitespace-nowrap min-w-[160px]">レベル(ケース)</th>
@@ -87,6 +88,9 @@ export function ProgressSheetsClient({ reports }: { reports: MentorReport[] }) {
                     </td>
                     <td className="border-b border-white/[0.06] px-3 py-2.5 text-gray-300 text-center align-top text-xs">
                       {d["回次（合計指導回数）"] || ""}
+                    </td>
+                    <td className="border-b border-white/[0.06] px-3 py-2.5 text-gray-300 align-top text-xs">
+                      {d["メンター名"] || ""}
                     </td>
                     <td className="border-b border-white/[0.06] px-3 py-2.5 text-gray-200 align-top text-xs font-medium">
                       {d["解いた問題"] || ""}

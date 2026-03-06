@@ -3,6 +3,11 @@
 import { useEffect, useState, useCallback } from "react";
 import type { AnnouncementPriority } from "@strategy-school/shared-db";
 
+interface Plan {
+  id: string;
+  name: string;
+}
+
 interface Announcement {
   id: string;
   title: string;
@@ -12,6 +17,7 @@ interface Announcement {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  target_plan_ids: string[];
 }
 
 const priorityOptions: { value: AnnouncementPriority; label: string; color: string }[] = [
@@ -59,6 +65,7 @@ function PrioritySelector({
 
 export default function AdminAnnouncementsPage() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -69,17 +76,19 @@ export default function AdminAnnouncementsPage() {
   const [formContent, setFormContent] = useState("");
   const [formPriority, setFormPriority] = useState<AnnouncementPriority>("normal");
   const [formPublishedAt, setFormPublishedAt] = useState("");
+  const [formTargetPlanIds, setFormTargetPlanIds] = useState<string[]>([]);
 
   // Delete confirmation
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const fetchAnnouncements = useCallback(async () => {
     try {
-      const res = await fetch("/api/admin/announcements");
-      if (res.ok) {
-        const data = await res.json();
-        setAnnouncements(data);
-      }
+      const [annRes, plansRes] = await Promise.all([
+        fetch("/api/admin/announcements"),
+        fetch("/api/plans"),
+      ]);
+      if (annRes.ok) setAnnouncements(await annRes.json());
+      if (plansRes.ok) setPlans(await plansRes.json());
     } catch (err) {
       console.error("Failed to fetch announcements:", err);
     } finally {
@@ -96,6 +105,7 @@ export default function AdminAnnouncementsPage() {
     setFormContent("");
     setFormPriority("normal");
     setFormPublishedAt("");
+    setFormTargetPlanIds([]);
     setShowForm(false);
     setEditingId(null);
   };
@@ -110,7 +120,14 @@ export default function AdminAnnouncementsPage() {
         ? new Date(a.published_at).toISOString().slice(0, 16)
         : ""
     );
+    setFormTargetPlanIds(a.target_plan_ids || []);
     setShowForm(false);
+  };
+
+  const toggleTargetPlan = (planId: string) => {
+    setFormTargetPlanIds((prev) =>
+      prev.includes(planId) ? prev.filter((p) => p !== planId) : [...prev, planId]
+    );
   };
 
   const handleCreate = async () => {
@@ -125,6 +142,7 @@ export default function AdminAnnouncementsPage() {
           content: formContent,
           priority: formPriority,
           published_at: formPublishedAt || undefined,
+          target_plan_ids: formTargetPlanIds,
         }),
       });
       if (res.ok) {
@@ -150,6 +168,7 @@ export default function AdminAnnouncementsPage() {
           content: formContent,
           priority: formPriority,
           published_at: formPublishedAt || undefined,
+          target_plan_ids: formTargetPlanIds,
         }),
       });
       if (res.ok) {
@@ -242,6 +261,27 @@ export default function AdminAnnouncementsPage() {
             </div>
             <div>
               <label className="block text-sm text-gray-400 mb-1">
+                対象プラン（未選択で全員に表示）
+              </label>
+              <div className="flex flex-wrap gap-1.5">
+                {plans.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => toggleTargetPlan(p.id)}
+                    className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
+                      formTargetPlanIds.includes(p.id)
+                        ? "bg-brand/20 border-brand text-brand-light"
+                        : "border-white/10 text-gray-500 hover:text-gray-300"
+                    }`}
+                  >
+                    {p.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm text-gray-400 mb-1">
                 公開日時（空欄で即時公開）
               </label>
               <input
@@ -306,6 +346,18 @@ export default function AdminAnnouncementsPage() {
                     </span>
                   </div>
                   <h3 className="text-white font-medium">{a.title}</h3>
+                  {a.target_plan_ids && a.target_plan_ids.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {a.target_plan_ids.map((pid) => {
+                        const plan = plans.find((p) => p.id === pid);
+                        return (
+                          <span key={pid} className="text-[10px] px-1.5 py-0.5 rounded bg-brand/10 text-brand border border-brand/20">
+                            {plan?.name || pid.slice(0, 8)}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  )}
                   {a.content && (
                     <p className="text-sm text-gray-400 mt-1 line-clamp-2 whitespace-pre-wrap">
                       {a.content}

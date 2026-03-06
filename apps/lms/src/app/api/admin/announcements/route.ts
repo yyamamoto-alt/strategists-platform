@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "不正なリクエストです" }, { status: 400 });
   }
 
-  const { title, content, priority, published_at } = body;
+  const { title, content, priority, published_at, target_plan_ids } = body;
 
   if (!title || typeof title !== "string" || !title.trim()) {
     return NextResponse.json({ error: "タイトルは必須です" }, { status: 400 });
@@ -55,6 +55,7 @@ export async function POST(request: NextRequest) {
       published_at: published_at || new Date().toISOString(),
       author_id: session.user.id,
       is_active: true,
+      target_plan_ids: target_plan_ids || [],
     } as any)
     .select()
     .single();
