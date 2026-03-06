@@ -1,25 +1,24 @@
 export const dynamic = "force-dynamic";
 
 import {
-  fetchAllPages,
+  fetchPageDailyRows,
   fetchTrafficSources,
-  fetchSearchByPage,
+  fetchSearchQueries,
 } from "@/lib/data/analytics";
 import { AnalyticsClient } from "./analytics-client";
 
 export default async function AnalyticsPage() {
-  const [pages, traffic, searchByPage] = await Promise.all([
-    fetchAllPages(90),
+  const [pageDailyRows, traffic, searchQueries] = await Promise.all([
+    fetchPageDailyRows(90),
     fetchTrafficSources(90),
-    fetchSearchByPage(),
+    fetchSearchQueries(),
   ]);
 
   return (
     <AnalyticsClient
-      aggregatedPages={pages.aggregated}
-      dailyTrend={pages.trend}
+      pageDailyRows={pageDailyRows}
       traffic={traffic}
-      searchByPage={searchByPage}
+      searchQueries={searchQueries}
     />
   );
 }
