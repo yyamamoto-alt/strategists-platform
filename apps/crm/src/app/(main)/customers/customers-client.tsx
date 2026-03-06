@@ -164,6 +164,34 @@ const STAGE_OPTIONS = [
   { group: "その他", options: ["キャンセル", "直前キャンセル"] },
 ];
 
+function SubsidySummary({ customers }: { customers: CustomerWithRelations[] }) {
+  const stats = useMemo(() => {
+    const total = customers.length;
+    const supported = customers.filter((c) => c.pipeline?.deal_status === "実施").length;
+    const courseStarted = customers.filter((c) => {
+      const s = c.pipeline?.stage;
+      return s === "成約" || s === "入金済" || s?.startsWith("追加指導");
+    }).length;
+    return { total, supported, courseStarted };
+  }, [customers]);
+
+  return (
+    <div className="grid grid-cols-3 gap-3">
+      {[
+        { label: "集客人数", value: stats.total, sub: "サービスへの登録者数" },
+        { label: "支援開始人数", value: stats.supported, sub: "営業実施済み" },
+        { label: "講座受講開始人数", value: stats.courseStarted, sub: "成約 + 追加指導" },
+      ].map((item) => (
+        <div key={item.label} className="bg-surface-card border border-white/10 rounded-lg p-3">
+          <p className="text-xs text-gray-500">{item.label}</p>
+          <p className="text-2xl font-bold text-white mt-1">{item.value}<span className="text-sm text-gray-400 ml-1">人</span></p>
+          <p className="text-[10px] text-gray-600 mt-0.5">{item.sub}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function InlineStageSelect({ customerId, currentStage, onUpdate }: { customerId: string; currentStage: string; onUpdate: (id: string, newStage: string) => void }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -760,6 +788,11 @@ export function CustomersClient({ customers, attributionMap }: CustomersClientPr
             </button>
           ))}
         </div>
+      )}
+
+      {/* 補助金期間サマリー */}
+      {subsidyFilter === "period" && (
+        <SubsidySummary customers={baseFiltered} />
       )}
 
       {/* テーブル */}
