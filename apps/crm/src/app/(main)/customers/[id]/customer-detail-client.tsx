@@ -199,7 +199,7 @@ interface FieldDef {
   key: string;
   label: string;
   source: DataSource;
-  type?: "text" | "number" | "date" | "textarea" | "select";
+  type?: "text" | "number" | "date" | "textarea" | "select" | "toggle";
   options?: string[];
   getValue: (c: CustomerWithRelations) => string;
   table?: "customer" | "pipeline" | "contract" | "learning" | "agent";
@@ -229,7 +229,19 @@ function InlineField({
         <SourceBadge source={field.source} />
       </p>
       {canEdit ? (
-        fieldType === "textarea" ? (
+        fieldType === "toggle" ? (
+          <button
+            type="button"
+            onClick={() => onEditChange(field.key, editValue === "true" ? "false" : "true")}
+            className={`mt-1 relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+              editValue === "true" ? "bg-brand" : "bg-gray-600"
+            }`}
+          >
+            <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+              editValue === "true" ? "translate-x-6" : "translate-x-1"
+            }`} />
+          </button>
+        ) : fieldType === "textarea" ? (
           <textarea
             value={editValue}
             onChange={(e) => onEditChange(field.key, e.target.value)}
@@ -260,6 +272,17 @@ function InlineField({
             className="w-full mt-0.5 px-2 py-1 bg-surface-elevated border border-brand/40 rounded text-sm text-white focus:outline-none focus:border-brand"
           />
         )
+      ) : fieldType === "toggle" ? (
+        <div className="mt-1">
+          {displayValue === "あり" ? (
+            <span className="inline-flex items-center gap-1 text-sm text-green-400">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+              あり
+            </span>
+          ) : (
+            <span className="text-sm text-gray-500">なし</span>
+          )}
+        </div>
       ) : (
         <p className="text-sm text-white mt-0.5 truncate" title={displayValue}>
           {displayValue}
@@ -669,7 +692,7 @@ function buildAgentFields(c: CustomerWithRelations): FieldDef[] {
     { key: "agent_memo", label: "エージェント業務メモ", source: "manual", type: "textarea", table: "agent", getValue: () => c.agent?.agent_memo || "-" },
     { key: "loss_reason", label: "失注理由", source: "manual", type: "textarea", table: "agent", getValue: () => c.agent?.loss_reason || "-" },
     { key: "general_memo", label: "メモ", source: "manual", type: "textarea", table: "agent", getValue: () => c.agent?.general_memo || "-" },
-    { key: "agent_service_enrolled", label: "エージェント利用契約", source: "manual", type: "select", options: ["true", "false"], table: "agent", getValue: () => c.agent?.agent_service_enrolled ? "あり" : "なし" },
+    { key: "agent_service_enrolled", label: "人材紹介顧客", source: "manual", type: "toggle", options: ["true", "false"], table: "agent", getValue: () => c.agent?.agent_service_enrolled ? "あり" : "なし" },
     { key: "agent_plan", label: "エージェントプラン", source: "manual", table: "agent", getValue: () => c.agent?.agent_plan || "-" },
     { key: "document_pass_rate", label: "書類通過率", source: "manual", type: "number", table: "agent", getValue: () => c.agent?.document_pass_rate ? formatPercent(c.agent.document_pass_rate) : "-" },
     { key: "exam_count", label: "試験受験回数", source: "manual", type: "number", table: "agent", getValue: () => c.agent?.exam_count?.toString() || "-" },

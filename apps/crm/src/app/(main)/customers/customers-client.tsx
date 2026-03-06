@@ -323,10 +323,13 @@ export function CustomersClient({ customers, attributionMap }: CustomersClientPr
     if (subsidyFilter === "subsidy") {
       result = result.filter((c) => c.contract?.subsidy_eligible);
     } else if (subsidyFilter === "period") {
-      // 補助金期間対象: 既卒 かつ (申込日 or 営業日が 2026-02-10 より後)
+      // 補助金期間対象: 既卒 かつ (申込日 or 営業日が 2026-02-10 より後) かつ 営業実施済み
       const cutoff = "2026-02-10";
       result = result.filter((c) => {
         if (isShinsotsu(c.attribute)) return false;
+        // 未実施・no-showは除外
+        const status = c.pipeline?.deal_status;
+        if (!status || status === "未実施" || status === "no-show") return false;
         const appDate = c.application_date || "";
         const salesDate = c.pipeline?.sales_date || "";
         return appDate > cutoff || salesDate > cutoff;
