@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 
 // ================================================================
 // Types
@@ -18,7 +18,7 @@ interface AppSetting {
 interface SettingFieldConfig {
   key: string;
   label: string;
-  type: "number" | "text" | "toggle";
+  type: "number" | "text" | "toggle" | "slack_channel";
   step?: string;
   min?: number;
   max?: number;
@@ -103,13 +103,13 @@ const SECTIONS: SettingsSectionConfig[] = [
   },
   {
     title: "Slack連携",
-    description: "Slack通知の設定を管理します。Incoming Webhook URLを設定すると、各種イベントがSlackに通知されます。",
+    description: "Slack通知の設定を管理します。通知先チャンネルを選択し、通知種別のON/OFFを設定できます。",
     fields: [
       {
-        key: "slack_webhook_url",
-        label: "Webhook URL",
-        type: "text",
-        placeholder: "https://hooks.slack.com/services/...",
+        key: "slack_channel",
+        label: "通知先チャンネル",
+        type: "slack_channel",
+        placeholder: "チャンネルを選択...",
       },
       {
         key: "slack_notify_payment_error",
@@ -167,7 +167,26 @@ function formatTimestamp(ts: string): string {
 // Component
 // ================================================================
 
+interface SlackChannel {
+  id: string;
+  name: string;
+}
+
 export function SettingsClient({ settings }: Props) {
+  const [slackChannels, setSlackChannels] = useState<SlackChannel[]>([]);
+  const [slackLoading, setSlackLoading] = useState(false);
+
+  useEffect(() => {
+    setSlackLoading(true);
+    fetch("/api/slack-channels")
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) setSlackChannels(data);
+      })
+      .catch(() => {})
+      .finally(() => setSlackLoading(false));
+  }, []);
+
   // Build a map of key -> setting for quick lookup
   const settingMap = useMemo(() => {
     const map: Record<string, AppSetting> = {};
@@ -382,7 +401,22 @@ export function SettingsClient({ settings }: Props) {
 
                       {/* Input */}
                       <div className="flex items-center gap-2">
-                        {field.type === "toggle" ? (
+                        {field.type === "slack_channel" ? (
+                          <select
+                            value={currentValue}
+                            onChange={(e) => handleChange(field.key, e.target.value)}
+                            className={`w-64 px-3 py-2 text-sm rounded-lg border transition-colors
+                              bg-surface-elevated text-white
+                              focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand
+                              ${isChanged ? "border-amber-500/50" : "border-white/10"}
+                            `}
+                          >
+                            <option value="">{slackLoading ? "読み込み中..." : "チャンネルを選択..."}</option>
+                            {slackChannels.map((ch) => (
+                              <option key={ch.id} value={ch.id}>#{ch.name}</option>
+                            ))}
+                          </select>
+                        ) : field.type === "toggle" ? (
                           <button
                             type="button"
                             onClick={() => handleChange(field.key, currentValue === "true" ? "false" : "true")}

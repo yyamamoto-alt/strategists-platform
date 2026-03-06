@@ -3,12 +3,27 @@
 ## Project Overview
 Strategists (コンサル転職スクール＋人材紹介) の経営管理プラットフォーム。CRM/LMSの2アプリ構成。
 
+## CRM vs LMS の区別 (IMPORTANT)
+
+| 項目 | CRM (`apps/crm`) | LMS (`apps/lms`) |
+|------|-------------------|-------------------|
+| **用途** | 経営管理（社内スタッフ向け） | 学習管理（管理者+受講生向け） |
+| **URL** | https://strategists-crm.vercel.app | https://strategists-lms.vercel.app |
+| **Vercelプロジェクト** | `strategists-crm` | `strategists-lms` |
+| **ポート** | 3000 | 3001 |
+| **主な機能** | 顧客管理、売上、パイプライン、P/L、設定 | 教材/コース、学習ポータル、フォーム、お知らせ |
+| **認証** | service_role key（RLSバイパス） | anon key + RLS（受講生は自分のデータのみ） |
+| **Slack連携** | 決済エラー通知、ステージ自動遷移通知 | LMS招待承認リクエスト |
+| **ビルド** | `npm run build:crm` | `npm run build:lms` |
+
+**絶対に混同しない**: CRMの変更をLMSに、LMSの変更をCRMに入れないこと。同じMonorepoだが完全に独立したアプリ。
+
 ## Tech Stack
 - **Monorepo**: npm workspaces
-- **apps/crm**: Next.js 14 (port 3000) - 管理者向けCRM
-- **apps/lms**: Next.js 14 (port 3001) - 受講生向けLMS
+- **apps/crm**: Next.js 14 (port 3000) - 管理者向けCRM（経営管理）
+- **apps/lms**: Next.js 14 (port 3001) - 受講生向けLMS（学習管理）
 - **packages/shared-db**: 共通TypeScript型定義
-- **DB**: Supabase (project: plrmqgcigzjuiovsbggf)
+- **DB**: Supabase (project: plrmqgcigzjuiovsbggf) — CRM/LMS共通
 - **Deploy**: Vercel via `scripts/deploy.sh [crm|lms|all]`
 
 ## URLs
@@ -98,6 +113,9 @@ SUPABASE_URL=https://plrmqgcigzjuiovsbggf.supabase.co
 SUPABASE_ANON_KEY=eyJ...  (server-side only, for auth session)
 SUPABASE_SERVICE_ROLE_KEY=eyJ...  (server-side only, for data)
 NEXT_PUBLIC_USE_MOCK=false
+SLACK_BOT_TOKEN=xoxb-...  (Slack通知用、LMSと同じBot)
+CRON_SECRET=...  (Vercel Cronの認証用)
+APPS_WEBHOOK_SECRET=...  (Apps決済Webhook署名検証用)
 ```
 ### LMS (strategists-lms)
 ```
@@ -105,7 +123,22 @@ NEXT_PUBLIC_SUPABASE_URL=https://plrmqgcigzjuiovsbggf.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
 SUPABASE_SERVICE_ROLE_KEY=eyJ...
 NEXT_PUBLIC_USE_MOCK=true  (still in mock mode)
+SLACK_BOT_TOKEN=xoxb-...  (LMS招待承認リクエスト用)
+SLACK_SIGNING_SECRET=...  (Slackインタラクティブ署名検証用)
 ```
+
+## Slack Bot連携
+- **アプリ名**: LMS（既存のSlackアプリを CRM/LMS 両方で共用）
+- **Bot Token**: `xoxb-3944880520021-...`（`apps/lms/.env.local` に記載）
+- **使用API**: `chat.postMessage`（メッセージ送信）、`conversations.list`（チャンネル一覧取得）
+- **必要スコープ**: `chat:write`, `channels:read`, `groups:read`
+- **CRM側の通知設定**: `app_settings`テーブルで管理（`/settings`画面から設定）
+  - `slack_webhook_url` → 非推奨、Bot Token方式に移行中
+  - `slack_notify_payment_error` — 決済エラー通知ON/OFF
+  - `slack_notify_stage_transition` — ステージ自動遷移通知ON/OFF
+  - `slack_channel` — 通知先チャンネルID
+- **LMS側**: `apps/lms/src/lib/slack.ts` に `sendSlackMessage()` 実装済み
+- **CRM側**: `apps/crm/src/lib/slack.ts` に `notifyPaymentError()`, `notifyStageTransition()` 実装済み
 
 ## Deploy
 ```bash
