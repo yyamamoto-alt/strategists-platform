@@ -9,6 +9,7 @@ import { SpreadsheetTable, type SpreadsheetColumn } from "@/components/spreadshe
 
 interface Props {
   customers: CustomerWithRelations[];
+  firstPaidMap: Record<string, string>; // customer_id → first paid_at date (YYYY-MM-DD)
 }
 
 const SUBSIDY_START = "2026-02-10";
@@ -61,81 +62,83 @@ interface WeeklyStats {
 }
 
 // テーブル用カラム定義
-const columns: SpreadsheetColumn<CustomerWithRelations>[] = [
-  {
-    key: "name",
-    label: "名前",
-    width: 160,
-    stickyLeft: 0,
-    render: (c) => (
-      <Link href={`/customers/${c.id}`} className="text-brand hover:underline font-medium truncate block">
-        {c.name}
-      </Link>
-    ),
-  },
-  {
-    key: "attribute",
-    label: "属性",
-    width: 48,
-    render: (c) => (
-      <span className={`text-[11px] px-1.5 py-0.5 rounded font-medium ${getAttributeColor(c.attribute)}`}>
-        {c.attribute || "-"}
-      </span>
-    ),
-  },
-  {
-    key: "application_date",
-    label: "申込日",
-    width: 90,
-    render: (c) => <span className="text-gray-300 text-xs">{c.application_date || "-"}</span>,
-  },
-  {
-    key: "sales_date",
-    label: "営業日",
-    width: 90,
-    render: (c) => <span className="text-gray-300 text-xs">{c.pipeline?.sales_date || "-"}</span>,
-  },
-  {
-    key: "deal_status",
-    label: "実施状況",
-    width: 80,
-    render: (c) => {
-      const s = c.pipeline?.deal_status || "-";
-      return <span className={`text-xs px-1.5 py-0.5 rounded ${getDealStatusColor(s)}`}>{s}</span>;
+function buildColumns(paidMap: Record<string, string>): SpreadsheetColumn<CustomerWithRelations>[] {
+  return [
+    {
+      key: "name",
+      label: "名前",
+      width: 160,
+      stickyLeft: 0,
+      render: (c) => (
+        <Link href={`/customers/${c.id}`} className="text-brand hover:underline font-medium truncate block">
+          {c.name}
+        </Link>
+      ),
     },
-  },
-  {
-    key: "stage",
-    label: "ステージ",
-    width: 110,
-    render: (c) => {
-      const s = c.pipeline?.stage || "-";
-      return <span className={`text-xs px-1.5 py-0.5 rounded ${getStageColor(s)}`}>{s}</span>;
+    {
+      key: "attribute",
+      label: "属性",
+      width: 48,
+      render: (c) => (
+        <span className={`text-[11px] px-1.5 py-0.5 rounded font-medium ${getAttributeColor(c.attribute)}`}>
+          {c.attribute || "-"}
+        </span>
+      ),
     },
-  },
-  {
-    key: "payment_date",
-    label: "入金日",
-    width: 90,
-    render: (c) => <span className="text-gray-300 text-xs">{c.contract?.payment_date || "-"}</span>,
-  },
-  {
-    key: "confirmed_amount",
-    label: "確定売上",
-    width: 100,
-    render: (c) => (
-      <span className="text-gray-300 text-xs">
-        {c.contract?.confirmed_amount ? formatCurrency(c.contract.confirmed_amount) : "-"}
-      </span>
-    ),
-  },
-  {
-    key: "plan_name",
-    label: "プラン",
-    width: 120,
-    render: (c) => <span className="text-gray-300 text-xs truncate block">{c.contract?.plan_name || "-"}</span>,
-  },
-];
+    {
+      key: "application_date",
+      label: "申込日",
+      width: 90,
+      render: (c) => <span className="text-gray-300 text-xs">{c.application_date || "-"}</span>,
+    },
+    {
+      key: "sales_date",
+      label: "営業日",
+      width: 90,
+      render: (c) => <span className="text-gray-300 text-xs">{c.pipeline?.sales_date || "-"}</span>,
+    },
+    {
+      key: "deal_status",
+      label: "実施状況",
+      width: 80,
+      render: (c) => {
+        const s = c.pipeline?.deal_status || "-";
+        return <span className={`text-xs px-1.5 py-0.5 rounded ${getDealStatusColor(s)}`}>{s}</span>;
+      },
+    },
+    {
+      key: "stage",
+      label: "ステージ",
+      width: 110,
+      render: (c) => {
+        const s = c.pipeline?.stage || "-";
+        return <span className={`text-xs px-1.5 py-0.5 rounded ${getStageColor(s)}`}>{s}</span>;
+      },
+    },
+    {
+      key: "payment_date",
+      label: "入金日",
+      width: 90,
+      render: (c) => <span className="text-gray-300 text-xs">{paidMap[c.id] || c.contract?.payment_date || "-"}</span>,
+    },
+    {
+      key: "confirmed_amount",
+      label: "確定売上",
+      width: 100,
+      render: (c) => (
+        <span className="text-gray-300 text-xs">
+          {c.contract?.confirmed_amount ? formatCurrency(c.contract.confirmed_amount) : "-"}
+        </span>
+      ),
+    },
+    {
+      key: "plan_name",
+      label: "プラン",
+      width: 120,
+      render: (c) => <span className="text-gray-300 text-xs truncate block">{c.contract?.plan_name || "-"}</span>,
+    },
+  ];
+}
 
 function getAttributeColor(attr: string | null | undefined): string {
   if (!attr) return "bg-gray-700 text-gray-400";
@@ -146,9 +149,10 @@ function getAttributeColor(attr: string | null | undefined): string {
 
 type TabKey = "list" | "weekly";
 
-export function SubsidyClient({ customers }: Props) {
+export function SubsidyClient({ customers, firstPaidMap }: Props) {
   const [activeTab, setActiveTab] = useState<TabKey>("weekly");
   const weekEnds = useMemo(() => generateWeekEnds(), []);
+  const columns = useMemo(() => buildColumns(firstPaidMap), [firstPaidMap]);
 
   const subsidyCustomers = useMemo(
     () => customers.filter(isSubsidyTarget),
@@ -170,8 +174,8 @@ export function SubsidyClient({ customers }: Props) {
 
       const courseStarted = subsidyCustomers.filter((c) => {
         if (!isCourseStarted(c)) return false;
-        // 入金日 → 営業日 のフォールバック
-        const d = c.contract?.payment_date || c.pipeline?.sales_date || "";
+        // 初回決済日(orders) → contracts.payment_date → sales_date のフォールバック
+        const d = firstPaidMap[c.id] || c.contract?.payment_date || c.pipeline?.sales_date || "";
         return d > SUBSIDY_START && d <= weekEnd;
       }).length;
 
