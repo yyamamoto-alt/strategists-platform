@@ -385,7 +385,7 @@ const ORDER_STATUS_LABELS: Record<string, { label: string; cls: string }> = {
   partial: { label: "一部入金", cls: "text-amber-400 bg-amber-400/10" },
   pending: { label: "未入金", cls: "text-gray-400 bg-gray-400/10" },
   refunded: { label: "返金済", cls: "text-red-400 bg-red-400/10" },
-  cancelled: { label: "キャンセル", cls: "text-gray-500 bg-gray-500/10" },
+  cancelled: { label: "決済エラー", cls: "text-red-400 bg-red-500/20 font-semibold" },
 };
 
 function OrdersSection({ orders }: { orders: Order[] }) {
@@ -395,9 +395,26 @@ function OrdersSection({ orders }: { orders: Order[] }) {
   const totalScheduled = orders
     .filter((o) => o.status === "scheduled")
     .reduce((s, o) => s + (o.amount || 0), 0);
+  const paymentErrors = orders.filter((o) => o.status === "cancelled" && o.memo?.includes("payment_error"));
 
   return (
     <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-4">
+      {paymentErrors.length > 0 && (
+        <div className="mb-3 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+          <div className="flex items-center gap-2 text-red-400 text-sm font-semibold mb-1">
+            <span>⚠</span>
+            <span>決済エラー {paymentErrors.length}件</span>
+          </div>
+          {paymentErrors.map((o) => {
+            const msg = (o.raw_data as Record<string, unknown>)?.message as string || "";
+            return (
+              <div key={o.id} className="text-xs text-red-300/80 ml-5">
+                {formatDate(o.paid_at)} — {o.product_name || "不明"} / カード *{o.card_last4 || "?"}{msg ? ` (${msg})` : ""}
+              </div>
+            );
+          })}
+        </div>
+      )}
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">
           支払い履歴

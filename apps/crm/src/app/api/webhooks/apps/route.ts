@@ -3,6 +3,7 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { matchCustomer } from "@/lib/customer-matching";
 import { upsertOrder } from "@/lib/data/orders";
 import { normalizeAppsPayment } from "@/lib/order-normalizers";
+import { sendSlackNotification } from "@/lib/slack";
 import type { Order } from "@strategy-school/shared-db";
 import crypto from "crypto";
 
@@ -83,6 +84,22 @@ export async function POST(request: Request) {
 
   if (!result) {
     return NextResponse.json({ error: "Failed to upsert order" }, { status: 500 });
+  }
+
+  // 決済エラー時のSlack通知
+  const event = (payload.event as string) || "";
+  if (event === "payment_error") {
+    const name = normalized.contact_name || "不明";
+    const plan = normalized.product_name || "不明";
+    const card = normalized.card_last4 ? `*${normalized.card_last4}` : "不明";
+    const errorMsg = (payload.message as string) || "";
+    const customerUrl = match
+      ? `https://strategists-crm.vercel.app/customers/${match.customer_id}`
+      : null;
+
+    await sendSlackNotification(
+      `🚨 決済エラー: ${name}\n商品: ${plan}\nカード: ${card}\n${errorMsg}${customerUrl ? `\n${customerUrl}` : ""}`
+    );
   }
 
   return NextResponse.json({
