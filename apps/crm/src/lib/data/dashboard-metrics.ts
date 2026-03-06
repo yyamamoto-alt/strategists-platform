@@ -863,23 +863,21 @@ function computeSegmentData(
 
     if (hasPaid) {
       closedCountByPeriod[period] = (closedCountByPeriod[period] || 0) + 1;
-      schoolRevByPeriod[period] = (schoolRevByPeriod[period] || 0) + amount;
+      // schoolRevByPeriod: スクール確定（補助金込み） — P/Lの「スクール確定分」に対応
+      const subsidy = getSubsidyAmount(c);
+      schoolRevByPeriod[period] = (schoolRevByPeriod[period] || 0) + amount + subsidy;
 
-      // 確定売上 = スクール確定 + 人材確定 + 補助金
-      let periodConfirmed = amount;
+      // 確定売上 = スクール確定(補助金込み) + 人材確定
+      let periodConfirmed = amount + subsidy;
+      // 補助金を別途トラッキング
+      if (subsidy > 0) {
+        subsidyByPeriod[period] = (subsidyByPeriod[period] || 0) + subsidy;
+      }
       // 人材確定分
       if (isAgentCustomer(c) && isAgentConfirmed(c)) {
         const agentFee = calcExpectedReferralFee(c);
         periodConfirmed += agentFee;
         agentConfirmedRevByPeriod[period] = (agentConfirmedRevByPeriod[period] || 0) + agentFee;
-      }
-      // 補助金（成約ステージのみ）
-      if (isStageClosed(c.pipeline?.stage)) {
-        const subsidy = getSubsidyAmount(c);
-        if (subsidy > 0) {
-          periodConfirmed += subsidy;
-          subsidyByPeriod[period] = (subsidyByPeriod[period] || 0) + subsidy;
-        }
       }
       confirmedRevenue[period] = (confirmedRevenue[period] || 0) + periodConfirmed;
       confirmedRevenueTotal += periodConfirmed;

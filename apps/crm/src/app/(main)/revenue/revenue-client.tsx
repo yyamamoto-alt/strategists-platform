@@ -341,7 +341,7 @@ function buildRows(
 
   rows.push({
     key: "ltv_school",
-    label: "スクール確定LTV",
+    label: "スクール確定LTV（補助金込み）",
     indent: 1,
     style: "value",
     format: "currency",
