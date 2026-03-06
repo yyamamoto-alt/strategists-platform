@@ -100,6 +100,7 @@ export async function POST(request: Request, { params }: Props) {
     let rowsCreated = 0;
     let rowsUpdated = 0;
     let rowsUnmatched = 0;
+    const syncedRecords: { action: string; name: string | null; email: string | null; summary: Record<string, string> }[] = [];
 
     // 4. 各行を処理
     for (const row of dataRows) {
@@ -124,6 +125,22 @@ export async function POST(request: Request, { params }: Props) {
       if (result.action === "created") rowsCreated++;
       else if (result.action === "updated") rowsUpdated++;
       else if (result.action === "unmatched") rowsUnmatched++;
+
+      // レコード詳細を記録（最大100件まで）
+      if (syncedRecords.length < 100) {
+        // rawDataから主要フィールド3-5個を抽出してサマリに
+        const summaryKeys = headers.slice(0, 5);
+        const summary: Record<string, string> = {};
+        for (const k of summaryKeys) {
+          if (rawData[k]) summary[k] = String(rawData[k]).substring(0, 100);
+        }
+        syncedRecords.push({
+          action: result.action,
+          name: fields.name || null,
+          email: fields.email || null,
+          summary,
+        });
+      }
     }
 
     // 5. 同期ログ・接続設定を更新
@@ -141,6 +158,7 @@ export async function POST(request: Request, { params }: Props) {
           rows_created: rowsCreated,
           rows_updated: rowsUpdated,
           rows_unmatched: rowsUnmatched,
+          details: { records: syncedRecords },
         })
         .eq("id", syncLog.id),
       db

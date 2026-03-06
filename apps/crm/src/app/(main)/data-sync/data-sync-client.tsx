@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import type {
   SpreadsheetConnection,
   SyncLog,
@@ -18,6 +18,286 @@ interface DataSyncClientProps {
 function formatDate(d: string | null): string {
   if (!d) return "-";
   return new Date(d).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" });
+}
+
+const CRM_FIELDS = [
+  { key: "email", label: "メールアドレス" },
+  { key: "name", label: "氏名" },
+  { key: "phone", label: "電話番号" },
+  { key: "university", label: "大学" },
+  { key: "faculty", label: "学部" },
+  { key: "attribute", label: "属性（既卒/新卒）" },
+  { key: "career_history", label: "経歴" },
+  { key: "utm_source", label: "UTMソース" },
+  { key: "utm_medium", label: "UTMメディア" },
+  { key: "application_date", label: "日付" },
+];
+
+function getUnmappedHeaders(conn: SpreadsheetConnection): string[] {
+  const knownHeaders = conn.known_headers || [];
+  if (knownHeaders.length === 0) return [];
+  const mappedSheetCols = new Set(Object.values(conn.column_mapping || {}));
+  return knownHeaders.filter((h) => h && !mappedSheetCols.has(h));
+}
+
+// ================================================================
+// SyncLogRecord型
+// ================================================================
+interface SyncRecord {
+  action: string;
+  name: string | null;
+  email: string | null;
+  summary: Record<string, string>;
+}
+
+// ================================================================
+// マッピング編集モーダル
+// ================================================================
+function MappingModal({
+  conn,
+  onClose,
+  onSaved,
+}: {
+  conn: SpreadsheetConnection;
+  onClose: () => void;
+  onSaved: (updated: SpreadsheetConnection) => void;
+}) {
+  const [fields, setFields] = useState<Record<string, string>>({ ...conn.column_mapping });
+  const [isSaving, setIsSaving] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [headers, setHeaders] = useState<string[]>(conn.known_headers || []);
+  const unmapped = useMemo(() => {
+    const mapped = new Set(Object.values(fields));
+    return headers.filter((h) => h && !mapped.has(h));
+  }, [headers, fields]);
+
+  const refreshHeaders = async () => {
+    setIsRefreshing(true);
+    try {
+      const res = await fetch(`/api/spreadsheets/${conn.id}/preview`);
+      if (res.ok) {
+        const data = await res.json();
+        setHeaders(data.headers || []);
+        // also save to DB
+        await fetch(`/api/spreadsheets/${conn.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ known_headers: data.headers }),
+        });
+      }
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  const save = async () => {
+    setIsSaving(true);
+    try {
+      const res = await fetch(`/api/spreadsheets/${conn.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ column_mapping: fields }),
+      });
+      if (res.ok) {
+        onSaved(await res.json());
+      } else {
+        alert("保存に失敗しました");
+      }
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-surface-card border border-white/10 rounded-2xl w-full max-w-2xl max-h-[80vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-bold text-white">{conn.name}</h3>
+            <p className="text-xs text-gray-500 mt-0.5">カラムマッピング編集 - {headers.length}列検出</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={refreshHeaders}
+              disabled={isRefreshing}
+              className="px-3 py-1.5 text-xs text-gray-300 border border-white/10 rounded-lg hover:bg-white/5 disabled:opacity-50"
+            >
+              {isRefreshing ? "取得中..." : "ヘッダー再取得"}
+            </button>
+            <button onClick={onClose} className="text-gray-400 hover:text-white text-xl leading-none px-2">&times;</button>
+          </div>
+        </div>
+
+        <div className="p-6 space-y-5">
+          {/* 未マッピング列のハイライト */}
+          {unmapped.length > 0 && (
+            <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl px-4 py-3">
+              <p className="text-sm text-yellow-300 font-medium mb-2">
+                未マッピング列 ({unmapped.length}件)
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {unmapped.map((h) => (
+                  <span key={h} className="px-2.5 py-1 bg-yellow-500/20 text-yellow-300 rounded-lg text-xs font-medium">
+                    {h}
+                  </span>
+                ))}
+              </div>
+              <p className="text-xs text-yellow-400/60 mt-2">
+                下のドロップダウンで、これらの列をCRMフィールドに割り当てられます
+              </p>
+            </div>
+          )}
+
+          {/* マッピング設定 */}
+          <div className="space-y-2">
+            {CRM_FIELDS.map((field) => {
+              const currentValue = fields[field.key] || "";
+              const isNewlyMapped = currentValue && unmapped.includes(currentValue);
+              return (
+                <div
+                  key={field.key}
+                  className={`flex items-center gap-3 rounded-xl px-4 py-3 ${
+                    isNewlyMapped
+                      ? "bg-yellow-500/10 border border-yellow-500/20"
+                      : "bg-white/[0.03] border border-transparent"
+                  }`}
+                >
+                  <span className="text-sm text-gray-300 w-36 shrink-0 font-medium">
+                    {field.label}
+                  </span>
+                  <select
+                    value={currentValue}
+                    onChange={(e) => {
+                      setFields((prev) => {
+                        if (!e.target.value) {
+                          const next = { ...prev };
+                          delete next[field.key];
+                          return next;
+                        }
+                        return { ...prev, [field.key]: e.target.value };
+                      });
+                    }}
+                    className="flex-1 px-3 py-2 bg-[#1a1a2e] border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-brand appearance-none"
+                  >
+                    <option value="">-- 未設定 --</option>
+                    {headers.map((h) => (
+                      <option key={h} value={h}>
+                        {h}{unmapped.includes(h) ? " (NEW)" : ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="px-6 py-4 border-t border-white/10 flex justify-end gap-3">
+          <button onClick={onClose} className="px-5 py-2 text-sm text-gray-400 hover:text-white">
+            キャンセル
+          </button>
+          <button
+            onClick={save}
+            disabled={isSaving}
+            className="px-6 py-2 bg-brand text-white rounded-lg text-sm font-medium hover:bg-brand/90 disabled:opacity-50"
+          >
+            {isSaving ? "保存中..." : "保存"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ================================================================
+// 同期ログ詳細モーダル
+// ================================================================
+function LogDetailModal({
+  log,
+  connectionName,
+  onClose,
+}: {
+  log: SyncLog;
+  connectionName: string;
+  onClose: () => void;
+}) {
+  const records: SyncRecord[] = (log.details as { records?: SyncRecord[] })?.records || [];
+  const actionLabel = (a: string) => {
+    if (a === "created") return { text: "新規", cls: "bg-green-500/20 text-green-400" };
+    if (a === "updated") return { text: "更新", cls: "bg-blue-500/20 text-blue-400" };
+    if (a === "unmatched") return { text: "未マッチ", cls: "bg-yellow-500/20 text-yellow-400" };
+    return { text: a, cls: "bg-gray-500/20 text-gray-400" };
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-surface-card border border-white/10 rounded-2xl w-full max-w-3xl max-h-[80vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-bold text-white">同期ログ詳細</h3>
+            <p className="text-xs text-gray-500 mt-0.5">
+              {connectionName} - {formatDate(log.started_at)}
+            </p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-white text-xl leading-none px-2">&times;</button>
+        </div>
+
+        {/* サマリーカード */}
+        <div className="px-6 py-4 grid grid-cols-4 gap-3">
+          {[
+            { label: "処理行数", value: log.rows_processed, color: "text-white" },
+            { label: "新規作成", value: log.rows_created, color: "text-green-400" },
+            { label: "更新", value: log.rows_updated, color: "text-blue-400" },
+            { label: "未マッチ", value: log.rows_unmatched, color: "text-yellow-400" },
+          ].map((item) => (
+            <div key={item.label} className="bg-white/5 rounded-xl px-4 py-3 text-center">
+              <p className="text-[11px] text-gray-500">{item.label}</p>
+              <p className={`text-2xl font-bold ${item.color}`}>{item.value}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* レコード一覧 */}
+        <div className="px-6 pb-6">
+          {records.length === 0 ? (
+            <p className="text-sm text-gray-500 text-center py-8">
+              レコード詳細データがありません（この同期より前のログには詳細が記録されていません）
+            </p>
+          ) : (
+            <div className="space-y-1.5">
+              <p className="text-xs text-gray-500 mb-2">{records.length}件のレコード</p>
+              {records.map((r, i) => {
+                const { text, cls } = actionLabel(r.action);
+                return (
+                  <div key={i} className="flex items-start gap-3 bg-white/[0.03] rounded-lg px-4 py-2.5">
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-medium shrink-0 mt-0.5 ${cls}`}>
+                      {text}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        {r.name && <span className="text-sm text-white font-medium">{r.name}</span>}
+                        {r.email && <span className="text-xs text-gray-500">{r.email}</span>}
+                        {!r.name && !r.email && <span className="text-xs text-gray-500">名前/メール不明</span>}
+                      </div>
+                      {Object.keys(r.summary).length > 0 && (
+                        <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-1">
+                          {Object.entries(r.summary).map(([k, v]) => (
+                            <span key={k} className="text-[11px] text-gray-500">
+                              <span className="text-gray-600">{k}:</span> {String(v).substring(0, 60)}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ================================================================
@@ -49,16 +329,17 @@ export function DataSyncClient({
   const [previewError, setPreviewError] = useState("");
   const [previewLoaded, setPreviewLoaded] = useState(false);
 
-  // マッピングUI
+  // マッピングUI（新規追加用）
   const [mappingFields, setMappingFields] = useState<Record<string, string>>({});
 
   // 同期中
   const [syncingId, setSyncingId] = useState<string | null>(null);
 
-  // マッピング編集
-  const [editingMappingId, setEditingMappingId] = useState<string | null>(null);
-  const [editMappingFields, setEditMappingFields] = useState<Record<string, string>>({});
-  const [isSavingMapping, setIsSavingMapping] = useState(false);
+  // マッピング編集モーダル
+  const [editingConn, setEditingConn] = useState<SpreadsheetConnection | null>(null);
+
+  // ログ詳細モーダル
+  const [viewingLog, setViewingLog] = useState<SyncLog | null>(null);
 
   // 顧客検索（未マッチ紐付け用）
   const [linkingId, setLinkingId] = useState<string | null>(null);
@@ -67,117 +348,58 @@ export function DataSyncClient({
   const [selectedCustomerId, setSelectedCustomerId] = useState("");
   const [isSearchingCustomer, setIsSearchingCustomer] = useState(false);
 
+  // ヘッダー一括更新
+  const [isRefreshingAll, setIsRefreshingAll] = useState(false);
+
   const tabs: { key: Tab; label: string; count?: number }[] = [
     { key: "connections", label: "接続一覧" },
     { key: "unmatched", label: "未マッチレコード", count: unmatched.length },
     { key: "logs", label: "同期ログ" },
   ];
 
-  const CRM_FIELDS = [
-    { key: "email", label: "メールアドレス" },
-    { key: "name", label: "氏名" },
-    { key: "phone", label: "電話番号" },
-    { key: "university", label: "大学" },
-    { key: "faculty", label: "学部" },
-    { key: "attribute", label: "属性（既卒/新卒）" },
-    { key: "career_history", label: "経歴" },
-    { key: "utm_source", label: "UTMソース" },
-    { key: "utm_medium", label: "UTMメディア" },
-  ];
-
-  // ================================================================
-  // 未マッピング列検出
-  // ================================================================
-
-  function getUnmappedHeaders(conn: SpreadsheetConnection): string[] {
-    const knownHeaders = conn.known_headers || [];
-    if (knownHeaders.length === 0) return [];
-    const mappedSheetCols = new Set(Object.values(conn.column_mapping || {}));
-    return knownHeaders.filter((h) => h && !mappedSheetCols.has(h));
-  }
-
+  // 未マッピング列の合計
   const totalUnmapped = connections.reduce(
     (sum, conn) => sum + getUnmappedHeaders(conn).length,
     0
   );
 
+  // 接続名マップ（ログ表示用）
+  const connNameMap = useMemo(() => {
+    const m: Record<string, string> = {};
+    for (const c of connections) m[c.id] = c.name;
+    return m;
+  }, [connections]);
+
   // ================================================================
-  // マッピング編集の保存
+  // ヘッダー一括更新
   // ================================================================
 
-  const startEditMapping = useCallback((conn: SpreadsheetConnection) => {
-    setEditingMappingId(conn.id);
-    setEditMappingFields({ ...conn.column_mapping });
-  }, []);
-
-  const saveMapping = useCallback(async () => {
-    if (!editingMappingId) return;
-    setIsSavingMapping(true);
+  const refreshAllHeaders = useCallback(async () => {
+    setIsRefreshingAll(true);
     try {
-      const res = await fetch(`/api/spreadsheets/${editingMappingId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ column_mapping: editMappingFields }),
-      });
-      if (res.ok) {
-        const updated = await res.json();
-        setConnections((prev) =>
-          prev.map((c) => (c.id === editingMappingId ? updated : c))
-        );
-        setEditingMappingId(null);
-      } else {
-        const data = await res.json();
-        alert(`保存エラー: ${data.error || "不明なエラー"}`);
+      for (const conn of connections) {
+        try {
+          const res = await fetch(`/api/spreadsheets/${conn.id}/preview`);
+          if (res.ok) {
+            const data = await res.json();
+            const patchRes = await fetch(`/api/spreadsheets/${conn.id}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ known_headers: data.headers }),
+            });
+            if (patchRes.ok) {
+              const updated = await patchRes.json();
+              setConnections((prev) => prev.map((c) => (c.id === conn.id ? updated : c)));
+            }
+          }
+        } catch {
+          // skip individual errors
+        }
       }
     } finally {
-      setIsSavingMapping(false);
+      setIsRefreshingAll(false);
     }
-  }, [editingMappingId, editMappingFields]);
-
-  const updateEditMapping = useCallback((crmField: string, sheetColumn: string) => {
-    setEditMappingFields((prev) => {
-      if (!sheetColumn) {
-        const next = { ...prev };
-        delete next[crmField];
-        return next;
-      }
-      return { ...prev, [crmField]: sheetColumn };
-    });
-  }, []);
-
-  // ================================================================
-  // ヘッダー更新（既存接続のknown_headersを最新化）
-  // ================================================================
-
-  const [refreshingHeadersId, setRefreshingHeadersId] = useState<string | null>(null);
-
-  const refreshHeaders = useCallback(async (connId: string) => {
-    setRefreshingHeadersId(connId);
-    try {
-      // preview API でシートヘッダーを取得
-      const previewRes = await fetch(`/api/spreadsheets/${connId}/preview`);
-      if (!previewRes.ok) {
-        alert("ヘッダー取得に失敗しました");
-        return;
-      }
-      const { headers: latestHeaders } = await previewRes.json();
-
-      // known_headers を更新
-      const patchRes = await fetch(`/api/spreadsheets/${connId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ known_headers: latestHeaders }),
-      });
-      if (patchRes.ok) {
-        const updated = await patchRes.json();
-        setConnections((prev) =>
-          prev.map((c) => (c.id === connId ? updated : c))
-        );
-      }
-    } finally {
-      setRefreshingHeadersId(null);
-    }
-  }, []);
+  }, [connections]);
 
   // ================================================================
   // URL からプレビュー取得（DB保存不要）
@@ -383,7 +605,7 @@ export function DataSyncClient({
   }, [searchCustomers]);
 
   // ================================================================
-  // マッピングフィールド更新
+  // マッピングフィールド更新（新規追加用）
   // ================================================================
 
   const updateMapping = useCallback((crmField: string, sheetColumn: string) => {
@@ -410,22 +632,30 @@ export function DataSyncClient({
 
       {/* 新カラム検知バナー */}
       {totalUnmapped > 0 && (
-        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl px-5 py-3 flex items-center justify-between">
-          <div>
-            <p className="text-sm text-yellow-300 font-medium">
-              {connections.filter((c) => getUnmappedHeaders(c).length > 0).length}件の接続で
-              新しい列が検出されました（合計{totalUnmapped}列）
-            </p>
-            <p className="text-xs text-yellow-400/70 mt-0.5">
-              Googleフォームに新しい項目が追加された可能性があります。マッピングを確認してください。
-            </p>
+        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl px-5 py-4">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-sm text-yellow-300 font-medium">
+                {connections.filter((c) => getUnmappedHeaders(c).length > 0).length}件の接続で新しい列が検出されました
+              </p>
+              <p className="text-xs text-yellow-400/70 mt-1">
+                Googleフォームに新しい項目が追加された可能性があります。各接続の「マッピング」ボタンから設定してください。
+              </p>
+              <div className="flex flex-wrap gap-2 mt-3">
+                {connections
+                  .filter((c) => getUnmappedHeaders(c).length > 0)
+                  .map((c) => (
+                    <button
+                      key={c.id}
+                      onClick={() => setEditingConn(c)}
+                      className="px-3 py-1.5 bg-yellow-500/20 text-yellow-300 rounded-lg text-xs font-medium hover:bg-yellow-500/30 transition-colors"
+                    >
+                      {c.name} (+{getUnmappedHeaders(c).length})
+                    </button>
+                  ))}
+              </div>
+            </div>
           </div>
-          <button
-            onClick={() => setActiveTab("connections")}
-            className="px-4 py-1.5 bg-yellow-500/20 text-yellow-300 rounded-lg text-xs font-medium hover:bg-yellow-500/30 transition-colors whitespace-nowrap"
-          >
-            確認する
-          </button>
         </div>
       )}
 
@@ -458,15 +688,11 @@ export function DataSyncClient({
         <div className="space-y-4">
           <div className="flex justify-end gap-2">
             <button
-              onClick={async () => {
-                for (const conn of connections) {
-                  await refreshHeaders(conn.id);
-                }
-              }}
-              disabled={!!refreshingHeadersId}
+              onClick={refreshAllHeaders}
+              disabled={isRefreshingAll}
               className="px-4 py-2 border border-white/10 text-gray-300 rounded-lg text-sm font-medium hover:bg-white/5 disabled:opacity-50 transition-colors"
             >
-              {refreshingHeadersId ? "更新中..." : "全接続のヘッダー更新"}
+              {isRefreshingAll ? "更新中..." : "全接続のヘッダー更新"}
             </button>
             <button
               onClick={() => {
@@ -539,7 +765,6 @@ export function DataSyncClient({
               {/* Step 2: プレビュー結果 */}
               {previewLoaded && (
                 <div className="space-y-4 border-t border-white/10 pt-5">
-                  {/* 接続名（自動取得） */}
                   <div className="flex items-center gap-3">
                     <span className="text-xs text-gray-500 w-24 shrink-0">接続名</span>
                     <span className="text-white font-medium">{previewTitle}</span>
@@ -548,7 +773,6 @@ export function DataSyncClient({
                     </span>
                   </div>
 
-                  {/* シート選択 */}
                   {previewSheets.length > 1 && (
                     <div className="flex items-center gap-3">
                       <span className="text-xs text-gray-500 w-24 shrink-0">シート</span>
@@ -571,7 +795,6 @@ export function DataSyncClient({
                     </div>
                   )}
 
-                  {/* カラムマッピング */}
                   {previewHeaders.length > 0 && (
                     <div>
                       <div className="flex items-center justify-between mb-3">
@@ -622,7 +845,6 @@ export function DataSyncClient({
                     </p>
                   )}
 
-                  {/* 保存ボタン */}
                   <div className="flex justify-end pt-2">
                     <button
                       type="button"
@@ -638,126 +860,34 @@ export function DataSyncClient({
             </div>
           )}
 
-          {/* 接続一覧 */}
+          {/* 接続一覧カード */}
           {connections.length === 0 && !showAddForm ? (
             <div className="bg-surface-card rounded-xl border border-white/10 p-12 text-center">
-              <div className="text-gray-500 mb-2 text-3xl">📊</div>
               <p className="text-gray-400 mb-1">接続がありません</p>
               <p className="text-xs text-gray-500">
                 「+ 接続追加」からGoogle Spreadsheetを接続してください
               </p>
             </div>
           ) : connections.length > 0 ? (
-            <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 overflow-hidden">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-white/10">
-                    <th className="text-left p-4 text-gray-400 font-medium">接続名</th>
-                    <th className="text-left p-4 text-gray-400 font-medium">シート</th>
-                    <th className="text-left p-4 text-gray-400 font-medium">同期モード</th>
-                    <th className="text-left p-4 text-gray-400 font-medium">最終同期</th>
-                    <th className="text-left p-4 text-gray-400 font-medium">同期行数</th>
-                    <th className="text-left p-4 text-gray-400 font-medium">状態</th>
-                    <th className="text-right p-4 text-gray-400 font-medium">操作</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {connections.map((conn) => {
-                    const unmapped = getUnmappedHeaders(conn);
-                    const isEditing = editingMappingId === conn.id;
-                    return (
-                      <tr key={conn.id} className="border-b border-white/5 hover:bg-white/5">
-                        <td className="p-4">
-                          <div className="flex items-center gap-2">
-                            <span className="text-white font-medium">{conn.name}</span>
-                            {unmapped.length > 0 && !isEditing && (
-                              <button
-                                onClick={() => startEditMapping(conn)}
-                                className="px-2 py-0.5 bg-yellow-500/20 text-yellow-400 rounded text-[10px] font-medium animate-pulse hover:bg-yellow-500/30 transition-colors"
-                                title={`未マッピング列: ${unmapped.join(", ")}`}
-                              >
-                                新規{unmapped.length}列
-                              </button>
-                            )}
-                          </div>
-                          {/* マッピング編集パネル */}
-                          {isEditing && (
-                            <div className="mt-3 p-4 bg-surface-elevated rounded-lg border border-white/10 space-y-3">
-                              <div className="flex items-center justify-between">
-                                <h4 className="text-sm font-medium text-white">カラムマッピング編集</h4>
-                                <span className="text-xs text-gray-500">
-                                  {(conn.known_headers || []).length}列検出
-                                  {unmapped.length > 0 && (
-                                    <span className="ml-2 text-yellow-400">
-                                      ({unmapped.length}件未マッピング)
-                                    </span>
-                                  )}
-                                </span>
-                              </div>
-                              {/* 未マッピング列のハイライト */}
-                              {unmapped.length > 0 && (
-                                <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg px-3 py-2">
-                                  <p className="text-xs text-yellow-400 font-medium mb-1">
-                                    新しい列が検出されました:
-                                  </p>
-                                  <div className="flex flex-wrap gap-1.5">
-                                    {unmapped.map((h) => (
-                                      <span key={h} className="px-2 py-0.5 bg-yellow-500/20 text-yellow-300 rounded text-[11px]">
-                                        {h}
-                                      </span>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                {CRM_FIELDS.map((field) => (
-                                  <div
-                                    key={field.key}
-                                    className="flex items-center gap-2 bg-white/[0.02] rounded-lg px-3 py-2"
-                                  >
-                                    <span className="text-xs text-gray-400 w-28 shrink-0">
-                                      {field.label}
-                                    </span>
-                                    <select
-                                      value={editMappingFields[field.key] || ""}
-                                      onChange={(e) =>
-                                        updateEditMapping(field.key, e.target.value)
-                                      }
-                                      className="flex-1 px-2 py-1.5 bg-[#1a1a2e] border border-white/10 rounded text-white text-xs focus:outline-none focus:border-brand appearance-none"
-                                    >
-                                      <option value="">-- 未設定 --</option>
-                                      {(conn.known_headers || []).map((h) => (
-                                        <option key={h} value={h}>
-                                          {h}
-                                          {unmapped.includes(h) ? " (NEW)" : ""}
-                                        </option>
-                                      ))}
-                                    </select>
-                                  </div>
-                                ))}
-                              </div>
-                              <div className="flex justify-end gap-2 pt-1">
-                                <button
-                                  onClick={() => setEditingMappingId(null)}
-                                  className="px-4 py-1.5 text-xs text-gray-400 hover:text-white transition-colors"
-                                >
-                                  キャンセル
-                                </button>
-                                <button
-                                  onClick={saveMapping}
-                                  disabled={isSavingMapping}
-                                  className="px-4 py-1.5 text-xs bg-brand text-white rounded-md hover:bg-brand/90 disabled:opacity-50 transition-colors"
-                                >
-                                  {isSavingMapping ? "保存中..." : "マッピングを保存"}
-                                </button>
-                              </div>
-                            </div>
-                          )}
-                        </td>
-                        <td className="p-4 text-gray-300">{conn.sheet_name}</td>
-                        <td className="p-4 text-gray-300">
+            <div className="space-y-2">
+              {connections.map((conn) => {
+                const unmapped = getUnmappedHeaders(conn);
+                return (
+                  <div
+                    key={conn.id}
+                    className={`bg-surface-card rounded-xl border p-4 ${
+                      unmapped.length > 0
+                        ? "border-yellow-500/30"
+                        : "border-white/10"
+                    }`}
+                  >
+                    <div className="flex items-center gap-4">
+                      {/* 名前 + バッジ */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-white font-medium truncate">{conn.name}</span>
                           <span
-                            className={`px-2 py-0.5 rounded text-xs ${
+                            className={`px-2 py-0.5 rounded text-[10px] font-medium ${
                               conn.sync_mode === "append"
                                 ? "bg-blue-500/20 text-blue-400"
                                 : "bg-purple-500/20 text-purple-400"
@@ -765,14 +895,8 @@ export function DataSyncClient({
                           >
                             {conn.sync_mode === "append" ? "差分" : "全件"}
                           </span>
-                        </td>
-                        <td className="p-4 text-gray-400 text-xs">
-                          {formatDate(conn.last_synced_at)}
-                        </td>
-                        <td className="p-4 text-gray-300">{conn.last_synced_row}</td>
-                        <td className="p-4">
                           <span
-                            className={`px-2 py-0.5 rounded text-xs ${
+                            className={`px-2 py-0.5 rounded text-[10px] font-medium ${
                               conn.is_active
                                 ? "bg-green-500/20 text-green-400"
                                 : "bg-gray-500/20 text-gray-400"
@@ -780,44 +904,56 @@ export function DataSyncClient({
                           >
                             {conn.is_active ? "有効" : "無効"}
                           </span>
-                        </td>
-                        <td className="p-4 text-right">
-                          <div className="flex gap-2 justify-end">
-                            {!isEditing && (
-                              <button
-                                onClick={() => startEditMapping(conn)}
-                                className="px-3 py-1.5 text-xs text-gray-400 hover:text-white border border-white/10 rounded-md hover:bg-white/5 transition-colors"
-                              >
-                                マッピング
-                              </button>
-                            )}
-                            <button
-                              onClick={() => runSync(conn.id)}
-                              disabled={syncingId === conn.id}
-                              className="px-3 py-1.5 text-xs text-brand hover:text-white border border-brand/30 rounded-md hover:bg-brand/10 disabled:opacity-50 transition-colors"
-                            >
-                              {syncingId === conn.id ? (
-                                <span className="flex items-center gap-1.5">
-                                  <span className="w-3 h-3 border-2 border-brand/30 border-t-brand rounded-full animate-spin" />
-                                  同期中
-                                </span>
-                              ) : (
-                                "同期実行"
-                              )}
-                            </button>
-                            <button
-                              onClick={() => deleteConnection(conn.id)}
-                              className="px-3 py-1.5 text-xs text-red-400 hover:text-red-300 border border-red-500/20 rounded-md hover:bg-red-500/10 transition-colors"
-                            >
-                              削除
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                          {unmapped.length > 0 && (
+                            <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-400 rounded text-[10px] font-medium">
+                              新規{unmapped.length}列
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-4 mt-1 text-xs text-gray-500">
+                          <span>シート: {conn.sheet_name}</span>
+                          <span>最終同期: {formatDate(conn.last_synced_at)}</span>
+                          <span>{conn.last_synced_row}行</span>
+                        </div>
+                      </div>
+
+                      {/* 操作ボタン */}
+                      <div className="flex gap-2 shrink-0">
+                        <button
+                          onClick={() => setEditingConn(conn)}
+                          className={`px-3 py-1.5 text-xs rounded-md border transition-colors ${
+                            unmapped.length > 0
+                              ? "text-yellow-400 border-yellow-500/30 hover:bg-yellow-500/10"
+                              : "text-gray-400 border-white/10 hover:bg-white/5 hover:text-white"
+                          }`}
+                        >
+                          マッピング
+                        </button>
+                        <button
+                          onClick={() => runSync(conn.id)}
+                          disabled={syncingId === conn.id}
+                          className="px-3 py-1.5 text-xs text-brand border border-brand/30 rounded-md hover:bg-brand/10 disabled:opacity-50 transition-colors"
+                        >
+                          {syncingId === conn.id ? (
+                            <span className="flex items-center gap-1.5">
+                              <span className="w-3 h-3 border-2 border-brand/30 border-t-brand rounded-full animate-spin" />
+                              同期中
+                            </span>
+                          ) : (
+                            "同期実行"
+                          )}
+                        </button>
+                        <button
+                          onClick={() => deleteConnection(conn.id)}
+                          className="px-3 py-1.5 text-xs text-red-400 border border-red-500/20 rounded-md hover:bg-red-500/10 transition-colors"
+                        >
+                          削除
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           ) : null}
         </div>
@@ -934,7 +1070,6 @@ export function DataSyncClient({
                     </div>
                   </div>
 
-                  {/* 元データ */}
                   {record.raw_data && Object.keys(record.raw_data).length > 0 && (
                     <details className="mt-3">
                       <summary className="text-xs text-gray-500 cursor-pointer hover:text-gray-400">
@@ -962,62 +1097,128 @@ export function DataSyncClient({
               <p className="text-gray-400">同期ログがありません</p>
             </div>
           ) : (
-            <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 overflow-hidden">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-white/10">
-                    <th className="text-left p-4 text-gray-400 font-medium">実行日時</th>
-                    <th className="text-left p-4 text-gray-400 font-medium">ステータス</th>
-                    <th className="text-right p-4 text-gray-400 font-medium">処理行数</th>
-                    <th className="text-right p-4 text-gray-400 font-medium">更新</th>
-                    <th className="text-right p-4 text-gray-400 font-medium">未マッチ</th>
-                    <th className="text-left p-4 text-gray-400 font-medium">エラー</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {syncLogs.map((log) => (
-                    <tr key={log.id} className="border-b border-white/5 hover:bg-white/5">
-                      <td className="p-4 text-gray-300 text-xs">
-                        {formatDate(log.started_at)}
-                      </td>
-                      <td className="p-4">
-                        <span
-                          className={`px-2 py-0.5 rounded text-xs ${
-                            log.status === "success"
-                              ? "bg-green-500/20 text-green-400"
-                              : log.status === "error"
-                              ? "bg-red-500/20 text-red-400"
-                              : "bg-yellow-500/20 text-yellow-400"
-                          }`}
-                        >
-                          {log.status === "success"
-                            ? "成功"
+            <div className="space-y-2">
+              {syncLogs.map((log) => {
+                const records: SyncRecord[] = (log.details as { records?: SyncRecord[] })?.records || [];
+                const hasRecords = records.length > 0;
+                return (
+                  <div
+                    key={log.id}
+                    className="bg-surface-card rounded-xl border border-white/10 p-4 hover:border-white/20 transition-colors"
+                  >
+                    <div className="flex items-center gap-4">
+                      {/* ステータス */}
+                      <span
+                        className={`px-2.5 py-1 rounded-lg text-xs font-medium shrink-0 ${
+                          log.status === "success"
+                            ? "bg-green-500/20 text-green-400"
                             : log.status === "error"
-                            ? "エラー"
-                            : "実行中"}
+                            ? "bg-red-500/20 text-red-400"
+                            : "bg-yellow-500/20 text-yellow-400"
+                        }`}
+                      >
+                        {log.status === "success" ? "成功" : log.status === "error" ? "エラー" : "実行中"}
+                      </span>
+
+                      {/* 接続名 + 日時 */}
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm text-white font-medium">
+                          {connNameMap[log.connection_id] || "不明"}
                         </span>
-                      </td>
-                      <td className="p-4 text-gray-300 text-right">
-                        {log.rows_processed}
-                      </td>
-                      <td className="p-4 text-gray-300 text-right">{log.rows_updated}</td>
-                      <td className="p-4 text-right">
-                        {log.rows_unmatched > 0 ? (
-                          <span className="text-yellow-400">{log.rows_unmatched}</span>
-                        ) : (
-                          <span className="text-gray-500">0</span>
+                        <span className="text-xs text-gray-500 ml-3">
+                          {formatDate(log.started_at)}
+                        </span>
+                      </div>
+
+                      {/* 数値 */}
+                      <div className="flex gap-4 text-xs shrink-0">
+                        <span className="text-gray-400">{log.rows_processed}行</span>
+                        {log.rows_created > 0 && (
+                          <span className="text-green-400">+{log.rows_created}新規</span>
                         )}
-                      </td>
-                      <td className="p-4 text-red-400 text-xs truncate max-w-xs">
-                        {log.error_message || "-"}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                        {log.rows_updated > 0 && (
+                          <span className="text-blue-400">{log.rows_updated}更新</span>
+                        )}
+                        {log.rows_unmatched > 0 && (
+                          <span className="text-yellow-400">{log.rows_unmatched}未マッチ</span>
+                        )}
+                      </div>
+
+                      {/* 詳細ボタン */}
+                      {hasRecords && (
+                        <button
+                          onClick={() => setViewingLog(log)}
+                          className="px-3 py-1.5 text-xs text-brand border border-brand/30 rounded-md hover:bg-brand/10 transition-colors shrink-0"
+                        >
+                          詳細
+                        </button>
+                      )}
+                    </div>
+
+                    {/* エラーメッセージ */}
+                    {log.error_message && (
+                      <p className="mt-2 text-xs text-red-400 bg-red-500/10 rounded-lg px-3 py-2">
+                        {log.error_message}
+                      </p>
+                    )}
+
+                    {/* レコードプレビュー（最大3件） */}
+                    {hasRecords && (
+                      <div className="mt-3 space-y-1">
+                        {records.slice(0, 3).map((r, i) => (
+                          <div key={i} className="flex items-center gap-2 text-xs text-gray-500">
+                            <span
+                              className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                                r.action === "created"
+                                  ? "bg-green-500/20 text-green-400"
+                                  : r.action === "updated"
+                                  ? "bg-blue-500/20 text-blue-400"
+                                  : "bg-yellow-500/20 text-yellow-400"
+                              }`}
+                            >
+                              {r.action === "created" ? "新規" : r.action === "updated" ? "更新" : "未マッチ"}
+                            </span>
+                            <span className="text-gray-300">{r.name || r.email || "不明"}</span>
+                            {r.name && r.email && <span className="text-gray-600">{r.email}</span>}
+                          </div>
+                        ))}
+                        {records.length > 3 && (
+                          <button
+                            onClick={() => setViewingLog(log)}
+                            className="text-xs text-brand hover:underline"
+                          >
+                            ...他 {records.length - 3}件を表示
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
+      )}
+
+      {/* マッピング編集モーダル */}
+      {editingConn && (
+        <MappingModal
+          conn={editingConn}
+          onClose={() => setEditingConn(null)}
+          onSaved={(updated) => {
+            setConnections((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+            setEditingConn(null);
+          }}
+        />
+      )}
+
+      {/* ログ詳細モーダル */}
+      {viewingLog && (
+        <LogDetailModal
+          log={viewingLog}
+          connectionName={connNameMap[viewingLog.connection_id] || "不明"}
+          onClose={() => setViewingLog(null)}
+        />
       )}
     </div>
   );
