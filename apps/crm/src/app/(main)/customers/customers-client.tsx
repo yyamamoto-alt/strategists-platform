@@ -312,7 +312,8 @@ export function CustomersClient({ customers, attributionMap }: CustomersClientPr
       { key: "attribute", label: "属性", width: 44, category: "base",
         render: (c) => (
           <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${getAttributeColor(c.attribute)}`}>{c.attribute.includes("既卒") ? "既卒" : "新卒"}</span>
-        ), sortValue: (c) => c.attribute },
+        ), sortValue: (c) => c.attribute,
+        filterValue: (c) => c.attribute?.includes("既卒") ? "既卒" : "新卒" },
 
       // ─── 経歴（属性の右横） ───
       { key: "career_history", label: "経歴", width: 220,
@@ -332,17 +333,20 @@ export function CustomersClient({ customers, attributionMap }: CustomersClientPr
           return stage ? (
             <InlineStageSelect customerId={c.id} currentStage={stage} onUpdate={handleStageUpdate} />
           ) : "-";
-        }, sortValue: (c) => stageOverrides[c.id] || c.pipeline?.stage || "" },
+        }, sortValue: (c) => stageOverrides[c.id] || c.pipeline?.stage || "",
+        filterValue: (c) => stageOverrides[c.id] || c.pipeline?.stage || "" },
 
       // ─── 実施状況（検討状況の横） ───
       { key: "deal_status", label: "実施状況", width: 80, category: "sales",
         render: (c) => c.pipeline ? (
           <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${getDealStatusColor(c.pipeline.deal_status)}`}>{c.pipeline.deal_status}</span>
-        ) : "-", sortValue: (c) => c.pipeline?.deal_status || "" },
+        ) : "-", sortValue: (c) => c.pipeline?.deal_status || "",
+        filterValue: (c) => c.pipeline?.deal_status || "" },
 
       // ─── 補助金対象（検討状況の右） ───
       { key: "subsidy_eligible", label: "補助金", width: 50, align: "center" as const, category: "agent",
-        render: (c) => c.contract?.subsidy_eligible ? <span className="text-purple-400 text-xs">対象</span> : "-" },
+        render: (c) => c.contract?.subsidy_eligible ? <span className="text-purple-400 text-xs">対象</span> : "-",
+        filterValue: (c) => c.contract?.subsidy_eligible ? "対象" : "" },
 
       // ═══ 売上4種（近接配置） ═══
       { key: "confirmed_amount", label: "確定売上", width: 100, align: "right" as const, category: "sales",
@@ -429,7 +433,8 @@ export function CustomersClient({ customers, attributionMap }: CustomersClientPr
         render: (c) => <span className="text-xs">{fmtDate(c.pipeline?.response_date)}</span> },
 
       { key: "sales_person", label: "営業担当", width: 80, category: "sales",
-        render: (c) => <span className="text-xs">{c.pipeline?.sales_person || "-"}</span> },
+        render: (c) => <span className="text-xs">{c.pipeline?.sales_person || "-"}</span>,
+        filterValue: (c) => c.pipeline?.sales_person || "" },
 
       { key: "sales_content", label: "営業内容", width: 240, category: "sales",        render: (c) => c.pipeline?.sales_content || "-" },
 
@@ -501,10 +506,14 @@ export function CustomersClient({ customers, attributionMap }: CustomersClientPr
       { key: "offer_company", label: "内定先", width: 120, category: "education",
         render: (c) => <span className="text-xs">{c.agent?.offer_company || "-"}</span> },
       { key: "enrollment_status", label: "受講状況", width: 90, category: "education",
-        render: (c) => <span className="text-xs">{c.contract?.enrollment_status || "-"}</span> },
-      { key: "plan_name", label: "プラン名", width: 150, category: "education",        render: (c) => c.contract?.plan_name || "-" },
+        render: (c) => <span className="text-xs">{c.contract?.enrollment_status || "-"}</span>,
+        filterValue: (c) => c.contract?.enrollment_status || "" },
+      { key: "plan_name", label: "プラン名", width: 150, category: "education",
+        render: (c) => c.contract?.plan_name || "-",
+        filterValue: (c) => c.contract?.plan_name || "" },
       { key: "mentor_name", label: "メンター", width: 80, category: "education",
-        render: (c) => <span className="text-xs">{c.learning?.mentor_name || "-"}</span> },
+        render: (c) => <span className="text-xs">{c.learning?.mentor_name || "-"}</span>,
+        filterValue: (c) => c.learning?.mentor_name || "" },
       { key: "coaching_start", label: "指導開始", width: 78, category: "education",
         render: (c) => <span className="text-xs">{fmtDate(c.learning?.coaching_start_date)}</span>,
         sortValue: (c) => c.learning?.coaching_start_date || "" },

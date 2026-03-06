@@ -12,6 +12,8 @@ export interface SpreadsheetColumn<T> {
   align?: "left" | "right" | "center";
   render: (item: T) => React.ReactNode;
   sortValue?: (item: T) => string | number;
+  /** カラムフィルタ用: ユニーク値を文字列で返す関数 */
+  filterValue?: (item: T) => string;
   computed?: boolean;
   formula?: string;
   category?: ColumnCategory;
@@ -102,6 +104,87 @@ function FormulaTooltip({ formula }: { formula: string }) {
   );
 }
 
+// カラムフィルタドロップダウン
+function ColumnFilter<T>({
+  column,
+  data,
+  value,
+  onChange,
+}: {
+  column: SpreadsheetColumn<T>;
+  data: T[];
+  value: string;
+  onChange: (val: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  const options = useMemo(() => {
+    const fn = column.filterValue;
+    if (!fn) return [];
+    const vals = new Set<string>();
+    for (const item of data) {
+      const v = fn(item);
+      if (v && v !== "-") vals.add(v);
+    }
+    return Array.from(vals).sort();
+  }, [column, data]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  if (options.length === 0) return null;
+
+  return (
+    <div ref={ref} className="relative inline-flex items-center ml-0.5">
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
+        className={cn(
+          "w-3 h-3 inline-flex items-center justify-center rounded transition-colors",
+          value ? "text-brand bg-brand/20" : "text-gray-500 hover:text-gray-300"
+        )}
+        title="フィルタ"
+      >
+        <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 16 16">
+          <path d="M1.5 1.5A.5.5 0 0 1 2 1h12a.5.5 0 0 1 .37.83L9.5 7.67V14a.5.5 0 0 1-.74.44l-3-1.5A.5.5 0 0 1 5.5 12.5V7.67L.63 1.83A.5.5 0 0 1 1.5 1.5z"/>
+        </svg>
+      </button>
+      {open && (
+        <div className="absolute left-0 top-full mt-1 z-50 bg-gray-900 border border-white/20 rounded-lg shadow-xl min-w-[140px] max-h-[240px] overflow-y-auto">
+          <button
+            onClick={(e) => { e.stopPropagation(); onChange(""); setOpen(false); }}
+            className={cn(
+              "w-full text-left px-3 py-1.5 text-xs hover:bg-white/10 transition-colors",
+              !value ? "text-brand font-medium" : "text-gray-300"
+            )}
+          >
+            すべて
+          </button>
+          {options.map((opt) => (
+            <button
+              key={opt}
+              onClick={(e) => { e.stopPropagation(); onChange(opt); setOpen(false); }}
+              className={cn(
+                "w-full text-left px-3 py-1.5 text-xs hover:bg-white/10 transition-colors truncate",
+                value === opt ? "text-brand font-medium" : "text-gray-300"
+              )}
+            >
+              {opt}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function SpreadsheetTable<T>({
   columns,
   data,
@@ -116,6 +199,7 @@ export function SpreadsheetTable<T>({
   const [search, setSearch] = useState(initialSearch);
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
   const [visibleCount, setVisibleCount] = useState(pageSize);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -180,12 +264,41 @@ export function SpreadsheetTable<T>({
     [columnWidths]
   );
 
+  const activeFilterCount = useMemo(
+    () => Object.values(columnFilters).filter(Boolean).length,
+    [columnFilters]
+  );
+
+  const handleColumnFilter = useCallback((key: string, val: string) => {
+    setColumnFilters((prev) => {
+      const next = { ...prev };
+      if (val) next[key] = val;
+      else delete next[key];
+      return next;
+    });
+  }, []);
+
+  const clearAllFilters = useCallback(() => {
+    setColumnFilters({});
+    setSearch("");
+  }, []);
+
   const filtered = useMemo(() => {
     let result = [...data];
 
     if (search && searchFilter) {
       const q = search.toLowerCase();
       result = result.filter((item) => searchFilter(item, q));
+    }
+
+    // カラムフィルタ適用
+    for (const [key, filterVal] of Object.entries(columnFilters)) {
+      if (!filterVal) continue;
+      const col = columns.find((c) => c.key === key);
+      if (col?.filterValue) {
+        const fn = col.filterValue;
+        result = result.filter((item) => fn(item) === filterVal);
+      }
     }
 
     if (sortKey) {
@@ -203,12 +316,12 @@ export function SpreadsheetTable<T>({
     }
 
     return result;
-  }, [data, search, searchFilter, sortKey, sortDir, columns]);
+  }, [data, search, searchFilter, sortKey, sortDir, columns, columnFilters]);
 
   // フィルタ/検索変更時にvisibleCountをリセット
   useEffect(() => {
     setVisibleCount(pageSize);
-  }, [search, sortKey, sortDir, pageSize]);
+  }, [search, sortKey, sortDir, pageSize, columnFilters]);
 
   const visibleData = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount]);
   const hasMore = visibleCount < filtered.length;
@@ -232,13 +345,19 @@ export function SpreadsheetTable<T>({
   const handleSort = useCallback((key: string) => {
     setSortKey((prev) => {
       if (prev === key) {
-        setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-        return prev;
+        // asc → desc → none
+        if (sortDir === "asc") {
+          setSortDir("desc");
+          return prev;
+        } else {
+          setSortDir("asc");
+          return null; // reset
+        }
       }
       setSortDir("asc");
       return key;
     });
-  }, []);
+  }, [sortDir]);
 
   const getColWidth = useCallback(
     (col: SpreadsheetColumn<T>) => columnWidths[col.key] || col.width || 120,
@@ -247,8 +366,8 @@ export function SpreadsheetTable<T>({
 
   return (
     <div>
-      {searchFilter && (
-        <div className="flex items-center gap-2 mb-2">
+      <div className="flex items-center gap-2 mb-2">
+        {searchFilter && (
           <input
             type="text"
             placeholder={searchPlaceholder}
@@ -256,9 +375,17 @@ export function SpreadsheetTable<T>({
             onChange={(e) => { setSearch(e.target.value); onSearchChange?.(e.target.value); }}
             className="flex-1 max-w-xs px-2 py-1 bg-surface-elevated border border-white/10 text-white placeholder-gray-500 rounded text-xs focus:outline-none focus:ring-1 focus:ring-brand"
           />
-          <span className="text-xs text-gray-500">{filtered.length}件</span>
-        </div>
-      )}
+        )}
+        <span className="text-xs text-gray-500">{filtered.length}件</span>
+        {activeFilterCount > 0 && (
+          <button
+            onClick={clearAllFilters}
+            className="px-2 py-0.5 text-[10px] text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded hover:bg-amber-500/20 transition-colors"
+          >
+            フィルタ解除 ({activeFilterCount})
+          </button>
+        )}
+      </div>
       <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 overflow-hidden">
         <div ref={scrollContainerRef} className="overflow-auto max-h-[calc(100vh-180px)]">
           <table className="min-w-max w-full">
@@ -267,10 +394,12 @@ export function SpreadsheetTable<T>({
                 {columns.map((col) => {
                   const cat = col.category || "base";
                   const isSticky = col.stickyLeft !== undefined;
+                  const isSortable = !!col.sortValue;
+                  const hasFilter = !!col.filterValue;
                   return (
                     <th
                       key={col.key}
-                      onClick={col.sortValue ? () => handleSort(col.key) : undefined}
+                      onClick={isSortable ? () => handleSort(col.key) : undefined}
                       className={cn(
                         "py-1.5 px-2 text-[11px] font-semibold whitespace-nowrap select-none relative",
                         col.computed
@@ -278,7 +407,7 @@ export function SpreadsheetTable<T>({
                           : CATEGORY_HEADER_TEXT[cat],
                         CATEGORY_HEADER_COLORS[cat],
                         col.align === "right" ? "text-right" : "text-left",
-                        col.sortValue && "cursor-pointer hover:text-gray-300 transition-colors",
+                        isSortable && "cursor-pointer hover:text-gray-300 transition-colors",
                         isSticky && "sticky z-40 bg-surface-elevated"
                       )}
                       style={{
@@ -291,8 +420,16 @@ export function SpreadsheetTable<T>({
                       <span className="inline-flex items-center gap-0.5 overflow-hidden">
                         {col.label}
                         {col.computed && col.formula && <FormulaTooltip formula={col.formula} />}
+                        {hasFilter && (
+                          <ColumnFilter
+                            column={col}
+                            data={data}
+                            value={columnFilters[col.key] || ""}
+                            onChange={(val) => handleColumnFilter(col.key, val)}
+                          />
+                        )}
                         {sortKey === col.key && (
-                          <span className="text-brand">{sortDir === "asc" ? "↑" : "↓"}</span>
+                          <span className="text-brand ml-0.5">{sortDir === "asc" ? "↑" : "↓"}</span>
                         )}
                       </span>
                       <div
