@@ -115,7 +115,7 @@ function PagesTab({
   searchQueries: SearchQueryRow[];
 }) {
   const [period, setPeriod] = useState<Period>("week");
-  const [metric, setMetric] = useState<Metric>("pageviews");
+  const [metric, setMetric] = useState<Metric>("users");
   const [expandedPage, setExpandedPage] = useState<string | null>(null);
 
   const { pages, periodKeys } = useMemo(() => {
