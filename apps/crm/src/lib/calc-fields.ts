@@ -121,9 +121,12 @@ export function calcClosingProbability(c: CustomerWithRelations): number {
   if (stage === "その他購入" || stage === "動画講座購入") return 0;
   if (stage.includes("成約見込")) return 0;
 
-  // --- CL → 5%（復帰の可能性あり） ---
-  if (stage === "CL") return 0.05;
+  // --- CL / 全額返金 → 0% ---
+  if (stage === "CL") return 0;
   if (stage === "全額返金") return 0;
+
+  // --- キャンセル系 → 0% ---
+  if (stage === "キャンセル" || stage === "直前キャンセル") return 0;
 
   // --- 失注系 ---
   if (stage === "失注" || stage === "失注見込(自動)") return 0;

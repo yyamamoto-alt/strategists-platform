@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/sync-spreadsheets",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/stage-transitions",
+      "schedule": "0 0 * * *"
     }
   ]
 }
