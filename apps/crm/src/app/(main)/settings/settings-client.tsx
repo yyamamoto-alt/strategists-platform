@@ -106,20 +106,26 @@ const SECTIONS: SettingsSectionConfig[] = [
     description: "Slack通知の設定を管理します。通知先チャンネルを選択し、通知種別のON/OFFを設定できます。",
     fields: [
       {
-        key: "slack_channel",
-        label: "通知先チャンネル",
-        type: "slack_channel",
-        placeholder: "チャンネルを選択...",
-      },
-      {
         key: "slack_notify_payment_error",
         label: "決済エラー通知",
         type: "toggle",
       },
       {
+        key: "slack_channel_payment_error",
+        label: "└ 通知先チャンネル",
+        type: "slack_channel",
+        placeholder: "チャンネルを選択...",
+      },
+      {
         key: "slack_notify_stage_transition",
         label: "ステージ自動遷移通知",
         type: "toggle",
+      },
+      {
+        key: "slack_channel_stage_transition",
+        label: "└ 通知先チャンネル",
+        type: "slack_channel",
+        placeholder: "チャンネルを選択...",
       },
     ],
   },
