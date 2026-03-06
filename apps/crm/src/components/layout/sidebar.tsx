@@ -16,6 +16,7 @@ interface NavItem {
 
 const mainNavigation: NavItem[] = [
   { name: "ダッシュボード", href: "/dashboard", icon: "" },
+  { name: "マーケ分析", href: "/analytics", icon: "", roles: ["admin"] },
   { name: "PL", href: "/revenue", icon: "", roles: ["admin"] },
   { name: "顧客DB", href: "/customers", icon: "", roles: ["admin", "mentor"] },
   { name: "パイプライン", href: "/pipeline", icon: "", roles: ["admin", "mentor"] },
