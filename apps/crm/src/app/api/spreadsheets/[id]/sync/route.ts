@@ -85,6 +85,18 @@ export async function POST(request: Request, { params }: Props) {
 
     const columnMapping = connection.column_mapping as Record<string, string>;
 
+    // ヘッダー変更検知: known_headers を更新
+    const prevHeaders: string[] = connection.known_headers || [];
+    const headersChanged =
+      headers.length !== prevHeaders.length ||
+      headers.some((h: string, i: number) => h !== prevHeaders[i]);
+    if (headersChanged) {
+      await db
+        .from("spreadsheet_connections")
+        .update({ known_headers: headers })
+        .eq("id", id);
+    }
+
     let rowsCreated = 0;
     let rowsUpdated = 0;
     let rowsUnmatched = 0;

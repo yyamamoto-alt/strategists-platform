@@ -18,6 +18,7 @@ export interface SpreadsheetConnection {
   last_synced_at: string | null;
   last_synced_row: number;
   is_active: boolean;
+  known_headers: string[];
   created_at: string;
   updated_at: string;
 }

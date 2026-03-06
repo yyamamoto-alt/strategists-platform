@@ -80,6 +80,18 @@ export async function GET(request: Request) {
       const dataRows = allRows.slice(1);
       const columnMapping = connection.column_mapping as Record<string, string>;
 
+      // ヘッダー変更検知: known_headers を更新
+      const prevHeaders: string[] = connection.known_headers || [];
+      const headersChanged =
+        headers.length !== prevHeaders.length ||
+        headers.some((h: string, i: number) => h !== prevHeaders[i]);
+      if (headersChanged) {
+        await db
+          .from("spreadsheet_connections")
+          .update({ known_headers: headers })
+          .eq("id", connection.id);
+      }
+
       let rowsCreated = 0;
       let rowsUpdated = 0;
       let rowsUnmatched = 0;

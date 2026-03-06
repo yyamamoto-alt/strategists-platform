@@ -200,7 +200,7 @@ function formatMonthLabel(m: string): string {
 }
 
 export function SubsidyClient({ customers, firstPaidMap }: Props) {
-  const [activeTab, setActiveTab] = useState<TabKey>("weekly");
+  const [activeTab, setActiveTab] = useState<TabKey>("list");
   const weekEnds = useMemo(() => generateWeekEnds(), []);
   const months = useMemo(() => generateMonths(), []);
   const columns = useMemo(() => buildColumns(firstPaidMap), [firstPaidMap]);
@@ -266,9 +266,9 @@ export function SubsidyClient({ customers, firstPaidMap }: Props) {
           </div>
           <div className="flex gap-0.5 bg-surface-elevated rounded-lg p-0.5 border border-white/10">
             {([
+              { key: "list" as TabKey, label: "対象者リスト" },
               { key: "weekly" as TabKey, label: "週次推移" },
               { key: "monthly" as TabKey, label: "月次推移" },
-              { key: "list" as TabKey, label: "対象者リスト" },
             ]).map((tab) => (
               <button
                 key={tab.key}

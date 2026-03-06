@@ -35,6 +35,8 @@ function SingleFunnelChart({
       closing_rate_confirmed: isLatest ? undefined : Math.round(d.closing_rate * 100),
       closing_rate_latest: isLatest ? Math.round(d.closing_rate * 100) : undefined,
       closing_rate_pct: Math.round(d.closing_rate * 100),
+      conduct_rate_confirmed: isLatest ? undefined : Math.round(d.conduct_rate * 100),
+      conduct_rate_latest: isLatest ? Math.round(d.conduct_rate * 100) : undefined,
     };
   });
 
@@ -111,6 +113,30 @@ function SingleFunnelChart({
             stroke="#f59e0b"
             strokeWidth={0}
             dot={{ r: 4, fill: "#f59e0b", strokeWidth: 2, stroke: "#fff" }}
+            legendType="none"
+            connectNulls={false}
+          />
+          {/* 実施率: 確定月（線あり） */}
+          <Line
+            yAxisId="right"
+            type="monotone"
+            dataKey="conduct_rate_confirmed"
+            name="実施率(%)"
+            stroke="#8b5cf6"
+            strokeWidth={2}
+            strokeDasharray="5 5"
+            dot={{ r: 2 }}
+            connectNulls={false}
+          />
+          {/* 実施率: 最新月（点のみ） */}
+          <Line
+            yAxisId="right"
+            type="monotone"
+            dataKey="conduct_rate_latest"
+            name="実施率(暫定)"
+            stroke="#8b5cf6"
+            strokeWidth={0}
+            dot={{ r: 4, fill: "#8b5cf6", strokeWidth: 2, stroke: "#fff" }}
             legendType="none"
             connectNulls={false}
           />

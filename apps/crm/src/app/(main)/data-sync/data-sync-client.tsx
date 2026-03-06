@@ -55,6 +55,11 @@ export function DataSyncClient({
   // 同期中
   const [syncingId, setSyncingId] = useState<string | null>(null);
 
+  // マッピング編集
+  const [editingMappingId, setEditingMappingId] = useState<string | null>(null);
+  const [editMappingFields, setEditMappingFields] = useState<Record<string, string>>({});
+  const [isSavingMapping, setIsSavingMapping] = useState(false);
+
   // 顧客検索（未マッチ紐付け用）
   const [linkingId, setLinkingId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -79,6 +84,100 @@ export function DataSyncClient({
     { key: "utm_source", label: "UTMソース" },
     { key: "utm_medium", label: "UTMメディア" },
   ];
+
+  // ================================================================
+  // 未マッピング列検出
+  // ================================================================
+
+  function getUnmappedHeaders(conn: SpreadsheetConnection): string[] {
+    const knownHeaders = conn.known_headers || [];
+    if (knownHeaders.length === 0) return [];
+    const mappedSheetCols = new Set(Object.values(conn.column_mapping || {}));
+    return knownHeaders.filter((h) => h && !mappedSheetCols.has(h));
+  }
+
+  const totalUnmapped = connections.reduce(
+    (sum, conn) => sum + getUnmappedHeaders(conn).length,
+    0
+  );
+
+  // ================================================================
+  // マッピング編集の保存
+  // ================================================================
+
+  const startEditMapping = useCallback((conn: SpreadsheetConnection) => {
+    setEditingMappingId(conn.id);
+    setEditMappingFields({ ...conn.column_mapping });
+  }, []);
+
+  const saveMapping = useCallback(async () => {
+    if (!editingMappingId) return;
+    setIsSavingMapping(true);
+    try {
+      const res = await fetch(`/api/spreadsheets/${editingMappingId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ column_mapping: editMappingFields }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setConnections((prev) =>
+          prev.map((c) => (c.id === editingMappingId ? updated : c))
+        );
+        setEditingMappingId(null);
+      } else {
+        const data = await res.json();
+        alert(`保存エラー: ${data.error || "不明なエラー"}`);
+      }
+    } finally {
+      setIsSavingMapping(false);
+    }
+  }, [editingMappingId, editMappingFields]);
+
+  const updateEditMapping = useCallback((crmField: string, sheetColumn: string) => {
+    setEditMappingFields((prev) => {
+      if (!sheetColumn) {
+        const next = { ...prev };
+        delete next[crmField];
+        return next;
+      }
+      return { ...prev, [crmField]: sheetColumn };
+    });
+  }, []);
+
+  // ================================================================
+  // ヘッダー更新（既存接続のknown_headersを最新化）
+  // ================================================================
+
+  const [refreshingHeadersId, setRefreshingHeadersId] = useState<string | null>(null);
+
+  const refreshHeaders = useCallback(async (connId: string) => {
+    setRefreshingHeadersId(connId);
+    try {
+      // preview API でシートヘッダーを取得
+      const previewRes = await fetch(`/api/spreadsheets/${connId}/preview`);
+      if (!previewRes.ok) {
+        alert("ヘッダー取得に失敗しました");
+        return;
+      }
+      const { headers: latestHeaders } = await previewRes.json();
+
+      // known_headers を更新
+      const patchRes = await fetch(`/api/spreadsheets/${connId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ known_headers: latestHeaders }),
+      });
+      if (patchRes.ok) {
+        const updated = await patchRes.json();
+        setConnections((prev) =>
+          prev.map((c) => (c.id === connId ? updated : c))
+        );
+      }
+    } finally {
+      setRefreshingHeadersId(null);
+    }
+  }, []);
 
   // ================================================================
   // URL からプレビュー取得（DB保存不要）
@@ -309,6 +408,27 @@ export function DataSyncClient({
         </div>
       </div>
 
+      {/* 新カラム検知バナー */}
+      {totalUnmapped > 0 && (
+        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl px-5 py-3 flex items-center justify-between">
+          <div>
+            <p className="text-sm text-yellow-300 font-medium">
+              {connections.filter((c) => getUnmappedHeaders(c).length > 0).length}件の接続で
+              新しい列が検出されました（合計{totalUnmapped}列）
+            </p>
+            <p className="text-xs text-yellow-400/70 mt-0.5">
+              Googleフォームに新しい項目が追加された可能性があります。マッピングを確認してください。
+            </p>
+          </div>
+          <button
+            onClick={() => setActiveTab("connections")}
+            className="px-4 py-1.5 bg-yellow-500/20 text-yellow-300 rounded-lg text-xs font-medium hover:bg-yellow-500/30 transition-colors whitespace-nowrap"
+          >
+            確認する
+          </button>
+        </div>
+      )}
+
       {/* タブ */}
       <div className="flex gap-1 bg-surface-elevated rounded-lg p-1">
         {tabs.map((tab) => (
@@ -336,7 +456,18 @@ export function DataSyncClient({
       {/* ================================================================ */}
       {activeTab === "connections" && (
         <div className="space-y-4">
-          <div className="flex justify-end">
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={async () => {
+                for (const conn of connections) {
+                  await refreshHeaders(conn.id);
+                }
+              }}
+              disabled={!!refreshingHeadersId}
+              className="px-4 py-2 border border-white/10 text-gray-300 rounded-lg text-sm font-medium hover:bg-white/5 disabled:opacity-50 transition-colors"
+            >
+              {refreshingHeadersId ? "更新中..." : "全接続のヘッダー更新"}
+            </button>
             <button
               onClick={() => {
                 if (showAddForm) {
@@ -531,62 +662,160 @@ export function DataSyncClient({
                   </tr>
                 </thead>
                 <tbody>
-                  {connections.map((conn) => (
-                    <tr key={conn.id} className="border-b border-white/5 hover:bg-white/5">
-                      <td className="p-4 text-white font-medium">{conn.name}</td>
-                      <td className="p-4 text-gray-300">{conn.sheet_name}</td>
-                      <td className="p-4 text-gray-300">
-                        <span
-                          className={`px-2 py-0.5 rounded text-xs ${
-                            conn.sync_mode === "append"
-                              ? "bg-blue-500/20 text-blue-400"
-                              : "bg-purple-500/20 text-purple-400"
-                          }`}
-                        >
-                          {conn.sync_mode === "append" ? "差分" : "全件"}
-                        </span>
-                      </td>
-                      <td className="p-4 text-gray-400 text-xs">
-                        {formatDate(conn.last_synced_at)}
-                      </td>
-                      <td className="p-4 text-gray-300">{conn.last_synced_row}</td>
-                      <td className="p-4">
-                        <span
-                          className={`px-2 py-0.5 rounded text-xs ${
-                            conn.is_active
-                              ? "bg-green-500/20 text-green-400"
-                              : "bg-gray-500/20 text-gray-400"
-                          }`}
-                        >
-                          {conn.is_active ? "有効" : "無効"}
-                        </span>
-                      </td>
-                      <td className="p-4 text-right">
-                        <div className="flex gap-2 justify-end">
-                          <button
-                            onClick={() => runSync(conn.id)}
-                            disabled={syncingId === conn.id}
-                            className="px-3 py-1.5 text-xs text-brand hover:text-white border border-brand/30 rounded-md hover:bg-brand/10 disabled:opacity-50 transition-colors"
-                          >
-                            {syncingId === conn.id ? (
-                              <span className="flex items-center gap-1.5">
-                                <span className="w-3 h-3 border-2 border-brand/30 border-t-brand rounded-full animate-spin" />
-                                同期中
-                              </span>
-                            ) : (
-                              "同期実行"
+                  {connections.map((conn) => {
+                    const unmapped = getUnmappedHeaders(conn);
+                    const isEditing = editingMappingId === conn.id;
+                    return (
+                      <tr key={conn.id} className="border-b border-white/5 hover:bg-white/5">
+                        <td className="p-4">
+                          <div className="flex items-center gap-2">
+                            <span className="text-white font-medium">{conn.name}</span>
+                            {unmapped.length > 0 && !isEditing && (
+                              <button
+                                onClick={() => startEditMapping(conn)}
+                                className="px-2 py-0.5 bg-yellow-500/20 text-yellow-400 rounded text-[10px] font-medium animate-pulse hover:bg-yellow-500/30 transition-colors"
+                                title={`未マッピング列: ${unmapped.join(", ")}`}
+                              >
+                                新規{unmapped.length}列
+                              </button>
                             )}
-                          </button>
-                          <button
-                            onClick={() => deleteConnection(conn.id)}
-                            className="px-3 py-1.5 text-xs text-red-400 hover:text-red-300 border border-red-500/20 rounded-md hover:bg-red-500/10 transition-colors"
+                          </div>
+                          {/* マッピング編集パネル */}
+                          {isEditing && (
+                            <div className="mt-3 p-4 bg-surface-elevated rounded-lg border border-white/10 space-y-3">
+                              <div className="flex items-center justify-between">
+                                <h4 className="text-sm font-medium text-white">カラムマッピング編集</h4>
+                                <span className="text-xs text-gray-500">
+                                  {(conn.known_headers || []).length}列検出
+                                  {unmapped.length > 0 && (
+                                    <span className="ml-2 text-yellow-400">
+                                      ({unmapped.length}件未マッピング)
+                                    </span>
+                                  )}
+                                </span>
+                              </div>
+                              {/* 未マッピング列のハイライト */}
+                              {unmapped.length > 0 && (
+                                <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg px-3 py-2">
+                                  <p className="text-xs text-yellow-400 font-medium mb-1">
+                                    新しい列が検出されました:
+                                  </p>
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {unmapped.map((h) => (
+                                      <span key={h} className="px-2 py-0.5 bg-yellow-500/20 text-yellow-300 rounded text-[11px]">
+                                        {h}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                {CRM_FIELDS.map((field) => (
+                                  <div
+                                    key={field.key}
+                                    className="flex items-center gap-2 bg-white/[0.02] rounded-lg px-3 py-2"
+                                  >
+                                    <span className="text-xs text-gray-400 w-28 shrink-0">
+                                      {field.label}
+                                    </span>
+                                    <select
+                                      value={editMappingFields[field.key] || ""}
+                                      onChange={(e) =>
+                                        updateEditMapping(field.key, e.target.value)
+                                      }
+                                      className="flex-1 px-2 py-1.5 bg-[#1a1a2e] border border-white/10 rounded text-white text-xs focus:outline-none focus:border-brand appearance-none"
+                                    >
+                                      <option value="">-- 未設定 --</option>
+                                      {(conn.known_headers || []).map((h) => (
+                                        <option key={h} value={h}>
+                                          {h}
+                                          {unmapped.includes(h) ? " (NEW)" : ""}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                ))}
+                              </div>
+                              <div className="flex justify-end gap-2 pt-1">
+                                <button
+                                  onClick={() => setEditingMappingId(null)}
+                                  className="px-4 py-1.5 text-xs text-gray-400 hover:text-white transition-colors"
+                                >
+                                  キャンセル
+                                </button>
+                                <button
+                                  onClick={saveMapping}
+                                  disabled={isSavingMapping}
+                                  className="px-4 py-1.5 text-xs bg-brand text-white rounded-md hover:bg-brand/90 disabled:opacity-50 transition-colors"
+                                >
+                                  {isSavingMapping ? "保存中..." : "マッピングを保存"}
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </td>
+                        <td className="p-4 text-gray-300">{conn.sheet_name}</td>
+                        <td className="p-4 text-gray-300">
+                          <span
+                            className={`px-2 py-0.5 rounded text-xs ${
+                              conn.sync_mode === "append"
+                                ? "bg-blue-500/20 text-blue-400"
+                                : "bg-purple-500/20 text-purple-400"
+                            }`}
                           >
-                            削除
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                            {conn.sync_mode === "append" ? "差分" : "全件"}
+                          </span>
+                        </td>
+                        <td className="p-4 text-gray-400 text-xs">
+                          {formatDate(conn.last_synced_at)}
+                        </td>
+                        <td className="p-4 text-gray-300">{conn.last_synced_row}</td>
+                        <td className="p-4">
+                          <span
+                            className={`px-2 py-0.5 rounded text-xs ${
+                              conn.is_active
+                                ? "bg-green-500/20 text-green-400"
+                                : "bg-gray-500/20 text-gray-400"
+                            }`}
+                          >
+                            {conn.is_active ? "有効" : "無効"}
+                          </span>
+                        </td>
+                        <td className="p-4 text-right">
+                          <div className="flex gap-2 justify-end">
+                            {!isEditing && (
+                              <button
+                                onClick={() => startEditMapping(conn)}
+                                className="px-3 py-1.5 text-xs text-gray-400 hover:text-white border border-white/10 rounded-md hover:bg-white/5 transition-colors"
+                              >
+                                マッピング
+                              </button>
+                            )}
+                            <button
+                              onClick={() => runSync(conn.id)}
+                              disabled={syncingId === conn.id}
+                              className="px-3 py-1.5 text-xs text-brand hover:text-white border border-brand/30 rounded-md hover:bg-brand/10 disabled:opacity-50 transition-colors"
+                            >
+                              {syncingId === conn.id ? (
+                                <span className="flex items-center gap-1.5">
+                                  <span className="w-3 h-3 border-2 border-brand/30 border-t-brand rounded-full animate-spin" />
+                                  同期中
+                                </span>
+                              ) : (
+                                "同期実行"
+                              )}
+                            </button>
+                            <button
+                              onClick={() => deleteConnection(conn.id)}
+                              className="px-3 py-1.5 text-xs text-red-400 hover:text-red-300 border border-red-500/20 rounded-md hover:bg-red-500/10 transition-colors"
+                            >
+                              削除
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
