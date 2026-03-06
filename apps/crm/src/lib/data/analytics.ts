@@ -35,6 +35,25 @@ export interface SearchQueryRow {
   position: number;
 }
 
+export interface SearchDailyRow {
+  date: string;
+  page_path: string;
+  query: string;
+  clicks: number;
+  impressions: number;
+  ctr: number;
+  position: number;
+}
+
+export interface HourlyRow {
+  date: string;
+  hour: number;
+  segment: string;
+  pageviews: number;
+  sessions: number;
+  users: number;
+}
+
 function dateRange(days: number): { from: string; to: string } {
   const to = new Date();
   to.setDate(to.getDate() - 1);
@@ -106,4 +125,39 @@ export async function fetchSearchQueries(): Promise<SearchQueryRow[]> {
   }
 
   return Array.from(map.values()).sort((a, b) => b.clicks - a.clicks);
+}
+
+/** 検索データ日別生データ（90日、キーワード追跡用） */
+export async function fetchSearchDailyRows(days: number = 90): Promise<SearchDailyRow[]> {
+  const { from, to } = dateRange(days);
+
+  const { data, error } = await supabase()
+    .from("analytics_search_daily")
+    .select("date,page_path,query,clicks,impressions,ctr,position")
+    .gte("date", from)
+    .lte("date", to)
+    .order("date", { ascending: true })
+    .limit(5000);
+
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
+/** 時間帯別データ（90日） */
+export async function fetchHourlyData(days: number = 90): Promise<HourlyRow[]> {
+  const { from, to } = dateRange(days);
+
+  const { data, error } = await supabase()
+    .from("analytics_page_hourly")
+    .select("date,hour,segment,pageviews,sessions,users")
+    .gte("date", from)
+    .lte("date", to)
+    .order("date", { ascending: true });
+
+  if (error) {
+    // Table may not exist yet
+    console.error("Hourly data fetch error:", error.message);
+    return [];
+  }
+  return data || [];
 }

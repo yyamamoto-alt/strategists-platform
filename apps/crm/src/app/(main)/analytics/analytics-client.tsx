@@ -5,6 +5,8 @@ import type {
   PageDailyRow,
   TrafficDaily,
   SearchQueryRow,
+  SearchDailyRow,
+  HourlyRow,
 } from "@/lib/data/analytics";
 
 type Tab = "pages" | "traffic_main" | "traffic_lp3";
@@ -20,6 +22,8 @@ interface Props {
   pageDailyRows: PageDailyRow[];
   traffic: TrafficDaily[];
   searchQueries: SearchQueryRow[];
+  searchDailyRows: SearchDailyRow[];
+  hourlyRows: HourlyRow[];
 }
 
 const SITE_BASE = "https://akagiconsulting.com";
@@ -489,7 +493,7 @@ function TrafficTabContent({ traffic, landingPage }: { traffic: TrafficDaily[]; 
   );
 }
 
-export function AnalyticsClient({ pageDailyRows, traffic, searchQueries }: Props) {
+export function AnalyticsClient({ pageDailyRows, traffic, searchQueries, searchDailyRows: _searchDailyRows, hourlyRows: _hourlyRows }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("pages");
 
   return (

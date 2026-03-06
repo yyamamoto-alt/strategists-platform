@@ -60,7 +60,7 @@ function isSupportStarted(c: CustomerWithRelations): boolean {
 
 function isCourseStarted(c: CustomerWithRelations): boolean {
   const s = c.pipeline?.stage;
-  return s === "成約" || s === "入金済" || (s?.startsWith("追加指導") ?? false);
+  return s === "成約" || s === "入金済";
 }
 
 interface WeeklyStats {
@@ -157,11 +157,41 @@ function getAttributeColor(attr: string | null | undefined): string {
   return "bg-gray-700 text-gray-400";
 }
 
-type TabKey = "list" | "weekly";
+type TabKey = "list" | "weekly" | "monthly";
+
+const RESKILLING_UNIT = 203636;
+
+interface MonthlyStats {
+  month: string; // "2026-02" etc
+  label: string; // "2026年2月"
+  courseStarted: number;
+  reskillingExpense: number;
+}
+
+function generateMonths(): string[] {
+  const months: string[] = [];
+  const start = new Date(2026, 1, 1); // 2026-02
+  const today = new Date();
+  const limit = new Date(today.getFullYear(), today.getMonth() + 1, 1); // next month start
+  let current = new Date(start);
+  while (current < limit) {
+    const yyyy = current.getFullYear();
+    const mm = String(current.getMonth() + 1).padStart(2, "0");
+    months.push(`${yyyy}-${mm}`);
+    current.setMonth(current.getMonth() + 1);
+  }
+  return months;
+}
+
+function formatMonthLabel(m: string): string {
+  const [y, mm] = m.split("-");
+  return `${y}年${parseInt(mm)}月`;
+}
 
 export function SubsidyClient({ customers, firstPaidMap }: Props) {
   const [activeTab, setActiveTab] = useState<TabKey>("weekly");
   const weekEnds = useMemo(() => generateWeekEnds(), []);
+  const months = useMemo(() => generateMonths(), []);
   const columns = useMemo(() => buildColumns(firstPaidMap), [firstPaidMap]);
 
   const subsidyCustomers = useMemo(
@@ -172,7 +202,7 @@ export function SubsidyClient({ customers, firstPaidMap }: Props) {
   const weeklyStats: WeeklyStats[] = useMemo(() => {
     return weekEnds.map((weekEnd) => {
       const collected = subsidyCustomers.filter((c) => {
-        const d = normalizeDate(c.application_date);
+        const d = normalizeDate(c.pipeline?.sales_date);
         return d > SUBSIDY_START && d <= weekEnd;
       }).length;
 
@@ -192,6 +222,24 @@ export function SubsidyClient({ customers, firstPaidMap }: Props) {
     });
   }, [weekEnds, subsidyCustomers]);
 
+  const monthlyStats: MonthlyStats[] = useMemo(() => {
+    return months.map((month) => {
+      const courseStarted = subsidyCustomers.filter((c) => {
+        if (!isCourseStarted(c)) return false;
+        const d = normalizeDate(firstPaidMap[c.id]) || normalizeDate(c.contract?.payment_date) || normalizeDate(c.pipeline?.sales_date);
+        return d.startsWith(month);
+      }).length;
+      return {
+        month,
+        label: formatMonthLabel(month),
+        courseStarted,
+        reskillingExpense: courseStarted * RESKILLING_UNIT,
+      };
+    });
+  }, [months, subsidyCustomers, firstPaidMap]);
+
+  const monthlyTotal = useMemo(() => monthlyStats.reduce((s, m) => s + m.reskillingExpense, 0), [monthlyStats]);
+
   const latest = weeklyStats[weeklyStats.length - 1];
 
   return (
@@ -208,6 +256,7 @@ export function SubsidyClient({ customers, firstPaidMap }: Props) {
           <div className="flex gap-0.5 bg-surface-elevated rounded-lg p-0.5 border border-white/10">
             {([
               { key: "weekly" as TabKey, label: "週次推移" },
+              { key: "monthly" as TabKey, label: "月次推移" },
               { key: "list" as TabKey, label: "対象者リスト" },
             ]).map((tab) => (
               <button
@@ -229,9 +278,9 @@ export function SubsidyClient({ customers, firstPaidMap }: Props) {
         {latest && (
           <div className="grid grid-cols-3 gap-4">
             {[
-              { label: "集客人数", value: latest.collected, sub: "サービスへの登録者数", color: "text-blue-400" },
+              { label: "集客人数", value: latest.collected, sub: "対象者リスト全員", color: "text-blue-400" },
               { label: "支援開始人数", value: latest.supported, sub: "営業実施済み", color: "text-green-400" },
-              { label: "講座受講開始人数", value: latest.courseStarted, sub: "成約 + 追加指導", color: "text-purple-400" },
+              { label: "講座受講開始人数", value: latest.courseStarted, sub: "成約のみ", color: "text-purple-400" },
             ].map((item) => (
               <div key={item.label} className="bg-surface-card border border-white/10 rounded-xl p-5">
                 <p className="text-xs text-gray-500">{item.label}</p>
@@ -255,32 +304,56 @@ export function SubsidyClient({ customers, firstPaidMap }: Props) {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-white/10">
-                    <th className="text-left px-6 py-3 text-gray-400 font-medium">指標</th>
-                    {weeklyStats.map((w) => (
-                      <th key={w.weekEnd} className="text-center px-4 py-3 text-gray-400 font-medium whitespace-nowrap">
-                        {w.label}
-                      </th>
-                    ))}
+                    <th className="text-left px-6 py-3 text-gray-400 font-medium">期間</th>
+                    <th className="text-center px-4 py-3 text-gray-400 font-medium">集客人数</th>
+                    <th className="text-center px-4 py-3 text-gray-400 font-medium">支援開始人数</th>
+                    <th className="text-center px-4 py-3 text-gray-400 font-medium">講座受講開始人数</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr className="border-b border-white/5">
-                    <td className="px-6 py-3 text-gray-300 font-medium">集客人数</td>
-                    {weeklyStats.map((w) => (
-                      <td key={w.weekEnd} className="text-center px-4 py-3 text-white font-semibold">{w.collected}</td>
-                    ))}
+                  {[...weeklyStats].reverse().map((w) => (
+                    <tr key={w.weekEnd} className="border-b border-white/5">
+                      <td className="px-6 py-3 text-gray-300 font-medium whitespace-nowrap">{w.label}</td>
+                      <td className="text-center px-4 py-3 text-white font-semibold">{w.collected}</td>
+                      <td className="text-center px-4 py-3 text-white font-semibold">{w.supported}</td>
+                      <td className="text-center px-4 py-3 text-white font-semibold">{w.courseStarted}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* 月次推移テーブル */}
+        {activeTab === "monthly" && (
+          <div className="bg-surface-card border border-white/10 rounded-xl overflow-hidden">
+            <div className="px-6 py-4 border-b border-white/10">
+              <h2 className="text-lg font-semibold text-white">月次推移</h2>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-white/10">
+                    <th className="text-left px-6 py-3 text-gray-400 font-medium">月</th>
+                    <th className="text-center px-4 py-3 text-gray-400 font-medium">講座受講開始人数</th>
+                    <th className="text-right px-6 py-3 text-gray-400 font-medium whitespace-nowrap">リスキリング経費（追加補助部分以外）</th>
                   </tr>
-                  <tr className="border-b border-white/5">
-                    <td className="px-6 py-3 text-gray-300 font-medium">支援開始人数</td>
-                    {weeklyStats.map((w) => (
-                      <td key={w.weekEnd} className="text-center px-4 py-3 text-white font-semibold">{w.supported}</td>
-                    ))}
-                  </tr>
-                  <tr>
-                    <td className="px-6 py-3 text-gray-300 font-medium">講座受講開始人数</td>
-                    {weeklyStats.map((w) => (
-                      <td key={w.weekEnd} className="text-center px-4 py-3 text-white font-semibold">{w.courseStarted}</td>
-                    ))}
+                </thead>
+                <tbody>
+                  {[...monthlyStats].reverse().map((m) => (
+                    <tr key={m.month} className="border-b border-white/5">
+                      <td className="px-6 py-3 text-gray-300 font-medium">{m.label}</td>
+                      <td className="text-center px-4 py-3 text-white font-semibold">{m.courseStarted}人</td>
+                      <td className="text-right px-6 py-3 text-white font-semibold">{formatCurrency(m.reskillingExpense)}</td>
+                    </tr>
+                  ))}
+                  <tr className="border-t border-white/10 bg-white/5">
+                    <td className="px-6 py-3 text-gray-200 font-bold">合計</td>
+                    <td className="text-center px-4 py-3 text-white font-bold">
+                      {monthlyStats.reduce((s, m) => s + m.courseStarted, 0)}人
+                    </td>
+                    <td className="text-right px-6 py-3 text-white font-bold">{formatCurrency(monthlyTotal)}</td>
                   </tr>
                 </tbody>
               </table>

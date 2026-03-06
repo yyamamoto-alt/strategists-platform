@@ -242,6 +242,59 @@ export async function GET(request: Request) {
     }
     results.search = searchRows.length;
 
+    // ========================================
+    // 4. GA4: 時間帯別KPI (analytics_page_hourly)
+    // ========================================
+    const ga4Hourly = await fetchGA4Report(accessToken, {
+      dateRanges: [{ startDate: dateStr, endDate: dateStr }],
+      dimensions: [
+        { name: "hour" },
+        { name: "pagePath" },
+      ],
+      metrics: [
+        { name: "screenPageViews" },
+        { name: "sessions" },
+        { name: "totalUsers" },
+      ],
+      limit: "1000",
+      orderBys: [{ dimension: { dimensionName: "hour" }, desc: false }],
+    });
+
+    // Aggregate by (hour, segment)
+    const hourlyAgg: Record<string, { pageviews: number; sessions: number; users: number }> = {};
+    for (const r of ga4Hourly.rows || []) {
+      const hour = parseInt(r.dimensionValues[0].value);
+      const pagePath = r.dimensionValues[1].value;
+      const segment = classifySegment(pagePath);
+      const key = `${hour}::${segment}`;
+      if (!hourlyAgg[key]) {
+        hourlyAgg[key] = { pageviews: 0, sessions: 0, users: 0 };
+      }
+      hourlyAgg[key].pageviews += parseInt(r.metricValues[0].value);
+      hourlyAgg[key].sessions += parseInt(r.metricValues[1].value);
+      hourlyAgg[key].users += parseInt(r.metricValues[2].value);
+    }
+
+    const hourlyRows = Object.entries(hourlyAgg).map(([key, vals]) => {
+      const [hourStr, segment] = key.split("::");
+      return {
+        date: dateStr,
+        hour: parseInt(hourStr),
+        segment,
+        pageviews: vals.pageviews,
+        sessions: vals.sessions,
+        users: vals.users,
+      };
+    });
+
+    if (hourlyRows.length > 0) {
+      const { error } = await supabase
+        .from("analytics_page_hourly")
+        .upsert(hourlyRows, { onConflict: "date,hour,segment" });
+      if (error) throw new Error(`Hourly upsert error: ${error.message}`);
+    }
+    results.hourly = hourlyRows.length;
+
     return NextResponse.json({
       success: true,
       date: dateStr,
