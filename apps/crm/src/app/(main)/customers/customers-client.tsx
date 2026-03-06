@@ -34,6 +34,7 @@ import {
 interface CustomersClientProps {
   customers: CustomerWithRelations[];
   attributionMap: Record<string, ChannelAttribution>;
+  firstPaidMap: Record<string, string>;
 }
 
 // 日付フォーマット: YY/MM/DD（26/02/21形式）
@@ -201,7 +202,7 @@ function InlineStageSelect({ customerId, currentStage, onUpdate }: { customerId:
   );
 }
 
-export function CustomersClient({ customers, attributionMap }: CustomersClientProps) {
+export function CustomersClient({ customers, attributionMap, firstPaidMap }: CustomersClientProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const initialSearch = searchParams.get("search") || "";
@@ -452,8 +453,8 @@ export function CustomersClient({ customers, attributionMap }: CustomersClientPr
         render: (c) => <span className="text-xs">{c.pipeline?.alternative_application || "-"}</span> },
 
       { key: "payment_date", label: "入金日", width: 78, category: "sales",
-        render: (c) => <span className="text-xs">{fmtDate(c.contract?.payment_date)}</span>,
-        sortValue: (c) => c.contract?.payment_date || "" },
+        render: (c) => <span className="text-xs">{fmtDate(firstPaidMap[c.id] || c.contract?.payment_date)}</span>,
+        sortValue: (c) => firstPaidMap[c.id] || c.contract?.payment_date || "" },
       { key: "additional_notes", label: "[追加]学び", width: 140, category: "sales",        render: (c) => c.pipeline?.additional_notes || "-" },
 
       // ─── 追加指導（営業） ───

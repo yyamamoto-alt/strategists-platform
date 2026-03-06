@@ -340,7 +340,7 @@ function buildBasicFields(c: CustomerWithRelations): FieldDef[] {
   ];
 }
 
-function buildContractFields(c: CustomerWithRelations): FieldDef[] {
+function buildContractFields(c: CustomerWithRelations, firstPaidDate?: string | null): FieldDef[] {
   if (!c.contract) return [];
   return [
     { key: "plan_name", label: "プラン", source: "manual", table: "contract", getValue: () => c.contract?.plan_name || "-" },
@@ -349,7 +349,7 @@ function buildContractFields(c: CustomerWithRelations): FieldDef[] {
     { key: "first_amount", label: "一次金額", source: "manual", type: "number", table: "contract", getValue: () => c.contract?.first_amount ? formatCurrency(c.contract.first_amount) : "-" },
     { key: "discount", label: "割引", source: "manual", type: "number", table: "contract", getValue: () => c.contract?.discount ? formatCurrency(c.contract.discount) : "なし" },
     { key: "billing_status", label: "請求状況", source: "manual", type: "select", options: ["未請求", "請求済", "入金済", "返金済"], table: "contract", getValue: () => c.contract?.billing_status || "-" },
-    { key: "payment_date", label: "入金日", source: "manual", type: "date", table: "contract", getValue: () => formatDate(c.contract?.payment_date ?? null) },
+    { key: "payment_date", label: "入金日", source: "manual", type: "date", table: "contract", getValue: () => formatDate(firstPaidDate || c.contract?.payment_date || null) },
     { key: "subsidy_eligible", label: "補助金対象", source: "manual", type: "select", options: ["true", "false"], table: "contract", getValue: () => c.contract?.subsidy_eligible ? "対象" : "非対象" },
     { key: "enrollment_status", label: "受講状況", source: "manual", type: "select", options: [
       "受講中", "受講終了", "受講終了(未定)", "受講終了(将来)", "受講終了(不明)", "卒業(内定)", "卒業(落ち)", "単発(対象外)", "離脱",
@@ -920,7 +920,11 @@ export function CustomerDetailClient({
   };
 
   const basicFields = useMemo(() => buildBasicFields(customer), [customer]);
-  const contractFields = useMemo(() => buildContractFields(customer), [customer]);
+  const firstPaidDate = useMemo(() => {
+    const paid = orders.filter(o => o.status === "paid" && o.paid_at).sort((a, b) => (a.paid_at! > b.paid_at! ? 1 : -1));
+    return paid.length > 0 ? paid[0].paid_at!.split("T")[0].split(" ")[0] : null;
+  }, [orders]);
+  const contractFields = useMemo(() => buildContractFields(customer, firstPaidDate), [customer, firstPaidDate]);
   const pipelineFields = useMemo(() => buildPipelineFields(customer), [customer]);
   const learningFields = useMemo(() => buildLearningFields(customer, applicationHistory), [customer, applicationHistory]);
   const agentFields = useMemo(() => buildAgentFields(customer), [customer]);

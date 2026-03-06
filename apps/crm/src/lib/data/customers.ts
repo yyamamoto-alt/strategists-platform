@@ -34,6 +34,30 @@ async function fetchCustomersRaw(): Promise<CustomerWithRelations[]> {
 /** 顧客データ取得 */
 export const fetchCustomersWithRelations = fetchCustomersRaw;
 
+/** orders.paid_at から顧客ごとの最初の支払日を取得 */
+export async function fetchFirstPaidDates(): Promise<Record<string, string>> {
+  const supabase = createServiceClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db = supabase as any;
+  const { data } = await db
+    .from("orders")
+    .select("customer_id, paid_at")
+    .eq("status", "paid")
+    .not("customer_id", "is", null)
+    .not("paid_at", "is", null)
+    .order("paid_at", { ascending: true });
+
+  const map: Record<string, string> = {};
+  if (data) {
+    for (const row of data) {
+      if (row.customer_id && row.paid_at && !map[row.customer_id]) {
+        map[row.customer_id] = row.paid_at.split("T")[0].split(" ")[0];
+      }
+    }
+  }
+  return map;
+}
+
 export async function fetchCustomerById(
   id: string
 ): Promise<{ customer: CustomerWithRelations; activities: Activity[] } | null> {
