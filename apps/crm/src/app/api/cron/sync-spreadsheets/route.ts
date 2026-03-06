@@ -21,7 +21,9 @@ export async function GET(request: Request) {
   const { data: connections, error: connError } = await db
     .from("spreadsheet_connections")
     .select("*")
-    .eq("is_active", true);
+    .eq("is_active", true)
+    .limit(100)
+    .order("name");
 
   if (connError || !connections || connections.length === 0) {
     return NextResponse.json({
