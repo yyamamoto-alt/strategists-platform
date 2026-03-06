@@ -47,10 +47,14 @@ function isSubsidyTarget(c: CustomerWithRelations): boolean {
   if (isShinsotsu(c.attribute)) return false;
   const appDate = normalizeDate(c.application_date);
   const salesDate = normalizeDate(c.pipeline?.sales_date);
-  // 申込日が2/10より後 → 無条件で対象
+  // 申込日が2/10より後 → 無条件で対象（未実施/noshowでもOK）
   if (appDate > SUBSIDY_START) return true;
-  // 申込日が2/10以前 → 営業日が2/10より後の場合のみ対象
-  if (salesDate > SUBSIDY_START) return true;
+  // 申込日が2/10以前 → 営業日が2/10より後 かつ 未実施/noshowは除外
+  if (salesDate > SUBSIDY_START) {
+    const status = c.pipeline?.deal_status;
+    if (status === "未実施" || status === "noshow" || status === "no-show") return false;
+    return true;
+  }
   return false;
 }
 
