@@ -11,7 +11,7 @@ import type {
 
 /* ───────── Types ───────── */
 type MainTab = "seo" | "lp";
-type SeoSub = "summary" | "pages" | "ctr" | "cannibalization" | "decay" | "keywords" | "hourly";
+type SeoSub = "pages" | "ctr" | "cannibalization" | "decay" | "keywords" | "hourly";
 type Period = "week" | "month";
 type Metric = "pageviews" | "sessions" | "users";
 
@@ -116,107 +116,6 @@ function SubTab({ label, active, onClick }: { label: string; active: boolean; on
 /* ═══════════════════════════════════════════
    SEO SUMMARY
    ═══════════════════════════════════════════ */
-function SeoSummary({ searchQueries, searchDailyRows, pageDailyRows }: {
-  searchQueries: SearchQueryRow[];
-  searchDailyRows: SearchDailyRow[];
-  pageDailyRows: PageDailyRow[];
-}) {
-  const stats = useMemo(() => {
-    const now = daysAgo(1);
-    const d14 = daysAgo(14);
-    const d28 = daysAgo(28);
-
-    const recent = searchDailyRows.filter(r => r.date > d14 && r.date <= now);
-    const prev = searchDailyRows.filter(r => r.date > d28 && r.date <= d14);
-
-    const recentClicks = recent.reduce((s, r) => s + r.clicks, 0);
-    const prevClicks = prev.reduce((s, r) => s + r.clicks, 0);
-    const recentImpressions = recent.reduce((s, r) => s + r.impressions, 0);
-    const prevImpressions = prev.reduce((s, r) => s + r.impressions, 0);
-    const recentCtr = recentImpressions > 0 ? recentClicks / recentImpressions : 0;
-    const prevCtr = prevImpressions > 0 ? prevClicks / prevImpressions : 0;
-    const recentPosSum = recent.reduce((s, r) => s + r.position * r.impressions, 0);
-    const prevPosSum = prev.reduce((s, r) => s + r.position * r.impressions, 0);
-    const recentAvgPos = recentImpressions > 0 ? recentPosSum / recentImpressions : 0;
-    const prevAvgPos = prevImpressions > 0 ? prevPosSum / prevImpressions : 0;
-
-    let top3 = 0, top10 = 0, top20 = 0, below = 0;
-    for (const q of searchQueries) {
-      if (q.position <= 3) top3++;
-      else if (q.position <= 10) top10++;
-      else if (q.position <= 20) top20++;
-      else below++;
-    }
-
-    const recentBlog = pageDailyRows.filter(r => r.date > d14 && r.date <= now && r.segment === "blog");
-    const prevBlog = pageDailyRows.filter(r => r.date > d28 && r.date <= d14 && r.segment === "blog");
-    const recentBlogUU = recentBlog.reduce((s, r) => s + r.users, 0);
-    const prevBlogUU = prevBlog.reduce((s, r) => s + r.users, 0);
-
-    return {
-      recentClicks, prevClicks, recentImpressions, prevImpressions,
-      recentCtr, prevCtr, recentAvgPos, prevAvgPos,
-      top3, top10, top20, below, total: searchQueries.length,
-      recentBlogUU, prevBlogUU,
-    };
-  }, [searchQueries, searchDailyRows, pageDailyRows]);
-
-  return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-5 gap-3">
-        {[
-          { label: "検索クリック (2w)", val: stats.recentClicks.toLocaleString(), cur: stats.recentClicks, prv: stats.prevClicks },
-          { label: "検索表示 (2w)", val: stats.recentImpressions.toLocaleString(), cur: stats.recentImpressions, prv: stats.prevImpressions },
-          { label: "平均CTR", val: `${(stats.recentCtr * 100).toFixed(1)}%`, cur: stats.recentCtr * 1000, prv: stats.prevCtr * 1000 },
-          { label: "平均順位", val: stats.recentAvgPos.toFixed(1), isPos: true },
-          { label: "ブログUU (2w)", val: stats.recentBlogUU.toLocaleString(), cur: stats.recentBlogUU, prv: stats.prevBlogUU },
-        ].map(c => (
-          <div key={c.label} className="bg-surface-raised border border-white/10 rounded-xl p-4">
-            <p className="text-[10px] text-gray-500 uppercase tracking-wider">{c.label}</p>
-            <p className="text-xl font-bold text-white mt-1">{c.val}</p>
-            <div className="text-xs mt-1">
-              {c.isPos
-                ? (stats.recentAvgPos < stats.prevAvgPos
-                  ? <span className="text-green-400">↑{(stats.prevAvgPos - stats.recentAvgPos).toFixed(1)}上昇</span>
-                  : stats.recentAvgPos > stats.prevAvgPos
-                  ? <span className="text-red-400">↓{(stats.recentAvgPos - stats.prevAvgPos).toFixed(1)}下降</span>
-                  : <span className="text-gray-500">→</span>)
-                : trendArrow(c.cur || 0, c.prv || 0)
-              }
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="bg-surface-raised border border-white/10 rounded-xl p-5">
-        <h3 className="text-sm font-medium text-gray-300 mb-4">順位分布（{stats.total}キーワード）</h3>
-        <div className="flex gap-2 h-8">
-          {[
-            { label: "Top 3", count: stats.top3, color: "bg-green-500" },
-            { label: "4-10位", count: stats.top10, color: "bg-blue-500" },
-            { label: "11-20位", count: stats.top20, color: "bg-yellow-500" },
-            { label: "20位以下", count: stats.below, color: "bg-gray-500" },
-          ].map(b => {
-            const pct = stats.total > 0 ? (b.count / stats.total) * 100 : 0;
-            if (pct === 0) return null;
-            return (
-              <div key={b.label} className={`${b.color} rounded flex items-center justify-center text-[10px] text-white font-medium`}
-                style={{ width: `${pct}%` }} title={`${b.label}: ${b.count}件 (${pct.toFixed(0)}%)`}>
-                {pct > 8 && `${b.label} ${b.count}`}
-              </div>
-            );
-          })}
-        </div>
-        <div className="flex gap-4 mt-3 text-xs text-gray-400">
-          <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded bg-green-500" />Top 3: {stats.top3}</span>
-          <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded bg-blue-500" />4-10位: {stats.top10}</span>
-          <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded bg-yellow-500" />11-20位: {stats.top20}</span>
-          <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded bg-gray-500" />20位以下: {stats.below}</span>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 /* ═══════════════════════════════════════════
    PAGE KPI TABLE (heatmap + trend)
@@ -654,8 +553,8 @@ function KeywordTracking({ searchDailyRows }: { searchDailyRows: SearchDailyRow[
     const wks = Array.from(allWeeks).sort();
 
     const sorted = Array.from(qMap.values())
-      .filter(q => q.totalImp >= 50)
-      .sort((a, b) => b.totalImp - a.totalImp)
+      .filter(q => q.totalClicks > 0 || q.totalImp >= 50)
+      .sort((a, b) => b.totalClicks - a.totalClicks)
       .slice(0, 50)
       .map(q => {
         const positions: (number | null)[] = wks.map(wk => {
@@ -729,16 +628,30 @@ function KeywordTracking({ searchDailyRows }: { searchDailyRows: SearchDailyRow[
    ═══════════════════════════════════════════ */
 const DAY_LABELS = ["月", "火", "水", "木", "金", "土", "日"];
 
+// 5時〜翌4時（29時表記）の24スロット
+const HOUR_SLOTS = [5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,0,1,2,3,4];
+const HOUR_LABELS = ["5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21","22","23","24","25","26","27","28"];
+
 function HourlyHeatmap({ hourlyRows }: { hourlyRows: HourlyRow[] }) {
   const { cells, maxVal } = useMemo(() => {
+    // cells[dow][slotIndex] — dow: 0=月〜6=日, slotIndex: 0〜23 (5時〜28時)
     const c: number[][] = Array.from({ length: 7 }, () => Array(24).fill(0));
     let mv = 0;
     for (const r of hourlyRows) {
-      const d = new Date(r.date);
-      let dow = d.getDay() - 1;
+      const d = new Date(r.date + "T00:00:00");
+      let dow = d.getDay() - 1; // 0=月
       if (dow < 0) dow = 6;
-      c[dow][r.hour] += r.users;
-      if (c[dow][r.hour] > mv) mv = c[dow][r.hour];
+
+      // 0-4時は前日扱い（28時概念）
+      if (r.hour < 5) {
+        dow = dow === 0 ? 6 : dow - 1; // 前日の曜日に
+      }
+
+      const slotIdx = HOUR_SLOTS.indexOf(r.hour);
+      if (slotIdx >= 0) {
+        c[dow][slotIdx] += r.users;
+        if (c[dow][slotIdx] > mv) mv = c[dow][slotIdx];
+      }
     }
     return { cells: c, maxVal: mv };
   }, [hourlyRows]);
@@ -763,23 +676,25 @@ function HourlyHeatmap({ hourlyRows }: { hourlyRows: HourlyRow[] }) {
 
   return (
     <div className="space-y-4">
-      <p className="text-xs text-gray-500">曜日x時間帯のユーザー数（90日合計）。記事投稿やSNS投稿のベストタイミングの参考に</p>
+      <p className="text-xs text-gray-500">曜日x時間帯のユーザー数（90日合計）。5時〜翌4時（24〜28時は深夜帯）</p>
       <div className="bg-surface-raised border border-white/10 rounded-xl p-5">
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
             <thead><tr>
               <th className="w-10" />
-              {Array.from({ length: 24 }, (_, i) => (
-                <th key={i} className="text-center text-gray-500 py-1 px-0.5 w-10">{i}</th>
+              {HOUR_LABELS.map((label, i) => (
+                <th key={i} className={`text-center py-1 px-0.5 w-10 ${
+                  i >= 19 ? "text-gray-600" : "text-gray-500"
+                }`}>{label}</th>
               ))}
             </tr></thead>
             <tbody>
               {DAY_LABELS.map((day, di) => (
                 <tr key={di}>
                   <td className="text-gray-400 font-medium py-0.5 pr-2 text-right">{day}</td>
-                  {cells[di].map((val, hi) => (
-                    <td key={hi} className={`text-center py-2 px-0.5 ${cellColor(val)} rounded-sm`}
-                      title={`${day}曜 ${hi}時: ${val}UU`}>
+                  {cells[di].map((val, si) => (
+                    <td key={si} className={`text-center py-2 px-0.5 ${cellColor(val)} rounded-sm`}
+                      title={`${day}曜 ${HOUR_LABELS[si]}時: ${val}UU`}>
                       <span className={val > 0 ? "text-white/70 text-[10px]" : "text-transparent text-[10px]"}>
                         {val > 0 ? val : "."}
                       </span>
@@ -905,7 +820,6 @@ function TrafficTabContent({ traffic, landingPage }: { traffic: TrafficDaily[]; 
    MAIN EXPORT
    ═══════════════════════════════════════════ */
 const SEO_SUBS: { key: SeoSub; label: string }[] = [
-  { key: "summary", label: "サマリー" },
   { key: "pages", label: "ページ別KPI" },
   { key: "ctr", label: "CTR改善" },
   { key: "cannibalization", label: "カニバリ検出" },
@@ -916,7 +830,7 @@ const SEO_SUBS: { key: SeoSub; label: string }[] = [
 
 export function AnalyticsClient({ pageDailyRows, traffic, searchQueries, searchDailyRows, hourlyRows }: Props) {
   const [mainTab, setMainTab] = useState<MainTab>("seo");
-  const [seoSub, setSeoSub] = useState<SeoSub>("summary");
+  const [seoSub, setSeoSub] = useState<SeoSub>("pages");
   const [lpTab, setLpTab] = useState<"main" | "lp3">("main");
 
   return (
@@ -938,7 +852,6 @@ export function AnalyticsClient({ pageDailyRows, traffic, searchQueries, searchD
               <SubTab key={s.key} label={s.label} active={seoSub === s.key} onClick={() => setSeoSub(s.key)} />
             ))}
           </div>
-          {seoSub === "summary" && <SeoSummary searchQueries={searchQueries} searchDailyRows={searchDailyRows} pageDailyRows={pageDailyRows} />}
           {seoSub === "pages" && <PagesTab pageDailyRows={pageDailyRows} searchQueries={searchQueries} />}
           {seoSub === "ctr" && <CtrOpportunities searchQueries={searchQueries} />}
           {seoSub === "cannibalization" && <CannibalizationDetection searchQueries={searchQueries} />}
