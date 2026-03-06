@@ -17,6 +17,24 @@ export interface PageDaily {
   schedule_visits: number;
 }
 
+export interface PageAggregated {
+  page_path: string;
+  page_title: string | null;
+  segment: string;
+  pageviews: number;
+  sessions: number;
+  users: number;
+  avg_session_duration: number;
+  schedule_visits: number;
+}
+
+export interface DailyTrend {
+  date: string;
+  pageviews: number;
+  sessions: number;
+  users: number;
+}
+
 export interface TrafficDaily {
   date: string;
   landing_page: string;
@@ -40,96 +58,109 @@ export interface SearchDaily {
   position: number;
 }
 
-// 日付範囲のデフォルト（直近7日）
-function defaultDateRange(): { from: string; to: string } {
+export interface SearchByPage {
+  page_path: string;
+  queries: {
+    query: string;
+    clicks: number;
+    impressions: number;
+    ctr: number;
+    position: number;
+  }[];
+  total_clicks: number;
+}
+
+function dateRange(days: number): { from: string; to: string } {
   const to = new Date();
   to.setDate(to.getDate() - 1);
   const from = new Date(to);
-  from.setDate(from.getDate() - 6);
+  from.setDate(from.getDate() - (days - 1));
   return {
     from: from.toISOString().slice(0, 10),
     to: to.toISOString().slice(0, 10),
   };
 }
 
-// 前の期間
-function previousDateRange(from: string, to: string): { from: string; to: string } {
-  const fromDate = new Date(from);
-  const toDate = new Date(to);
-  const diff = toDate.getTime() - fromDate.getTime();
-  const prevTo = new Date(fromDate.getTime() - 86400000);
-  const prevFrom = new Date(prevTo.getTime() - diff);
-  return {
-    from: prevFrom.toISOString().slice(0, 10),
-    to: prevTo.toISOString().slice(0, 10),
-  };
-}
-
-/** ブログ記事別KPI（期間集計） */
-export async function fetchBlogArticles(
-  dateFrom?: string,
-  dateTo?: string
-): Promise<PageDaily[]> {
-  const { from, to } = dateFrom && dateTo ? { from: dateFrom, to: dateTo } : defaultDateRange();
+/** 全ページ日別生データ（グラフ用トレンド + テーブル集計） */
+export async function fetchAllPages(days: number = 90): Promise<{
+  aggregated: PageAggregated[];
+  trend: DailyTrend[];
+}> {
+  const { from, to } = dateRange(days);
 
   const { data, error } = await supabase()
     .from("analytics_page_daily")
-    .select("*")
-    .eq("segment", "blog")
+    .select("date,page_path,page_title,segment,pageviews,sessions,users,avg_session_duration,schedule_visits")
     .gte("date", from)
     .lte("date", to)
-    .order("pageviews", { ascending: false });
+    .order("date", { ascending: true });
 
   if (error) throw new Error(error.message);
+  const rows: PageDaily[] = data || [];
 
-  // 同じpage_pathの日別データを集約
-  const map = new Map<string, PageDaily>();
-  for (const row of data || []) {
-    const existing = map.get(row.page_path);
+  // ページ別集計
+  const pageMap = new Map<string, PageAggregated>();
+  for (const row of rows) {
+    const existing = pageMap.get(row.page_path);
     if (existing) {
       existing.pageviews += row.pageviews;
       existing.sessions += row.sessions;
       existing.users += row.users;
-      existing.new_users += row.new_users;
       existing.schedule_visits += row.schedule_visits;
-      // 平均値は加重平均
-      const totalSessions = existing.sessions;
-      if (totalSessions > 0) {
-        existing.avg_session_duration =
-          (existing.avg_session_duration * (totalSessions - row.sessions) +
-            row.avg_session_duration * row.sessions) /
-          totalSessions;
-      }
     } else {
-      map.set(row.page_path, { ...row });
+      pageMap.set(row.page_path, {
+        page_path: row.page_path,
+        page_title: row.page_title,
+        segment: row.segment,
+        pageviews: row.pageviews,
+        sessions: row.sessions,
+        users: row.users,
+        avg_session_duration: row.avg_session_duration,
+        schedule_visits: row.schedule_visits,
+      });
     }
   }
 
-  return Array.from(map.values()).sort((a, b) => b.pageviews - a.pageviews);
+  // 日別トレンド集計
+  const trendMap = new Map<string, DailyTrend>();
+  for (const row of rows) {
+    const existing = trendMap.get(row.date);
+    if (existing) {
+      existing.pageviews += row.pageviews;
+      existing.sessions += row.sessions;
+      existing.users += row.users;
+    } else {
+      trendMap.set(row.date, {
+        date: row.date,
+        pageviews: row.pageviews,
+        sessions: row.sessions,
+        users: row.users,
+      });
+    }
+  }
+
+  return {
+    aggregated: Array.from(pageMap.values()).sort((a, b) => b.pageviews - a.pageviews),
+    trend: Array.from(trendMap.values()).sort((a, b) => a.date.localeCompare(b.date)),
+  };
 }
 
 /** LP流入経路別（期間集計） */
-export async function fetchTrafficSources(
-  landingPage: string,
-  dateFrom?: string,
-  dateTo?: string
-): Promise<TrafficDaily[]> {
-  const { from, to } = dateFrom && dateTo ? { from: dateFrom, to: dateTo } : defaultDateRange();
+export async function fetchTrafficSources(days: number = 90): Promise<TrafficDaily[]> {
+  const { from, to } = dateRange(days);
 
   const { data, error } = await supabase()
     .from("analytics_traffic_daily")
     .select("*")
-    .eq("landing_page", landingPage)
     .gte("date", from)
     .lte("date", to)
     .order("sessions", { ascending: false });
 
   if (error) throw new Error(error.message);
 
-  // source+medium+campaign で集約
   const map = new Map<string, TrafficDaily>();
   for (const row of data || []) {
-    const key = `${row.source}|${row.medium}|${row.campaign}`;
+    const key = `${row.landing_page}|${row.source}|${row.medium}|${row.campaign}`;
     const existing = map.get(key);
     if (existing) {
       existing.sessions += row.sessions;
@@ -144,82 +175,70 @@ export async function fetchTrafficSources(
   return Array.from(map.values()).sort((a, b) => b.sessions - a.sessions);
 }
 
-/** 検索クエリ（ブログ or LP） */
-export async function fetchSearchQueries(
-  pageFilter?: string,
-  dateFrom?: string,
-  dateTo?: string
-): Promise<SearchDaily[]> {
-  const { from, to } = dateFrom && dateTo ? { from: dateFrom, to: dateTo } : defaultDateRange();
+/** 検索クエリ（全ページ、ページごとにグルーピング、直近1ヶ月） */
+export async function fetchSearchByPage(): Promise<SearchByPage[]> {
+  const { from, to } = dateRange(30);
 
-  let query = supabase()
+  const { data, error } = await supabase()
     .from("analytics_search_daily")
     .select("*")
     .gte("date", from)
-    .lte("date", to);
-
-  if (pageFilter) {
-    query = query.like("page_path", `${pageFilter}%`);
-  }
-
-  const { data, error } = await query.order("clicks", { ascending: false }).limit(100);
+    .lte("date", to)
+    .order("clicks", { ascending: false })
+    .limit(500);
 
   if (error) throw new Error(error.message);
 
-  // query単位で集約
-  const map = new Map<string, SearchDaily>();
+  // page_path × query で集約
+  const queryMap = new Map<string, { query: string; page_path: string; clicks: number; impressions: number; position_sum: number }>();
   for (const row of data || []) {
     const key = `${row.page_path}|${row.query}`;
-    const existing = map.get(key);
+    const existing = queryMap.get(key);
     if (existing) {
       existing.clicks += row.clicks;
       existing.impressions += row.impressions;
-      existing.ctr = existing.clicks / existing.impressions;
-      // position は加重平均
-      existing.position =
-        (existing.position * (existing.impressions - row.impressions) +
-          row.position * row.impressions) /
-        existing.impressions;
+      existing.position_sum += row.position * row.impressions;
     } else {
-      map.set(key, { ...row });
+      queryMap.set(key, {
+        query: row.query,
+        page_path: row.page_path,
+        clicks: row.clicks,
+        impressions: row.impressions,
+        position_sum: row.position * row.impressions,
+      });
     }
   }
 
-  return Array.from(map.values()).sort((a, b) => b.clicks - a.clicks);
-}
+  // ページごとにグルーピング
+  const pageMap = new Map<string, SearchByPage>();
+  for (const item of Array.from(queryMap.values())) {
+    const ctr = item.impressions > 0 ? item.clicks / item.impressions : 0;
+    const position = item.impressions > 0 ? item.position_sum / item.impressions : 0;
+    const entry = {
+      query: item.query,
+      clicks: item.clicks,
+      impressions: item.impressions,
+      ctr,
+      position,
+    };
 
-/** サマリーKPI（今週 vs 前週） */
-export async function fetchSummaryKPI(dateFrom?: string, dateTo?: string) {
-  const { from, to } = dateFrom && dateTo ? { from: dateFrom, to: dateTo } : defaultDateRange();
-  const prev = previousDateRange(from, to);
+    const existing = pageMap.get(item.page_path);
+    if (existing) {
+      existing.queries.push(entry);
+      existing.total_clicks += item.clicks;
+    } else {
+      pageMap.set(item.page_path, {
+        page_path: item.page_path,
+        queries: [entry],
+        total_clicks: item.clicks,
+      });
+    }
+  }
 
-  const [currentPages, prevPages, currentTrafficMain, currentTrafficLp3] = await Promise.all([
-    supabase().from("analytics_page_daily").select("pageviews,sessions,users,schedule_visits").gte("date", from).lte("date", to),
-    supabase().from("analytics_page_daily").select("pageviews,sessions,users,schedule_visits").gte("date", prev.from).lte("date", prev.to),
-    supabase().from("analytics_traffic_daily").select("sessions,schedule_visits").eq("landing_page", "/").gte("date", from).lte("date", to),
-    supabase().from("analytics_traffic_daily").select("sessions,schedule_visits").eq("landing_page", "/lp3/").gte("date", from).lte("date", to),
-  ]);
-
-  const sum = (rows: { data: Record<string, number>[] | null }, key: string) =>
-    (rows.data || []).reduce((s, r) => s + (r[key] || 0), 0);
-
-  const current = {
-    pageviews: sum(currentPages, "pageviews"),
-    sessions: sum(currentPages, "sessions"),
-    users: sum(currentPages, "users"),
-    schedule_visits: sum(currentPages, "schedule_visits"),
-    lp_main_sessions: sum(currentTrafficMain, "sessions"),
-    lp_main_cv: sum(currentTrafficMain, "schedule_visits"),
-    lp3_sessions: sum(currentTrafficLp3, "sessions"),
-    lp3_cv: sum(currentTrafficLp3, "schedule_visits"),
-  };
-
-  const previous = {
-    pageviews: sum(prevPages, "pageviews"),
-    sessions: sum(prevPages, "sessions"),
-    users: sum(prevPages, "users"),
-    schedule_visits: sum(prevPages, "schedule_visits"),
-  };
-
-  return { current, previous, dateRange: { from, to }, prevDateRange: prev };
+  // ページをtotal_clicks降順、各ページ内のクエリもclicks降順
+  const result = Array.from(pageMap.values()).sort((a, b) => b.total_clicks - a.total_clicks);
+  for (const page of result) {
+    page.queries.sort((a, b) => b.clicks - a.clicks);
+  }
+  return result;
 }

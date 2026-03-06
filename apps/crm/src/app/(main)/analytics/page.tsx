@@ -1,32 +1,25 @@
 export const dynamic = "force-dynamic";
 
 import {
-  fetchBlogArticles,
+  fetchAllPages,
   fetchTrafficSources,
-  fetchSearchQueries,
-  fetchSummaryKPI,
+  fetchSearchByPage,
 } from "@/lib/data/analytics";
 import { AnalyticsClient } from "./analytics-client";
 
 export default async function AnalyticsPage() {
-  const [summary, blogArticles, trafficMain, trafficLp3, searchBlog, searchLp] =
-    await Promise.all([
-      fetchSummaryKPI(),
-      fetchBlogArticles(),
-      fetchTrafficSources("/"),
-      fetchTrafficSources("/lp3/"),
-      fetchSearchQueries("/blog/"),
-      fetchSearchQueries("/"),
-    ]);
+  const [pages, traffic, searchByPage] = await Promise.all([
+    fetchAllPages(90),
+    fetchTrafficSources(90),
+    fetchSearchByPage(),
+  ]);
 
   return (
     <AnalyticsClient
-      summary={summary}
-      blogArticles={blogArticles}
-      trafficMain={trafficMain}
-      trafficLp3={trafficLp3}
-      searchBlog={searchBlog}
-      searchLp={searchLp}
+      aggregatedPages={pages.aggregated}
+      dailyTrend={pages.trend}
+      traffic={traffic}
+      searchByPage={searchByPage}
     />
   );
 }
