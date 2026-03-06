@@ -179,29 +179,35 @@ export async function GET(request: Request) {
         ? connection.last_synced_row + dataRows.length
         : dataRows.length + 1;
 
-      await Promise.all([
-        syncLog &&
-          db
-            .from("sync_logs")
-            .update({
-              finished_at: new Date().toISOString(),
-              status: "success",
-              rows_processed: dataRows.length,
-              rows_created: rowsCreated,
-              rows_updated: rowsUpdated,
-              rows_unmatched: rowsUnmatched,
-              details: { records: syncedRecords, rows_skipped: rowsSkipped },
-            })
-            .eq("id", syncLog.id),
-        db
-          .from("spreadsheet_connections")
+      // sync_log更新
+      if (syncLog) {
+        await db
+          .from("sync_logs")
           .update({
-            last_synced_at: new Date().toISOString(),
-            last_synced_row: totalRow,
-            updated_at: new Date().toISOString(),
+            finished_at: new Date().toISOString(),
+            status: "success",
+            rows_processed: dataRows.length,
+            rows_created: rowsCreated,
+            rows_updated: rowsUpdated,
+            rows_unmatched: rowsUnmatched,
+            details: { records: syncedRecords, rows_skipped: rowsSkipped },
           })
-          .eq("id", connection.id),
-      ]);
+          .eq("id", syncLog.id);
+      }
+
+      // connection更新（last_synced_row）— エラーチェック付き
+      const { error: updateError } = await db
+        .from("spreadsheet_connections")
+        .update({
+          last_synced_at: new Date().toISOString(),
+          last_synced_row: totalRow,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", connection.id);
+
+      if (updateError) {
+        console.error(`Failed to update last_synced_row for ${connection.name}:`, updateError);
+      }
 
       results.push({
         connection: connection.name,
@@ -210,6 +216,12 @@ export async function GET(request: Request) {
         rows_updated: rowsUpdated,
         rows_unmatched: rowsUnmatched,
         rows_skipped: rowsSkipped,
+        _debug: {
+          startRow: startRow ?? null,
+          prevLastSyncedRow: connection.last_synced_row,
+          totalRow,
+          updateError: updateError?.message || null,
+        },
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Sync failed";
