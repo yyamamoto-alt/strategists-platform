@@ -23,6 +23,7 @@ import {
   calcScheduleProgress,
   isAgentCustomer,
   isAgentConfirmed,
+  isShinsotsu,
   getSubsidyAmount,
   getSchoolRevenue,
 } from "@/lib/calc-fields";
@@ -141,7 +142,6 @@ const VIEW_COLUMNS: Record<ViewTab, string[] | null> = {
     "referral_fee_rate", "margin",
     "placement_confirmed", "placement_date",
     "agent_staff", "agent_memo", "loss_reason",
-    "subsidy_period_eligible",
   ],
   subsidy: [
     "application_date", "name", "attribute", "stage", "deal_status", "subsidy_eligible",
@@ -295,7 +295,14 @@ export function CustomersClient({ customers, attributionMap }: CustomersClientPr
     if (subsidyFilter === "subsidy") {
       result = result.filter((c) => c.contract?.subsidy_eligible);
     } else if (subsidyFilter === "period") {
-      result = result.filter((c) => c.contract?.subsidy_period_eligible);
+      // 補助金期間対象: 既卒 かつ (申込日 or 営業日が 2026-02-10 より後)
+      const cutoff = "2026-02-10";
+      result = result.filter((c) => {
+        if (isShinsotsu(c.attribute)) return false;
+        const appDate = c.application_date || "";
+        const salesDate = c.pipeline?.sales_date || "";
+        return appDate > cutoff || salesDate > cutoff;
+      });
     }
     return result;
   }, [customers, attributeFilter, stageFilter, contractFilter, subsidyFilter]);
@@ -513,8 +520,6 @@ export function CustomersClient({ customers, attributionMap }: CustomersClientPr
         render: (c) => <span className="text-xs">{c.agent?.agent_staff || "-"}</span> },
       { key: "agent_memo", label: "エージェント業務メモ", width: 150, category: "agent",        render: (c) => c.agent?.agent_memo || "-" },
       { key: "loss_reason", label: "失注理由", width: 140, category: "agent",        render: (c) => c.agent?.loss_reason || "-" },
-      { key: "subsidy_period_eligible", label: "補助金期間対象", width: 100, category: "agent",
-        render: (c) => c.contract?.subsidy_period_eligible ? <span className="text-emerald-400 text-xs">対象</span> : "-" },
 
       // ═══ エデュケーション（緑） ═══
       { key: "offer_company", label: "内定先", width: 120, category: "education",
