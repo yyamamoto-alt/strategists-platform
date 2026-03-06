@@ -29,31 +29,40 @@ export function formatPercent(value: number | null): string {
 
 export function getStageColor(stage: string): string {
   const colors: Record<string, string> = {
-    // アクティブ
-    日程未確: "bg-slate-500/20 text-slate-300",
-    日程確定: "bg-blue-500/20 text-blue-300",
-    検討中: "bg-sky-500/20 text-sky-300",
-    長期検討: "bg-indigo-500/20 text-indigo-300",
-    面談実施: "bg-violet-500/20 text-violet-300",
-    提案中: "bg-amber-500/20 text-amber-300",
-    保留: "bg-orange-500/20 text-orange-300",
-    // 成約系
-    成約: "bg-green-500/25 text-green-300",
-    入金済: "bg-emerald-500/25 text-emerald-300",
-    その他購入: "bg-teal-500/20 text-teal-300",
-    動画講座購入: "bg-teal-500/20 text-teal-300",
-    追加指導: "bg-emerald-500/20 text-emerald-300",
-    // 失注系
-    失注: "bg-red-500/25 text-red-300",
-    失注見込: "bg-orange-500/20 text-orange-300",
-    "失注見込(自動)": "bg-orange-500/20 text-orange-300",
-    CL: "bg-red-500/20 text-red-300",
-    全額返金: "bg-rose-500/20 text-rose-300",
-    // 未実施系
-    NoShow: "bg-amber-500/20 text-amber-300",
-    未実施: "bg-yellow-500/20 text-yellow-300",
-    実施不可: "bg-yellow-500/20 text-yellow-300",
-    非実施対象: "bg-gray-500/20 text-gray-400",
+    // 成約系（赤）
+    成約: "bg-red-500/25 text-red-300",
+    入金済: "bg-red-500/25 text-red-300",
+    "成約(追加指導経由)": "bg-red-500/25 text-red-300",
+    "成約見込(未入金)": "bg-red-600/25 text-red-400",
+    // 追加指導・購入系（オレンジ）
+    追加指導: "bg-orange-500/25 text-orange-300",
+    枠確保: "bg-orange-500/25 text-orange-300",
+    動画講座購入: "bg-orange-400/20 text-orange-200",
+    その他購入: "bg-orange-400/20 text-orange-200",
+    // 検討系（黄色）
+    検討中: "bg-yellow-500/25 text-yellow-300",
+    "追加指導(検討中)": "bg-yellow-500/25 text-yellow-300",
+    // 未実施系（青）
+    未実施: "bg-blue-400/25 text-blue-300",
+    日程未確: "bg-gray-400/20 text-gray-300",
+    日程確定: "bg-blue-400/25 text-blue-300",
+    // 失注・ネガティブ系（ダーク）
+    失注: "bg-gray-800/40 text-gray-400",
+    失注見込: "bg-gray-800/40 text-gray-400",
+    "失注見込(自動)": "bg-gray-800/40 text-gray-400",
+    長期検討: "bg-gray-800/40 text-gray-400",
+    CL: "bg-gray-700/40 text-gray-400",
+    NoShow: "bg-amber-800/30 text-amber-400",
+    実施不可: "bg-amber-800/30 text-amber-400",
+    "途中解約(成約)": "bg-gray-800/40 text-gray-400",
+    "追加指導(NoShow)": "bg-gray-800/40 text-gray-400",
+    "追加指導(失注)": "bg-gray-800/40 text-gray-400",
+    "追加指導(CL)": "bg-gray-800/40 text-gray-400",
+    キャンセル: "bg-gray-800/40 text-gray-400",
+    直前キャンセル: "bg-gray-800/40 text-gray-400",
+    // 紫系
+    非実施対象: "bg-purple-500/25 text-purple-300",
+    全額返金: "bg-purple-600/25 text-purple-300",
     // レガシー
     問い合わせ: "bg-slate-500/20 text-slate-300",
     その他: "bg-gray-500/20 text-gray-400",
