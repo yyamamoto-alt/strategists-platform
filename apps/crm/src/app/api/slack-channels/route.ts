@@ -38,7 +38,9 @@ export async function GET() {
     } while (cursor);
 
     channels.sort((a, b) => a.name.localeCompare(b.name));
-    return NextResponse.json(channels);
+    return NextResponse.json(channels, {
+      headers: { "Cache-Control": "no-store, max-age=0" },
+    });
   } catch (err) {
     console.error("Slack channels fetch error:", err);
     return NextResponse.json({ error: "Slackチャンネルの取得に失敗しました" }, { status: 500 });
