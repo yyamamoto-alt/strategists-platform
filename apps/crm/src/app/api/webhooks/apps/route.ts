@@ -3,7 +3,7 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { matchCustomer } from "@/lib/customer-matching";
 import { upsertOrder } from "@/lib/data/orders";
 import { normalizeAppsPayment } from "@/lib/order-normalizers";
-import { sendSlackNotification } from "@/lib/slack";
+import { notifyPaymentError } from "@/lib/slack";
 import type { Order } from "@strategy-school/shared-db";
 import crypto from "crypto";
 
@@ -97,7 +97,7 @@ export async function POST(request: Request) {
       ? `https://strategists-crm.vercel.app/customers/${match.customer_id}`
       : null;
 
-    await sendSlackNotification(
+    await notifyPaymentError(
       `🚨 決済エラー: ${name}\n商品: ${plan}\nカード: ${card}\n${errorMsg}${customerUrl ? `\n${customerUrl}` : ""}`
     );
   }

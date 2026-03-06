@@ -1,4 +1,5 @@
 import { createServiceClient } from "@/lib/supabase/server";
+import { notifyStageTransition } from "@/lib/slack";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -77,6 +78,15 @@ export async function GET(request: Request) {
         .in("id", idsToTransition);
       results["検討中等→失注見込(自動)"] = count || idsToTransition.length;
     }
+  }
+
+  // Slack通知
+  const totalTransitioned = Object.values(results).reduce((s, n) => s + n, 0);
+  if (totalTransitioned > 0) {
+    const lines = Object.entries(results).map(([k, v]) => `  ${k}: ${v}件`);
+    await notifyStageTransition(
+      `📋 ステージ自動遷移: ${totalTransitioned}件\n${lines.join("\n")}`
+    );
   }
 
   return NextResponse.json({

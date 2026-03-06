@@ -102,6 +102,28 @@ const SECTIONS: SettingsSectionConfig[] = [
     ],
   },
   {
+    title: "Slack連携",
+    description: "Slack通知の設定を管理します。Incoming Webhook URLを設定すると、各種イベントがSlackに通知されます。",
+    fields: [
+      {
+        key: "slack_webhook_url",
+        label: "Webhook URL",
+        type: "text",
+        placeholder: "https://hooks.slack.com/services/...",
+      },
+      {
+        key: "slack_notify_payment_error",
+        label: "決済エラー通知",
+        type: "toggle",
+      },
+      {
+        key: "slack_notify_stage_transition",
+        label: "ステージ自動遷移通知",
+        type: "toggle",
+      },
+    ],
+  },
+  {
     title: "表示設定",
     description: "日付・通貨などの表示フォーマットを設定します。",
     fields: [
