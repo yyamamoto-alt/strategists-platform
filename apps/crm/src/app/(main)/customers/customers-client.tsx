@@ -121,7 +121,7 @@ const VIEW_COLUMNS: Record<ViewTab, string[] | null> = {
     "attendance_rate", "session_completion_rate", "progress_status",
     "level_fermi", "level_case", "level_mck",
     "progress_text", "selection_status", "level_up_range",
-    "initial_coaching_level", "enrollment_form_date",
+    "initial_coaching_level",
     "coaching_requests", "enrollment_reason",
     "behavior_session1", "behavior_session2",
     "assessment_session1", "assessment_session2",
@@ -421,10 +421,6 @@ export function CustomersClient({ customers, attributionMap }: CustomersClientPr
         render: (c) => <span className="text-xs">{fmtDate(c.pipeline?.sales_date)}</span>,
         sortValue: (c) => c.pipeline?.sales_date || "" },
 
-      { key: "meeting_conducted", label: "面談実施日", width: 78, category: "sales",
-        render: (c) => <span className="text-xs">{fmtDate(c.pipeline?.meeting_conducted_date)}</span>,
-        sortValue: (c) => c.pipeline?.meeting_conducted_date || "" },
-
       { key: "probability", label: "確度", width: 60, align: "right" as const, category: "sales",
         render: (c) => c.pipeline?.probability != null ? formatPercent(c.pipeline.probability) : "-",
         sortValue: (c) => c.pipeline?.probability || 0 },
@@ -564,8 +560,6 @@ export function CustomersClient({ customers, attributionMap }: CustomersClientPr
         render: (c) => <span className="text-xs">{c.learning?.level_up_range || "-"}</span> },
       { key: "initial_coaching_level", label: "指導開始時レベル", width: 110, category: "education",
         render: (c) => <span className="text-xs">{c.learning?.initial_coaching_level || "-"}</span> },
-      { key: "enrollment_form_date", label: "入会フォーム日", width: 78, category: "education",
-        render: (c) => <span className="text-xs">{fmtDate(c.learning?.enrollment_form_date)}</span> },
       { key: "coaching_requests", label: "指導要望", width: 160, category: "education",        render: (c) => c.learning?.coaching_requests || "-" },
       { key: "enrollment_reason", label: "入会理由", width: 160, category: "education",        render: (c) => c.learning?.enrollment_reason || "-" },
       { key: "behavior_session1", label: "ビヘイビア1", width: 120, category: "education",        render: (c) => c.learning?.behavior_session1 || "-" },

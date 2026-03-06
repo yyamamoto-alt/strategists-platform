@@ -36,12 +36,13 @@ export function SalesClient({ customers }: SalesClientProps) {
     let leadTimeDays: number[] = [];
 
     for (const c of customers) {
-      // 今月面談
-      if (c.pipeline?.meeting_conducted_date?.startsWith(thisMonth)) {
+      // 今月営業実施
+      if (c.pipeline?.sales_date?.startsWith(thisMonth)) {
         meetingsThisMonth++;
       }
-      // 今月成約
-      if (c.pipeline?.closing_date?.startsWith(thisMonth)) {
+      // 今月成約（成約ステージ + 営業日が今月）
+      const isClosed = c.pipeline?.stage === "成約" || c.pipeline?.stage === "入金済" || c.pipeline?.stage === "成約(追加指導経由)";
+      if (isClosed && c.pipeline?.sales_date?.startsWith(thisMonth)) {
         closedThisMonth++;
       }
       // パイプライン総額（未成約のみ）
@@ -53,10 +54,10 @@ export function SalesClient({ customers }: SalesClientProps) {
       ) {
         pipelineTotal += c.pipeline.projected_amount || 0;
       }
-      // リードタイム
-      if (c.pipeline?.closing_date && c.application_date) {
+      // リードタイム（成約者: 営業日 - 申込日）
+      if (isClosed && c.pipeline?.sales_date && c.application_date) {
         const diff =
-          new Date(c.pipeline.closing_date).getTime() -
+          new Date(c.pipeline.sales_date).getTime() -
           new Date(c.application_date).getTime();
         if (diff > 0) leadTimeDays.push(diff / (1000 * 60 * 60 * 24));
       }
@@ -138,13 +139,6 @@ export function SalesClient({ customers }: SalesClientProps) {
         sortValue: (c) => c.pipeline?.meeting_scheduled_date || "",
       },
       {
-        key: "meeting_conducted",
-        label: "面談実施日",
-        width: 100,
-        render: (c) => formatDate(c.pipeline?.meeting_conducted_date ?? null),
-        sortValue: (c) => c.pipeline?.meeting_conducted_date || "",
-      },
-      {
         key: "meeting_result",
         label: "面談結果",
         width: 160,
@@ -189,20 +183,6 @@ export function SalesClient({ customers }: SalesClientProps) {
             {c.pipeline?.comparison_services || "-"}
           </span>
         ),
-      },
-      {
-        key: "closing_date",
-        label: "成約日",
-        width: 100,
-        render: (c) => formatDate(c.pipeline?.closing_date ?? null),
-        sortValue: (c) => c.pipeline?.closing_date || "",
-      },
-      {
-        key: "payment_date",
-        label: "入金日",
-        width: 100,
-        render: (c) => formatDate(c.pipeline?.payment_date ?? null),
-        sortValue: (c) => c.pipeline?.payment_date || "",
       },
       {
         key: "confirmed_amount",
@@ -256,13 +236,6 @@ export function SalesClient({ customers }: SalesClientProps) {
         label: "リードタイム",
         width: 100,
         render: (c) => c.pipeline?.lead_time || "-",
-      },
-      {
-        key: "postponement_date",
-        label: "保留日",
-        width: 100,
-        render: (c) => formatDate(c.pipeline?.postponement_date ?? null),
-        sortValue: (c) => c.pipeline?.postponement_date || "",
       },
     ],
     []

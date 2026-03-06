@@ -56,7 +56,7 @@ function isStageClosed(stage: string | undefined | null): boolean {
 
 /** 期間文字列を取得（Excel PL準拠: 申込月ベース） */
 function getPeriod(c: CustomerWithRelations): string | null {
-  const date = c.application_date || c.pipeline?.closing_date;
+  const date = c.application_date || c.pipeline?.sales_date;
   if (!date) return null;
   return date.slice(0, 7).replace("-", "/");
 }

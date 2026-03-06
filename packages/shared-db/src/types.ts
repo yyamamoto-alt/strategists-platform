@@ -122,18 +122,14 @@ export interface SalesPipeline {
   stage: PipelineStage;
   deal_status: DealStatus;
   meeting_scheduled_date: string | null;
-  meeting_conducted_date: string | null;
   meeting_result: string | null;
   agent_interest_at_application: boolean;
   sales_date: string | null;
-  closing_date: string | null;
-  payment_date: string | null;
   sales_content: string | null;
   sales_strategy: string | null;
   decision_factor: string | null;
   comparison_services: string | null;
   second_meeting_category: string | null;
-  postponement_date: string | null;
   lead_time: string | null;
   ninety_day_message: string | null;
   agent_confirmation: string | null;
@@ -142,6 +138,10 @@ export interface SalesPipeline {
   projected_amount?: number | null;
   probability?: number | null;
   response_date?: string | null;
+  sales_date_2?: string | null;
+  sales_date_3?: string | null;
+  response_date_2?: string | null;
+  response_date_3?: string | null;
   sales_person?: string | null;
   jicoo_message?: string | null;
   marketing_memo?: string | null;
@@ -150,8 +150,6 @@ export interface SalesPipeline {
   performance_reward_category?: string | null;
   google_ads_target?: string | null;
   alternative_application?: string | null;
-  status_confirmed_date?: string | null;
-  status_final_date?: string | null;
   sales_form_status?: string | null;
   additional_sales_content?: string | null;
   additional_plan?: string | null;
@@ -267,7 +265,6 @@ export interface LearningRecord {
   offer_probability_at_end?: string | null;
   additional_coaching_proposal?: string | null;
   initial_coaching_level?: string | null;
-  enrollment_form_date?: string | null;
   coaching_requests?: string | null;
   enrollment_reason?: string | null;
   behavior_session1?: string | null;

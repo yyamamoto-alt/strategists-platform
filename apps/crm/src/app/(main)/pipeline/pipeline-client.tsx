@@ -111,7 +111,7 @@ export function PipelineClient({ customers }: PipelineClientProps) {
       // 成約は直近2週間のみ
       if (stageDef.recentOnly) {
         stageCustomers = stageCustomers.filter((c) => {
-          const closingDate = c.pipeline?.closing_date || c.pipeline?.payment_date || c.application_date;
+          const closingDate = c.pipeline?.sales_date || c.contract?.payment_date || c.application_date;
           return closingDate && closingDate >= twoWeeksAgo;
         });
       }

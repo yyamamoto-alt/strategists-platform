@@ -587,9 +587,9 @@ function buildPipelineFields(c: CustomerWithRelations): FieldDef[] {
     ], table: "pipeline", getValue: () => c.pipeline?.deal_status || "-" },
     { key: "probability", label: "営業角度", source: "manual", type: "number", table: "pipeline", getValue: () => c.pipeline?.probability != null ? formatPercent(c.pipeline.probability) : "-" },
     { key: "meeting_scheduled_date", label: "面談予定日", source: "manual", type: "date", table: "pipeline", getValue: () => formatDate(c.pipeline?.meeting_scheduled_date ?? null) },
-    { key: "meeting_conducted_date", label: "面談実施日", source: "manual", type: "date", table: "pipeline", getValue: () => formatDate(c.pipeline?.meeting_conducted_date ?? null) },
-    { key: "sales_date", label: "営業日", source: "manual", type: "date", table: "pipeline", getValue: () => formatDate(c.pipeline?.sales_date ?? null) },
-    { key: "closing_date", label: "成約日", source: "manual", type: "date", table: "pipeline", getValue: () => formatDate(c.pipeline?.closing_date ?? null) },
+    { key: "sales_date", label: "営業日①", source: "manual", type: "date", table: "pipeline", getValue: () => formatDate(c.pipeline?.sales_date ?? null) },
+    { key: "sales_date_2", label: "営業日②", source: "manual", type: "date", table: "pipeline", getValue: () => formatDate(c.pipeline?.sales_date_2 ?? null) },
+    { key: "sales_date_3", label: "営業日③", source: "manual", type: "date", table: "pipeline", getValue: () => formatDate(c.pipeline?.sales_date_3 ?? null) },
     { key: "agent_interest", label: "エージェント希望", source: "sync", getValue: () => c.pipeline?.agent_interest_at_application ? "あり" : "なし" },
     { key: "decision_factor", label: "決め手", source: "manual", table: "pipeline", getValue: () => c.pipeline?.decision_factor || "-" },
     { key: "comparison_services", label: "比較サービス", source: "manual", table: "pipeline", getValue: () => c.pipeline?.comparison_services || "-" },
@@ -597,14 +597,15 @@ function buildPipelineFields(c: CustomerWithRelations): FieldDef[] {
     { key: "sales_content", label: "営業内容", source: "manual", type: "textarea", table: "pipeline", getValue: () => c.pipeline?.sales_content || "-" },
     { key: "sales_strategy", label: "営業方針", source: "manual", type: "textarea", table: "pipeline", getValue: () => c.pipeline?.sales_strategy || "-" },
     { key: "jicoo_message", label: "jicooメッセージ", source: "manual", type: "textarea", table: "pipeline", getValue: () => c.pipeline?.jicoo_message || "-" },
-    { key: "response_date", label: "返答日", source: "manual", type: "date", table: "pipeline", getValue: () => formatDate(c.pipeline?.response_date ?? null) },
+    { key: "response_date", label: "返答日①", source: "manual", type: "date", table: "pipeline", getValue: () => formatDate(c.pipeline?.response_date ?? null) },
+    { key: "response_date_2", label: "返答日②", source: "manual", type: "date", table: "pipeline", getValue: () => formatDate(c.pipeline?.response_date_2 ?? null) },
+    { key: "response_date_3", label: "返答日③", source: "manual", type: "date", table: "pipeline", getValue: () => formatDate(c.pipeline?.response_date_3 ?? null) },
     { key: "alternative_application", label: "別経由応募", source: "manual", table: "pipeline", getValue: () => c.pipeline?.alternative_application || "-" },
     { key: "additional_sales_content", label: "[追加指導]営業内容", source: "manual", type: "textarea", table: "pipeline", getValue: () => c.pipeline?.additional_sales_content || "-" },
     { key: "additional_plan", label: "[追加指導]プラン", source: "manual", table: "pipeline", getValue: () => c.pipeline?.additional_plan || "-" },
     { key: "projected_amount", label: "売上見込", source: "manual", type: "number", table: "pipeline", getValue: () => c.pipeline?.projected_amount ? formatCurrency(c.pipeline.projected_amount) : "-" },
     { key: "meeting_result", label: "面談結果", source: "manual", type: "textarea", table: "pipeline", getValue: () => c.pipeline?.meeting_result || "-" },
     { key: "second_meeting_category", label: "二次面談区分", source: "manual", table: "pipeline", getValue: () => c.pipeline?.second_meeting_category || "-" },
-    { key: "postponement_date", label: "延期日", source: "manual", type: "date", table: "pipeline", getValue: () => formatDate(c.pipeline?.postponement_date ?? null) },
     { key: "lead_time", label: "リードタイム", source: "sync", getValue: () => c.pipeline?.lead_time || "-" },
     { key: "initial_channel", label: "初回認知経路", source: "sync", getValue: () => c.pipeline?.initial_channel || "-" },
     { key: "marketing_memo", label: "マーケメモ", source: "manual", type: "textarea", table: "pipeline", getValue: () => c.pipeline?.marketing_memo || "-" },
@@ -615,8 +616,6 @@ function buildPipelineFields(c: CustomerWithRelations): FieldDef[] {
     { key: "google_ads_target", label: "Google広告成果対象", source: "sync", getValue: () => c.pipeline?.google_ads_target || "-" },
     { key: "ninety_day_message", label: "90日メッセージ", source: "manual", type: "textarea", table: "pipeline", getValue: () => c.pipeline?.ninety_day_message || "-" },
     { key: "sales_form_status", label: "営業フォーム提出状況", source: "sync", getValue: () => c.pipeline?.sales_form_status || "-" },
-    { key: "status_confirmed_date", label: "ステータス確定日", source: "sync", getValue: () => formatDate(c.pipeline?.status_confirmed_date ?? null) },
-    { key: "status_final_date", label: "ステータス最終確定日", source: "sync", getValue: () => formatDate(c.pipeline?.status_final_date ?? null) },
     { key: "additional_discount_info", label: "[追加指導]割引案内", source: "manual", table: "pipeline", getValue: () => c.pipeline?.additional_discount_info || "-" },
     { key: "additional_notes", label: "[追加指導]学び", source: "manual", table: "pipeline", getValue: () => c.pipeline?.additional_notes || "-" },
   ];
@@ -643,7 +642,6 @@ function buildLearningFields(c: CustomerWithRelations, appHistory?: ApplicationH
     { key: "level_mck", label: "McK", source: "sync", getValue: () => c.learning?.level_mck || "-" },
     { key: "weekly_sessions", label: "週あたり指導数", source: "manual", type: "number", table: "learning", getValue: () => c.learning?.weekly_sessions?.toString() || "-" },
     { key: "extension_days", label: "延長(日)", source: "manual", type: "number", table: "learning", getValue: () => c.learning?.extension_days?.toString() || "-" },
-    { key: "enrollment_form_date", label: "入会フォーム提出日", source: "sync", getValue: () => formatDate(c.learning?.enrollment_form_date ?? null) },
     { key: "coaching_requests", label: "指導要望", source: "manual", type: "textarea", table: "learning", getValue: () => c.learning?.coaching_requests || "-" },
     { key: "enrollment_reason", label: "入会理由", source: "manual", type: "textarea", table: "learning", getValue: () => c.learning?.enrollment_reason || "-" },
     { key: "selection_status", label: "選考状況", source: "manual", table: "learning", getValue: () => c.learning?.selection_status || "-" },
@@ -812,7 +810,7 @@ export function CustomerDetailClient({
     // pipeline fields
     if (customer.pipeline) {
       const p = customer.pipeline as unknown as Record<string, unknown>;
-      for (const key of ["stage", "deal_status", "probability", "meeting_scheduled_date", "meeting_conducted_date", "sales_date", "closing_date", "decision_factor", "sales_content", "sales_strategy"]) {
+      for (const key of ["stage", "deal_status", "probability", "meeting_scheduled_date", "sales_date", "sales_date_2", "sales_date_3", "response_date", "response_date_2", "response_date_3", "decision_factor", "sales_content", "sales_strategy"]) {
         vals[`pipeline.${key}`] = p[key] != null ? String(p[key]) : "";
       }
     }
