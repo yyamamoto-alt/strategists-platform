@@ -61,7 +61,7 @@ export async function fetchPageDailyRows(days: number = 90): Promise<PageDailyRo
   return data || [];
 }
 
-/** LP流入経路（90日集計） */
+/** LP流入経路（90日、日別生データ） */
 export async function fetchTrafficSources(days: number = 90): Promise<TrafficDaily[]> {
   const { from, to } = dateRange(days);
 
@@ -70,25 +70,10 @@ export async function fetchTrafficSources(days: number = 90): Promise<TrafficDai
     .select("*")
     .gte("date", from)
     .lte("date", to)
-    .order("sessions", { ascending: false });
+    .order("date", { ascending: true });
 
   if (error) throw new Error(error.message);
-
-  const map = new Map<string, TrafficDaily>();
-  for (const row of data || []) {
-    const key = `${row.landing_page}|${row.source}|${row.medium}|${row.campaign}`;
-    const existing = map.get(key);
-    if (existing) {
-      existing.sessions += row.sessions;
-      existing.users += row.users;
-      existing.new_users += row.new_users;
-      existing.schedule_visits += row.schedule_visits;
-    } else {
-      map.set(key, { ...row });
-    }
-  }
-
-  return Array.from(map.values()).sort((a, b) => b.sessions - a.sessions);
+  return data || [];
 }
 
 /** 検索クエリ（30日、ページ×クエリ集計済み） */

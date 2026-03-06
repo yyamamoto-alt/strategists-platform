@@ -9,6 +9,12 @@ import type {
 
 type Tab = "pages" | "traffic_main" | "traffic_lp3";
 type Period = "week" | "month";
+type Metric = "pageviews" | "sessions" | "users";
+const METRIC_LABELS: Record<Metric, string> = {
+  pageviews: "PV",
+  sessions: "セッション",
+  users: "ユーザー",
+};
 
 interface Props {
   pageDailyRows: PageDailyRow[];
@@ -82,8 +88,8 @@ interface AggregatedPage {
   page_path: string;
   page_title: string | null;
   segment_label: string;
-  total_pv: number;
-  periods: Record<string, number>;
+  totals: Record<Metric, number>;
+  periods: Record<string, Record<Metric, number>>;
 }
 
 function TabButton({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
@@ -109,13 +115,15 @@ function PagesTab({
   searchQueries: SearchQueryRow[];
 }) {
   const [period, setPeriod] = useState<Period>("week");
+  const [metric, setMetric] = useState<Metric>("pageviews");
   const [expandedPage, setExpandedPage] = useState<string | null>(null);
 
-  const { pages, periodKeys, maxPV } = useMemo(() => {
+  const { pages, periodKeys } = useMemo(() => {
     const getPeriodKey = period === "week" ? getWeekKey : getMonthKey;
 
     const pageMap = new Map<string, AggregatedPage>();
     const allPeriodKeys = new Set<string>();
+    const emptyTotals = (): Record<Metric, number> => ({ pageviews: 0, sessions: 0, users: 0 });
 
     for (const row of pageDailyRows) {
       const pk = getPeriodKey(row.date);
@@ -123,31 +131,47 @@ function PagesTab({
 
       const existing = pageMap.get(row.page_path);
       if (existing) {
-        existing.total_pv += row.pageviews;
-        existing.periods[pk] = (existing.periods[pk] || 0) + row.pageviews;
+        existing.totals.pageviews += row.pageviews;
+        existing.totals.sessions += row.sessions;
+        existing.totals.users += row.users;
+        if (!existing.periods[pk]) existing.periods[pk] = emptyTotals();
+        existing.periods[pk].pageviews += row.pageviews;
+        existing.periods[pk].sessions += row.sessions;
+        existing.periods[pk].users += row.users;
       } else {
+        const t = emptyTotals();
+        t.pageviews = row.pageviews;
+        t.sessions = row.sessions;
+        t.users = row.users;
+        const prd = emptyTotals();
+        prd.pageviews = row.pageviews;
+        prd.sessions = row.sessions;
+        prd.users = row.users;
         pageMap.set(row.page_path, {
           page_path: row.page_path,
           page_title: row.page_title,
           segment_label: row.segment ? classifyLabel(row.segment) : classifyFromPath(row.page_path),
-          total_pv: row.pageviews,
-          periods: { [pk]: row.pageviews },
+          totals: t,
+          periods: { [pk]: prd },
         });
       }
     }
 
     const sortedKeys = Array.from(allPeriodKeys).sort();
-    const sortedPages = Array.from(pageMap.values()).sort((a, b) => b.total_pv - a.total_pv);
+    const sortedPages = Array.from(pageMap.values()).sort((a, b) => b.totals[metric] - a.totals[metric]);
 
-    let maxVal = 0;
-    for (const p of sortedPages) {
-      for (const v of Object.values(p.periods)) {
-        if (v > maxVal) maxVal = v;
+    return { pages: sortedPages, periodKeys: sortedKeys };
+  }, [pageDailyRows, period, metric]);
+
+  const maxVal = useMemo(() => {
+    let mv = 0;
+    for (const p of pages) {
+      for (const prd of Object.values(p.periods)) {
+        if (prd[metric] > mv) mv = prd[metric];
       }
     }
-
-    return { pages: sortedPages, periodKeys: sortedKeys, maxPV: maxVal };
-  }, [pageDailyRows, period]);
+    return mv;
+  }, [pages, metric]);
 
   const queriesForPage = useMemo(() => {
     if (!expandedPage) return [];
@@ -160,18 +184,33 @@ function PagesTab({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-xs text-gray-500">{pages.length} ページ / 過去90日</p>
-        <div className="flex gap-1 bg-white/5 rounded-lg p-0.5">
-          {(["week", "month"] as const).map((p) => (
-            <button
-              key={p}
-              onClick={() => setPeriod(p)}
-              className={`px-3 py-1 text-xs rounded-md transition-colors ${
-                period === p ? "bg-brand text-white" : "text-gray-400 hover:text-white"
-              }`}
-            >
-              {p === "week" ? "週別" : "月別"}
-            </button>
-          ))}
+        <div className="flex items-center gap-3">
+          <div className="flex gap-1 bg-white/5 rounded-lg p-0.5">
+            {(["pageviews", "sessions", "users"] as const).map((m) => (
+              <button
+                key={m}
+                onClick={() => setMetric(m)}
+                className={`px-3 py-1 text-xs rounded-md transition-colors ${
+                  metric === m ? "bg-brand text-white" : "text-gray-400 hover:text-white"
+                }`}
+              >
+                {METRIC_LABELS[m]}
+              </button>
+            ))}
+          </div>
+          <div className="flex gap-1 bg-white/5 rounded-lg p-0.5">
+            {(["week", "month"] as const).map((p) => (
+              <button
+                key={p}
+                onClick={() => setPeriod(p)}
+                className={`px-3 py-1 text-xs rounded-md transition-colors ${
+                  period === p ? "bg-brand text-white" : "text-gray-400 hover:text-white"
+                }`}
+              >
+                {p === "week" ? "週別" : "月別"}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -180,9 +219,9 @@ function PagesTab({
           <table className="w-full text-xs">
             <thead className="sticky top-0 bg-surface-raised z-10">
               <tr className="border-b border-white/10">
-                <th className="text-left py-2.5 px-3 text-gray-400 w-10">種別</th>
+                <th className="text-left py-2.5 px-3 text-gray-400 w-20">種別</th>
                 <th className="text-left py-2.5 px-3 text-gray-400 min-w-[250px]">ページ</th>
-                <th className="text-right py-2.5 px-2 text-gray-400 w-16">合計PV</th>
+                <th className="text-right py-2.5 px-2 text-gray-400 w-20">合計</th>
                 {periodKeys.map((pk) => (
                   <th key={pk} className="text-center py-2.5 px-1 text-gray-500 w-16 whitespace-nowrap">
                     {periodLabel(pk, period)}
@@ -226,12 +265,12 @@ function PagesTab({
                         </div>
                       </td>
                       <td className="text-right py-2 px-2 text-white font-medium">
-                        {p.total_pv.toLocaleString()}
+                        {p.totals[metric].toLocaleString()}
                       </td>
                       {periodKeys.map((pk) => {
-                        const val = p.periods[pk] || 0;
+                        const val = p.periods[pk]?.[metric] || 0;
                         return (
-                          <td key={pk} className={`text-center py-2 px-1 ${heatmapBg(val, maxPV)}`}>
+                          <td key={pk} className={`text-center py-2 px-1 ${heatmapBg(val, maxVal)}`}>
                             <span className={val > 0 ? "text-white/80" : "text-gray-700"}>
                               {val > 0 ? val.toLocaleString() : ""}
                             </span>
@@ -291,66 +330,160 @@ function PagesTab({
   );
 }
 
-function TrafficTabContent({ traffic, landingPage }: { traffic: TrafficDaily[]; landingPage: string }) {
-  const [days, setDays] = useState<30 | 90>(90);
+type TrafficRange = "7" | "30" | "90" | "custom";
 
-  // Filter by landing page (traffic already aggregated, but dates embedded in data)
-  // Since traffic is pre-aggregated for 90 days, we filter by recency approximately
+function daysAgo(n: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  return d.toISOString().slice(0, 10);
+}
+
+interface AggregatedTraffic {
+  source: string | null;
+  medium: string | null;
+  campaign: string | null;
+  channel_group: string | null;
+  sessions: number;
+  users: number;
+  new_users: number;
+  schedule_visits: number;
+}
+
+function TrafficTabContent({ traffic, landingPage }: { traffic: TrafficDaily[]; landingPage: string }) {
+  const [range, setRange] = useState<TrafficRange>("30");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
+
   const filtered = useMemo(() => {
-    return traffic.filter((t) => t.landing_page === landingPage);
-  }, [traffic, landingPage]);
+    let fromDate: string;
+    let toDate: string;
+
+    if (range === "custom" && customFrom && customTo) {
+      fromDate = customFrom;
+      toDate = customTo;
+    } else if (range === "custom") {
+      fromDate = daysAgo(90);
+      toDate = daysAgo(0);
+    } else {
+      fromDate = daysAgo(parseInt(range));
+      toDate = daysAgo(0);
+    }
+
+    const rows = traffic.filter(
+      (t) => t.landing_page === landingPage && t.date >= fromDate && t.date <= toDate
+    );
+
+    const map = new Map<string, AggregatedTraffic>();
+    for (const row of rows) {
+      const key = `${row.source}|${row.medium}|${row.campaign}`;
+      const existing = map.get(key);
+      if (existing) {
+        existing.sessions += row.sessions;
+        existing.users += row.users;
+        existing.new_users += row.new_users;
+        existing.schedule_visits += row.schedule_visits;
+      } else {
+        map.set(key, {
+          source: row.source,
+          medium: row.medium,
+          campaign: row.campaign,
+          channel_group: row.channel_group,
+          sessions: row.sessions,
+          users: row.users,
+          new_users: row.new_users,
+          schedule_visits: row.schedule_visits,
+        });
+      }
+    }
+
+    return Array.from(map.values()).sort((a, b) => b.sessions - a.sessions);
+  }, [traffic, landingPage, range, customFrom, customTo]);
 
   return (
-    <div className="bg-surface-raised border border-white/10 rounded-xl p-5">
-      <div className="flex items-center justify-between mb-4">
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
         <h3 className="text-sm font-medium text-gray-300">
           {landingPage === "/" ? "メインLP (/) 流入経路" : "YouTube LP (/lp3/) 流入経路"}
         </h3>
+        <div className="flex items-center gap-3">
+          <div className="flex gap-1 bg-white/5 rounded-lg p-0.5">
+            {([["7", "1週間"], ["30", "1ヶ月"], ["90", "3ヶ月"], ["custom", "期間指定"]] as const).map(([v, label]) => (
+              <button
+                key={v}
+                onClick={() => setRange(v as TrafficRange)}
+                className={`px-3 py-1 text-xs rounded-md transition-colors ${
+                  range === v ? "bg-brand text-white" : "text-gray-400 hover:text-white"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          {range === "custom" && (
+            <div className="flex items-center gap-1.5">
+              <input
+                type="date"
+                value={customFrom}
+                onChange={(e) => setCustomFrom(e.target.value)}
+                className="bg-white/5 border border-white/10 rounded px-2 py-1 text-xs text-white"
+              />
+              <span className="text-gray-500 text-xs">〜</span>
+              <input
+                type="date"
+                value={customTo}
+                onChange={(e) => setCustomTo(e.target.value)}
+                className="bg-white/5 border border-white/10 rounded px-2 py-1 text-xs text-white"
+              />
+            </div>
+          )}
+        </div>
       </div>
 
-      <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
-        <table className="w-full text-xs">
-          <thead className="sticky top-0 bg-surface-raised z-10">
-            <tr className="border-b border-white/10 text-gray-400">
-              <th className="text-left py-2.5 px-3">ソース</th>
-              <th className="text-left py-2.5 px-3">メディア</th>
-              <th className="text-left py-2.5 px-3">キャンペーン</th>
-              <th className="text-right py-2.5 px-3">セッション</th>
-              <th className="text-right py-2.5 px-3">ユーザー</th>
-              <th className="text-right py-2.5 px-3">CV</th>
-              <th className="text-right py-2.5 px-3">CVR</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((t, i) => {
-              const cvr = t.sessions > 0 ? (t.schedule_visits / t.sessions) * 100 : 0;
-              return (
-                <tr key={i} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                  <td className="py-2.5 px-3 text-white">{t.source || "(direct)"}</td>
-                  <td className="py-2.5 px-3 text-gray-300">{t.medium || "(none)"}</td>
-                  <td className="py-2.5 px-3 text-gray-400 truncate max-w-[200px]">{t.campaign || "—"}</td>
-                  <td className="text-right py-2.5 px-3 text-white font-medium">{t.sessions.toLocaleString()}</td>
-                  <td className="text-right py-2.5 px-3 text-gray-300">{t.users.toLocaleString()}</td>
-                  <td className="text-right py-2.5 px-3">
-                    <span className={t.schedule_visits > 0 ? "text-green-400 font-medium" : "text-gray-600"}>
-                      {t.schedule_visits}
-                    </span>
-                  </td>
-                  <td className="text-right py-2.5 px-3">
-                    <span className={cvr > 0 ? "text-green-400" : "text-gray-600"}>
-                      {cvr > 0 ? `${cvr.toFixed(1)}%` : "—"}
-                    </span>
-                  </td>
-                </tr>
-              );
-            })}
-            {filtered.length === 0 && (
-              <tr>
-                <td colSpan={7} className="py-8 text-center text-gray-500">データがありません</td>
+      <div className="bg-surface-raised border border-white/10 rounded-xl overflow-hidden">
+        <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
+          <table className="w-full text-xs">
+            <thead className="sticky top-0 bg-surface-raised z-10">
+              <tr className="border-b border-white/10 text-gray-400">
+                <th className="text-left py-2.5 px-3">ソース</th>
+                <th className="text-left py-2.5 px-3">メディア</th>
+                <th className="text-left py-2.5 px-3">キャンペーン</th>
+                <th className="text-right py-2.5 px-3">セッション</th>
+                <th className="text-right py-2.5 px-3">ユーザー</th>
+                <th className="text-right py-2.5 px-3">CV</th>
+                <th className="text-right py-2.5 px-3">CVR</th>
               </tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {filtered.map((t, i) => {
+                const cvr = t.sessions > 0 ? (t.schedule_visits / t.sessions) * 100 : 0;
+                return (
+                  <tr key={i} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                    <td className="py-2.5 px-3 text-white">{t.source || "(direct)"}</td>
+                    <td className="py-2.5 px-3 text-gray-300">{t.medium || "(none)"}</td>
+                    <td className="py-2.5 px-3 text-gray-400 truncate max-w-[200px]">{t.campaign || "—"}</td>
+                    <td className="text-right py-2.5 px-3 text-white font-medium">{t.sessions.toLocaleString()}</td>
+                    <td className="text-right py-2.5 px-3 text-gray-300">{t.users.toLocaleString()}</td>
+                    <td className="text-right py-2.5 px-3">
+                      <span className={t.schedule_visits > 0 ? "text-green-400 font-medium" : "text-gray-600"}>
+                        {t.schedule_visits}
+                      </span>
+                    </td>
+                    <td className="text-right py-2.5 px-3">
+                      <span className={cvr > 0 ? "text-green-400" : "text-gray-600"}>
+                        {cvr > 0 ? `${cvr.toFixed(1)}%` : "—"}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+              {filtered.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="py-8 text-center text-gray-500">データがありません</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
