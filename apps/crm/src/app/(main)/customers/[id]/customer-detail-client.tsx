@@ -351,7 +351,6 @@ function buildContractFields(c: CustomerWithRelations): FieldDef[] {
     { key: "billing_status", label: "請求状況", source: "manual", type: "select", options: ["未請求", "請求済", "入金済", "返金済"], table: "contract", getValue: () => c.contract?.billing_status || "-" },
     { key: "payment_date", label: "入金日", source: "manual", type: "date", table: "contract", getValue: () => formatDate(c.contract?.payment_date ?? null) },
     { key: "subsidy_eligible", label: "補助金対象", source: "manual", type: "select", options: ["true", "false"], table: "contract", getValue: () => c.contract?.subsidy_eligible ? "対象" : "非対象" },
-    { key: "subsidy_period_eligible", label: "補助金期間対象", source: "manual", type: "select", options: ["true", "false"], table: "contract", getValue: () => c.contract?.subsidy_period_eligible ? "対象" : "非対象" },
     { key: "enrollment_status", label: "受講状況", source: "manual", type: "select", options: [
       "受講中", "受講終了", "受講終了(未定)", "受講終了(将来)", "受講終了(不明)", "卒業(内定)", "卒業(落ち)", "単発(対象外)", "離脱",
     ], table: "contract", getValue: () => c.contract?.enrollment_status || "-" },
@@ -820,7 +819,7 @@ export function CustomerDetailClient({
     // contract fields
     if (customer.contract) {
       const ct = customer.contract as unknown as Record<string, unknown>;
-      for (const key of ["plan_name", "confirmed_amount", "first_amount", "discount", "billing_status", "subsidy_eligible", "subsidy_period_eligible", "payment_date", "changed_plan"]) {
+      for (const key of ["plan_name", "confirmed_amount", "first_amount", "discount", "billing_status", "subsidy_eligible", "payment_date", "changed_plan"]) {
         vals[`contract.${key}`] = ct[key] != null ? String(ct[key]) : "";
       }
     }
@@ -877,7 +876,7 @@ export function CustomerDetailClient({
         const numFields = ["confirmed_amount", "first_amount", "discount", "probability", "total_sessions", "completed_sessions", "offer_salary", "referral_fee_rate", "margin"];
         if (numFields.includes(key)) {
           payload[table][key] = val ? Number(val) : null;
-        } else if (key === "subsidy_eligible" || key === "subsidy_period_eligible") {
+        } else if (key === "subsidy_eligible") {
           payload[table][key] = val === "true";
         } else {
           payload[table][key] = val || null;

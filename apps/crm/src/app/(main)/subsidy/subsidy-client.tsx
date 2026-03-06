@@ -14,6 +14,12 @@ interface Props {
 
 const SUBSIDY_START = "2026-02-10";
 
+/** 日付文字列をYYYY-MM-DD形式に正規化 */
+function normalizeDate(d: string | null | undefined): string {
+  if (!d) return "";
+  return d.replace(/\//g, "-").split("T")[0].split(" ")[0];
+}
+
 function generateWeekEnds(): string[] {
   const weeks: string[] = [];
   const start = new Date(2026, 1, 15); // 2026-02-15
@@ -40,7 +46,7 @@ function formatWeekLabel(dateStr: string): string {
 function isSubsidyTarget(c: CustomerWithRelations): boolean {
   if (isShinsotsu(c.attribute)) return false;
   // 営業日が2/10より後であることが絶対条件
-  const salesDate = c.pipeline?.sales_date || "";
+  const salesDate = normalizeDate(c.pipeline?.sales_date);
   return salesDate > SUBSIDY_START;
 }
 
@@ -162,20 +168,19 @@ export function SubsidyClient({ customers, firstPaidMap }: Props) {
   const weeklyStats: WeeklyStats[] = useMemo(() => {
     return weekEnds.map((weekEnd) => {
       const collected = subsidyCustomers.filter((c) => {
-        const d = c.application_date || "";
+        const d = normalizeDate(c.application_date);
         return d > SUBSIDY_START && d <= weekEnd;
       }).length;
 
       const supported = subsidyCustomers.filter((c) => {
         if (!isSupportStarted(c)) return false;
-        const d = c.pipeline?.sales_date || "";
+        const d = normalizeDate(c.pipeline?.sales_date);
         return d > SUBSIDY_START && d <= weekEnd;
       }).length;
 
       const courseStarted = subsidyCustomers.filter((c) => {
         if (!isCourseStarted(c)) return false;
-        // 初回決済日(orders) → contracts.payment_date → sales_date のフォールバック
-        const d = firstPaidMap[c.id] || c.contract?.payment_date || c.pipeline?.sales_date || "";
+        const d = normalizeDate(firstPaidMap[c.id]) || normalizeDate(c.contract?.payment_date) || normalizeDate(c.pipeline?.sales_date);
         return d > SUBSIDY_START && d <= weekEnd;
       }).length;
 
