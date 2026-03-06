@@ -181,23 +181,20 @@ export function computeRevenueMetrics(
     }
     const m = byMonth.get(period)!;
     const amount = getSchoolRevenue(c);
+    const hasPaid = amount > 0;
 
     const closed = isStageClosed(c.pipeline?.stage);
 
-    // 確定売上: スクール確定
-    if (closed) {
+    // 確定売上: 支払い実績ベース（ステージ不問）
+    if (hasPaid) {
       m.confirmed_revenue += amount;
+      m.school_revenue += amount;
     }
 
     // 人材見込み: 人材紹介顧客のみ
     const agentFee = isAgentCustomer(c) ? calcExpectedReferralFee(c) : 0;
     const subsidy = closed ? getSubsidyAmount(c) : 0;
-    m.projected_revenue += (closed ? amount : 0) + agentFee + subsidy;
-
-    // セグメント分類: 成約済みの実績ベース
-    if (closed) {
-      m.school_revenue += amount;
-    }
+    m.projected_revenue += (hasPaid ? amount : 0) + agentFee + subsidy;
 
     // エージェント売上: 人材紹介顧客のみ
     m.agent_revenue += agentFee;
@@ -332,12 +329,13 @@ export function computeThreeTierRevenue(
     const m = byMonth.get(period)!;
     const amount = getSchoolRevenue(c);
     const closed = isStageClosed(c.pipeline?.stage);
+    const hasPaid = amount > 0; // 支払い実績があれば確定売上（ステージ不問）
 
     // MAXライン: 全顧客の見込みLTV合計（成約済みも未成約も含む）
     m.expected_ltv += calcExpectedLTV(c);
 
-    // --- Tier 1: 確定売上 ---
-    if (closed) {
+    // --- Tier 1: 確定売上（支払い実績ベース — ステージ不問） ---
+    if (hasPaid) {
       m.confirmed_school += amount;
       if (isShinsotsu(c.attribute)) {
         m.confirmed_school_shinsotsu += amount;
@@ -351,7 +349,7 @@ export function computeThreeTierRevenue(
       m.confirmed_agent += calcExpectedReferralFee(c);
     }
 
-    // 補助金
+    // 補助金（成約ステージのみ — 補助金は申請が必要なため成約判定を維持）
     if (closed) {
       m.confirmed_subsidy += getSubsidyAmount(c);
     }
@@ -367,12 +365,12 @@ export function computeThreeTierRevenue(
     }
 
     // --- Tier 3: ステージ別成約確率ベースの予測 ---
-    // 予測 = 見込み含む売上 + 未成約パイプラインの期待値
-    if (!closed) {
+    // 支払い済みは確定に計上済みなので、未払い顧客のみ予測
+    if (!hasPaid && !closed) {
       const prob = calcClosingProbability(c);
       if (prob > 0) {
         // スクール売上期待値
-        const potentialSchool = amount > 0 ? amount :
+        const potentialSchool =
           (isShinsotsu(c.attribute) ? DEFAULT_LTV_CONFIG.defaultLtvShinsotsu : DEFAULT_LTV_CONFIG.defaultLtvKisotsu);
         m.forecast_school += potentialSchool * prob;
         // エージェント売上期待値（Tier 2で計上済みの受講中顧客は除外）
@@ -595,9 +593,10 @@ export function computeChannelMetrics(
     const m = byChannel.get(channel)!;
     m.applications++;
 
-    if (isStageClosed(c.pipeline?.stage)) {
+    const rev = getSchoolRevenue(c);
+    if (rev > 0) {
       m.closings++;
-      m.revenue += getSchoolRevenue(c);
+      m.revenue += rev;
     }
   }
 
@@ -682,12 +681,16 @@ export function computeChannelFunnelPivot(
         ch.additional_coaching++;
       }
       if (isStageClosed(s)) {
-        const rev = getSchoolRevenue(c);
         p.closed++;
         ch.closed++;
-        p.revenue += rev;
-        ch.revenue += rev;
       }
+    }
+
+    // 確定売上: 支払い実績ベース（ステージ不問）
+    const rev = getSchoolRevenue(c);
+    if (rev > 0) {
+      p.revenue += rev;
+      ch.revenue += rev;
     }
   }
 
@@ -845,33 +848,41 @@ function computeSegmentData(
         grandTotals.additional_coaching++;
       }
       // 成約
+      // ファネル成約カウント（ステージベース — 成約率計算用）
       if (isStageClosed(s)) {
         pf.closed++;
         ch.totals.closed++;
         pt.closed++;
         grandTotals.closed++;
+      }
+    }
 
-        const amount = getSchoolRevenue(c);
-        closedCountByPeriod[period] = (closedCountByPeriod[period] || 0) + 1;
-        schoolRevByPeriod[period] = (schoolRevByPeriod[period] || 0) + amount;
+    // --- 確定売上: 支払い実績ベース（ステージ不問） ---
+    const amount = getSchoolRevenue(c);
+    const hasPaid = amount > 0;
 
-        // 確定売上 = スクール確定 + 人材確定 + 補助金（ダッシュボードと整合）
-        let periodConfirmed = amount;
-        // 人材確定分
-        if (isAgentCustomer(c) && isAgentConfirmed(c)) {
-          const agentFee = calcExpectedReferralFee(c);
-          periodConfirmed += agentFee;
-          agentConfirmedRevByPeriod[period] = (agentConfirmedRevByPeriod[period] || 0) + agentFee;
-        }
-        // 補助金
+    if (hasPaid) {
+      closedCountByPeriod[period] = (closedCountByPeriod[period] || 0) + 1;
+      schoolRevByPeriod[period] = (schoolRevByPeriod[period] || 0) + amount;
+
+      // 確定売上 = スクール確定 + 人材確定 + 補助金
+      let periodConfirmed = amount;
+      // 人材確定分
+      if (isAgentCustomer(c) && isAgentConfirmed(c)) {
+        const agentFee = calcExpectedReferralFee(c);
+        periodConfirmed += agentFee;
+        agentConfirmedRevByPeriod[period] = (agentConfirmedRevByPeriod[period] || 0) + agentFee;
+      }
+      // 補助金（成約ステージのみ）
+      if (isStageClosed(c.pipeline?.stage)) {
         const subsidy = getSubsidyAmount(c);
         if (subsidy > 0) {
           periodConfirmed += subsidy;
           subsidyByPeriod[period] = (subsidyByPeriod[period] || 0) + subsidy;
         }
-        confirmedRevenue[period] = (confirmedRevenue[period] || 0) + periodConfirmed;
-        confirmedRevenueTotal += periodConfirmed;
       }
+      confirmedRevenue[period] = (confirmedRevenue[period] || 0) + periodConfirmed;
+      confirmedRevenueTotal += periodConfirmed;
     }
 
     // 人材紹介売上（見込み用: 確定は confirmedRevenue に計上済み）
@@ -880,7 +891,6 @@ function computeSegmentData(
       if (isAgentConfirmed(c)) {
         agentConfirmed += fee;
         agentConfirmedByPeriod[period] = (agentConfirmedByPeriod[period] || 0) + fee;
-        // agentRevByPeriod: 確定分は confirmedRevenue に含まれているので見込み用には追加しない
       } else if (isCurrentlyEnrolled(c)) {
         agentProjected += fee;
         agentProjectedByPeriod[period] = (agentProjectedByPeriod[period] || 0) + fee;
@@ -888,24 +898,19 @@ function computeSegmentData(
       }
     }
 
-    // チャネル別売上（成約のみ — 合計+月別）
-    if (isStageClosed(c.pipeline?.stage)) {
-      const amt = getSchoolRevenue(c);
-      channelRevenue.set(channel, (channelRevenue.get(channel) || 0) + amt);
+    // チャネル別売上（支払い実績ベース）
+    if (hasPaid) {
+      channelRevenue.set(channel, (channelRevenue.get(channel) || 0) + amount);
       if (!channelRevenueByPeriod.has(channel)) channelRevenueByPeriod.set(channel, {});
       const crp = channelRevenueByPeriod.get(channel)!;
-      crp[period] = (crp[period] || 0) + amt;
+      crp[period] = (crp[period] || 0) + amount;
     }
 
-    // Tier 3: 未成約パイプラインの期待値
-    // 受講中エージェント顧客は agentRevByPeriod に計上済みなので forecast から除外
-    if (!isStageClosed(c.pipeline?.stage)) {
+    // Tier 3: 未払い顧客のパイプライン期待値
+    if (!hasPaid && !isStageClosed(c.pipeline?.stage)) {
       const prob = calcClosingProbability(c);
       if (prob > 0) {
-        const schoolRev = getSchoolRevenue(c);
-        const potentialSchool = schoolRev > 0
-          ? schoolRev
-          : (isShinsotsu(c.attribute) ? 240000 : 427636);
+        const potentialSchool = isShinsotsu(c.attribute) ? 240000 : 427636;
         const isEnrolledAgent = isAgentCustomer(c) && !isAgentConfirmed(c) && isCurrentlyEnrolled(c);
         const potentialAgent = (isAgentCustomer(c) && !isEnrolledAgent) ? calcExpectedReferralFee(c) * prob : 0;
         const potentialSubsidy = getSubsidyAmount(c) * prob;
