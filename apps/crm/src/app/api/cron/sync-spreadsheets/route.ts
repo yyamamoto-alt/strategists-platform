@@ -107,7 +107,21 @@ export async function GET(request: Request) {
       let rowsCreated = 0;
       let rowsUpdated = 0;
       let rowsUnmatched = 0;
+      let rowsSkipped = 0;
       const syncedRecords: { action: string; name: string | null; email: string | null; summary: Record<string, string> }[] = [];
+
+      // 直近の同期済みraw_dataハッシュを取得（重複検知用ダブルチェック）
+      const { data: recentHistory } = await db
+        .from("application_history")
+        .select("raw_data")
+        .eq("source", connection.name)
+        .order("applied_at", { ascending: false })
+        .limit(500);
+      const knownHashes = new Set<string>(
+        (recentHistory || []).map((h: { raw_data: Record<string, unknown> }) =>
+          JSON.stringify(h.raw_data)
+        )
+      );
 
       for (const row of dataRows) {
         if (row.every((cell: string) => !cell || cell.trim() === "")) continue;
@@ -118,6 +132,14 @@ export async function GET(request: Request) {
           headers.forEach((h: string, i: number) => {
             if (i < row.length && row[i]) rawData[h] = row[i];
           });
+
+          // ダブルチェック: まったく同じraw_dataが既にあればスキップ
+          const rawHash = JSON.stringify(rawData);
+          if (knownHashes.has(rawHash)) {
+            rowsSkipped++;
+            continue;
+          }
+          knownHashes.add(rawHash);
 
           const result = await upsertFromSpreadsheet(
             connection.id,
@@ -166,7 +188,7 @@ export async function GET(request: Request) {
               rows_created: rowsCreated,
               rows_updated: rowsUpdated,
               rows_unmatched: rowsUnmatched,
-              details: { records: syncedRecords },
+              details: { records: syncedRecords, rows_skipped: rowsSkipped },
             })
             .eq("id", syncLog.id),
         db
@@ -185,6 +207,7 @@ export async function GET(request: Request) {
         rows_created: rowsCreated,
         rows_updated: rowsUpdated,
         rows_unmatched: rowsUnmatched,
+        rows_skipped: rowsSkipped,
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Sync failed";
