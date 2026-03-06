@@ -39,9 +39,9 @@ function formatWeekLabel(dateStr: string): string {
 
 function isSubsidyTarget(c: CustomerWithRelations): boolean {
   if (isShinsotsu(c.attribute)) return false;
-  const appDate = c.application_date || "";
+  // 営業日が2/10より後であることが絶対条件
   const salesDate = c.pipeline?.sales_date || "";
-  return appDate > SUBSIDY_START || salesDate > SUBSIDY_START;
+  return salesDate > SUBSIDY_START;
 }
 
 function isSupportStarted(c: CustomerWithRelations): boolean {
