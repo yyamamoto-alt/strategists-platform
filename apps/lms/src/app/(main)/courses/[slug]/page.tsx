@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getLmsSession } from "@/lib/supabase/server";
 import { mockCourses, mockModules } from "@/lib/mock-data";
 import { CourseDetailClient } from "./course-detail-client";
 import { redirect } from "next/navigation";
@@ -16,11 +17,12 @@ export default async function CourseDetailPage({
   if (useMock) {
     const course = mockCourses.find((c) => c.slug === slug || c.id === slug);
     const mods = mockModules.filter((m) => m.course_id === course?.id);
-    return <CourseDetailClient course={course || null} modules={mods} slug={slug} />;
+    return <CourseDetailClient course={course || null} modules={mods} slug={slug} progressMap={{}} />;
   }
 
   try {
     const supabase = createAdminClient();
+    const session = await getLmsSession();
 
     // slugをデコード（URL encoding対策）
     const decodedSlug = decodeURIComponent(slug);
@@ -43,21 +45,32 @@ export default async function CourseDetailPage({
 
     if (!course) {
       console.error(`Course not found: slug="${decodedSlug}"`);
-      return <CourseDetailClient course={null} modules={[]} slug={slug} />;
+      return <CourseDetailClient course={null} modules={[]} slug={slug} progressMap={{}} />;
     }
 
-    // modules + lessons 取得
-    const { data: modules } = await supabase
-      .from("modules")
-      .select("*")
-      .eq("course_id", course.id)
-      .order("sort_order", { ascending: true }) as { data: any[] | null };
+    // modules + lessons + progress を並列取得
+    const [modulesRes, lessonsRes, progressRes] = await Promise.all([
+      supabase
+        .from("modules")
+        .select("*")
+        .eq("course_id", course.id)
+        .order("sort_order", { ascending: true }),
+      supabase
+        .from("lessons")
+        .select("*")
+        .eq("course_id", course.id)
+        .order("sort_order", { ascending: true }),
+      session?.customerId
+        ? supabase
+            .from("lesson_progress")
+            .select("lesson_id, status")
+            .eq("customer_id", session.customerId)
+        : Promise.resolve({ data: [] }),
+    ]);
 
-    const { data: lessons } = await supabase
-      .from("lessons")
-      .select("*")
-      .eq("course_id", course.id)
-      .order("sort_order", { ascending: true }) as { data: any[] | null };
+    const modules = modulesRes.data as any[] | null;
+    const lessons = lessonsRes.data as any[] | null;
+    const progress = (progressRes.data || []) as { lesson_id: string; status: string }[];
 
     // modules に lessons を紐付け
     const modulesWithLessons = (modules || []).map((mod: any) => ({
@@ -65,17 +78,23 @@ export default async function CourseDetailPage({
       lessons: (lessons || []).filter((l: any) => l.module_id === mod.id),
     }));
 
+    // 進捗マップ
+    const progressMap: Record<string, string> = {};
+    for (const p of progress) {
+      progressMap[p.lesson_id] = p.status;
+    }
+
     // レッスンが1つだけの場合は直接レッスンページにリダイレクト
     const allLessons = lessons || [];
     if (allLessons.length === 1) {
       redirect(`/courses/${slug}/learn/${allLessons[0].id}`);
     }
 
-    return <CourseDetailClient course={course} modules={modulesWithLessons} slug={slug} />;
+    return <CourseDetailClient course={course} modules={modulesWithLessons} slug={slug} progressMap={progressMap} />;
   } catch (e) {
     // redirect() throws a special error, re-throw it
     if (e && typeof e === "object" && "digest" in e) throw e;
     console.error("CourseDetailPage error:", e);
-    return <CourseDetailClient course={null} modules={[]} slug={slug} />;
+    return <CourseDetailClient course={null} modules={[]} slug={slug} progressMap={{}} />;
   }
 }

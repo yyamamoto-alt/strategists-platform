@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getLmsSession } from "@/lib/supabase/server";
 import { mockModules } from "@/lib/mock-data";
 import { LessonPlayerClient } from "./lesson-player-client";
 import type { Lesson } from "@/types/database";
@@ -15,11 +16,12 @@ export default async function LessonPlayerPage({
 
   if (useMock) {
     const allLessons = mockModules.flatMap((m) => m.lessons || []);
-    return <LessonPlayerClient slug={slug} lessonId={lessonId} allLessons={allLessons} />;
+    return <LessonPlayerClient slug={slug} lessonId={lessonId} allLessons={allLessons} progressMap={{}} customerId={null} />;
   }
 
   try {
     const supabase = createAdminClient();
+    const session = await getLmsSession();
     const decodedSlug = decodeURIComponent(slug);
 
     // slug → course_id 取得
@@ -39,21 +41,32 @@ export default async function LessonPlayerPage({
     }
 
     if (!course) {
-      return <LessonPlayerClient slug={slug} lessonId={lessonId} allLessons={[]} />;
+      return <LessonPlayerClient slug={slug} lessonId={lessonId} allLessons={[]} progressMap={{}} customerId={null} />;
     }
 
-    // modules順 → lessons順で全レッスン取得
-    const { data: modules } = await supabase
-      .from("modules")
-      .select("id")
-      .eq("course_id", course.id)
-      .order("sort_order", { ascending: true }) as { data: any[] | null };
+    // modules順 → lessons順で全レッスン取得 + 進捗データ
+    const [modulesRes, lessonsRes, progressRes] = await Promise.all([
+      supabase
+        .from("modules")
+        .select("id")
+        .eq("course_id", course.id)
+        .order("sort_order", { ascending: true }),
+      supabase
+        .from("lessons")
+        .select("*")
+        .eq("course_id", course.id)
+        .order("sort_order", { ascending: true }),
+      session?.customerId
+        ? supabase
+            .from("lesson_progress")
+            .select("lesson_id, status")
+            .eq("customer_id", session.customerId)
+        : Promise.resolve({ data: [] }),
+    ]);
 
-    const { data: lessons } = await supabase
-      .from("lessons")
-      .select("*")
-      .eq("course_id", course.id)
-      .order("sort_order", { ascending: true }) as { data: any[] | null };
+    const modules = modulesRes.data as any[] | null;
+    const lessons = lessonsRes.data as any[] | null;
+    const progress = (progressRes.data || []) as { lesson_id: string; status: string }[];
 
     // module順にレッスンを並べる
     const moduleOrder = (modules || []).map((m: any) => m.id);
@@ -64,9 +77,23 @@ export default async function LessonPlayerPage({
       return a.sort_order - b.sort_order;
     });
 
-    return <LessonPlayerClient slug={slug} lessonId={lessonId} allLessons={sortedLessons as Lesson[]} />;
+    // 進捗マップ: lesson_id → status
+    const progressMap: Record<string, string> = {};
+    for (const p of progress) {
+      progressMap[p.lesson_id] = p.status;
+    }
+
+    return (
+      <LessonPlayerClient
+        slug={slug}
+        lessonId={lessonId}
+        allLessons={sortedLessons as Lesson[]}
+        progressMap={progressMap}
+        customerId={session?.customerId || null}
+      />
+    );
   } catch (e) {
     console.error("LessonPlayerPage error:", e);
-    return <LessonPlayerClient slug={slug} lessonId={lessonId} allLessons={[]} />;
+    return <LessonPlayerClient slug={slug} lessonId={lessonId} allLessons={[]} progressMap={{}} customerId={null} />;
   }
 }
