@@ -247,6 +247,8 @@ export async function GET(request: Request) {
   return NextResponse.json({
     success: true,
     synced: results.length,
+    total_connections: connections.length,
+    connection_names: connections.map((c: { name: string }) => c.name),
     results,
   });
 }
