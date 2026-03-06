@@ -114,10 +114,10 @@ const columns: SpreadsheetColumn<CustomerWithRelations>[] = [
     },
   },
   {
-    key: "closing_date",
-    label: "成約日",
+    key: "payment_date",
+    label: "入金日",
     width: 90,
-    render: (c) => <span className="text-gray-300 text-xs">{c.pipeline?.closing_date || "-"}</span>,
+    render: (c) => <span className="text-gray-300 text-xs">{c.contract?.payment_date || "-"}</span>,
   },
   {
     key: "confirmed_amount",
@@ -170,7 +170,8 @@ export function SubsidyClient({ customers }: Props) {
 
       const courseStarted = subsidyCustomers.filter((c) => {
         if (!isCourseStarted(c)) return false;
-        const d = c.pipeline?.closing_date || "";
+        // 入金日 → 営業日 のフォールバック
+        const d = c.contract?.payment_date || c.pipeline?.sales_date || "";
         return d > SUBSIDY_START && d <= weekEnd;
       }).length;
 
