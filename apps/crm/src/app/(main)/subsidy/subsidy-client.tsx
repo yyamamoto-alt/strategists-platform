@@ -45,13 +45,20 @@ function formatWeekLabel(dateStr: string): string {
 
 function isSubsidyTarget(c: CustomerWithRelations): boolean {
   if (isShinsotsu(c.attribute)) return false;
-  // 営業日が2/10より後であることが絶対条件
+  const appDate = normalizeDate(c.application_date);
   const salesDate = normalizeDate(c.pipeline?.sales_date);
-  if (!(salesDate > SUBSIDY_START)) return false;
-  // 営業未実施・noshowは除外
-  const status = c.pipeline?.deal_status;
-  if (status === "未実施" || status === "noshow" || status === "no-show") return false;
-  return true;
+  // 申込日が2/10より後 → 無条件で対象
+  if (appDate > SUBSIDY_START) return true;
+  // 申込日が2/10以前 → 営業日が2/10より後の場合のみ対象
+  if (salesDate > SUBSIDY_START) return true;
+  return false;
+}
+
+/** 補助金リストへの「集客日」を返す（週次集計用） */
+function getSubsidyDate(c: CustomerWithRelations): string {
+  const appDate = normalizeDate(c.application_date);
+  if (appDate > SUBSIDY_START) return appDate;
+  return normalizeDate(c.pipeline?.sales_date);
 }
 
 function isSupportStarted(c: CustomerWithRelations): boolean {
@@ -202,7 +209,7 @@ export function SubsidyClient({ customers, firstPaidMap }: Props) {
   const weeklyStats: WeeklyStats[] = useMemo(() => {
     return weekEnds.map((weekEnd) => {
       const collected = subsidyCustomers.filter((c) => {
-        const d = normalizeDate(c.pipeline?.sales_date);
+        const d = getSubsidyDate(c);
         return d > SUBSIDY_START && d <= weekEnd;
       }).length;
 
