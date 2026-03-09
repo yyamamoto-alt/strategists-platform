@@ -1,5 +1,22 @@
 import { createServiceClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { fetchCustomersWithRelations, fetchFirstPaidDates } from "@/lib/data/customers";
+import { fetchChannelAttributions } from "@/lib/data/marketing-settings";
+
+export async function GET() {
+  const [customers, attributions, firstPaidMap] = await Promise.all([
+    fetchCustomersWithRelations(),
+    fetchChannelAttributions(),
+    fetchFirstPaidDates(),
+  ]);
+
+  const attributionMap: Record<string, { customer_id: string; marketing_channel: string }> = {};
+  for (const a of attributions) {
+    attributionMap[a.customer_id] = a;
+  }
+
+  return NextResponse.json({ customers, attributionMap, firstPaidMap });
+}
 
 export async function POST(request: Request) {
   const body = await request.json();
