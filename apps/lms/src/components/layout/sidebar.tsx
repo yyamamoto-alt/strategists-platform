@@ -28,6 +28,7 @@ const adminNavigation: NavItem[] = [
   { name: "コース管理", href: "/admin/courses", icon: "📚", roles: ["admin"] },
   { name: "フォーム管理", href: "/admin/forms", icon: "📝", roles: ["admin"] },
   { name: "ユーザー管理", href: "/admin/students", icon: "🎓", roles: ["admin", "mentor"] },
+  { name: "メンター管理", href: "/admin/mentors", icon: "👨‍🏫", roles: ["admin"] },
   { name: "お知らせ管理", href: "/admin/announcements", icon: "🔔", roles: ["admin"] },
   { name: "設定", href: "/admin/settings", icon: "⚙️", roles: ["admin"] },
 ];

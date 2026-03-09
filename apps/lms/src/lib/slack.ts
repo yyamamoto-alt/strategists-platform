@@ -45,14 +45,32 @@ const COURSE_OPTIONS = [
   { value: "cc9b733f-44d6-4779-968d-1d961dfa024a", label: "新卒 総コンプラン" },
 ];
 
-// メンター一覧（Slack select用）
-// value = メンター名（DBのmentor_name と一致させる）
-const MENTOR_OPTIONS = [
-  "一条", "中森", "亀井", "内野", "北川", "南野", "吉田", "喜山",
-  "坂本", "坂本元", "多田", "小島", "小牧", "岡本", "岩田", "平野",
-  "明石", "木村", "林田", "森野", "橘", "氷室", "河合", "片山",
-  "田川", "秋山", "葉山", "西山", "西村", "赤木", "鈴木", "高橋", "鶴田",
-];
+export interface MentorRecord {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  slack_user_id: string | null;
+  booking_url: string | null;
+  profile_text: string | null;
+  is_active: boolean;
+}
+
+/** DBからアクティブなメンター一覧を取得 */
+export async function fetchMentors(): Promise<MentorRecord[]> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return [];
+
+  const res = await fetch(`${url}/rest/v1/mentors?is_active=eq.true&order=name.asc`, {
+    headers: {
+      "apikey": key,
+      "Authorization": `Bearer ${key}`,
+    },
+  });
+  if (!res.ok) return [];
+  return res.json();
+}
 
 // プラン名 → コースIDのマッピング
 function mapPlanToCourseIds(planName: string | null | undefined): string[] {
@@ -120,6 +138,9 @@ export async function sendInviteApprovalRequest(
     ? COURSE_OPTIONS.filter(c => autoMappedCourseIds.includes(c.value)).map(c => c.label).join(", ")
     : "自動マッピングなし";
 
+  // DBからメンター一覧取得
+  const mentorList = await fetchMentors();
+
   const pi = application.paymentInfo;
   const li = application.learningInfo;
 
@@ -159,7 +180,8 @@ export async function sendInviteApprovalRequest(
   }
 
   // メンターの初期選択（現担当がいれば）
-  const currentMentorOption = li?.currentMentor && MENTOR_OPTIONS.includes(li.currentMentor)
+  const mentorNames = mentorList.map(m => m.name);
+  const currentMentorOption = li?.currentMentor && mentorNames.includes(li.currentMentor)
     ? { text: { type: "plain_text" as const, text: li.currentMentor }, value: li.currentMentor }
     : undefined;
 
@@ -205,7 +227,7 @@ export async function sendInviteApprovalRequest(
           type: "static_select",
           action_id: "select_mentor",
           placeholder: { type: "plain_text", text: "メンターを選択..." },
-          options: MENTOR_OPTIONS.map(m => ({
+          options: mentorNames.map(m => ({
             text: { type: "plain_text", text: m },
             value: m,
           })),
@@ -283,27 +305,33 @@ export async function sendMentorAssignmentDM(
 ) {
   if (!SLACK_BOT_TOKEN) return null;
 
-  // メンター名からSlackユーザーを検索（display_name or real_name でマッチ）
-  const membersRes = await fetch(
-    `https://slack.com/api/users.list?limit=500`,
-    { headers: { "Authorization": `Bearer ${SLACK_BOT_TOKEN}` } }
-  );
-  const membersData = await membersRes.json();
+  // DBからメンターのSlack IDを取得
+  const mentors = await fetchMentors();
+  const mentorRecord = mentors.find(m => m.name === mentorName);
+  let slackUserId = mentorRecord?.slack_user_id;
 
-  if (!membersData.ok) {
-    console.error("users.list failed:", membersData.error);
-    // fallback: チャンネルにメンション付きで投稿
-    return null;
+  // slack_user_idがDBにない場合、名前で検索
+  if (!slackUserId) {
+    const membersRes = await fetch(
+      `https://slack.com/api/users.list?limit=500`,
+      { headers: { "Authorization": `Bearer ${SLACK_BOT_TOKEN}` } }
+    );
+    const membersData = await membersRes.json();
+
+    if (membersData.ok) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const found = (membersData.members || []).find((m: any) => {
+        const dn = m.profile?.display_name || "";
+        const rn = m.profile?.real_name || "";
+        return dn.includes(mentorName) || rn.includes(mentorName);
+      });
+      if (found) slackUserId = found.id;
+    } else {
+      console.error("users.list failed:", membersData.error);
+    }
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const mentorUser = (membersData.members || []).find((m: any) => {
-    const dn = m.profile?.display_name || "";
-    const rn = m.profile?.real_name || "";
-    return dn.includes(mentorName) || rn.includes(mentorName);
-  });
-
-  if (!mentorUser) {
+  if (!slackUserId) {
     console.warn(`Slack user not found for mentor: ${mentorName}`);
     return null;
   }
@@ -315,7 +343,7 @@ export async function sendMentorAssignmentDM(
       "Authorization": `Bearer ${SLACK_BOT_TOKEN}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ users: mentorUser.id }),
+    body: JSON.stringify({ users: slackUserId }),
   });
   const openData = await openRes.json();
 

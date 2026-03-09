@@ -14,6 +14,10 @@ interface InviteEmailParams {
   inviteUrl: string;
   appName: string;
   mentorName?: string;
+  mentorEmail?: string;
+  mentorPhone?: string;
+  mentorBookingUrl?: string;
+  mentorProfileText?: string;
 }
 
 function roleLabel(role: string): string {
@@ -25,20 +29,25 @@ function roleLabel(role: string): string {
   }
 }
 
-export async function sendInviteEmail({ to, displayName, role, inviteUrl, appName, mentorName }: InviteEmailParams) {
+export async function sendInviteEmail({ to, displayName, role, inviteUrl, appName, mentorName, mentorEmail, mentorPhone, mentorBookingUrl, mentorProfileText }: InviteEmailParams) {
   if (!resend) {
     throw new Error("RESEND_API_KEY が設定されていません");
   }
 
   const greeting = displayName ? `${displayName} 様` : "ご担当者 様";
 
+  let mentorContactLines = "";
+  if (mentorEmail) mentorContactLines += `<p style="font-size: 13px; color: #555; margin: 4px 0;">メール: <a href="mailto:${mentorEmail}" style="color: #C13028;">${mentorEmail}</a></p>`;
+  if (mentorPhone) mentorContactLines += `<p style="font-size: 13px; color: #555; margin: 4px 0;">電話: ${mentorPhone}</p>`;
+  if (mentorBookingUrl) mentorContactLines += `<p style="font-size: 13px; margin: 8px 0 0 0;"><a href="${mentorBookingUrl}" style="display: inline-block; padding: 8px 16px; background-color: #C13028; color: #ffffff; text-decoration: none; border-radius: 6px; font-size: 13px;">初回面談を予約する</a></p>`;
+  if (mentorProfileText) mentorContactLines += `<p style="font-size: 13px; color: #666; margin: 8px 0 0 0; line-height: 1.5;">${mentorProfileText}</p>`;
+
   const mentorSection = mentorName ? `
         <div style="background-color: #f8f8f8; border-left: 4px solid #C13028; padding: 16px 20px; margin: 24px 0; border-radius: 0 8px 8px 0;">
           <p style="font-size: 14px; font-weight: bold; color: #333; margin: 0 0 8px 0;">担当メンターのご紹介</p>
-          <p style="font-size: 15px; color: #333; margin: 0;">担当メンター: <strong>${mentorName}</strong></p>
-          <p style="font-size: 13px; color: #666; margin: 8px 0 0 0;">
-            指導に関するご質問は、LMSログイン後またはメール（support@akagiconsulting.com）までお気軽にお問い合わせください。
-          </p>
+          <p style="font-size: 15px; color: #333; margin: 0 0 4px 0;">担当メンター: <strong>${mentorName}</strong></p>
+          ${mentorContactLines}
+          ${!mentorEmail && !mentorPhone ? '<p style="font-size: 13px; color: #666; margin: 8px 0 0 0;">ご質問は support@akagiconsulting.com までお気軽にお問い合わせください。</p>' : ""}
         </div>
   ` : "";
 

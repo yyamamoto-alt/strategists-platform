@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { sendInviteEmail } from "@/lib/email";
-import { mapPlanToCourseIds, sendMentorAssignmentDM } from "@/lib/slack";
+import { mapPlanToCourseIds, sendMentorAssignmentDM, fetchMentors } from "@/lib/slack";
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 
@@ -190,6 +190,22 @@ export async function POST(request: Request) {
         return respondToSlack(payload, `❌ 招待作成エラー: ${invErr.message}`);
       }
 
+      // メンター詳細情報をDBから取得
+      let mentorEmail: string | undefined;
+      let mentorPhone: string | undefined;
+      let mentorBookingUrl: string | undefined;
+      let mentorProfileText: string | undefined;
+      if (selectedMentor) {
+        const mentorList = await fetchMentors();
+        const mentorRecord = mentorList.find(m => m.name === selectedMentor);
+        if (mentorRecord) {
+          mentorEmail = mentorRecord.email || undefined;
+          mentorPhone = mentorRecord.phone || undefined;
+          mentorBookingUrl = mentorRecord.booking_url || undefined;
+          mentorProfileText = mentorRecord.profile_text || undefined;
+        }
+      }
+
       // 招待メール送信（メンター情報付き）
       const lmsUrl = process.env.NEXT_PUBLIC_APP_URL || "https://strategists-lms.vercel.app";
       const inviteUrl = `${lmsUrl}/invite/${token}`;
@@ -203,6 +219,10 @@ export async function POST(request: Request) {
           inviteUrl,
           appName: "LMS",
           mentorName: selectedMentor || undefined,
+          mentorEmail,
+          mentorPhone,
+          mentorBookingUrl,
+          mentorProfileText,
         });
         emailSent = true;
       } catch (e) {
