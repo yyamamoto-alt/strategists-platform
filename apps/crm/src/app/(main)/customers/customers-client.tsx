@@ -309,7 +309,7 @@ export function CustomersClient({ customers, attributionMap, firstPaidMap }: Cus
         ), sortValue: (c) => c.name },
 
       // ─── 属性 ───
-      { key: "attribute", label: "属性", width: 48, category: "base",
+      { key: "attribute", label: "属性", width: 56, category: "base",
         render: (c) => (
           <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${getAttributeColor(c.attribute)}`}>{c.attribute.includes("既卒") ? "既卒" : "新卒"}</span>
         ), sortValue: (c) => c.attribute,
@@ -327,7 +327,7 @@ export function CustomersClient({ customers, attributionMap, firstPaidMap }: Cus
         sortValue: (c) => isAgentCustomer(c) ? 1 : 0 },
 
       // ─── 検討状況 ───
-      { key: "stage", label: "検討状況", width: 85, category: "sales",
+      { key: "stage", label: "検討状況", width: 120, category: "sales",
         render: (c) => {
           const stage = stageOverrides[c.id] || c.pipeline?.stage;
           return stage ? (

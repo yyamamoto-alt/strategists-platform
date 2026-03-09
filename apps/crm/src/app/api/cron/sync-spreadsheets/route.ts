@@ -3,6 +3,17 @@ import { NextResponse } from "next/server";
 import { fetchSheetData } from "@/lib/google-sheets";
 import { extractFieldsFromRow, upsertFromSpreadsheet } from "@/lib/customer-matching";
 
+/** JSONB key order-independent hash for dedup comparison */
+function stableStringify(obj: unknown): string {
+  if (obj === null || obj === undefined) return "";
+  if (typeof obj !== "object") return String(obj);
+  if (Array.isArray(obj)) return JSON.stringify(obj.map(stableStringify));
+  const sorted = Object.keys(obj as Record<string, unknown>).sort();
+  return JSON.stringify(
+    Object.fromEntries(sorted.map((k) => [k, (obj as Record<string, unknown>)[k]]))
+  );
+}
+
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
@@ -198,10 +209,10 @@ export async function GET(request: Request) {
         ]);
         const knownHashes = new Set<string>();
         for (const h of (recentHistory || [])) {
-          knownHashes.add(JSON.stringify((h as { raw_data: Record<string, unknown> }).raw_data));
+          knownHashes.add(stableStringify((h as { raw_data: Record<string, unknown> }).raw_data));
         }
         for (const h of (recentUnmatched || [])) {
-          knownHashes.add(JSON.stringify((h as { raw_data: Record<string, unknown> }).raw_data));
+          knownHashes.add(stableStringify((h as { raw_data: Record<string, unknown> }).raw_data));
         }
 
         for (const row of dataRows) {
@@ -215,7 +226,7 @@ export async function GET(request: Request) {
             });
 
             // ダブルチェック: まったく同じraw_dataが既にあればスキップ
-            const rawHash = JSON.stringify(rawData);
+            const rawHash = stableStringify(rawData);
             if (knownHashes.has(rawHash)) {
               rowsSkipped++;
               continue;

@@ -792,6 +792,18 @@ export function CustomerDetailClient({
   // 編集開始: 全フィールドの現在値をeditValuesにセット
   const startEditing = useCallback(() => {
     const vals: Record<string, string> = {};
+    // ISO日付 → YYYY-MM-DD に変換（input type="date" 用）
+    const toDateValue = (v: unknown): string => {
+      if (v == null || v === "") return "";
+      const s = String(v);
+      // Already YYYY-MM-DD
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+      // ISO 8601 → YYYY-MM-DD
+      const d = new Date(s);
+      if (isNaN(d.getTime())) return s;
+      return d.toISOString().slice(0, 10);
+    };
+    const dateKeys = new Set(["meeting_scheduled_date", "sales_date", "sales_date_2", "sales_date_3", "response_date", "response_date_2", "response_date_3", "payment_date", "coaching_end_date", "last_coaching_date", "placement_date", "application_date"]);
     // customer fields
     const cFields = customer as unknown as unknown as Record<string, unknown>;
     for (const key of ["name", "email", "phone", "attribute", "priority", "university", "faculty", "notes", "caution_notes"]) {
@@ -801,28 +813,28 @@ export function CustomerDetailClient({
     if (customer.pipeline) {
       const p = customer.pipeline as unknown as Record<string, unknown>;
       for (const key of ["stage", "probability", "meeting_scheduled_date", "sales_date", "sales_date_2", "sales_date_3", "response_date", "response_date_2", "response_date_3", "decision_factor", "sales_content", "sales_strategy"]) {
-        vals[`pipeline.${key}`] = p[key] != null ? String(p[key]) : "";
+        vals[`pipeline.${key}`] = dateKeys.has(key) ? toDateValue(p[key]) : (p[key] != null ? String(p[key]) : "");
       }
     }
     // contract fields
     if (customer.contract) {
       const ct = customer.contract as unknown as Record<string, unknown>;
       for (const key of ["plan_name", "confirmed_amount", "first_amount", "discount", "billing_status", "subsidy_eligible", "payment_date", "changed_plan"]) {
-        vals[`contract.${key}`] = ct[key] != null ? String(ct[key]) : "";
+        vals[`contract.${key}`] = dateKeys.has(key) ? toDateValue(ct[key]) : (ct[key] != null ? String(ct[key]) : "");
       }
     }
     // learning fields
     if (customer.learning) {
       const l = customer.learning as unknown as Record<string, unknown>;
       for (const key of ["mentor_name", "coaching_end_date", "last_coaching_date", "total_sessions", "completed_sessions", "current_level"]) {
-        vals[`learning.${key}`] = l[key] != null ? String(l[key]) : "";
+        vals[`learning.${key}`] = dateKeys.has(key) ? toDateValue(l[key]) : (l[key] != null ? String(l[key]) : "");
       }
     }
     // agent fields
     if (customer.agent) {
       const a = customer.agent as unknown as Record<string, unknown>;
       for (const key of ["job_search_status", "selection_status", "offer_company", "offer_salary", "offer_rank", "referral_fee_rate", "placement_confirmed", "placement_date", "margin"]) {
-        vals[`agent.${key}`] = a[key] != null ? String(a[key]) : "";
+        vals[`agent.${key}`] = dateKeys.has(key) ? toDateValue(a[key]) : (a[key] != null ? String(a[key]) : "");
       }
     }
     setEditValues(vals);

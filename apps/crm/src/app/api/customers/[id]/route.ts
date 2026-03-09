@@ -1,4 +1,5 @@
 import { createServiceClient } from "@/lib/supabase/server";
+import { computeAttributionForCustomer } from "@/lib/compute-attribution-for-customer";
 import { NextResponse } from "next/server";
 
 interface Props {
@@ -94,6 +95,11 @@ export async function PATCH(request: Request, { params }: Props) {
 
   if (errors.length > 0) {
     return NextResponse.json({ error: errors.join("; ") }, { status: 500 });
+  }
+
+  // UTMやパイプライン情報が変更された可能性があるので帰属チャネルを再計算
+  if (body.customer || body.pipeline) {
+    computeAttributionForCustomer(id).catch(() => {});
   }
 
   return NextResponse.json({ success: true });

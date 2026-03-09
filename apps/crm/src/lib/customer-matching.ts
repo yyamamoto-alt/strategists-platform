@@ -1,6 +1,18 @@
 import "server-only";
 
 import { createServiceClient } from "@/lib/supabase/server";
+import { computeAttributionForCustomer } from "@/lib/compute-attribution-for-customer";
+
+/** JSONB key order-independent hash for dedup comparison */
+function stableStringify(obj: unknown): string {
+  if (obj === null || obj === undefined) return "";
+  if (typeof obj !== "object") return String(obj);
+  if (Array.isArray(obj)) return JSON.stringify(obj.map(stableStringify));
+  const sorted = Object.keys(obj as Record<string, unknown>).sort();
+  return JSON.stringify(
+    Object.fromEntries(sorted.map((k) => [k, (obj as Record<string, unknown>)[k]]))
+  );
+}
 
 export interface MatchResult {
   customer_id: string;
@@ -414,7 +426,8 @@ export async function upsertFromSpreadsheet(
     await syncFormFieldsToRelatedTables(db, match.customer_id, sourceName, rawData);
 
     // application_history に履歴追加（重複チェック付き）
-    const rawText = JSON.stringify(rawData);
+    // NOTE: stableStringify を使うことで JSONB のキー順序差異を吸収
+    const rawText = stableStringify(rawData);
     const { data: existingHistory } = await db
       .from("application_history")
       .select("id")
@@ -432,7 +445,7 @@ export async function upsertFromSpreadsheet(
         .eq("source", sourceName);
       isDuplicate = allHistory?.some(
         (h: { id: string; raw_data: Record<string, unknown> }) =>
-          JSON.stringify(h.raw_data) === rawText
+          stableStringify(h.raw_data) === rawText
       ) ?? false;
     }
 
@@ -444,6 +457,9 @@ export async function upsertFromSpreadsheet(
         notes: `${sourceName}から同期 (${match.match_type}マッチ)`,
       });
     }
+
+    // 帰属チャネルをリアルタイム計算（エラーは無視）
+    computeAttributionForCustomer(match.customer_id).catch(() => {});
 
     return { action: "updated", customer_id: match.customer_id, match_type: match.match_type };
   }
@@ -522,6 +538,9 @@ export async function upsertFromSpreadsheet(
       raw_data: rawData,
       notes: `${sourceName}から自動作成`,
     });
+
+    // 帰属チャネルをリアルタイム計算（エラーは無視）
+    computeAttributionForCustomer(newCustomer.id).catch(() => {});
 
     return { action: "created", customer_id: newCustomer.id };
   }

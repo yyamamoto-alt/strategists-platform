@@ -1,6 +1,7 @@
 import { createServiceClient } from "@/lib/supabase/server";
 import { matchCustomer } from "@/lib/customer-matching";
 import { notifyJicooBooking } from "@/lib/slack";
+import { computeAttributionForCustomer } from "@/lib/compute-attribution-for-customer";
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 
@@ -82,12 +83,23 @@ export async function POST(request: Request) {
       const tracking = obj.tracking as Record<string, string> | undefined;
       if (tracking) {
         if (tracking.utm_source) pipelineUpdate.jicoo_message = `utm: ${tracking.utm_source}/${tracking.utm_medium || ""}`;
+        // UTMをcustomersテーブルにも保存（帰属チャネル計算用）
+        const utmUpdate: Record<string, string> = {};
+        if (tracking.utm_source) utmUpdate.utm_source = tracking.utm_source;
+        if (tracking.utm_medium) utmUpdate.utm_medium = tracking.utm_medium;
+        if (tracking.utm_campaign) utmUpdate.utm_campaign = tracking.utm_campaign;
+        if (Object.keys(utmUpdate).length > 0) {
+          await db.from("customers").update(utmUpdate).eq("id", match.customer_id);
+        }
       }
 
       await db
         .from("sales_pipeline")
         .update(pipelineUpdate)
         .eq("customer_id", match.customer_id);
+
+      // 帰属チャネルをリアルタイム計算
+      computeAttributionForCustomer(match.customer_id).catch(() => {});
     }
 
     // キャンセル
@@ -138,6 +150,13 @@ export async function POST(request: Request) {
       application_date: new Date().toISOString(),
       data_origin: "jicoo",
     };
+    // UTMを顧客に保存
+    const tracking = obj.tracking as Record<string, string> | undefined;
+    if (tracking) {
+      if (tracking.utm_source) customerInsert.utm_source = tracking.utm_source;
+      if (tracking.utm_medium) customerInsert.utm_medium = tracking.utm_medium;
+      if (tracking.utm_campaign) customerInsert.utm_campaign = tracking.utm_campaign;
+    }
 
     const { data: newCustomer, error: createError } = await db
       .from("customers")
@@ -168,6 +187,9 @@ export async function POST(request: Request) {
         raw_data: body,
         notes: `Jicoo ${event}: 自動作成`,
       });
+
+      // 帰属チャネルをリアルタイム計算
+      computeAttributionForCustomer(newCustomer.id).catch(() => {});
 
       // Slack通知（新規作成）
       await notifyJicooBooking({
