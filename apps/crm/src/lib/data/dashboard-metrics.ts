@@ -78,7 +78,7 @@ function isAdditionalCoaching(stage: string | undefined | null): boolean {
   return stage.startsWith("追加指導");
 }
 
-/** 面談実施済み判定: 日程未確・未実施以外のstageは実施済み */
+/** 面談実施済み判定: 日程未確・日程確定以外のstageは実施済み */
 const NOT_CONDUCTED_STAGES = new Set(["日程未確", "未実施"]);
 function isConducted(stage: string | undefined | null): boolean {
   if (!stage) return false;
