@@ -45,15 +45,20 @@ export async function getSession() {
 
   if (error || !user) return null;
 
-  // user_roles テーブルからロール取得
+  // user_roles テーブルからロール + 権限を取得
   const { data: roleData } = await supabase
     .from("user_roles")
-    .select("role")
+    .select("role, allowed_pages, data_months_limit, mask_pii")
     .eq("user_id", user.id)
-    .single() as { data: { role: string } | null };
+    .single() as { data: { role: string; allowed_pages: string[] | null; data_months_limit: number | null; mask_pii: boolean } | null };
 
   return {
     user: { id: user.id, email: user.email || "" },
     role: (roleData?.role as "admin" | "mentor" | "student") || null,
+    permissions: roleData ? {
+      allowed_pages: roleData.allowed_pages || [],
+      data_months_limit: roleData.data_months_limit,
+      mask_pii: roleData.mask_pii ?? false,
+    } : null,
   };
 }

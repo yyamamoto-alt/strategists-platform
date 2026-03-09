@@ -1,6 +1,6 @@
 import { createServiceClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
-import { fetchSheetHeaders, getSheetMetadata } from "@/lib/google-sheets";
+import { fetchColumnDataStatus, getSheetMetadata } from "@/lib/google-sheets";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -23,13 +23,14 @@ export async function GET(_request: Request, { params }: Props) {
   }
 
   try {
-    const [headers, sheets] = await Promise.all([
-      fetchSheetHeaders(connection.spreadsheet_id, connection.sheet_name),
+    const [columnStatus, sheets] = await Promise.all([
+      fetchColumnDataStatus(connection.spreadsheet_id, connection.sheet_name, 10),
       getSheetMetadata(connection.spreadsheet_id),
     ]);
 
     return NextResponse.json({
-      headers,
+      headers: columnStatus.headers,
+      activeColumns: columnStatus.activeColumns,
       sheets: sheets.map((s: { title: string }) => s.title),
       currentSheet: connection.sheet_name,
     });

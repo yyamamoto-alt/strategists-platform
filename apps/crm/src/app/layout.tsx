@@ -18,6 +18,7 @@ export default async function RootLayout({
 
   let initialUser = null;
   let initialRole = null;
+  let initialPermissions = null;
 
   if (!useMock) {
     try {
@@ -25,6 +26,7 @@ export default async function RootLayout({
       if (session) {
         initialUser = session.user;
         initialRole = session.role;
+        initialPermissions = session.permissions;
       }
     } catch {
       // 認証エラー時はnullのまま（middleware がリダイレクトする）
@@ -42,7 +44,7 @@ export default async function RootLayout({
         />
       </head>
       <body>
-        <AuthProvider initialUser={initialUser} initialRole={initialRole}>
+        <AuthProvider initialUser={initialUser} initialRole={initialRole} initialPermissions={initialPermissions}>
           {children}
         </AuthProvider>
       </body>

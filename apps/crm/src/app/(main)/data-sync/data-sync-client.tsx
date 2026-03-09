@@ -21,16 +21,64 @@ function formatDate(d: string | null): string {
 }
 
 const CRM_FIELDS = [
-  { key: "email", label: "メールアドレス" },
-  { key: "name", label: "氏名" },
-  { key: "phone", label: "電話番号" },
-  { key: "university", label: "大学" },
-  { key: "faculty", label: "学部" },
-  { key: "attribute", label: "属性（既卒/新卒）" },
-  { key: "career_history", label: "経歴" },
-  { key: "utm_source", label: "UTMソース" },
-  { key: "utm_medium", label: "UTMメディア" },
-  { key: "application_date", label: "日付" },
+  { key: "email", label: "メールアドレス", table: "customers" },
+  { key: "name", label: "氏名", table: "customers" },
+  { key: "phone", label: "電話番号", table: "customers" },
+  { key: "university", label: "大学", table: "customers" },
+  { key: "faculty", label: "学部", table: "customers" },
+  { key: "attribute", label: "属性（既卒/新卒）", table: "customers" },
+  { key: "career_history", label: "経歴", table: "customers" },
+  { key: "utm_source", label: "UTMソース", table: "customers" },
+  { key: "utm_medium", label: "UTMメディア", table: "customers" },
+  { key: "application_date", label: "日付", table: "customers" },
+  { key: "name_kana", label: "フリガナ", table: "customers" },
+  { key: "birth_date", label: "生年月日", table: "customers" },
+  { key: "karte_email", label: "メアド(カルテ)", table: "customers" },
+  { key: "karte_phone", label: "電話番号(カルテ)", table: "customers" },
+  { key: "graduation_year", label: "卒業年", table: "customers" },
+  { key: "application_reason", label: "申し込みの決め手", table: "customers" },
+  { key: "program_interest", label: "有料プログラムへの関心", table: "customers" },
+  { key: "desired_schedule", label: "希望期間・頻度", table: "customers" },
+  { key: "purchased_content", label: "購入コンテンツ", table: "customers" },
+  { key: "parent_support", label: "親御様からの支援", table: "customers" },
+  { key: "sns_accounts", label: "就活アカウント(X)", table: "customers" },
+  { key: "reference_media", label: "参考メディア", table: "customers" },
+  { key: "hobbies", label: "趣味・特技", table: "customers" },
+  { key: "behavioral_traits", label: "行動特性", table: "customers" },
+  { key: "other_background", label: "その他要望・特記事項", table: "customers" },
+  { key: "notes", label: "備考", table: "customers" },
+  { key: "caution_notes", label: "注意事項", table: "customers" },
+  { key: "target_companies", label: "志望企業", table: "customers" },
+  { key: "target_firm_type", label: "対策ファーム", table: "customers" },
+  { key: "transfer_intent", label: "転職意向", table: "customers" },
+  { key: "initial_level", label: "初期レベル", table: "customers" },
+  { key: "priority", label: "優先度", table: "customers" },
+  // pipeline
+  { key: "stage", label: "ステージ", table: "sales_pipeline" },
+  { key: "deal_status", label: "実施状況", table: "sales_pipeline" },
+  { key: "probability", label: "営業角度", table: "sales_pipeline" },
+  { key: "sales_date", label: "営業日①", table: "sales_pipeline" },
+  { key: "sales_date_2", label: "営業日②", table: "sales_pipeline" },
+  { key: "sales_date_3", label: "営業日③", table: "sales_pipeline" },
+  { key: "sales_person", label: "営業担当①", table: "sales_pipeline" },
+  { key: "sales_person_2", label: "営業担当②", table: "sales_pipeline" },
+  { key: "sales_person_3", label: "営業担当③", table: "sales_pipeline" },
+  { key: "decision_factor", label: "ネック要因", table: "sales_pipeline" },
+  { key: "comparison_services", label: "比較サービス", table: "sales_pipeline" },
+  { key: "response_date", label: "返答日①", table: "sales_pipeline" },
+  { key: "response_date_2", label: "返答日②", table: "sales_pipeline" },
+  { key: "response_date_3", label: "返答日③", table: "sales_pipeline" },
+  { key: "sales_content", label: "営業内容", table: "sales_pipeline" },
+  { key: "sales_strategy", label: "営業方針", table: "sales_pipeline" },
+  { key: "jicoo_message", label: "jicooメッセージ", table: "sales_pipeline" },
+  { key: "additional_plan", label: "提案プラン①", table: "sales_pipeline" },
+  { key: "additional_plan_2", label: "提案プラン②", table: "sales_pipeline" },
+  { key: "additional_plan_3", label: "提案プラン③", table: "sales_pipeline" },
+  { key: "meeting_category_1", label: "営業日①区分", table: "sales_pipeline" },
+  { key: "meeting_category_2", label: "営業日②区分", table: "sales_pipeline" },
+  { key: "meeting_category_3", label: "営業日③区分", table: "sales_pipeline" },
+  { key: "marketing_memo", label: "マーケメモ", table: "sales_pipeline" },
+  { key: "projected_amount", label: "売上見込", table: "sales_pipeline" },
 ];
 
 function getUnmappedHeaders(conn: SpreadsheetConnection): string[] {
@@ -53,6 +101,9 @@ interface SyncRecord {
 // ================================================================
 // マッピング編集モーダル
 // ================================================================
+
+type MappingTab = "mapped" | "unmapped";
+
 function MappingModal({
   conn,
   onClose,
@@ -66,10 +117,25 @@ function MappingModal({
   const [isSaving, setIsSaving] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [headers, setHeaders] = useState<string[]>(conn.known_headers || []);
-  const unmapped = useMemo(() => {
+  const [activeColumns, setActiveColumns] = useState<string[]>([]);
+  const [mappingTab, setMappingTab] = useState<MappingTab>("mapped");
+
+  // 新規カラム作成用
+  const [creatingFor, setCreatingFor] = useState<string | null>(null); // sheet column name
+  const [createMode, setCreateMode] = useState<"existing" | "new" | null>(null);
+  const [selectedExistingField, setSelectedExistingField] = useState("");
+  const [newColumnName, setNewColumnName] = useState("");
+  const [newColumnTable, setNewColumnTable] = useState("customers");
+  const [isCreatingColumn, setIsCreatingColumn] = useState(false);
+
+  // 動的に追加されたCRMフィールド
+  const [extraCrmFields, setExtraCrmFields] = useState<{ key: string; label: string; table: string }[]>([]);
+  const allCrmFields = useMemo(() => [...CRM_FIELDS, ...extraCrmFields], [extraCrmFields]);
+
+  const unmappedActive = useMemo(() => {
     const mapped = new Set(Object.values(fields));
-    return headers.filter((h) => h && !mapped.has(h));
-  }, [headers, fields]);
+    return headers.filter((h) => h && !mapped.has(h) && activeColumns.includes(h));
+  }, [headers, fields, activeColumns]);
 
   const refreshHeaders = async () => {
     setIsRefreshing(true);
@@ -78,7 +144,7 @@ function MappingModal({
       if (res.ok) {
         const data = await res.json();
         setHeaders(data.headers || []);
-        // also save to DB
+        setActiveColumns(data.activeColumns || data.headers || []);
         await fetch(`/api/spreadsheets/${conn.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -89,6 +155,12 @@ function MappingModal({
       setIsRefreshing(false);
     }
   };
+
+  // 初回ロード時にactiveColumnsを取得
+  useEffect(() => {
+    refreshHeaders();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const save = async () => {
     setIsSaving(true);
@@ -107,6 +179,55 @@ function MappingModal({
       setIsSaving(false);
     }
   };
+
+  // 既存フィールドに紐付け
+  const mapToExisting = (sheetCol: string, crmKey: string) => {
+    setFields((prev) => ({ ...prev, [crmKey]: sheetCol }));
+    setCreatingFor(null);
+    setCreateMode(null);
+    setSelectedExistingField("");
+  };
+
+  // 新規カラム作成して紐付け
+  const createAndMap = async (sheetCol: string) => {
+    if (!newColumnName.trim()) return;
+    setIsCreatingColumn(true);
+    try {
+      const res = await fetch("/api/spreadsheets/add-column", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          table: newColumnTable,
+          column_name: newColumnName.trim(),
+          column_label: sheetCol,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        // CRMフィールドリストに追加
+        setExtraCrmFields((prev) => [
+          ...prev,
+          { key: data.column_name, label: data.column_label, table: data.table },
+        ]);
+        // マッピングに追加
+        setFields((prev) => ({ ...prev, [data.column_name]: sheetCol }));
+        setCreatingFor(null);
+        setCreateMode(null);
+        setNewColumnName("");
+      } else {
+        const err = await res.json();
+        alert(`エラー: ${err.error}`);
+      }
+    } finally {
+      setIsCreatingColumn(false);
+    }
+  };
+
+  // 未マッピングフィールド（まだどのシート列にも紐付いていないCRMフィールド）
+  const unmappedCrmFields = useMemo(() => {
+    const mappedKeys = new Set(Object.keys(fields));
+    return allCrmFields.filter((f) => !mappedKeys.has(f.key));
+  }, [fields, allCrmFields]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
@@ -128,68 +249,197 @@ function MappingModal({
           </div>
         </div>
 
-        <div className="p-6 space-y-5">
-          {/* 未マッピング列のハイライト */}
-          {unmapped.length > 0 && (
-            <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl px-4 py-3">
-              <p className="text-sm text-yellow-300 font-medium mb-2">
-                未マッピング列 ({unmapped.length}件)
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {unmapped.map((h) => (
-                  <span key={h} className="px-2.5 py-1 bg-yellow-500/20 text-yellow-300 rounded-lg text-xs font-medium">
-                    {h}
-                  </span>
-                ))}
-              </div>
-              <p className="text-xs text-yellow-400/60 mt-2">
-                下のドロップダウンで、これらの列をCRMフィールドに割り当てられます
-              </p>
+        {/* タブ切替 */}
+        <div className="px-6 pt-4 flex gap-1 bg-surface-card">
+          {[
+            { key: "mapped" as MappingTab, label: "マッピング済み", count: Object.keys(fields).length },
+            { key: "unmapped" as MappingTab, label: "未マッピング列", count: unmappedActive.length },
+          ].map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setMappingTab(tab.key)}
+              className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
+                mappingTab === tab.key
+                  ? "bg-white/5 text-white border-b-2 border-brand"
+                  : "text-gray-500 hover:text-gray-300"
+              }`}
+            >
+              {tab.label}
+              {tab.count > 0 && (
+                <span className={`ml-1.5 px-1.5 py-0.5 text-[10px] rounded-full ${
+                  tab.key === "unmapped" ? "bg-yellow-500/20 text-yellow-400" : "bg-white/10 text-gray-400"
+                }`}>
+                  {tab.count}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        <div className="p-6 space-y-3">
+          {/* マッピング済みタブ */}
+          {mappingTab === "mapped" && (
+            <div className="space-y-2">
+              {allCrmFields.map((field) => {
+                const currentValue = fields[field.key] || "";
+                if (!currentValue && mappingTab === "mapped") return null;
+                return (
+                  <div
+                    key={field.key}
+                    className="flex items-center gap-3 rounded-xl px-4 py-3 bg-white/[0.03] border border-transparent"
+                  >
+                    <span className="text-sm text-gray-300 w-36 shrink-0 font-medium">
+                      {field.label}
+                    </span>
+                    <select
+                      value={currentValue}
+                      onChange={(e) => {
+                        setFields((prev) => {
+                          if (!e.target.value) {
+                            const next = { ...prev };
+                            delete next[field.key];
+                            return next;
+                          }
+                          return { ...prev, [field.key]: e.target.value };
+                        });
+                      }}
+                      className="flex-1 px-3 py-2 bg-[#1a1a2e] border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-brand appearance-none"
+                    >
+                      <option value="">-- 未設定 --</option>
+                      {headers.map((h) => (
+                        <option key={h} value={h}>{h}</option>
+                      ))}
+                    </select>
+                  </div>
+                );
+              })}
+              {Object.keys(fields).length === 0 && (
+                <p className="text-sm text-gray-500 text-center py-6">マッピングが設定されていません</p>
+              )}
             </div>
           )}
 
-          {/* マッピング設定 */}
-          <div className="space-y-2">
-            {CRM_FIELDS.map((field) => {
-              const currentValue = fields[field.key] || "";
-              const isNewlyMapped = currentValue && unmapped.includes(currentValue);
-              return (
-                <div
-                  key={field.key}
-                  className={`flex items-center gap-3 rounded-xl px-4 py-3 ${
-                    isNewlyMapped
-                      ? "bg-yellow-500/10 border border-yellow-500/20"
-                      : "bg-white/[0.03] border border-transparent"
-                  }`}
-                >
-                  <span className="text-sm text-gray-300 w-36 shrink-0 font-medium">
-                    {field.label}
-                  </span>
-                  <select
-                    value={currentValue}
-                    onChange={(e) => {
-                      setFields((prev) => {
-                        if (!e.target.value) {
-                          const next = { ...prev };
-                          delete next[field.key];
-                          return next;
-                        }
-                        return { ...prev, [field.key]: e.target.value };
-                      });
-                    }}
-                    className="flex-1 px-3 py-2 bg-[#1a1a2e] border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-brand appearance-none"
-                  >
-                    <option value="">-- 未設定 --</option>
-                    {headers.map((h) => (
-                      <option key={h} value={h}>
-                        {h}{unmapped.includes(h) ? " (NEW)" : ""}
-                      </option>
-                    ))}
-                  </select>
+          {/* 未マッピング列タブ */}
+          {mappingTab === "unmapped" && (
+            <div className="space-y-2">
+              {isRefreshing ? (
+                <div className="flex items-center justify-center py-8 gap-2 text-gray-500">
+                  <span className="w-4 h-4 border-2 border-gray-600 border-t-gray-300 rounded-full animate-spin" />
+                  <span className="text-sm">データ確認中...</span>
                 </div>
-              );
-            })}
-          </div>
+              ) : unmappedActive.length === 0 ? (
+                <p className="text-sm text-gray-500 text-center py-8">
+                  直近10件のデータに基づき、未マッピングかつデータのある列はありません
+                </p>
+              ) : (
+                unmappedActive.map((sheetCol) => (
+                  <div key={sheetCol} className="bg-white/[0.03] border border-white/10 rounded-xl px-4 py-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-yellow-300 font-medium">{sheetCol}</span>
+                      {creatingFor === sheetCol ? (
+                        <button
+                          onClick={() => { setCreatingFor(null); setCreateMode(null); }}
+                          className="text-xs text-gray-500 hover:text-gray-300"
+                        >
+                          閉じる
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => { setCreatingFor(sheetCol); setCreateMode(null); }}
+                          className="px-3 py-1 text-xs text-brand border border-brand/30 rounded-lg hover:bg-brand/10 transition-colors"
+                        >
+                          紐付け
+                        </button>
+                      )}
+                    </div>
+
+                    {/* 紐付け操作パネル */}
+                    {creatingFor === sheetCol && (
+                      <div className="mt-3 pt-3 border-t border-white/10 space-y-3">
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => setCreateMode("existing")}
+                            className={`flex-1 px-3 py-2 text-xs rounded-lg border transition-colors ${
+                              createMode === "existing"
+                                ? "bg-blue-500/20 border-blue-500/40 text-blue-300"
+                                : "border-white/10 text-gray-400 hover:text-white hover:bg-white/5"
+                            }`}
+                          >
+                            既存フィールドに紐付け
+                          </button>
+                          <button
+                            onClick={() => setCreateMode("new")}
+                            className={`flex-1 px-3 py-2 text-xs rounded-lg border transition-colors ${
+                              createMode === "new"
+                                ? "bg-green-500/20 border-green-500/40 text-green-300"
+                                : "border-white/10 text-gray-400 hover:text-white hover:bg-white/5"
+                            }`}
+                          >
+                            新しいカラムを作成
+                          </button>
+                        </div>
+
+                        {createMode === "existing" && (
+                          <div className="flex items-center gap-2">
+                            <select
+                              value={selectedExistingField}
+                              onChange={(e) => setSelectedExistingField(e.target.value)}
+                              className="flex-1 px-3 py-2 bg-[#1a1a2e] border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-brand appearance-none"
+                            >
+                              <option value="">-- CRMフィールドを選択 --</option>
+                              {unmappedCrmFields.map((f) => (
+                                <option key={f.key} value={f.key}>{f.label}</option>
+                              ))}
+                            </select>
+                            <button
+                              onClick={() => selectedExistingField && mapToExisting(sheetCol, selectedExistingField)}
+                              disabled={!selectedExistingField}
+                              className="px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 disabled:opacity-40 transition-colors"
+                            >
+                              紐付け
+                            </button>
+                          </div>
+                        )}
+
+                        {createMode === "new" && (
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <select
+                                value={newColumnTable}
+                                onChange={(e) => setNewColumnTable(e.target.value)}
+                                className="w-40 px-3 py-2 bg-[#1a1a2e] border border-white/10 rounded-lg text-white text-xs focus:outline-none focus:border-brand appearance-none"
+                              >
+                                <option value="customers">customers</option>
+                                <option value="sales_pipeline">sales_pipeline</option>
+                                <option value="contracts">contracts</option>
+                                <option value="learning_records">learning_records</option>
+                              </select>
+                              <input
+                                type="text"
+                                value={newColumnName}
+                                onChange={(e) => setNewColumnName(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "_"))}
+                                placeholder="column_name（英小文字）"
+                                className="flex-1 px-3 py-2 bg-[#1a1a2e] border border-white/10 rounded-lg text-white text-xs placeholder-gray-500 focus:outline-none focus:border-brand"
+                              />
+                            </div>
+                            <div className="flex justify-end">
+                              <button
+                                onClick={() => createAndMap(sheetCol)}
+                                disabled={!newColumnName.trim() || isCreatingColumn}
+                                className="px-4 py-2 bg-green-600 text-white rounded-lg text-xs font-medium hover:bg-green-700 disabled:opacity-40 transition-colors"
+                              >
+                                {isCreatingColumn ? "作成中..." : "カラム作成 & 紐付け"}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          )}
         </div>
 
         <div className="px-6 py-4 border-t border-white/10 flex justify-end gap-3">
@@ -356,12 +606,6 @@ export function DataSyncClient({
     { key: "unmatched", label: "未マッチレコード", count: unmatched.length },
     { key: "logs", label: "同期ログ" },
   ];
-
-  // 未マッピング列の合計
-  const totalUnmapped = connections.reduce(
-    (sum, conn) => sum + getUnmappedHeaders(conn).length,
-    0
-  );
 
   // 接続名マップ（ログ表示用）
   const connNameMap = useMemo(() => {
@@ -629,35 +873,6 @@ export function DataSyncClient({
           </p>
         </div>
       </div>
-
-      {/* 新カラム検知バナー */}
-      {totalUnmapped > 0 && (
-        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl px-5 py-4">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-sm text-yellow-300 font-medium">
-                {connections.filter((c) => getUnmappedHeaders(c).length > 0).length}件の接続で新しい列が検出されました
-              </p>
-              <p className="text-xs text-yellow-400/70 mt-1">
-                Googleフォームに新しい項目が追加された可能性があります。各接続の「マッピング」ボタンから設定してください。
-              </p>
-              <div className="flex flex-wrap gap-2 mt-3">
-                {connections
-                  .filter((c) => getUnmappedHeaders(c).length > 0)
-                  .map((c) => (
-                    <button
-                      key={c.id}
-                      onClick={() => setEditingConn(c)}
-                      className="px-3 py-1.5 bg-yellow-500/20 text-yellow-300 rounded-lg text-xs font-medium hover:bg-yellow-500/30 transition-colors"
-                    >
-                      {c.name} (+{getUnmappedHeaders(c).length})
-                    </button>
-                  ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* タブ */}
       <div className="flex gap-1 bg-surface-elevated rounded-lg p-1">

@@ -6,12 +6,22 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const supabase = createServiceClient();
 
-  // user_roles 一覧を取得
+  // user_roles 一覧を取得（権限フィールド含む）
   const { data: userRoles, error: rolesError } = await supabase
     .from("user_roles")
-    .select("id, user_id, role, display_name, created_at")
+    .select("id, user_id, role, display_name, created_at, allowed_pages, data_months_limit, mask_pii, is_active")
     .order("created_at", { ascending: false }) as {
-      data: { id: string; user_id: string; role: string; display_name: string | null; created_at: string }[] | null;
+      data: {
+        id: string;
+        user_id: string;
+        role: string;
+        display_name: string | null;
+        created_at: string;
+        allowed_pages: string[] | null;
+        data_months_limit: number | null;
+        mask_pii: boolean;
+        is_active: boolean;
+      }[] | null;
       error: unknown;
     };
 
@@ -34,6 +44,10 @@ export async function GET() {
         display_name: role.display_name,
         role: role.role,
         created_at: role.created_at,
+        allowed_pages: role.allowed_pages || [],
+        data_months_limit: role.data_months_limit,
+        mask_pii: role.mask_pii ?? false,
+        is_active: role.is_active ?? true,
       });
     }
   }

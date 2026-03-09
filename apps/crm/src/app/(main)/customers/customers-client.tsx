@@ -75,7 +75,7 @@ const VIEW_TABS: { key: ViewTab; label: string }[] = [
 const VIEW_COLUMNS: Record<ViewTab, string[] | null> = {
   overview: [
     // 基本 〜 見込みLTV
-    "_edit", "application_date", "name", "attribute", "career_history",
+    "application_date", "name", "attribute", "career_history",
     "is_agent_customer", "stage", "deal_status", "subsidy_eligible",
     "confirmed_amount", "rev_agent", "rev_total", "projected_amount",
     // プラン名
@@ -84,10 +84,10 @@ const VIEW_COLUMNS: Record<ViewTab, string[] | null> = {
     "sales_route",
     // 営業: 営業日, 角度, 返答日, 営業担当
     "sales_date", "probability", "response_date", "sales_person",
-    // 人材紹介: 全部
+    // 人材紹介
     "referral_category", "referral_status", "external_agents",
     "offer_rank", "offer_salary", "referral_fee_rate", "margin",
-    "placement_date", "placement_confirmed",
+    "placement_date",
     "agent_staff", "agent_memo", "loss_reason",
   ],
   all: null, // 全カラム表示
@@ -321,7 +321,7 @@ export function CustomersClient({ customers, attributionMap, firstPaidMap }: Cus
         render: (c) => <Truncated value={c.career_history} width={220} /> },
 
       // ─── 人材紹介利用 ───
-      { key: "is_agent_customer", label: "人材", width: 28, align: "center" as const,
+      { key: "is_agent_customer", label: "エージェント利用", width: 44, align: "center" as const,
         render: (c) => isAgentCustomer(c)
           ? <span className="text-purple-400 text-sm">&#9745;</span>
           : <span className="text-gray-600 text-sm">&#9744;</span>,

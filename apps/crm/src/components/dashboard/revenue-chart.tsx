@@ -19,7 +19,7 @@ interface RevenueChartProps {
 }
 
 const formatYen = (value: number) => {
-  if (value >= 10000000) return `${(value / 10000000).toFixed(1)}千万`;
+  if (value === 0) return "0";
   if (value >= 10000) return `${(value / 10000).toFixed(0)}万`;
   return value.toString();
 };
@@ -39,8 +39,8 @@ export function RevenueChart({ data, threeTierData }: RevenueChartProps) {
 /** 統合チャート: 確定売上（棒）+ 見込みLTVポテンシャル（折れ線MAXライン） */
 function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
   return (
-    <ResponsiveContainer width="100%" height={400}>
-      <ComposedChart data={data}>
+    <ResponsiveContainer width="100%" height={600}>
+      <ComposedChart data={data} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
         <XAxis
           dataKey="period"
@@ -56,6 +56,8 @@ function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
           tickFormatter={formatYen}
           tick={{ fontSize: 11, fill: "#9ca3af" }}
           stroke="rgba(255,255,255,0.1)"
+          domain={[0, 10000000]}
+          ticks={[0, 1000000, 2000000, 3000000, 4000000, 5000000, 6000000, 7000000, 8000000, 9000000, 10000000]}
         />
         <Tooltip
           formatter={(value) => `¥${Number(value).toLocaleString()}`}
@@ -96,6 +98,26 @@ function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
           stackId="revenue"
         />
 
+        {/* その他売上 */}
+        <Bar
+          dataKey="content_revenue"
+          name="note売上"
+          fill="#ec4899"
+          stackId="revenue"
+        />
+        <Bar
+          dataKey="myvision_revenue"
+          name="MyVision受託"
+          fill="#06b6d4"
+          stackId="revenue"
+        />
+        <Bar
+          dataKey="other_misc_revenue"
+          name="その他"
+          fill="#6b7280"
+          stackId="revenue"
+        />
+
         {/* 人材見込売上（半透明オレンジ） */}
         <Bar
           dataKey="projected_agent"
@@ -131,8 +153,8 @@ function FallbackChart({ data }: { data: RevenueMetrics[] }) {
   }));
 
   return (
-    <ResponsiveContainer width="100%" height={400}>
-      <ComposedChart data={chartData}>
+    <ResponsiveContainer width="100%" height={600}>
+      <ComposedChart data={chartData} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
         <XAxis
           dataKey="period"
@@ -148,6 +170,8 @@ function FallbackChart({ data }: { data: RevenueMetrics[] }) {
           tickFormatter={formatYen}
           tick={{ fontSize: 11, fill: "#9ca3af" }}
           stroke="rgba(255,255,255,0.1)"
+          domain={[0, 10000000]}
+          ticks={[0, 1000000, 2000000, 3000000, 4000000, 5000000, 6000000, 7000000, 8000000, 9000000, 10000000]}
         />
         <Tooltip
           formatter={(value) => `¥${Number(value).toLocaleString()}`}

@@ -58,7 +58,8 @@ function fmtValue(v: number | null, format: RowFormat): string {
 function buildRows(
   data: PLSegmentData,
   periods: string[],
-  showGradYear?: boolean
+  showGradYear?: boolean,
+  otherRevenues?: OtherRevenueSummary
 ): TableRow[] {
   const rows: TableRow[] = [];
   // チャンネルを成約数降順にソート
@@ -97,6 +98,74 @@ function buildRows(
     values: periods.map((p) => data.forecastRevenue[p] || null),
     totalValue: data.forecastRevenueTotal,
   });
+
+  // --- その他売上（note/MyVision） ---
+  if (otherRevenues) {
+    rows.push({
+      key: "other_rev_header",
+      label: "◆その他売上",
+      indent: 0,
+      style: "header",
+      format: "none",
+      values: [],
+      totalValue: null,
+    });
+
+    const noteValues = periods.map((p) => otherRevenues[p]?.note || null);
+    const mvValues = periods.map((p) => otherRevenues[p]?.myvision || null);
+    const otherValues = periods.map((p) => otherRevenues[p]?.other || null);
+    const totalValues = periods.map((p) => {
+      const r = otherRevenues[p];
+      return r ? (r.note + r.myvision + r.other) || null : null;
+    });
+
+    const allPeriodKeys = Object.keys(otherRevenues);
+    const noteTotal = allPeriodKeys.reduce((s, p) => s + (otherRevenues[p]?.note || 0), 0);
+    const mvTotal = allPeriodKeys.reduce((s, p) => s + (otherRevenues[p]?.myvision || 0), 0);
+    const otherTotal = allPeriodKeys.reduce((s, p) => s + (otherRevenues[p]?.other || 0), 0);
+
+    rows.push({
+      key: "other_rev_total",
+      label: "その他売上合計",
+      indent: 1,
+      style: "total",
+      format: "currency",
+      values: totalValues,
+      totalValue: noteTotal + mvTotal + otherTotal,
+    });
+
+    rows.push({
+      key: "other_rev_note",
+      label: "note売上",
+      indent: 2,
+      style: "value",
+      format: "currency",
+      values: noteValues,
+      totalValue: noteTotal,
+    });
+
+    rows.push({
+      key: "other_rev_myvision",
+      label: "MyVision受託",
+      indent: 2,
+      style: "value",
+      format: "currency",
+      values: mvValues,
+      totalValue: mvTotal,
+    });
+
+    if (otherTotal > 0) {
+      rows.push({
+        key: "other_rev_other",
+        label: "その他",
+        indent: 2,
+        style: "value",
+        format: "currency",
+        values: otherValues,
+        totalValue: otherTotal,
+      });
+    }
+  }
 
   rows.push(sep("sep_rev"));
 
@@ -654,15 +723,17 @@ function PLSection({
   data,
   periods,
   showGradYear,
+  otherRevenues,
 }: {
   label: string;
   data: PLSegmentData;
   periods: string[];
   showGradYear?: boolean;
+  otherRevenues?: OtherRevenueSummary;
 }) {
   const rows = useMemo(
-    () => buildRows(data, periods, showGradYear),
-    [data, periods, showGradYear]
+    () => buildRows(data, periods, showGradYear, otherRevenues),
+    [data, periods, showGradYear, otherRevenues]
   );
 
   const allCollapsibleGroups = useMemo(() => {
@@ -794,11 +865,16 @@ function PLSection({
 // メインコンポーネント
 // ================================================================
 
-interface RevenueClientProps {
-  plData: PLSheetData;
+export interface OtherRevenueSummary {
+  [period: string]: { note: number; myvision: number; other: number };
 }
 
-export function RevenueClient({ plData }: RevenueClientProps) {
+interface RevenueClientProps {
+  plData: PLSheetData;
+  otherRevenues?: OtherRevenueSummary;
+}
+
+export function RevenueClient({ plData, otherRevenues }: RevenueClientProps) {
   const [periodRange, setPeriodRange] = useState<PeriodRange>("12m");
   const [segmentTab, setSegmentTab] = useState<SegmentTab>("kisotsu");
 
@@ -862,6 +938,7 @@ export function RevenueClient({ plData }: RevenueClientProps) {
         data={currentData}
         periods={displayPeriods}
         showGradYear={segmentTab === "shinsotsu"}
+        otherRevenues={otherRevenues}
       />
     </div>
   );

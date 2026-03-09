@@ -34,6 +34,8 @@ interface SettingsSectionConfig {
 
 interface Props {
   settings: AppSetting[];
+  freeeConnected?: boolean;
+  freeeCompanyName?: string;
 }
 
 // ================================================================
@@ -178,9 +180,11 @@ interface SlackChannel {
   name: string;
 }
 
-export function SettingsClient({ settings }: Props) {
+export function SettingsClient({ settings, freeeConnected, freeeCompanyName }: Props) {
   const [slackChannels, setSlackChannels] = useState<SlackChannel[]>([]);
   const [slackLoading, setSlackLoading] = useState(false);
+  const [freeSyncing, setFreeSyncing] = useState(false);
+  const [freeSyncResult, setFreeSyncResult] = useState<string | null>(null);
 
   useEffect(() => {
     setSlackLoading(true);
@@ -470,6 +474,85 @@ export function SettingsClient({ settings }: Props) {
               </div>
             </div>
           ))}
+        </div>
+
+        {/* freee連携 */}
+        <div className="mt-6 bg-surface-card border border-white/10 rounded-xl overflow-hidden">
+          <div className="px-6 py-4 border-b border-white/10">
+            <h2 className="text-lg font-semibold text-white">freee連携</h2>
+            <p className="text-sm text-gray-400 mt-0.5">
+              freee会計と連携して請求書データを自動取得します（MyVision受託売上）
+            </p>
+          </div>
+          <div className="px-6 py-4">
+            {freeeConnected ? (
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-green-900/40 text-green-300 border border-green-800/50 rounded-full">
+                    <span className="w-1.5 h-1.5 bg-green-400 rounded-full" />
+                    連携中
+                  </span>
+                  {freeeCompanyName && (
+                    <span className="text-sm text-gray-300">{freeeCompanyName}</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={async () => {
+                      setFreeSyncing(true);
+                      setFreeSyncResult(null);
+                      try {
+                        const res = await fetch("/api/freee/sync", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({}),
+                        });
+                        const data = await res.json();
+                        if (res.ok) {
+                          setFreeSyncResult(
+                            `同期完了: ${data.total_invoices}件の請求書を取得、${data.inserted}件を追加、${data.skipped}件スキップ`
+                          );
+                        } else {
+                          setFreeSyncResult(`エラー: ${data.error}`);
+                        }
+                      } catch {
+                        setFreeSyncResult("同期に失敗しました");
+                      } finally {
+                        setFreeSyncing(false);
+                      }
+                    }}
+                    disabled={freeSyncing}
+                    className="px-4 py-2 text-sm font-medium bg-brand text-white rounded-lg hover:bg-brand/90 transition-colors disabled:opacity-50"
+                  >
+                    {freeSyncing ? "同期中..." : "今すぐ同期"}
+                  </button>
+                  <a
+                    href="/api/freee/auth"
+                    className="px-4 py-2 text-sm text-gray-300 bg-surface-elevated border border-white/10 rounded-lg hover:bg-white/5 transition-colors"
+                  >
+                    再認証
+                  </a>
+                </div>
+                {freeSyncResult && (
+                  <p className={`text-sm ${freeSyncResult.startsWith("エラー") ? "text-red-400" : "text-green-400"}`}>
+                    {freeSyncResult}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-sm text-gray-400">
+                  freeeアカウントと連携すると、請求書データを自動的に取得できます。
+                </p>
+                <a
+                  href="/api/freee/auth"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium bg-brand text-white rounded-lg hover:bg-brand/90 transition-colors"
+                >
+                  freeeと連携する
+                </a>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Change Summary Footer */}

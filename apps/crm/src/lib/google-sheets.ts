@@ -139,3 +139,56 @@ export async function fetchSheetHeaders(
 
   return res.data.values?.[0] || [];
 }
+
+/**
+ * ヘッダー + 直近N行を取得してカラムごとのデータ有無を返す
+ */
+export async function fetchColumnDataStatus(
+  spreadsheetId: string,
+  sheetName: string,
+  recentRows = 10
+): Promise<{ headers: string[]; activeColumns: string[] }> {
+  const auth = getAuth();
+  const sheets = google.sheets({ version: "v4", auth });
+
+  // まず全行数を把握するためヘッダー + 末尾のデータを取得
+  const headerRes = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: `'${sheetName}'!1:1`,
+  });
+  const headers = headerRes.data.values?.[0] || [];
+  if (headers.length === 0) return { headers: [], activeColumns: [] };
+
+  // 最終列文字を計算
+  const lastCol = String.fromCharCode(64 + Math.min(headers.length, 26));
+
+  // 全データの行数を取得（A列で判定）
+  const countRes = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: `'${sheetName}'!A:A`,
+    majorDimension: "COLUMNS",
+  });
+  const totalRows = (countRes.data.values?.[0] || []).length; // ヘッダー含む
+
+  if (totalRows <= 1) return { headers, activeColumns: [] };
+
+  // 直近N行を取得
+  const startRow = Math.max(2, totalRows - recentRows + 1);
+  const dataRes = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: `'${sheetName}'!A${startRow}:${lastCol}${totalRows}`,
+  });
+  const rows = dataRes.data.values || [];
+
+  // 各カラムにデータが1つでもあるか判定
+  const activeColumns: string[] = [];
+  for (let colIdx = 0; colIdx < headers.length; colIdx++) {
+    const hasData = rows.some((row) => {
+      const val = row[colIdx];
+      return val !== undefined && val !== null && String(val).trim() !== "";
+    });
+    if (hasData) activeColumns.push(headers[colIdx]);
+  }
+
+  return { headers, activeColumns };
+}

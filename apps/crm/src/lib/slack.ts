@@ -18,7 +18,7 @@ async function getSetting(key: string): Promise<string> {
   return typeof v === "string" ? v.replace(/"/g, "") : String(v ?? "");
 }
 
-async function sendSlackMessage(channel: string, text: string) {
+export async function sendSlackMessage(channel: string, text: string) {
   if (!SLACK_BOT_TOKEN) {
     console.warn("SLACK_BOT_TOKEN not set, skipping Slack notification");
     return;

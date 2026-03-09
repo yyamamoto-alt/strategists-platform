@@ -32,7 +32,6 @@ const navGroups: NavGroup[] = [
     title: "営業",
     items: [
       { name: "パイプライン", href: "/pipeline", roles: ["admin", "mentor"] },
-      { name: "補助金", href: "/subsidy", roles: ["admin"] },
     ],
   },
   {
@@ -47,7 +46,9 @@ const navGroups: NavGroup[] = [
       { name: "顧客DB", href: "/customers", roles: ["admin", "mentor"] },
       { name: "フォームDB", href: "/form-data", roles: ["admin", "mentor"] },
       { name: "注文管理", href: "/orders", roles: ["admin"] },
+      { name: "その他売上", href: "/other-revenues", roles: ["admin"] },
       { name: "エージェント", href: "/agents", roles: ["admin", "mentor"] },
+      { name: "補助金", href: "/subsidy", roles: ["admin"] },
     ],
     collapsible: true,
     defaultOpen: true,
@@ -57,6 +58,7 @@ const navGroups: NavGroup[] = [
     items: [
       { name: "ユーザー管理", href: "/users", roles: ["admin"] },
       { name: "データ連携", href: "/data-sync", roles: ["admin"] },
+      { name: "自動連携", href: "/automations", roles: ["admin"] },
       { name: "設定", href: "/settings", roles: ["admin"] },
     ],
     collapsible: true,

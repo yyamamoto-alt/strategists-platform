@@ -593,6 +593,10 @@ export interface ThreeTierRevenue {
   forecast_total: number;
   // MAXライン: 見込みLTV合計（当月のみ進捗率按分）
   expected_ltv_total: number;
+  // その他売上（other_revenues テーブルから）
+  content_revenue?: number;   // note売上
+  myvision_revenue?: number;  // MyVision受託
+  other_misc_revenue?: number; // その他
 }
 
 /** エージェント売上サマリー */

@@ -13,5 +13,17 @@ export default async function SettingsPage() {
     .select("*")
     .order("key");
 
-  return <SettingsClient settings={settings || []} />;
+  const allSettings = settings || [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const findSetting = (key: string) => allSettings.find((s: any) => s.key === key)?.value;
+  const freeeConnected = findSetting("freee_connected") === "true";
+  const freeeCompanyName = findSetting("freee_company_name") || "";
+
+  return (
+    <SettingsClient
+      settings={allSettings}
+      freeeConnected={freeeConnected}
+      freeeCompanyName={freeeCompanyName as string}
+    />
+  );
 }
