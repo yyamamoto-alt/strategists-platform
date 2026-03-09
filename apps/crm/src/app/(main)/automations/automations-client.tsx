@@ -59,6 +59,16 @@ export function AutomationsClient({
   const [channels, setChannels] = useState<SlackChannel[]>([]);
   const [loadingChannels, setLoadingChannels] = useState(false);
 
+  // サーバーサイドで空の場合、クライアント側でAPIから再取得
+  useEffect(() => {
+    if (initialAutomations.length === 0) {
+      fetch("/api/automations")
+        .then((res) => res.ok ? res.json() : [])
+        .then((data) => { if (data.length > 0) setAutomations(data); })
+        .catch(() => {});
+    }
+  }, [initialAutomations.length]);
+
   // Slackチャンネル一覧取得
   const loadChannels = useCallback(async () => {
     if (channels.length > 0) return;
