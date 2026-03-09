@@ -214,11 +214,31 @@ export async function POST(request: Request) {
 
     const fallbackText = `${mention}📋 入塾フォーム受信 — ${name} のプラン・エージェント利用を確認してください`;
 
+    // プラン選択肢
+    const planOptions = [
+      "既卒/長期", "既卒/通常", "既卒/短期", "既卒/特急", "既卒/超特急",
+      "既卒/総コン特化", "既卒/McK特化", "既卒/補助金適用プラン", "既卒/自主学習",
+      "新卒/スタンダード", "新卒/ライト", "新卒/ミニマム", "新卒/長期",
+      "新卒/通常", "新卒/特急", "新卒/直前期", "新卒/選コミュ", "新卒/総コン特化", "新卒/McK特化",
+      "総コン特化", "自主学習サポートパック", "その他",
+    ].map((p) => ({ text: { type: "plain_text" as const, text: p }, value: p }));
+
+    // エージェント利用選択肢
+    const agentOptions = [
+      { text: { type: "plain_text" as const, text: "フル利用" }, value: "フル利用" },
+      { text: { type: "plain_text" as const, text: "一部利用" }, value: "一部利用" },
+      { text: { type: "plain_text" as const, text: "スクールのみ（利用しない）" }, value: "スクールのみ" },
+    ];
+
+    // お客様入力値に一致する初期選択を探す
+    const initialPlan = plan_name ? planOptions.find((o) => o.value === plan_name) : undefined;
+    const initialAgent = agentUsage ? agentOptions.find((o) => agentUsage.includes(o.value.replace("（利用しない）", ""))) : undefined;
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const blocks: any[] = [
       {
         type: "header",
-        text: { type: "plain_text", text: "📋 入塾フォーム受信 — 確認リクエスト", emoji: true },
+        text: { type: "plain_text", text: "📋【営業】入塾フォーム — プラン・エージェント確認", emoji: true },
       },
       {
         type: "section",
@@ -240,24 +260,44 @@ export async function POST(request: Request) {
       { type: "divider" },
       {
         type: "section",
-        text: { type: "mrkdwn", text: "⚠️ *お客様入力のため、正しいかご確認ください*\nOKならそのままCRMに反映されます。修正が必要な場合はCRMで直接修正してください。" },
+        text: { type: "mrkdwn", text: "⚠️ *正しいプランとエージェント利用を選択してから確定してください*\nお客様入力が正しければそのまま確定でOKです。" },
       },
+      // プラン選択ドロップダウン
+      {
+        type: "section",
+        block_id: `plan_select_${customerId || "unknown"}`,
+        text: { type: "mrkdwn", text: "*プラン:*" },
+        accessory: {
+          type: "static_select",
+          action_id: "select_enrollment_plan",
+          placeholder: { type: "plain_text", text: "プランを選択..." },
+          options: planOptions,
+          ...(initialPlan ? { initial_option: initialPlan } : {}),
+        },
+      },
+      // エージェント利用ドロップダウン
+      {
+        type: "section",
+        block_id: `agent_select_${customerId || "unknown"}`,
+        text: { type: "mrkdwn", text: "*エージェント利用:*" },
+        accessory: {
+          type: "static_select",
+          action_id: "select_enrollment_agent",
+          placeholder: { type: "plain_text", text: "利用区分を選択..." },
+          options: agentOptions,
+          ...(initialAgent ? { initial_option: initialAgent } : {}),
+        },
+      },
+      // 確定ボタン
       {
         type: "actions",
         block_id: `enrollment_confirm_${customerId || "unknown"}`,
         elements: [
           {
             type: "button",
-            text: { type: "plain_text", text: "✅ プラン・エージェント利用 OK", emoji: true },
+            text: { type: "plain_text", text: "✅ 確定（CRMに反映）", emoji: true },
             style: "primary",
             action_id: "confirm_enrollment_data",
-            value: confirmPayload,
-          },
-          {
-            type: "button",
-            text: { type: "plain_text", text: "❌ 修正が必要", emoji: true },
-            style: "danger",
-            action_id: "reject_enrollment_data",
             value: confirmPayload,
           },
         ],

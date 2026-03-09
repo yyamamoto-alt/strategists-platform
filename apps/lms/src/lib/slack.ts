@@ -187,7 +187,11 @@ export async function sendInviteApprovalRequest(
   const blocks: SlackBlock[] = [
     {
       type: "header",
-      text: { type: "plain_text", text: "LMS招待の承認リクエスト", emoji: true },
+      text: { type: "plain_text", text: "🎓【Edu】LMS招待 — メンター割当リクエスト", emoji: true },
+    },
+    {
+      type: "context",
+      elements: [{ type: "mrkdwn", text: "<@U09KTDK1P99> メンター割当と招待の承認をお願いします" }],
     },
     {
       type: "section",
@@ -207,6 +211,10 @@ export async function sendInviteApprovalRequest(
     {
       type: "section",
       text: { type: "mrkdwn", text: `*入金・決済情報*\n${paymentDetailText}` },
+    },
+    {
+      type: "section",
+      text: { type: "mrkdwn", text: "⚠️ *承認前に契約書が締結されているか必ず確認してください*" },
     },
     { type: "divider" },
     {
