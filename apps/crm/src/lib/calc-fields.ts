@@ -132,11 +132,6 @@ export function calcClosingProbability(c: CustomerWithRelations): number {
   if (stage === "失注" || stage === "失注見込(自動)") return 0;
   if (stage === "失注見込") return 0.02;
 
-  // --- 未実施: 面談予定だが未実施。既卒/新卒で大幅に異なる ---
-  if (stage === "未実施") {
-    return isShinsotsu(c.attribute) ? 0.80 * 0.30 : 0.90 * 0.65;
-  }
-
   // --- NoShow/非実施 → 0% ---
   if (stage === "NoShow" || stage === "実施不可" || stage === "非実施対象") return 0;
 
