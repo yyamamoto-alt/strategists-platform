@@ -80,7 +80,7 @@ export function isAgentConfirmed(c: CustomerWithRelations): boolean {
 
 /** 補助金額算出（Excel Col EJ: リスキャリ補助金） */
 export function getSubsidyAmount(c: CustomerWithRelations): number {
-  if (c.contract?.referral_category === "対象" || c.contract?.subsidy_eligible) {
+  if (c.contract?.subsidy_eligible) {
     return c.contract?.subsidy_amount || 203636;
   }
   return 0;
@@ -113,8 +113,7 @@ export function calcClosingProbability(c: CustomerWithRelations, recentRates?: R
   const t = Math.min(raw, 1.0);
 
   // --- 成約系 → 100% ---
-  if (stage === "成約" || stage === "入金済") return 1.0;
-  if (stage === "成約(追加指導経由)" || stage === "途中解約(成約)") return 1.0;
+  if (stage === "成約" || stage === "入金済" || stage === "途中解約(成約)") return 1.0;
 
   // --- 追加指導系（サブタイプ判定） ---
   if (stage.startsWith("追加指導")) {
