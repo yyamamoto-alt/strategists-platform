@@ -309,9 +309,9 @@ export function CustomersClient({ customers, attributionMap, firstPaidMap }: Cus
         ), sortValue: (c) => c.name },
 
       // ─── 属性 ───
-      { key: "attribute", label: "属性", width: 72, category: "base",
+      { key: "attribute", label: "属性", width: 44, category: "base",
         render: (c) => (
-          <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap ${getAttributeColor(c.attribute)}`}>{c.attribute.includes("既卒") ? "既卒" : "新卒"}</span>
+          <span className={`inline-block px-1 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap ${getAttributeColor(c.attribute)}`}>{c.attribute.includes("既卒") ? "既卒" : "新卒"}</span>
         ), sortValue: (c) => c.attribute,
         filterValue: (c) => c.attribute?.includes("既卒") ? "既卒" : "新卒" },
 
@@ -320,7 +320,7 @@ export function CustomersClient({ customers, attributionMap, firstPaidMap }: Cus
         render: (c) => <Truncated value={c.career_history} width={220} /> },
 
       // ─── 人材紹介利用 ───
-      { key: "is_agent_customer", label: "エージェント利用", width: 32, align: "center" as const,
+      { key: "is_agent_customer", label: "エージェント利用", width: 24, align: "center" as const,
         render: (c) => isAgentCustomer(c)
           ? <span className="text-purple-400 text-sm">&#9745;</span>
           : <span className="text-gray-600 text-sm">&#9744;</span>,
