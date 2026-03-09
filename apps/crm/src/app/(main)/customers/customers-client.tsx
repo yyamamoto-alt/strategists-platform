@@ -347,25 +347,25 @@ export function CustomersClient() {
         ) },
 
       // ─── 申込日 ───
-      { key: "application_date", label: "申込日", width: 78, stickyLeft: 32,
+      { key: "application_date", label: "申込日", width: 70, stickyLeft: 32,
         render: (c) => <span className="text-gray-400 text-xs">{fmtDate(c.application_date)}</span>,
         sortValue: (c) => c.application_date || "" },
 
       // ─── 名前 [sticky] ───
-      { key: "name", label: "名前", width: 120, stickyLeft: 110,
+      { key: "name", label: "名前", width: 100, stickyLeft: 102,
         render: (c) => (
           <Link href={`/customers/${c.id}`} className="text-brand hover:underline text-sm">{c.name}</Link>
         ), sortValue: (c) => c.name },
 
       // ─── 属性 ───
-      { key: "attribute", label: "属性", width: 52, stickyLeft: 230, category: "base",
+      { key: "attribute", label: "属性", width: 52, stickyLeft: 202, category: "base",
         render: (c) => (
           <span className={`inline-block px-1.5 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap ${getAttributeColor(c.attribute)}`}>{c.attribute.includes("既卒") ? "既卒" : "新卒"}</span>
         ), sortValue: (c) => c.attribute,
         filterValue: (c) => c.attribute?.includes("既卒") ? "既卒" : "新卒" },
 
       // ─── 検討状況（属性の右） ───
-      { key: "stage", label: "検討状況", width: 120, stickyLeft: 282, category: "sales",
+      { key: "stage", label: "検討状況", width: 100, stickyLeft: 254, category: "sales",
         render: (c) => {
           const stage = stageOverrides[c.id] || c.pipeline?.stage;
           return stage ? (
