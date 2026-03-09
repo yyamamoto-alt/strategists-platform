@@ -67,7 +67,6 @@ export async function notifyStageTransition(text: string) {
 const DEFAULT_CHANNELS = {
   payment_success: "C094YLMKR4K",
   jicoo: "C07QXD9N524",
-  form_sync: "C07QXD9N524",
   daily_report: "C0951QVAJ5N",
 } as const;
 
@@ -132,40 +131,6 @@ export async function notifyPaymentSuccess(data: {
     data.matched ? "✅ 顧客マッチ済み" : "⚠️ 未マッチ",
   ];
   if (data.customerUrl) lines.push(data.customerUrl);
-
-  await sendSlackMessage(channel, lines.join("\n"));
-}
-
-/** フォーム同期通知（営業報告/入塾/指導報告） */
-export async function notifyFormSync(data: {
-  sourceName: string;
-  customerName: string;
-  action: "created" | "updated" | "unmatched";
-  customerId?: string;
-  extraFields?: Record<string, string>;
-}) {
-  const channel = await getNotifyConfig("form_sync", DEFAULT_CHANNELS.form_sync);
-  if (!channel) return;
-
-  const emoji = data.action === "created" ? "🆕"
-    : data.action === "updated" ? "📝" : "⚠️";
-  const actionLabel = data.action === "created" ? "新規作成"
-    : data.action === "updated" ? "更新" : "未マッチ";
-
-  const lines = [
-    `${emoji} *${data.sourceName}* — ${actionLabel}`,
-    `氏名: ${data.customerName}`,
-  ];
-
-  if (data.extraFields) {
-    for (const [k, v] of Object.entries(data.extraFields)) {
-      if (v) lines.push(`${k}: ${v}`);
-    }
-  }
-
-  if (data.customerId) {
-    lines.push(`https://strategists-crm.vercel.app/customers/${data.customerId}`);
-  }
 
   await sendSlackMessage(channel, lines.join("\n"));
 }

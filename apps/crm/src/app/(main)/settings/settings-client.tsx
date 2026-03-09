@@ -141,17 +141,6 @@ const SECTIONS: SettingsSectionConfig[] = [
         placeholder: "チャンネルを選択...",
       },
       {
-        key: "slack_notify_form_sync",
-        label: "フォーム同期通知（営業/入塾/指導報告）",
-        type: "toggle",
-      },
-      {
-        key: "slack_channel_form_sync",
-        label: "└ 通知先チャンネル",
-        type: "slack_channel",
-        placeholder: "チャンネルを選択...",
-      },
-      {
         key: "slack_notify_stage_transition",
         label: "ステージ自動遷移通知",
         type: "toggle",
