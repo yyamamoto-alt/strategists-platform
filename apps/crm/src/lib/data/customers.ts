@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createServiceClient } from "@/lib/supabase/server";
+import { unstable_cache, revalidateTag } from "next/cache";
 import { transformCustomerRows, transformCustomerRow } from "./transforms";
 import type { CustomerWithRelations, Activity } from "@strategy-school/shared-db";
 
@@ -31,11 +32,15 @@ async function fetchCustomersRaw(): Promise<CustomerWithRelations[]> {
   return transformCustomerRows(data as any[]);
 }
 
-/** 顧客データ取得 */
-export const fetchCustomersWithRelations = fetchCustomersRaw;
+/** 顧客データ取得（60秒キャッシュ） */
+export const fetchCustomersWithRelations = unstable_cache(
+  fetchCustomersRaw,
+  ["customers"],
+  { revalidate: 60, tags: ["customers"] }
+);
 
 /** orders.paid_at から顧客ごとの最初の支払日を取得 */
-export async function fetchFirstPaidDates(): Promise<Record<string, string>> {
+async function fetchFirstPaidDatesRaw(): Promise<Record<string, string>> {
   const supabase = createServiceClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as any;
@@ -57,6 +62,12 @@ export async function fetchFirstPaidDates(): Promise<Record<string, string>> {
   }
   return map;
 }
+
+export const fetchFirstPaidDates = unstable_cache(
+  fetchFirstPaidDatesRaw,
+  ["first-paid-dates"],
+  { revalidate: 60, tags: ["orders"] }
+);
 
 export async function fetchCustomerById(
   id: string

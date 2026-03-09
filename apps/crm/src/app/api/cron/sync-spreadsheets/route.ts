@@ -2,6 +2,7 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { fetchSheetData } from "@/lib/google-sheets";
 import { extractFieldsFromRow, upsertFromSpreadsheet } from "@/lib/customer-matching";
+import { computeAttributionForCustomer } from "@/lib/compute-attribution-for-customer";
 import crypto from "crypto";
 
 /** JSONB key order-independent hash for dedup comparison */
@@ -345,9 +346,34 @@ export async function GET(request: Request) {
     }
   }
 
+  // 帰属チャネル未計算の顧客を一括補完（最大50件/回）
+  let attributionFilled = 0;
+  try {
+    const { data: allAttr } = await db
+      .from("customer_channel_attribution")
+      .select("customer_id");
+    const attrSet = new Set((allAttr || []).map((r: { customer_id: string }) => r.customer_id));
+
+    const { data: recentCustomers } = await db
+      .from("customers")
+      .select("id")
+      .order("created_at", { ascending: false })
+      .limit(200);
+
+    const missing = (recentCustomers || []).filter((c: { id: string }) => !attrSet.has(c.id));
+
+    for (const row of missing.slice(0, 50)) {
+      try {
+        await computeAttributionForCustomer(row.id);
+        attributionFilled++;
+      } catch { /* skip */ }
+    }
+  } catch { /* skip */ }
+
   return NextResponse.json({
     success: true,
     synced: results.length,
     results,
+    attribution_filled: attributionFilled,
   });
 }

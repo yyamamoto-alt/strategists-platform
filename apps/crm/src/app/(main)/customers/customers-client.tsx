@@ -73,10 +73,13 @@ const VIEW_TABS: { key: ViewTab; label: string }[] = [
 // タブごとに表示するカラムキーの定義
 const VIEW_COLUMNS: Record<ViewTab, string[] | null> = {
   overview: [
-    // 基本 〜 見込みLTV
-    "application_date", "name", "attribute", "career_history",
-    "is_agent_customer", "stage", "subsidy_eligible",
-    "confirmed_amount", "rev_agent", "rev_total", "projected_amount",
+    // 基本
+    "application_date", "name", "attribute", "stage", "subsidy_eligible",
+    "career_history", "is_agent_customer",
+    // 売上（計算式表示: 確定 + 人材見込 = 見込含む）
+    "confirmed_amount", "rev_plus", "rev_agent", "rev_eq", "rev_total",
+    // 帰属チャネル
+    "marketing_channel",
     // プラン名
     "plan_name",
     // マーケ: 経路営業のみ
@@ -99,7 +102,7 @@ const VIEW_COLUMNS: Record<ViewTab, string[] | null> = {
   ],
   sales: [
     "application_date", "name", "attribute", "stage", "subsidy_eligible",
-    "confirmed_amount", "rev_agent", "rev_total", "projected_amount",
+    "confirmed_amount", "rev_plus", "rev_agent", "rev_eq", "rev_total",
     "probability", "sales_date", "response_date",
     "first_amount", "discount",
     "sales_person", "sales_content", "sales_strategy",
@@ -133,7 +136,7 @@ const VIEW_COLUMNS: Record<ViewTab, string[] | null> = {
   ],
   agent: [
     "application_date", "name", "attribute", "stage", "subsidy_eligible",
-    "confirmed_amount", "rev_agent", "rev_total", "projected_amount",
+    "confirmed_amount", "rev_plus", "rev_agent", "rev_eq", "rev_total",
     "is_agent_customer", "referral_category", "referral_status",
     "external_agents",
     "offer_rank", "offer_salary",
@@ -315,18 +318,7 @@ export function CustomersClient({ customers, attributionMap, firstPaidMap }: Cus
         ), sortValue: (c) => c.attribute,
         filterValue: (c) => c.attribute?.includes("既卒") ? "既卒" : "新卒" },
 
-      // ─── 経歴（属性の右横） ───
-      { key: "career_history", label: "経歴", width: 220,
-        render: (c) => <Truncated value={c.career_history} width={220} /> },
-
-      // ─── 人材紹介利用 ───
-      { key: "is_agent_customer", label: "エージェント利用", width: 24, align: "center" as const,
-        render: (c) => isAgentCustomer(c)
-          ? <span className="text-purple-400 text-sm">&#9745;</span>
-          : <span className="text-gray-600 text-sm">&#9744;</span>,
-        sortValue: (c) => isAgentCustomer(c) ? 1 : 0 },
-
-      // ─── 検討状況 ───
+      // ─── 検討状況（属性の右） ───
       { key: "stage", label: "検討状況", width: 120, category: "sales",
         render: (c) => {
           const stage = stageOverrides[c.id] || c.pipeline?.stage;
@@ -341,49 +333,61 @@ export function CustomersClient({ customers, attributionMap, firstPaidMap }: Cus
         render: (c) => c.contract?.subsidy_eligible ? <span className="text-purple-400 text-xs">対象</span> : "-",
         filterValue: (c) => c.contract?.subsidy_eligible ? "対象" : "" },
 
-      // ═══ 売上4種（近接配置） ═══
-      { key: "confirmed_amount", label: "確定売上", width: 100, align: "right" as const, category: "sales",
+      // ─── 経歴 ───
+      { key: "career_history", label: "経歴", width: 220,
+        render: (c) => <Truncated value={c.career_history} width={220} /> },
+
+      // ─── 人材紹介利用 ───
+      { key: "is_agent_customer", label: "エージェント利用", width: 24, align: "center" as const,
+        render: (c) => isAgentCustomer(c)
+          ? <span className="text-purple-400 text-sm">&#9745;</span>
+          : <span className="text-gray-600 text-sm">&#9744;</span>,
+        sortValue: (c) => isAgentCustomer(c) ? 1 : 0 },
+
+      // ═══ 売上（計算式表示） ═══
+      { key: "confirmed_amount", label: "確定売上", width: 90, align: "right" as const, category: "sales",
         render: (c) => {
           const amt = getSchoolRevenue(c) + getSubsidyAmount(c);
-          return amt > 0 ? formatCurrency(amt) : "-";
+          return amt > 0 ? <span className="text-xs">{formatCurrency(amt)}</span> : "-";
         },
         sortValue: (c) => getSchoolRevenue(c) + getSubsidyAmount(c) },
 
-      { key: "rev_agent", label: "人材見込売上", width: 110, align: "right" as const, computed: true, category: "sales",
+      { key: "rev_plus", label: "+", width: 16, align: "center" as const, category: "sales",
+        render: () => <span className="text-gray-500 text-[10px]">+</span> },
+
+      { key: "rev_agent", label: "人材見込", width: 90, align: "right" as const, computed: true, category: "sales",
         formula: "想定年収 × 入社至る率 × 内定確度 × 紹介料率 × マージン",
         render: (c) => {
-          if (!isAgentCustomer(c)) return "-";
+          if (!isAgentCustomer(c)) return <span className="text-gray-600 text-xs">-</span>;
           const v = calcExpectedReferralFee(c);
-          return v > 0 ? formatCurrency(v) : "-";
+          return v > 0 ? <span className="text-xs">{formatCurrency(v)}</span> : <span className="text-gray-600 text-xs">-</span>;
         }, sortValue: (c) => isAgentCustomer(c) ? calcExpectedReferralFee(c) : 0 },
 
-      { key: "rev_total", label: "見込含む売上", width: 110, align: "right" as const, computed: true, category: "sales",
-        formula: "確定売上 + 人材見込み売上 + 補助金",
+      { key: "rev_eq", label: "=", width: 16, align: "center" as const, category: "sales",
+        render: () => <span className="text-gray-500 text-[10px]">=</span> },
+
+      { key: "rev_total", label: "見込含む売上", width: 100, align: "right" as const, computed: true, category: "sales",
+        formula: "確定売上 + 人材見込み売上",
         render: (c) => {
           const school = getSchoolRevenue(c);
           const agent = isAgentCustomer(c) ? calcExpectedReferralFee(c) : 0;
           const subsidy = getSubsidyAmount(c);
           const total = school + agent + subsidy;
-          return total > 0 ? <span className="font-semibold text-brand">{formatCurrency(total)}</span> : "-";
+          return total > 0 ? <span className="font-semibold text-brand text-xs">{formatCurrency(total)}</span> : "-";
         }, sortValue: (c) => {
           const school = getSchoolRevenue(c);
           const agent = isAgentCustomer(c) ? calcExpectedReferralFee(c) : 0;
           return school + agent + getSubsidyAmount(c);
         } },
 
-      { key: "projected_amount", label: "見込LTV", width: 100, align: "right" as const, computed: true, category: "sales",
-        formula: "成約者: 確定売上+人材売上+補助金\n未成約者: 見込み成約率×見込み単価",
-        render: (c) => {
-          const v = calcExpectedLTV(c);
-          return v > 0 ? formatCurrency(v) : "-";
-        }, sortValue: (c) => calcExpectedLTV(c) },
-
-      // ═══ マーケティング（オレンジ） ═══
-      { key: "marketing_channel", label: "帰属チャネル", width: 110, category: "marketing",
+      // ─── 帰属チャネル（概要に表示） ───
+      { key: "marketing_channel", label: "帰属チャネル", width: 110, category: "base",
         render: (c) => {
           const attr = attributionMap[c.id];
           return attr ? <span className="text-white font-medium text-xs">{attr.marketing_channel}</span> : <span className="text-gray-600 text-xs">-</span>;
         }, sortValue: (c) => attributionMap[c.id]?.marketing_channel || "" },
+
+      // ═══ マーケティング（タブ内） ═══
       { key: "initial_channel", label: "初回認知経路", width: 110, category: "marketing",
         render: (c) => <span className="text-xs">{c.pipeline?.initial_channel || "-"}</span> },
       { key: "application_reason", label: "申し込みの決め手", width: 160, category: "marketing",        render: (c) => c.application_reason || "-" },
