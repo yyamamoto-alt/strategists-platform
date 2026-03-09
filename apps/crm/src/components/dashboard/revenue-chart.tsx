@@ -11,8 +11,15 @@ import {
   ComposedChart,
   Bar,
   Line,
+  ReferenceLine,
 } from "recharts";
 import type { RevenueMetrics, ThreeTierRevenue } from "@/types/database";
+
+interface PLData {
+  period: string;
+  cost_of_sales: number;
+  sga: number;
+}
 
 interface RevenueChartProps {
   data: RevenueMetrics[];
@@ -115,6 +122,9 @@ function DiagonalStripePattern({ id, color }: { id: string; color: string }) {
   );
 }
 
+// コスト表示モード
+type CostOverlay = "none" | "cost" | "profit";
+
 export function RevenueChart({ data, threeTierData }: RevenueChartProps) {
   if (threeTierData && threeTierData.length > 0) {
     return <UnifiedChart data={threeTierData} />;
@@ -122,10 +132,14 @@ export function RevenueChart({ data, threeTierData }: RevenueChartProps) {
   return <FallbackChart data={data} />;
 }
 
-/** 統合チャート: 確定売上（棒）+ 着地見込伸び代（縞々棒） */
+/** 統合チャート */
 function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
   const [colors, setColors] = useState<Record<ColorKey, string>>(DEFAULT_COLORS);
   const [showPicker, setShowPicker] = useState(false);
+  const [costOverlay, setCostOverlay] = useState<CostOverlay>("none");
+  const [plData, setPlData] = useState<PLData[] | null>(null);
+  const [plLoading, setPlLoading] = useState(false);
+  const [plError, setPlError] = useState<string | null>(null);
 
   useEffect(() => { setColors(loadColors()); }, []);
 
@@ -137,8 +151,32 @@ function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
     });
   }, []);
 
-  // 伸び代（着地見込 - 棒グラフ合計）を計算
+  // freee P&Lデータ取得（コストオーバーレイ選択時にlazy load）
+  useEffect(() => {
+    if (costOverlay === "none" || plData !== null) return;
+    setPlLoading(true);
+    setPlError(null);
+    const currentYear = new Date().getFullYear();
+    fetch(`/api/freee/pl?startYear=${currentYear - 1}&endYear=${currentYear}`)
+      .then((r) => {
+        if (!r.ok) throw new Error("freee未連携またはデータ取得失敗");
+        return r.json();
+      })
+      .then((d) => {
+        if (Array.isArray(d)) setPlData(d);
+        else throw new Error(d.error || "不明なエラー");
+      })
+      .catch((e) => setPlError(e.message))
+      .finally(() => setPlLoading(false));
+  }, [costOverlay, plData]);
+
+  // チャートデータにコスト・利益をマージ
   const chartData = useMemo(() => {
+    const plMap: Record<string, PLData> = {};
+    if (plData) {
+      for (const p of plData) plMap[p.period] = p;
+    }
+
     return data.map((d) => {
       const barTotal =
         (d.confirmed_school_kisotsu || 0) +
@@ -150,28 +188,92 @@ function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
         (d.other_misc_revenue || 0) +
         (d.projected_agent || 0);
       const gap = Math.max(0, (d.expected_ltv_total || 0) - barTotal);
-      return { ...d, ltv_gap: gap };
+
+      const pl = plMap[d.period];
+      const costOfSales = pl?.cost_of_sales || 0;
+      const sga = pl?.sga || 0;
+      const totalCost = costOfSales + sga;
+      const revenue = d.confirmed_total || barTotal;
+      const profit = revenue - totalCost;
+
+      return {
+        ...d,
+        ltv_gap: gap,
+        cost_of_sales: costOfSales,
+        sga,
+        total_cost: totalCost,
+        profit,
+      };
     });
-  }, [data]);
+  }, [data, plData]);
+
+  const showCost = costOverlay !== "none" && plData !== null;
 
   return (
     <div className="relative">
-      <button
-        onClick={() => setShowPicker(!showPicker)}
-        className="absolute top-0 right-0 z-10 p-1.5 text-gray-500 hover:text-gray-300 transition-colors"
-        title="配色設定"
-      >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-        </svg>
-      </button>
+      {/* ツールバー */}
+      <div className="absolute top-0 right-0 z-10 flex items-center gap-2">
+        {/* コストオーバーレイ切替 */}
+        <div className="flex items-center bg-surface-elevated border border-white/10 rounded-lg overflow-hidden">
+          <button
+            onClick={() => setCostOverlay("none")}
+            className={`px-2.5 py-1 text-[10px] font-medium transition-colors ${
+              costOverlay === "none" ? "bg-brand text-white" : "text-gray-400 hover:text-white"
+            }`}
+          >
+            売上のみ
+          </button>
+          <button
+            onClick={() => setCostOverlay("cost")}
+            className={`px-2.5 py-1 text-[10px] font-medium transition-colors ${
+              costOverlay === "cost" ? "bg-brand text-white" : "text-gray-400 hover:text-white"
+            }`}
+          >
+            コスト重畳
+          </button>
+          <button
+            onClick={() => setCostOverlay("profit")}
+            className={`px-2.5 py-1 text-[10px] font-medium transition-colors ${
+              costOverlay === "profit" ? "bg-brand text-white" : "text-gray-400 hover:text-white"
+            }`}
+          >
+            利益表示
+          </button>
+        </div>
+        <button
+          onClick={() => setShowPicker(!showPicker)}
+          className="p-1.5 text-gray-500 hover:text-gray-300 transition-colors"
+          title="配色設定"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+          </svg>
+        </button>
+      </div>
       {showPicker && (
         <ColorPicker colors={colors} onChange={handleColorChange} onClose={() => setShowPicker(false)} />
       )}
+
+      {/* ローディング・エラー表示 */}
+      {costOverlay !== "none" && plLoading && (
+        <div className="absolute top-10 right-0 z-10 px-3 py-1.5 bg-surface-elevated border border-white/10 rounded-lg text-xs text-gray-400">
+          freeeデータ読み込み中...
+        </div>
+      )}
+      {costOverlay !== "none" && plError && (
+        <div className="absolute top-10 right-0 z-10 px-3 py-1.5 bg-red-900/30 border border-red-800/50 rounded-lg text-xs text-red-300">
+          {plError}
+        </div>
+      )}
+
       <ResponsiveContainer width="100%" height={600}>
-        <ComposedChart data={chartData} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
+        <ComposedChart data={chartData} margin={{ top: 30, right: 10, left: 10, bottom: 5 }}>
           <defs>
             <DiagonalStripePattern id="stripe-ltv" color={colors.ltv} />
+            <pattern id="stripe-cost" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(-45)">
+              <rect width="6" height="6" fill="#ef4444" fillOpacity="0.08" />
+              <line x1="0" y1="0" x2="0" y2="6" stroke="#ef4444" strokeWidth="2" strokeOpacity="0.3" />
+            </pattern>
           </defs>
           <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
           <XAxis
@@ -185,12 +287,22 @@ function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
             tickFormatter={formatPeriodTick}
           />
           <YAxis
+            yAxisId="left"
             tickFormatter={formatYen}
             tick={{ fontSize: 11, fill: "#9ca3af" }}
             stroke="rgba(255,255,255,0.1)"
             domain={[0, 10000000]}
             ticks={[0, 1000000, 2000000, 3000000, 4000000, 5000000, 6000000, 7000000, 8000000, 9000000, 10000000]}
           />
+          {showCost && (
+            <YAxis
+              yAxisId="right"
+              orientation="right"
+              tickFormatter={formatYen}
+              tick={{ fontSize: 10, fill: "#ef4444" }}
+              stroke="rgba(239,68,68,0.2)"
+            />
+          )}
           <Tooltip
             formatter={(value, name) => [`¥${Number(value).toLocaleString()}`, name]}
             contentStyle={{
@@ -203,15 +315,17 @@ function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
           />
           <Legend iconSize={10} wrapperStyle={{ fontSize: 11, color: "#9ca3af" }} />
 
-          <Bar dataKey="confirmed_school_kisotsu" name="既卒スクール" fill={colors.kisotsu} stackId="revenue" radius={[0, 0, 0, 0]} />
-          <Bar dataKey="confirmed_subsidy" name="補助金" fill={colors.subsidy} stackId="revenue" />
-          <Bar dataKey="confirmed_school_shinsotsu" name="新卒スクール" fill={colors.shinsotsu} stackId="revenue" />
-          <Bar dataKey="confirmed_agent" name="人材確定" fill={colors.agent} stackId="revenue" />
-          <Bar dataKey="content_revenue" name="note売上" fill={colors.note} stackId="revenue" />
-          <Bar dataKey="myvision_revenue" name="MyVision受託" fill={colors.myvision} stackId="revenue" />
-          <Bar dataKey="other_misc_revenue" name="その他" fill={colors.other} stackId="revenue" />
-          <Bar dataKey="projected_agent" name="人材見込" fill={colors.projected} fillOpacity={0.55} stackId="revenue" />
+          {/* 売上棒グラフ */}
+          <Bar yAxisId="left" dataKey="confirmed_school_kisotsu" name="既卒スクール" fill={colors.kisotsu} stackId="revenue" radius={[0, 0, 0, 0]} />
+          <Bar yAxisId="left" dataKey="confirmed_subsidy" name="補助金" fill={colors.subsidy} stackId="revenue" />
+          <Bar yAxisId="left" dataKey="confirmed_school_shinsotsu" name="新卒スクール" fill={colors.shinsotsu} stackId="revenue" />
+          <Bar yAxisId="left" dataKey="confirmed_agent" name="人材確定" fill={colors.agent} stackId="revenue" />
+          <Bar yAxisId="left" dataKey="content_revenue" name="note売上" fill={colors.note} stackId="revenue" />
+          <Bar yAxisId="left" dataKey="myvision_revenue" name="MyVision受託" fill={colors.myvision} stackId="revenue" />
+          <Bar yAxisId="left" dataKey="other_misc_revenue" name="その他" fill={colors.other} stackId="revenue" />
+          <Bar yAxisId="left" dataKey="projected_agent" name="人材見込" fill={colors.projected} fillOpacity={0.55} stackId="revenue" />
           <Bar
+            yAxisId="left"
             dataKey="ltv_gap"
             name="着地見込（forecast）"
             fill="url(#stripe-ltv)"
@@ -221,6 +335,58 @@ function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
             stackId="revenue"
             radius={[4, 4, 0, 0]}
           />
+
+          {/* コスト重畳モード: 原価+販管費をライン表示 */}
+          {showCost && costOverlay === "cost" && (
+            <>
+              <Line
+                yAxisId="left"
+                type="monotone"
+                dataKey="cost_of_sales"
+                name="原価"
+                stroke="#f87171"
+                strokeWidth={2}
+                dot={{ r: 3, fill: "#f87171" }}
+                strokeDasharray="4 2"
+              />
+              <Line
+                yAxisId="left"
+                type="monotone"
+                dataKey="total_cost"
+                name="総コスト（原価+販管費）"
+                stroke="#ef4444"
+                strokeWidth={2.5}
+                dot={{ r: 3, fill: "#ef4444", stroke: "#fff", strokeWidth: 1 }}
+              />
+            </>
+          )}
+
+          {/* 利益表示モード: 利益ライン */}
+          {showCost && costOverlay === "profit" && (
+            <>
+              <ReferenceLine yAxisId="left" y={0} stroke="rgba(255,255,255,0.2)" />
+              <Line
+                yAxisId="left"
+                type="monotone"
+                dataKey="total_cost"
+                name="総コスト"
+                stroke="#ef4444"
+                strokeWidth={1.5}
+                strokeDasharray="4 2"
+                dot={false}
+              />
+              <Line
+                yAxisId="left"
+                type="monotone"
+                dataKey="profit"
+                name="営業利益"
+                stroke="#22c55e"
+                strokeWidth={2.5}
+                dot={{ r: 4, fill: "#22c55e", stroke: "#fff", strokeWidth: 1.5 }}
+                activeDot={{ r: 6 }}
+              />
+            </>
+          )}
         </ComposedChart>
       </ResponsiveContainer>
     </div>

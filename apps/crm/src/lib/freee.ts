@@ -147,3 +147,90 @@ export async function fetchCompanies(accessToken: string): Promise<{ id: number;
   const data = await freeeApiFetch(accessToken, "/api/1/companies");
   return data.companies || [];
 }
+
+// ================================================================
+// P&L（損益計算書）取得
+// ================================================================
+
+export interface FreeePLMonthly {
+  period: string; // YYYY/MM
+  cost_of_sales: number; // 売上原価
+  sga: number; // 販売管理費（販管費）
+}
+
+/**
+ * freee 試算表(P/L)から月別の原価・販管費を取得
+ * 対象会計年度の各月データを返す
+ */
+export async function fetchTrialPL(
+  accessToken: string,
+  companyId: number,
+  fiscalYear: number,
+): Promise<FreeePLMonthly[]> {
+  // freee trial_pl API: 月別内訳を取得
+  const data = await freeeApiFetch(
+    accessToken,
+    `/api/1/reports/trial_pl?company_id=${companyId}&fiscal_year=${fiscalYear}&breakdown_display_type=partner`,
+  );
+
+  const balances = data?.balances || [];
+  const results: FreeePLMonthly[] = [];
+
+  // 12ヶ月分を初期化
+  for (let m = 1; m <= 12; m++) {
+    results.push({
+      period: `${fiscalYear}/${String(m).padStart(2, "0")}`,
+      cost_of_sales: 0,
+      sga: 0,
+    });
+  }
+
+  // freeeの勘定科目カテゴリ:
+  // account_category_name: "売上原価" → cost_of_sales
+  // account_category_name: "販売費及び一般管理費" → sga
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  for (const item of balances as any[]) {
+    const category = item.account_category_name as string;
+    const isCost = category === "売上原価";
+    const isSga = category === "販売費及び一般管理費";
+    if (!isCost && !isSga) continue;
+
+    // 月次データは items 内の各月 closing_balance
+    // or 直接 monthly_balances
+    const monthly = item.monthly_balances || [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const mb of monthly as any[]) {
+      const month = mb.month as number; // 1-12
+      const amount = Math.abs(Number(mb.closing_balance || 0));
+      const idx = month - 1;
+      if (idx >= 0 && idx < 12) {
+        if (isCost) results[idx].cost_of_sales += amount;
+        if (isSga) results[idx].sga += amount;
+      }
+    }
+  }
+
+  return results;
+}
+
+/**
+ * freee試算表から月別P/Lデータを取得（複数年度対応）
+ * start/end期間をカバーするように複数年度を取得
+ */
+export async function fetchMonthlyPL(
+  accessToken: string,
+  companyId: number,
+  startYear: number,
+  endYear: number,
+): Promise<FreeePLMonthly[]> {
+  const all: FreeePLMonthly[] = [];
+  for (let year = startYear; year <= endYear; year++) {
+    try {
+      const yearly = await fetchTrialPL(accessToken, companyId, year);
+      all.push(...yearly);
+    } catch {
+      // 年度データなければスキップ
+    }
+  }
+  return all;
+}
