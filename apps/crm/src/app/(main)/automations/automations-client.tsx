@@ -365,6 +365,34 @@ const SYSTEM_AUTOMATIONS: SystemAutomation[] = [
     isActive: true,
     steps: 2,
   },
+  {
+    id: "sys-coaching-consumption-alert",
+    name: "指導消化率アラート",
+    description: "毎月1日に日程消化率と指導消化率の差分が25%以上の受講生をピックアップしSlack通知",
+    category: "cron",
+    trigger: { icon: "clock", label: "毎月1日 0:00 (UTC)" },
+    actions: [
+      { icon: "database", label: "消化率計算" },
+      { icon: "slack", label: "edu-report" },
+    ],
+    schedule: "0 0 1 * *",
+    isActive: true,
+    steps: 3,
+  },
+  {
+    id: "sys-mentor-status-report",
+    name: "メンター稼働状況レポート",
+    description: "毎週日曜にメンターごとの指導人数・セッション実績をSlack配信",
+    category: "cron",
+    trigger: { icon: "clock", label: "毎週日曜 0:30 (UTC)" },
+    actions: [
+      { icon: "database", label: "稼働集計" },
+      { icon: "slack", label: "edu-report" },
+    ],
+    schedule: "30 0 * * 0",
+    isActive: true,
+    steps: 3,
+  },
 ];
 
 // ================================================================
