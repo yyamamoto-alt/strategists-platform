@@ -240,8 +240,14 @@ const SECTIONS: SettingsSectionConfig[] = [
         placeholder: "6",
       },
       {
+        key: "jicoo_availability_target_event_uids",
+        label: "対象予約ページUID（カンマ区切り）",
+        type: "text",
+        placeholder: "o072r8CvwVF4, _zDLK66WrbIT",
+      },
+      {
         key: "jicoo_availability_target_events",
-        label: "対象イベントタイプ（カンマ区切り、空=全て）",
+        label: "対象イベント名フィルタ（カンマ区切り、UID未設定時のみ有効）",
         type: "text",
         placeholder: "初回面談, 追加面談",
       },

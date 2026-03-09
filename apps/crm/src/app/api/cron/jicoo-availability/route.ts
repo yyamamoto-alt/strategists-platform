@@ -16,6 +16,7 @@ const DEFAULTS = {
   far_threshold: 3,
   evening_threshold: 6,
   target_events: "",
+  target_event_uids: "o072r8CvwVF4,_zDLK66WrbIT",
 };
 
 interface Slot {
@@ -64,7 +65,11 @@ async function loadSettings() {
       farThreshold: num("far_threshold", DEFAULTS.far_threshold),
       eveningThreshold: num("evening_threshold", DEFAULTS.evening_threshold),
     } as Thresholds,
-    targetEvents: (map["jicoo_availability_target_events"] || DEFAULTS.target_events)
+    targetEventUids: (map["jicoo_availability_target_event_uids"] || DEFAULTS.target_event_uids)
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean),
+    targetEventNames: (map["jicoo_availability_target_events"] || "")
       .split(",")
       .map((s) => s.trim())
       .filter(Boolean),
@@ -209,10 +214,14 @@ export async function GET(request: Request) {
       uid: string; name: string; status: string;
     }[]).filter((et) => et.status === "enable");
 
-    // 対象イベントタイプをフィルタ
-    if (config.targetEvents.length > 0) {
+    // 対象イベントタイプをフィルタ（UID優先、なければ名前部分一致）
+    if (config.targetEventUids.length > 0) {
       eventTypes = eventTypes.filter((et) =>
-        config.targetEvents.some((target) => et.name.includes(target)),
+        config.targetEventUids.includes(et.uid),
+      );
+    } else if (config.targetEventNames.length > 0) {
+      eventTypes = eventTypes.filter((et) =>
+        config.targetEventNames.some((target) => et.name.includes(target)),
       );
     }
 
