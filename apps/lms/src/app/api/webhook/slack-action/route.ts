@@ -13,14 +13,8 @@ import crypto from "crypto";
  */
 export async function POST(request: Request) {
   // Slackはapplication/x-www-form-urlencodedでpayloadを送る
-  const formData = await request.formData();
-  const payloadStr = formData.get("payload") as string;
-
-  if (!payloadStr) {
-    return NextResponse.json({ error: "No payload" }, { status: 400 });
-  }
-
-  const payload = JSON.parse(payloadStr);
+  // 署名検証のため生のボディを先に取得
+  const rawBodyText = await request.text();
 
   // Slack署名検証（SLACK_SIGNING_SECRETが設定されている場合）
   const signingSecret = process.env.SLACK_SIGNING_SECRET;
@@ -36,13 +30,23 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Request too old" }, { status: 401 });
     }
 
-    const rawBody = `v0:${timestamp}:payload=${encodeURIComponent(payloadStr)}`;
-    const expectedSig = "v0=" + crypto.createHmac("sha256", signingSecret).update(rawBody).digest("hex");
+    const sigBaseString = `v0:${timestamp}:${rawBodyText}`;
+    const expectedSig = "v0=" + crypto.createHmac("sha256", signingSecret).update(sigBaseString, "utf8").digest("hex");
 
     if (expectedSig !== slackSig) {
       return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
     }
   }
+
+  // rawBodyTextからpayloadを抽出
+  const params = new URLSearchParams(rawBodyText);
+  const payloadStr = params.get("payload");
+
+  if (!payloadStr) {
+    return NextResponse.json({ error: "No payload" }, { status: 400 });
+  }
+
+  const payload = JSON.parse(payloadStr);
 
   const action = payload.actions?.[0];
   if (!action) {
