@@ -2,6 +2,12 @@ import "server-only";
 
 import { createServiceClient } from "@/lib/supabase/server";
 import { computeAttributionForCustomer } from "@/lib/compute-attribution-for-customer";
+import crypto from "crypto";
+
+/** MD5ハッシュ（DB側のmd5()と同等） */
+async function md5Hash(text: string): Promise<string> {
+  return crypto.createHash("md5").update(text).digest("hex");
+}
 
 /** JSONB key order-independent hash for dedup comparison */
 function stableStringify(obj: unknown): string {
@@ -450,12 +456,19 @@ export async function upsertFromSpreadsheet(
     }
 
     if (!isDuplicate) {
-      await db.from("application_history").insert({
+      const { error: insertErr } = await db.from("application_history").insert({
         customer_id: match.customer_id,
         source: sourceName,
         raw_data: rawData,
+        raw_data_hash: await md5Hash(rawText),
         notes: `${sourceName}から同期 (${match.match_type}マッチ)`,
       });
+      // DB UNIQUE制約違反は握りつぶす（二重防御）
+      if (insertErr && insertErr.code === "23505") {
+        // duplicate → skip silently
+      } else if (insertErr) {
+        console.error("application_history insert error:", insertErr);
+      }
     }
 
     // 帰属チャネルをリアルタイム計算（エラーは無視）
@@ -536,6 +549,7 @@ export async function upsertFromSpreadsheet(
       customer_id: newCustomer.id,
       source: sourceName,
       raw_data: rawData,
+      raw_data_hash: await md5Hash(stableStringify(rawData)),
       notes: `${sourceName}から自動作成`,
     });
 

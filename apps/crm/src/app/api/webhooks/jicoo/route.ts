@@ -5,6 +5,79 @@ import { computeAttributionForCustomer } from "@/lib/compute-attribution-for-cus
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 
+function md5(text: string): string {
+  return crypto.createHash("md5").update(text).digest("hex");
+}
+
+const JICOO_API_KEY = process.env.JICOO_API_KEY;
+const JICOO_API_BASE = "https://api.jicoo.com/v1";
+
+/**
+ * Jicoo REST APIで担当者（host）名を取得
+ * 1. webhookペイロードの obj.hosts をチェック
+ * 2. なければ REST API GET /v1/bookings でhosts[].userIdを取得
+ * 3. Organization Users APIでuserId→名前に変換
+ */
+async function resolveJicooHost(
+  obj: Record<string, unknown>,
+): Promise<string | null> {
+  if (!JICOO_API_KEY) return null;
+  const headers = { Authorization: `Bearer ${JICOO_API_KEY}` };
+
+  try {
+    // Step 1: webhookペイロードにhostsがあるかチェック
+    let hostUserIds: string[] = [];
+    const webhookHosts = obj.hosts as { userId: string; role: string }[] | undefined;
+    if (webhookHosts && webhookHosts.length > 0) {
+      hostUserIds = webhookHosts.map((h) => h.userId);
+    }
+
+    // Step 2: なければREST APIで予約詳細を取得
+    if (hostUserIds.length === 0) {
+      const uid = obj.uid as string | undefined;
+      if (uid) {
+        const bookingsRes = await fetch(
+          `${JICOO_API_BASE}/bookings?perPage=50&status=open`,
+          { headers },
+        );
+        if (bookingsRes.ok) {
+          const bookingsData = await bookingsRes.json();
+          const booking = bookingsData?.data?.find(
+            (b: { uid: string }) => b.uid === uid,
+          );
+          if (booking?.hosts) {
+            hostUserIds = booking.hosts.map(
+              (h: { userId: string }) => h.userId,
+            );
+          }
+        }
+      }
+    }
+
+    if (hostUserIds.length === 0) return null;
+
+    // Step 3: Organization Users APIで名前を解決
+    const usersRes = await fetch(`${JICOO_API_BASE}/organization/users`, {
+      headers,
+    });
+    if (!usersRes.ok) return null;
+    const usersData = await usersRes.json();
+    const users = usersData?.data as { id: string; name: string }[] | undefined;
+    if (!users) return null;
+
+    // hostUserIdsの最初のユーザーの名前を返す
+    for (const hostId of hostUserIds) {
+      const user = users.find((u) => u.id === hostId);
+      if (user?.name) return user.name;
+    }
+
+    return null;
+  } catch (e) {
+    console.error("Jicoo host resolution error:", e);
+    return null;
+  }
+}
+
 /**
  * POST /api/webhooks/jicoo
  * Jicoo Webhook: 予約作成/変更/キャンセル時に呼ばれる
@@ -79,6 +152,12 @@ export async function POST(request: Request) {
         pipelineUpdate.stage = "未実施";
       }
 
+      // Jicoo REST APIで担当者（host）を取得
+      const hostName = await resolveJicooHost(obj);
+      if (hostName) {
+        pipelineUpdate.sales_person = hostName;
+      }
+
       // Jicoo tracking → UTMを記録
       const tracking = obj.tracking as Record<string, string> | undefined;
       if (tracking) {
@@ -114,13 +193,17 @@ export async function POST(request: Request) {
         .eq("customer_id", match.customer_id);
     }
 
-    // application_historyに記録
-    await db.from("application_history").insert({
+    // application_historyに記録（DB UNIQUE制約で重複防止）
+    const { error: histErr } = await db.from("application_history").insert({
       customer_id: match.customer_id,
       source: "Jicoo",
       raw_data: body,
+      raw_data_hash: md5(JSON.stringify(body)),
       notes: `Jicoo ${event}: ${name || email || "unknown"} (${match.match_type}マッチ)`,
     });
+    if (histErr && histErr.code !== "23505") {
+      console.error("Jicoo application_history insert error:", histErr);
+    }
 
     // Slack通知
     await notifyJicooBooking({
@@ -185,6 +268,7 @@ export async function POST(request: Request) {
         customer_id: newCustomer.id,
         source: "Jicoo",
         raw_data: body,
+        raw_data_hash: md5(JSON.stringify(body)),
         notes: `Jicoo ${event}: 自動作成`,
       });
 
