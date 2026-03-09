@@ -29,46 +29,46 @@ export function formatPercent(value: number | null): string {
 
 export function getStageColor(stage: string): string {
   const colors: Record<string, string> = {
-    // 成約系（赤バッジ）
-    成約: "bg-red-600/30 text-red-300",
-    入金済: "bg-red-600/30 text-red-300",
-    "成約(追加指導経由)": "bg-red-600/30 text-red-300",
-    "成約見込(未入金)": "bg-red-700/30 text-red-400",
+    // 成約系（赤）
+    成約: "bg-red-600 text-white",
+    入金済: "bg-red-600 text-white",
+    "成約(追加指導経由)": "bg-red-600 text-white",
+    "成約見込(未入金)": "bg-red-700 text-red-100",
     // 購入系（ピンク）
-    動画講座購入: "bg-pink-400/25 text-pink-200",
-    その他購入: "bg-pink-400/25 text-pink-200",
+    動画講座購入: "bg-pink-500/70 text-white",
+    その他購入: "bg-pink-500/70 text-white",
     // 追加指導・枠確保（オレンジ）
-    追加指導: "bg-orange-500/30 text-orange-300",
-    枠確保: "bg-orange-500/30 text-orange-300",
+    追加指導: "bg-orange-500/80 text-white",
+    枠確保: "bg-orange-500/80 text-white",
     // 検討系（黄色）
-    検討中: "bg-yellow-500/30 text-yellow-300",
-    "追加指導(検討中)": "bg-yellow-500/30 text-yellow-300",
+    検討中: "bg-yellow-600/80 text-yellow-50",
+    "追加指導(検討中)": "bg-yellow-600/80 text-yellow-50",
     // 未実施系（青）
-    未実施: "bg-blue-500/25 text-blue-300",
-    日程未確: "bg-gray-500/25 text-gray-300",
-    日程確定: "bg-blue-500/25 text-blue-300",
-    // 失注・ネガティブ系（ダークブラウン）
-    失注: "bg-stone-700/50 text-stone-300",
-    失注見込: "bg-stone-700/50 text-stone-300",
-    "失注見込(自動)": "bg-stone-700/50 text-stone-300",
-    長期検討: "bg-stone-700/50 text-stone-300",
-    CL: "bg-amber-900/40 text-amber-400",
-    NoShow: "bg-amber-900/40 text-amber-400",
-    実施不可: "bg-amber-900/40 text-amber-400",
-    "途中解約(成約)": "bg-stone-700/50 text-stone-300",
-    "追加指導(NoShow)": "bg-stone-700/50 text-stone-300",
-    "追加指導(失注)": "bg-stone-700/50 text-stone-300",
-    "追加指導(CL)": "bg-stone-700/50 text-stone-300",
-    キャンセル: "bg-stone-700/50 text-stone-300",
-    直前キャンセル: "bg-stone-700/50 text-stone-300",
+    未実施: "bg-blue-500/70 text-white",
+    日程未確: "bg-gray-500/70 text-gray-100",
+    日程確定: "bg-blue-500/70 text-white",
+    // 失注・ネガティブ系（ダーク）
+    失注: "bg-stone-600/80 text-stone-100",
+    失注見込: "bg-stone-600/80 text-stone-100",
+    "失注見込(自動)": "bg-stone-600/80 text-stone-100",
+    長期検討: "bg-stone-600/80 text-stone-100",
+    CL: "bg-amber-800/80 text-amber-100",
+    NoShow: "bg-amber-800/80 text-amber-100",
+    実施不可: "bg-amber-800/80 text-amber-100",
+    "途中解約(成約)": "bg-stone-600/80 text-stone-100",
+    "追加指導(NoShow)": "bg-stone-600/80 text-stone-100",
+    "追加指導(失注)": "bg-stone-600/80 text-stone-100",
+    "追加指導(CL)": "bg-stone-600/80 text-stone-100",
+    キャンセル: "bg-stone-600/80 text-stone-100",
+    直前キャンセル: "bg-stone-600/80 text-stone-100",
     // 紫系
-    非実施対象: "bg-purple-600/30 text-purple-300",
-    全額返金: "bg-purple-700/30 text-purple-300",
+    非実施対象: "bg-purple-600/70 text-purple-100",
+    全額返金: "bg-purple-700/70 text-purple-100",
     // レガシー
-    問い合わせ: "bg-slate-500/25 text-slate-300",
-    その他: "bg-gray-500/25 text-gray-400",
+    問い合わせ: "bg-slate-500/70 text-slate-100",
+    その他: "bg-gray-500/70 text-gray-100",
   };
-  return colors[stage] || "bg-gray-500/25 text-gray-400";
+  return colors[stage] || "bg-gray-500/70 text-gray-100";
 }
 
 export function getAttributeColor(attribute: string): string {
