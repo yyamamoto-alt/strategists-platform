@@ -126,8 +126,9 @@ export async function notifyPaymentSuccess(data: {
 
   const amountStr = `¥${data.amount.toLocaleString()}`;
   const lines = [
-    `💰 *${data.source}決済完了*`,
-    `氏名: ${data.name}`,
+    `🎉 *成約おめでとうございます！* 🎉`,
+    `*決済完了のお知らせ*`,
+    `名前: ${data.name}`,
     `商品: ${data.product}`,
     `金額: ${amountStr}`,
   ];
