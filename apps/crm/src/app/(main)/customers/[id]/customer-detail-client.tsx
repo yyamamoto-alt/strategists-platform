@@ -363,12 +363,12 @@ function buildBasicFields(c: CustomerWithRelations): FieldDef[] {
   ];
 }
 
-function buildContractFields(c: CustomerWithRelations, firstPaidDate?: string | null): FieldDef[] {
+function buildContractFields(c: CustomerWithRelations, firstPaidDate?: string | null, paidTotal?: number): FieldDef[] {
   if (!c.contract) return [];
   return [
     { key: "plan_name", label: "プラン", source: "manual", table: "contract", getValue: () => c.contract?.plan_name || "-" },
     { key: "changed_plan", label: "変更プラン", source: "manual", table: "contract", getValue: () => c.contract?.changed_plan || "-" },
-    { key: "confirmed_amount", label: "確定売上", source: "manual", type: "number", table: "contract", getValue: () => c.contract?.confirmed_amount ? formatCurrency(c.contract.confirmed_amount) : "-" },
+    { key: "confirmed_amount", label: "確定売上", source: "auto", table: "contract", getValue: () => paidTotal != null && paidTotal > 0 ? formatCurrency(paidTotal) : "-" },
     { key: "first_amount", label: "一次金額", source: "manual", type: "number", table: "contract", getValue: () => c.contract?.first_amount ? formatCurrency(c.contract.first_amount) : "-" },
     { key: "discount", label: "割引", source: "manual", type: "number", table: "contract", getValue: () => c.contract?.discount ? formatCurrency(c.contract.discount) : "なし" },
     { key: "billing_status", label: "請求状況", source: "manual", type: "select", options: ["未請求", "請求済", "入金済", "返金済"], table: "contract", getValue: () => c.contract?.billing_status || "-" },
@@ -529,11 +529,11 @@ function OrdersSection({ orders }: { orders: Order[] }) {
 }
 
 /** 売上見込セクション（構造化表示） */
-function RevenueSection({ customer }: { customer: CustomerWithRelations }) {
-  const schoolConfirmed = getSchoolRevenue(customer);
+function RevenueSection({ customer, orders }: { customer: CustomerWithRelations; orders: Order[] }) {
+  const schoolConfirmed = orders.filter(o => o.status === "paid" || o.status === "partial").reduce((s, o) => s + (o.amount || 0), 0);
   const subsidy = getSubsidyAmount(customer);
   const agentConfirmed = isAgentConfirmed(customer) ? calcExpectedReferralFee(customer) : 0;
-  const confirmedTotal = calcConfirmedRevenue(customer);
+  const confirmedTotal = schoolConfirmed + subsidy + agentConfirmed;
 
   const agentProjected = calcAgentProjectedRevenue(customer);
   const salesProjection = calcSalesProjection(customer);
@@ -934,7 +934,10 @@ export function CustomerDetailClient({
     const paid = orders.filter(o => o.status === "paid" && o.paid_at).sort((a, b) => (a.paid_at! > b.paid_at! ? 1 : -1));
     return paid.length > 0 ? paid[0].paid_at!.split("T")[0].split(" ")[0] : null;
   }, [orders]);
-  const contractFields = useMemo(() => buildContractFields(customer, firstPaidDate), [customer, firstPaidDate]);
+  const paidTotal = useMemo(() => {
+    return orders.filter(o => o.status === "paid" || o.status === "partial").reduce((s, o) => s + (o.amount || 0), 0);
+  }, [orders]);
+  const contractFields = useMemo(() => buildContractFields(customer, firstPaidDate, paidTotal), [customer, firstPaidDate, paidTotal]);
   const pipelineFields = useMemo(() => buildPipelineFields(customer), [customer]);
   const learningFields = useMemo(() => buildLearningFields(customer, applicationHistory), [customer, applicationHistory]);
 
@@ -1037,7 +1040,7 @@ export function CustomerDetailClient({
             <OrdersSection orders={orders} />
           )}
 
-          <RevenueSection customer={customer} />
+          <RevenueSection customer={customer} orders={orders} />
 
         </div>
 
