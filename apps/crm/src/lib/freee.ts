@@ -154,68 +154,118 @@ export async function fetchCompanies(accessToken: string): Promise<{ id: number;
 
 export interface FreeePLMonthly {
   period: string; // YYYY/MM
+  revenue: number; // 売上高
   cost_of_sales: number; // 売上原価
   sga: number; // 販売管理費（販管費）
 }
 
+/** freee勘定科目の内訳（販管費の詳細） */
+export interface FreeePLDetail {
+  period: string;
+  items: { name: string; amount: number }[];
+}
+
+/**
+ * freee試算表から特定月の累計P/Lを取得
+ */
+async function fetchTrialPLForMonth(
+  accessToken: string,
+  companyId: number,
+  fiscalYear: number,
+  month: number,
+): Promise<{ revenue: number; cost_of_sales: number; sga: number; sgaItems: { name: string; amount: number }[] }> {
+  const data = await freeeApiFetch(
+    accessToken,
+    `/api/1/reports/trial_pl?company_id=${companyId}&fiscal_year=${fiscalYear}&start_month=${month}&end_month=${month}`,
+  );
+
+  const balances = data?.trial_pl?.balances || [];
+  let revenue = 0;
+  let cost_of_sales = 0;
+  let sga = 0;
+  const sgaItems: { name: string; amount: number }[] = [];
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  for (const item of balances as any[]) {
+    const cat = item.account_category_name as string;
+    const totalLine = !!item.total_line;
+    const level = item.hierarchy_level as number;
+    const closing = Number(item.closing_balance || 0);
+    const name = item.account_item_name as string | undefined;
+
+    if (totalLine && cat === "売上高" && level === 1) {
+      revenue = closing;
+    } else if (totalLine && cat === "売上原価" && level === 2) {
+      cost_of_sales = closing;
+    } else if (totalLine && (cat === "販売管理費" || cat === "販売費及び一般管理費") && level === 2) {
+      sga = closing;
+    } else if (!totalLine && name && (cat === "販売管理費" || cat === "販売費及び一般管理費")) {
+      if (closing !== 0) {
+        sgaItems.push({ name, amount: closing });
+      }
+    }
+  }
+
+  return { revenue, cost_of_sales, sga, sgaItems };
+}
+
 /**
  * freee 試算表(P/L)から月別の原価・販管費を取得
- * 対象会計年度の各月データを返す
+ * freee APIは累計値を返すため、差分計算で月次データを生成
+ * 会計年度は4月始まり（4,5,...,12,1,2,3月の順）
  */
 export async function fetchTrialPL(
   accessToken: string,
   companyId: number,
   fiscalYear: number,
-): Promise<FreeePLMonthly[]> {
-  // freee trial_pl API: 月別内訳を取得
-  const data = await freeeApiFetch(
-    accessToken,
-    `/api/1/reports/trial_pl?company_id=${companyId}&fiscal_year=${fiscalYear}&breakdown_display_type=partner`,
-  );
-
-  const balances = data?.balances || [];
+): Promise<{ monthly: FreeePLMonthly[]; details: FreeePLDetail[] }> {
+  // 会計年度の月順: 4月→翌3月
+  const monthOrder = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3];
   const results: FreeePLMonthly[] = [];
+  const details: FreeePLDetail[] = [];
 
-  // 12ヶ月分を初期化
-  for (let m = 1; m <= 12; m++) {
-    results.push({
-      period: `${fiscalYear}/${String(m).padStart(2, "0")}`,
-      cost_of_sales: 0,
-      sga: 0,
-    });
-  }
+  let prevRev = 0;
+  let prevCost = 0;
+  let prevSga = 0;
 
-  // freeeの勘定科目カテゴリ:
-  // account_category_name: "売上原価" → cost_of_sales
-  // account_category_name: "販売費及び一般管理費" → sga
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  for (const item of balances as any[]) {
-    const category = item.account_category_name as string;
-    const isCost = category === "売上原価";
-    const isSga = category === "販売費及び一般管理費";
-    if (!isCost && !isSga) continue;
+  for (const m of monthOrder) {
+    try {
+      const cumulative = await fetchTrialPLForMonth(accessToken, companyId, fiscalYear, m);
 
-    // 月次データは items 内の各月 closing_balance
-    // or 直接 monthly_balances
-    const monthly = item.monthly_balances || [];
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    for (const mb of monthly as any[]) {
-      const month = mb.month as number; // 1-12
-      const amount = Math.abs(Number(mb.closing_balance || 0));
-      const idx = month - 1;
-      if (idx >= 0 && idx < 12) {
-        if (isCost) results[idx].cost_of_sales += amount;
-        if (isSga) results[idx].sga += amount;
+      // 累計→月次: 差分計算（初月はそのまま）
+      const monthlyRev = m === 4 ? cumulative.revenue : cumulative.revenue - prevRev;
+      const monthlyCost = m === 4 ? cumulative.cost_of_sales : cumulative.cost_of_sales - prevCost;
+      const monthlySga = m === 4 ? cumulative.sga : cumulative.sga - prevSga;
+
+      const year = m >= 4 ? fiscalYear : fiscalYear + 1;
+      const period = `${year}/${String(m).padStart(2, "0")}`;
+
+      results.push({
+        period,
+        revenue: monthlyRev,
+        cost_of_sales: monthlyCost,
+        sga: monthlySga,
+      });
+
+      // 販管費内訳も差分で計算するのは難しいので累計のまま保持
+      // (詳細は累計値のみ - チャートでは月次合計を使う)
+      if (cumulative.sgaItems.length > 0) {
+        details.push({ period, items: cumulative.sgaItems });
       }
+
+      prevRev = cumulative.revenue;
+      prevCost = cumulative.cost_of_sales;
+      prevSga = cumulative.sga;
+    } catch {
+      // 月データなければスキップ（未来の月など）
     }
   }
 
-  return results;
+  return { monthly: results, details };
 }
 
 /**
  * freee試算表から月別P/Lデータを取得（複数年度対応）
- * start/end期間をカバーするように複数年度を取得
  */
 export async function fetchMonthlyPL(
   accessToken: string,
@@ -226,11 +276,12 @@ export async function fetchMonthlyPL(
   const all: FreeePLMonthly[] = [];
   for (let year = startYear; year <= endYear; year++) {
     try {
-      const yearly = await fetchTrialPL(accessToken, companyId, year);
-      all.push(...yearly);
+      const { monthly } = await fetchTrialPL(accessToken, companyId, year);
+      all.push(...monthly);
     } catch {
       // 年度データなければスキップ
     }
   }
-  return all;
+  // 0値のみの月を除外
+  return all.filter((d) => d.revenue !== 0 || d.cost_of_sales !== 0 || d.sga !== 0);
 }

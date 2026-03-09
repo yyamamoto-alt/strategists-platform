@@ -6,13 +6,17 @@ export const dynamic = "force-dynamic";
 
 /**
  * GET /api/freee/pl?startYear=2025&endYear=2026
- * freee P&Lデータ（月別の原価・販管費）を取得
+ * freee P&Lデータ（月別の売上・原価・販管費）を取得
+ * 会計年度ベース（4月始まり）で月次データを返す
  */
 export async function GET(request: Request) {
   const url = new URL(request.url);
-  const currentYear = new Date().getFullYear();
-  const startYear = Number(url.searchParams.get("startYear")) || currentYear - 1;
-  const endYear = Number(url.searchParams.get("endYear")) || currentYear;
+  const currentDate = new Date();
+  const currentMonth = currentDate.getMonth() + 1; // 1-12
+  // 会計年度: 4月始まり → 1-3月は前年度
+  const currentFiscalYear = currentMonth >= 4 ? currentDate.getFullYear() : currentDate.getFullYear() - 1;
+  const startYear = Number(url.searchParams.get("startYear")) || currentFiscalYear - 1;
+  const endYear = Number(url.searchParams.get("endYear")) || currentFiscalYear;
 
   const supabase = createServiceClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

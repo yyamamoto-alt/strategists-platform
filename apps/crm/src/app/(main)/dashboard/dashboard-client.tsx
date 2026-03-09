@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { FunnelChart } from "@/components/dashboard/funnel-chart";
 import { RevenueChart } from "@/components/dashboard/revenue-chart";
+import { CostChart } from "@/components/dashboard/cost-chart";
 import type {
   FunnelMetrics,
   RevenueMetrics,
@@ -122,6 +123,12 @@ export function DashboardClient({
             shinsotsuData={funnelShinsotsu}
           />
         </div>
+      </div>
+
+      {/* コスト推移（freee） */}
+      <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-6">
+        <h2 className="text-lg font-semibold text-white mb-4">コスト推移（freee）</h2>
+        <CostChart />
       </div>
 
       {/* チャネル別申込推移 */}

@@ -11,15 +11,8 @@ import {
   ComposedChart,
   Bar,
   Line,
-  ReferenceLine,
 } from "recharts";
 import type { RevenueMetrics, ThreeTierRevenue } from "@/types/database";
-
-interface PLData {
-  period: string;
-  cost_of_sales: number;
-  sga: number;
-}
 
 interface RevenueChartProps {
   data: RevenueMetrics[];
@@ -34,7 +27,6 @@ const formatYen = (value: number) => {
 
 const formatPeriodLabel = (v: string, quarterly: boolean) => {
   if (quarterly) {
-    // "2026/Q1" → "2026/1-3"
     const match = v.match(/^(\d{4})\/Q(\d)$/);
     if (match) {
       const year = match[1];
@@ -146,8 +138,6 @@ function ProjectedDotPattern({ id, color }: { id: string; color: string }) {
   );
 }
 
-// コスト表示ON/OFF
-
 export function RevenueChart({ data, threeTierData }: RevenueChartProps) {
   if (threeTierData && threeTierData.length > 0) {
     return <UnifiedChart data={threeTierData} />;
@@ -155,15 +145,11 @@ export function RevenueChart({ data, threeTierData }: RevenueChartProps) {
   return <FallbackChart data={data} />;
 }
 
-/** 統合チャート */
+/** 統合チャート（コスト機能除去済み） */
 function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
   const [colors, setColors] = useState<Record<ColorKey, string>>(DEFAULT_COLORS);
   const [showPicker, setShowPicker] = useState(false);
-  const [showCostOverlay, setShowCostOverlay] = useState(false);
   const [periodMode, setPeriodMode] = useState<"monthly" | "quarterly">("monthly");
-  const [plData, setPlData] = useState<PLData[] | null>(null);
-  const [plLoading, setPlLoading] = useState(false);
-  const [plError, setPlError] = useState<string | null>(null);
 
   useEffect(() => { setColors(loadColors()); }, []);
 
@@ -175,32 +161,7 @@ function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
     });
   }, []);
 
-  // freee P&Lデータ取得（コストオーバーレイ選択時にlazy load）
-  useEffect(() => {
-    if (!showCostOverlay || plData !== null) return;
-    setPlLoading(true);
-    setPlError(null);
-    const currentYear = new Date().getFullYear();
-    fetch(`/api/freee/pl?startYear=${currentYear - 1}&endYear=${currentYear}`)
-      .then((r) => {
-        if (!r.ok) throw new Error("freee未連携またはデータ取得失敗");
-        return r.json();
-      })
-      .then((d) => {
-        if (Array.isArray(d)) setPlData(d);
-        else throw new Error(d.error || "不明なエラー");
-      })
-      .catch((e) => setPlError(e.message))
-      .finally(() => setPlLoading(false));
-  }, [showCostOverlay, plData]);
-
-  // チャートデータにコスト・利益をマージ
   const monthlyData = useMemo(() => {
-    const plMap: Record<string, PLData> = {};
-    if (plData) {
-      for (const p of plData) plMap[p.period] = p;
-    }
-
     return data.map((d) => {
       const barTotal =
         (d.confirmed_school_kisotsu || 0) +
@@ -213,23 +174,12 @@ function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
         (d.projected_agent || 0);
       const gap = Math.max(0, (d.expected_ltv_total || 0) - barTotal);
 
-      const pl = plMap[d.period];
-      const costOfSales = pl?.cost_of_sales || 0;
-      const sga = pl?.sga || 0;
-      const totalCost = costOfSales + sga;
-      const revenue = d.confirmed_total || barTotal;
-      const profit = revenue - totalCost;
-
       return {
         ...d,
         ltv_gap: gap,
-        cost_of_sales: costOfSales,
-        sga,
-        total_cost: totalCost,
-        profit,
       };
     });
-  }, [data, plData]);
+  }, [data]);
 
   // 四半期集計
   const quarterlyData = useMemo(() => {
@@ -258,10 +208,6 @@ function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
           projected_total: 0,
           forecast_total: 0,
           expected_ltv_total: 0,
-          cost_of_sales: 0,
-          sga: 0,
-          total_cost: 0,
-          profit: 0,
         };
       }
       const target = qMap[qKey];
@@ -276,10 +222,6 @@ function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
       target.ltv_gap += d.ltv_gap;
       target.confirmed_total += d.confirmed_total || 0;
       target.expected_ltv_total += d.expected_ltv_total || 0;
-      target.cost_of_sales += d.cost_of_sales;
-      target.sga += d.sga;
-      target.total_cost += d.total_cost;
-      target.profit += d.profit;
     }
 
     return Object.values(qMap).sort((a, b) => a.period.localeCompare(b.period));
@@ -288,7 +230,6 @@ function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
   const chartData = periodMode === "quarterly" ? quarterlyData : monthlyData;
   const isQuarterly = periodMode === "quarterly";
 
-  // Y軸の上限を動的に計算（データの最大値に余裕を持たせる）
   const yMax = useMemo(() => {
     let max = 0;
     for (const d of chartData) {
@@ -304,7 +245,6 @@ function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
         (d.ltv_gap || 0);
       if (barTotal > max) max = barTotal;
     }
-    // 100万単位で切り上げ + 余裕
     const step = 1000000;
     return Math.ceil(max * 1.1 / step) * step || 10000000;
   }, [chartData]);
@@ -316,13 +256,10 @@ function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
     return ticks;
   }, [yMax]);
 
-  const showCost = showCostOverlay && plData !== null;
-
   return (
     <div className="relative">
       {/* ツールバー */}
       <div className="absolute top-0 right-0 z-10 flex items-center gap-2">
-        {/* 月次/四半期切替 */}
         <div className="flex items-center bg-surface-elevated border border-white/10 rounded-lg overflow-hidden">
           <button
             onClick={() => setPeriodMode("monthly")}
@@ -341,17 +278,6 @@ function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
             四半期
           </button>
         </div>
-        {/* コスト・利益トグル */}
-        <button
-          onClick={() => setShowCostOverlay(!showCostOverlay)}
-          className={`px-3 py-1 text-[10px] font-medium rounded-lg border transition-colors ${
-            showCostOverlay
-              ? "bg-brand/20 border-brand/50 text-brand"
-              : "bg-surface-elevated border-white/10 text-gray-400 hover:text-white"
-          }`}
-        >
-          コスト・利益
-        </button>
         <button
           onClick={() => setShowPicker(!showPicker)}
           className="p-1.5 text-gray-500 hover:text-gray-300 transition-colors"
@@ -366,27 +292,11 @@ function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
         <ColorPicker colors={colors} onChange={handleColorChange} onClose={() => setShowPicker(false)} />
       )}
 
-      {/* ローディング・エラー表示 */}
-      {showCostOverlay && plLoading && (
-        <div className="absolute top-10 right-0 z-10 px-3 py-1.5 bg-surface-elevated border border-white/10 rounded-lg text-xs text-gray-400">
-          freeeデータ読み込み中...
-        </div>
-      )}
-      {showCostOverlay && plError && (
-        <div className="absolute top-10 right-0 z-10 px-3 py-1.5 bg-red-900/30 border border-red-800/50 rounded-lg text-xs text-red-300">
-          {plError}
-        </div>
-      )}
-
       <ResponsiveContainer width="100%" height={600}>
         <ComposedChart data={chartData} margin={{ top: 30, right: 10, left: 10, bottom: 5 }}>
           <defs>
             <DiagonalStripePattern id="stripe-ltv" color={colors.ltv} />
             <ProjectedDotPattern id="dot-projected" color={colors.projected} />
-            <pattern id="stripe-cost" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(-45)">
-              <rect width="6" height="6" fill="#ef4444" fillOpacity="0.08" />
-              <line x1="0" y1="0" x2="0" y2="6" stroke="#ef4444" strokeWidth="2" strokeOpacity="0.3" />
-            </pattern>
           </defs>
           <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
           <XAxis
@@ -407,15 +317,6 @@ function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
             domain={[0, yMax]}
             ticks={yTicks}
           />
-          {showCost && (
-            <YAxis
-              yAxisId="right"
-              orientation="right"
-              tickFormatter={formatYen}
-              tick={{ fontSize: 10, fill: "#ef4444" }}
-              stroke="rgba(239,68,68,0.2)"
-            />
-          )}
           <Tooltip
             formatter={(value, name) => [`¥${Number(value).toLocaleString()}`, name]}
             contentStyle={{
@@ -458,41 +359,6 @@ function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
             stackId="revenue"
             radius={[4, 4, 0, 0]}
           />
-
-          {/* コスト・利益オーバーレイ */}
-          {showCost && (
-            <>
-              <Line
-                yAxisId="left"
-                type="monotone"
-                dataKey="cost_of_sales"
-                name="原価"
-                stroke="#f87171"
-                strokeWidth={1.5}
-                dot={{ r: 2.5, fill: "#f87171" }}
-                strokeDasharray="4 2"
-              />
-              <Line
-                yAxisId="left"
-                type="monotone"
-                dataKey="total_cost"
-                name="総コスト（原価+販管費）"
-                stroke="#ef4444"
-                strokeWidth={2}
-                dot={{ r: 3, fill: "#ef4444", stroke: "#fff", strokeWidth: 1 }}
-              />
-              <Line
-                yAxisId="left"
-                type="monotone"
-                dataKey="profit"
-                name="営業利益"
-                stroke="#22c55e"
-                strokeWidth={2.5}
-                dot={{ r: 4, fill: "#22c55e", stroke: "#fff", strokeWidth: 1.5 }}
-                activeDot={{ r: 6 }}
-              />
-            </>
-          )}
         </ComposedChart>
       </ResponsiveContainer>
     </div>
