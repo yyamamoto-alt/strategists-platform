@@ -156,14 +156,7 @@ export function calcClosingProbability(c: CustomerWithRelations, recentRates?: R
     }
     return isShinsotsu(c.attribute) ? 0.15 : 0.30;
   }
-  if (stage === "日程未確") {
-    if (recentRates) {
-      // 日程未確 → 日程確定遷移率50% × 実施遷移率90%を加味
-      const rate = isShinsotsu(c.attribute) ? recentRates.shinsotsu : recentRates.kisotsu;
-      return rate * 0.50 * 0.90;
-    }
-    return isShinsotsu(c.attribute) ? 0.05 : 0.10;
-  }
+  if (stage === "日程未確") return 0.05;
 
   // --- レガシー値 ---
   if (stage === "提案中") return t * 0.80;
