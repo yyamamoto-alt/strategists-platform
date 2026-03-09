@@ -122,8 +122,7 @@ function DiagonalStripePattern({ id, color }: { id: string; color: string }) {
   );
 }
 
-// コスト表示モード
-type CostOverlay = "none" | "cost" | "profit";
+// コスト表示ON/OFF
 
 export function RevenueChart({ data, threeTierData }: RevenueChartProps) {
   if (threeTierData && threeTierData.length > 0) {
@@ -136,7 +135,8 @@ export function RevenueChart({ data, threeTierData }: RevenueChartProps) {
 function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
   const [colors, setColors] = useState<Record<ColorKey, string>>(DEFAULT_COLORS);
   const [showPicker, setShowPicker] = useState(false);
-  const [costOverlay, setCostOverlay] = useState<CostOverlay>("none");
+  const [showCostOverlay, setShowCostOverlay] = useState(false);
+  const [periodMode, setPeriodMode] = useState<"monthly" | "quarterly">("monthly");
   const [plData, setPlData] = useState<PLData[] | null>(null);
   const [plLoading, setPlLoading] = useState(false);
   const [plError, setPlError] = useState<string | null>(null);
@@ -153,7 +153,7 @@ function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
 
   // freee P&Lデータ取得（コストオーバーレイ選択時にlazy load）
   useEffect(() => {
-    if (costOverlay === "none" || plData !== null) return;
+    if (!showCostOverlay || plData !== null) return;
     setPlLoading(true);
     setPlError(null);
     const currentYear = new Date().getFullYear();
@@ -168,10 +168,10 @@ function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
       })
       .catch((e) => setPlError(e.message))
       .finally(() => setPlLoading(false));
-  }, [costOverlay, plData]);
+  }, [showCostOverlay, plData]);
 
   // チャートデータにコスト・利益をマージ
-  const chartData = useMemo(() => {
+  const monthlyData = useMemo(() => {
     const plMap: Record<string, PLData> = {};
     if (plData) {
       for (const p of plData) plMap[p.period] = p;
@@ -207,39 +207,98 @@ function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
     });
   }, [data, plData]);
 
-  const showCost = costOverlay !== "none" && plData !== null;
+  // 四半期集計
+  const quarterlyData = useMemo(() => {
+    const qMap: Record<string, typeof monthlyData[number]> = {};
+
+    for (const d of monthlyData) {
+      const [y, m] = d.period.split("/").map(Number);
+      const q = Math.ceil(m / 3);
+      const qKey = `${y}/Q${q}`;
+
+      if (!qMap[qKey]) {
+        qMap[qKey] = {
+          ...d,
+          period: qKey,
+          confirmed_school_kisotsu: 0,
+          confirmed_subsidy: 0,
+          confirmed_school_shinsotsu: 0,
+          confirmed_agent: 0,
+          content_revenue: 0,
+          myvision_revenue: 0,
+          other_misc_revenue: 0,
+          projected_agent: 0,
+          ltv_gap: 0,
+          confirmed_school: 0,
+          confirmed_total: 0,
+          projected_total: 0,
+          forecast_total: 0,
+          expected_ltv_total: 0,
+          cost_of_sales: 0,
+          sga: 0,
+          total_cost: 0,
+          profit: 0,
+        };
+      }
+      const target = qMap[qKey];
+      target.confirmed_school_kisotsu += d.confirmed_school_kisotsu || 0;
+      target.confirmed_subsidy += d.confirmed_subsidy || 0;
+      target.confirmed_school_shinsotsu += d.confirmed_school_shinsotsu || 0;
+      target.confirmed_agent += d.confirmed_agent || 0;
+      target.content_revenue = (target.content_revenue || 0) + (d.content_revenue || 0);
+      target.myvision_revenue = (target.myvision_revenue || 0) + (d.myvision_revenue || 0);
+      target.other_misc_revenue = (target.other_misc_revenue || 0) + (d.other_misc_revenue || 0);
+      target.projected_agent += d.projected_agent || 0;
+      target.ltv_gap += d.ltv_gap;
+      target.confirmed_total += d.confirmed_total || 0;
+      target.expected_ltv_total += d.expected_ltv_total || 0;
+      target.cost_of_sales += d.cost_of_sales;
+      target.sga += d.sga;
+      target.total_cost += d.total_cost;
+      target.profit += d.profit;
+    }
+
+    return Object.values(qMap).sort((a, b) => a.period.localeCompare(b.period));
+  }, [monthlyData]);
+
+  const chartData = periodMode === "quarterly" ? quarterlyData : monthlyData;
+
+  const showCost = showCostOverlay && plData !== null;
 
   return (
     <div className="relative">
       {/* ツールバー */}
       <div className="absolute top-0 right-0 z-10 flex items-center gap-2">
-        {/* コストオーバーレイ切替 */}
+        {/* 月次/四半期切替 */}
         <div className="flex items-center bg-surface-elevated border border-white/10 rounded-lg overflow-hidden">
           <button
-            onClick={() => setCostOverlay("none")}
+            onClick={() => setPeriodMode("monthly")}
             className={`px-2.5 py-1 text-[10px] font-medium transition-colors ${
-              costOverlay === "none" ? "bg-brand text-white" : "text-gray-400 hover:text-white"
+              periodMode === "monthly" ? "bg-brand text-white" : "text-gray-400 hover:text-white"
             }`}
           >
-            売上のみ
+            月次
           </button>
           <button
-            onClick={() => setCostOverlay("cost")}
+            onClick={() => setPeriodMode("quarterly")}
             className={`px-2.5 py-1 text-[10px] font-medium transition-colors ${
-              costOverlay === "cost" ? "bg-brand text-white" : "text-gray-400 hover:text-white"
+              periodMode === "quarterly" ? "bg-brand text-white" : "text-gray-400 hover:text-white"
             }`}
           >
-            コスト重畳
-          </button>
-          <button
-            onClick={() => setCostOverlay("profit")}
-            className={`px-2.5 py-1 text-[10px] font-medium transition-colors ${
-              costOverlay === "profit" ? "bg-brand text-white" : "text-gray-400 hover:text-white"
-            }`}
-          >
-            利益表示
+            四半期
           </button>
         </div>
+        {/* コスト・利益トグル */}
+        <button
+          onClick={() => setShowCostOverlay(!showCostOverlay)}
+          className={`px-3 py-1 text-[10px] font-medium rounded-lg border transition-colors ${
+            showCostOverlay
+              ? "bg-brand/20 border-brand/50 text-brand"
+              : "bg-surface-elevated border-white/10 text-gray-400 hover:text-white"
+          }`}
+        >
+          コスト・利益
+        </button>
         <button
           onClick={() => setShowPicker(!showPicker)}
           className="p-1.5 text-gray-500 hover:text-gray-300 transition-colors"
@@ -255,12 +314,12 @@ function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
       )}
 
       {/* ローディング・エラー表示 */}
-      {costOverlay !== "none" && plLoading && (
+      {showCostOverlay && plLoading && (
         <div className="absolute top-10 right-0 z-10 px-3 py-1.5 bg-surface-elevated border border-white/10 rounded-lg text-xs text-gray-400">
           freeeデータ読み込み中...
         </div>
       )}
-      {costOverlay !== "none" && plError && (
+      {showCostOverlay && plError && (
         <div className="absolute top-10 right-0 z-10 px-3 py-1.5 bg-red-900/30 border border-red-800/50 rounded-lg text-xs text-red-300">
           {plError}
         </div>
@@ -336,8 +395,8 @@ function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
             radius={[4, 4, 0, 0]}
           />
 
-          {/* コスト重畳モード: 原価+販管費をライン表示 */}
-          {showCost && costOverlay === "cost" && (
+          {/* コスト・利益オーバーレイ */}
+          {showCost && (
             <>
               <Line
                 yAxisId="left"
@@ -345,8 +404,8 @@ function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
                 dataKey="cost_of_sales"
                 name="原価"
                 stroke="#f87171"
-                strokeWidth={2}
-                dot={{ r: 3, fill: "#f87171" }}
+                strokeWidth={1.5}
+                dot={{ r: 2.5, fill: "#f87171" }}
                 strokeDasharray="4 2"
               />
               <Line
@@ -355,25 +414,8 @@ function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
                 dataKey="total_cost"
                 name="総コスト（原価+販管費）"
                 stroke="#ef4444"
-                strokeWidth={2.5}
+                strokeWidth={2}
                 dot={{ r: 3, fill: "#ef4444", stroke: "#fff", strokeWidth: 1 }}
-              />
-            </>
-          )}
-
-          {/* 利益表示モード: 利益ライン */}
-          {showCost && costOverlay === "profit" && (
-            <>
-              <ReferenceLine yAxisId="left" y={0} stroke="rgba(255,255,255,0.2)" />
-              <Line
-                yAxisId="left"
-                type="monotone"
-                dataKey="total_cost"
-                name="総コスト"
-                stroke="#ef4444"
-                strokeWidth={1.5}
-                strokeDasharray="4 2"
-                dot={false}
               />
               <Line
                 yAxisId="left"
