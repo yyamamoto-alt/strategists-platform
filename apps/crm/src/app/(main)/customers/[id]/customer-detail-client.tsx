@@ -108,6 +108,36 @@ function SingleFormSection({ title, record }: { title: string; record: Applicati
   );
 }
 
+/** フォームソースに応じた最適な日付をraw_dataから取得 */
+function getFormDisplayDate(record: ApplicationHistoryRecord): string | null {
+  const rd = (record.raw_data || {}) as Record<string, string>;
+  const source = record.source || "";
+
+  // ソース別の日付フィールドマッピング
+  const DATE_FIELD_MAP: Record<string, string[]> = {
+    "メンター指導報告": ["指導日"],
+    "営業報告": ["実施日"],
+    "エージェント面談報告フォーム": ["実施日"],
+    "カルテ": ["タイムスタンプ"],
+    "課題提出": ["タイムスタンプ"],
+    "面接終了後報告": ["タイムスタンプ"],
+  };
+
+  const fields = DATE_FIELD_MAP[source];
+  if (fields) {
+    for (const f of fields) {
+      if (rd[f]) return rd[f];
+    }
+  }
+
+  // フォールバック: raw_data内の汎用日付フィールドを探す
+  for (const key of ["タイムスタンプ", "日付", "実施日", "指導日", "提出日"]) {
+    if (rd[key]) return rd[key];
+  }
+
+  return null;
+}
+
 /** 繰り返しフォーム: タブ切替 + 折りたたみリスト */
 function RepeatingFormSection({ records }: { records: ApplicationHistoryRecord[] }) {
   const [activeSource, setActiveSource] = useState<string | null>(null);
@@ -177,7 +207,7 @@ function RepeatingFormSection({ records }: { records: ApplicationHistoryRecord[]
                 className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-white/[0.03] transition-colors"
               >
                 <span className="text-gray-500 text-xs w-4">{isExpanded ? "▾" : "▸"}</span>
-                <span className="text-xs text-gray-400">{formatDate(r.applied_at)}</span>
+                <span className="text-xs text-gray-400">{formatDate(getFormDisplayDate(r) || r.applied_at)}</span>
                 {!isExpanded && (
                   <span className="text-[10px] text-gray-500 truncate">{preview}</span>
                 )}
