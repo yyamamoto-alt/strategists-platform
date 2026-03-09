@@ -266,6 +266,45 @@ export async function logNotification(data: {
   }
 }
 
+/** 入塾フォーム受信通知 — プラン・エージェント利用の確認リクエスト（salesチャンネル + 担当者メンション） */
+export async function notifyEnrollmentFormReceived(data: {
+  customerName: string;
+  customerId: string;
+  planName: string | null;
+  agentUsage: string | null;
+  subsidyEligible: boolean;
+  salesPerson: string | null;
+}) {
+  const channel = await getNotifyConfig("enrollment_confirmation", "C094YLMKR4K"); // #sales_営業管理
+  if (!channel) return;
+
+  // 営業担当者のSlack IDを取得してメンション
+  let mention = "";
+  if (data.salesPerson) {
+    const mapping = await getStaffSlackMapping();
+    const slackId = findSlackUserId(data.salesPerson, mapping);
+    if (slackId) {
+      mention = `<@${slackId}> `;
+    } else {
+      mention = `@${data.salesPerson} `;
+    }
+  }
+
+  const crmUrl = `https://strategists-crm.vercel.app/customers/${data.customerId}`;
+  const lines = [
+    `${mention}📋 *入塾フォーム受信 — 確認リクエスト*`,
+    `受講生: ${data.customerName}`,
+    `申込プラン: ${data.planName || "未入力"}`,
+    `エージェント利用: ${data.agentUsage || "未入力"}`,
+    data.subsidyEligible ? "✅ 補助金対象（自動判定）" : "",
+    ``,
+    `⚠️ *お客様入力のため、プランとエージェント利用が正しいかご確認ください*`,
+    crmUrl,
+  ].filter(Boolean);
+
+  await sendSlackMessage(channel, lines.join("\n"));
+}
+
 /** 営業リマインド通知 */
 export async function notifySalesReminder(text: string) {
   const channel = await getNotifyConfig("sales_reminder", DEFAULT_CHANNELS.payment_success);

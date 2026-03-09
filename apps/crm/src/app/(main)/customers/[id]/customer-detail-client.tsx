@@ -78,7 +78,7 @@ function SourceBadgeLegend() {
 // ================================================================
 
 // 1回限りフォーム（専用ボックスに常時展開）
-const SINGLE_FORM_SOURCES = ["入塾フォーム", "営業報告"];
+const SINGLE_FORM_SOURCES = ["入塾フォーム"];
 
 /** 1回限りフォーム: 常時展開のkey-valueテーブル */
 function SingleFormSection({ title, record }: { title: string; record: ApplicationHistoryRecord }) {

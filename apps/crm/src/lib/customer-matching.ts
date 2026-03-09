@@ -2,6 +2,7 @@ import "server-only";
 
 import { createServiceClient } from "@/lib/supabase/server";
 import { computeAttributionForCustomer } from "@/lib/compute-attribution-for-customer";
+import { notifyEnrollmentFormReceived } from "@/lib/slack";
 import crypto from "crypto";
 
 /** MD5ハッシュ（DB側のmd5()と同等） */
@@ -369,6 +370,18 @@ async function syncFormFieldsToRelatedTables(
     if (Object.keys(learningUpdate).length > 0) {
       await upsertRelated(db, "learning_records", customerId, learningUpdate);
     }
+
+    // Slack通知: プラン・エージェント利用の確認リクエスト（#sales_営業管理 + 担当者メンション）
+    const { data: custPipeline } = await db.from("sales_pipeline").select("sales_person").eq("customer_id", customerId).single();
+    const { data: custData } = await db.from("customers").select("name").eq("id", customerId).single();
+    notifyEnrollmentFormReceived({
+      customerName: custData?.name || rawData["お名前"] || "不明",
+      customerId,
+      planName: rawData["申込プラン"] || null,
+      agentUsage: rawData["エージェント利用"] || null,
+      subsidyEligible: rawData["申込プラン"]?.includes("補助金") ?? false,
+      salesPerson: custPipeline?.sales_person || null,
+    }).catch(() => {}); // エラーで同期を止めない
   }
 
   // --- 指導終了報告 → learning_records ---
@@ -500,28 +513,17 @@ export async function upsertFromSpreadsheet(
     await syncFormFieldsToRelatedTables(db, match.customer_id, sourceName, rawData);
 
     // application_history に履歴追加（重複チェック付き）
-    // NOTE: stableStringify を使うことで JSONB のキー順序差異を吸収
+    // raw_data_hash（MD5）で高速に重複判定 + DBユニーク制約で二重防御
     const rawText = stableStringify(rawData);
-    const { data: existingHistory } = await db
+    const rawDataHash = await md5Hash(rawText);
+    const { data: existingByHash } = await db
       .from("application_history")
       .select("id")
       .eq("customer_id", match.customer_id)
       .eq("source", sourceName)
+      .eq("raw_data_hash", rawDataHash)
       .limit(1);
-
-    // 同じraw_dataが既にあればスキップ
-    let isDuplicate = false;
-    if (existingHistory && existingHistory.length > 0) {
-      const { data: allHistory } = await db
-        .from("application_history")
-        .select("id, raw_data")
-        .eq("customer_id", match.customer_id)
-        .eq("source", sourceName);
-      isDuplicate = allHistory?.some(
-        (h: { id: string; raw_data: Record<string, unknown> }) =>
-          stableStringify(h.raw_data) === rawText
-      ) ?? false;
-    }
+    const isDuplicate = existingByHash && existingByHash.length > 0;
 
     if (!isDuplicate) {
       const { error: insertErr } = await db.from("application_history").insert({

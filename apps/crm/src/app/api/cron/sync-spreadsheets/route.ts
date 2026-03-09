@@ -2,6 +2,7 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { fetchSheetData } from "@/lib/google-sheets";
 import { extractFieldsFromRow, upsertFromSpreadsheet } from "@/lib/customer-matching";
+import crypto from "crypto";
 
 /** JSONB key order-independent hash for dedup comparison */
 function stableStringify(obj: unknown): string {
@@ -202,14 +203,15 @@ export async function GET(request: Request) {
         // 通常のフォーム同期（application_history + customer matching）
         // ============================================================
 
-        // 直近の同期済みraw_dataハッシュを取得（重複検知用ダブルチェック）
+        // 同期済みraw_data_hashを取得（重複検知用 — DBユニーク制約との二重防御）
         const [{ data: recentHistory }, { data: recentUnmatched }] = await Promise.all([
-          db.from("application_history").select("raw_data").eq("source", connection.name).order("applied_at", { ascending: false }).limit(500),
-          db.from("unmatched_records").select("raw_data").eq("connection_id", connection.id).order("created_at", { ascending: false }).limit(500),
+          db.from("application_history").select("raw_data_hash").eq("source", connection.name).order("applied_at", { ascending: false }).limit(5000),
+          db.from("unmatched_records").select("raw_data").eq("connection_id", connection.id).order("created_at", { ascending: false }).limit(2000),
         ]);
         const knownHashes = new Set<string>();
         for (const h of (recentHistory || [])) {
-          knownHashes.add(stableStringify((h as { raw_data: Record<string, unknown> }).raw_data));
+          const hash = (h as { raw_data_hash: string }).raw_data_hash;
+          if (hash) knownHashes.add(hash);
         }
         for (const h of (recentUnmatched || [])) {
           knownHashes.add(stableStringify((h as { raw_data: Record<string, unknown> }).raw_data));
@@ -225,8 +227,8 @@ export async function GET(request: Request) {
               if (i < row.length && row[i]) rawData[h] = row[i];
             });
 
-            // ダブルチェック: まったく同じraw_dataが既にあればスキップ
-            const rawHash = stableStringify(rawData);
+            // ダブルチェック: 同じraw_data_hashが既にあればスキップ（DBユニーク制約との二重防御）
+            const rawHash = crypto.createHash("md5").update(stableStringify(rawData)).digest("hex");
             if (knownHashes.has(rawHash)) {
               rowsSkipped++;
               continue;
