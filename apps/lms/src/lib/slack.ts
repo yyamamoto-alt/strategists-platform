@@ -186,12 +186,12 @@ export async function sendInviteApprovalRequest(
 
   const blocks: SlackBlock[] = [
     {
-      type: "header",
-      text: { type: "plain_text", text: "🎓【Edu】LMS招待 — メンター割当リクエスト", emoji: true },
+      type: "section",
+      text: { type: "mrkdwn", text: "<@U09KTDK1P99> メンター割当と招待の承認をお願いします" },
     },
     {
-      type: "context",
-      elements: [{ type: "mrkdwn", text: "<@U09KTDK1P99> メンター割当と招待の承認をお願いします" }],
+      type: "header",
+      text: { type: "plain_text", text: "🎓【Edu】LMS招待 — メンター割当リクエスト", emoji: true },
     },
     {
       type: "section",

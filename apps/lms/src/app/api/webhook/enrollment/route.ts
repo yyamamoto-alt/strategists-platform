@@ -236,6 +236,10 @@ export async function POST(request: Request) {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const blocks: any[] = [
+      ...(mention ? [{
+        type: "section",
+        text: { type: "mrkdwn", text: `${mention}プラン・エージェント利用の確認をお願いします` },
+      }] : []),
       {
         type: "header",
         text: { type: "plain_text", text: "📋【営業】入塾フォーム — プラン・エージェント確認", emoji: true },
@@ -249,10 +253,6 @@ export async function POST(request: Request) {
           { type: "mrkdwn", text: `*エージェント利用（お客様入力）:*\n${agentUsage || "未入力"}` },
         ],
       },
-      ...(mention ? [{
-        type: "context",
-        elements: [{ type: "mrkdwn", text: `担当: ${mention}` }],
-      }] : []),
       ...(crmUrl ? [{
         type: "context",
         elements: [{ type: "mrkdwn", text: `<${crmUrl}|CRMで詳細を見る>` }],
