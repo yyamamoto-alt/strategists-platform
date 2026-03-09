@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { sendInviteApprovalRequest, mapPlanToCourseIds } from "@/lib/slack";
+import { sendSlackMessage, sendInviteApprovalRequest, mapPlanToCourseIds } from "@/lib/slack";
 import type { PaymentInfo, LearningInfo } from "@/lib/slack";
 import { NextResponse } from "next/server";
 
@@ -147,6 +147,77 @@ export async function POST(request: Request) {
     }
   } catch (e) {
     console.error("Payment/learning info fetch error:", e);
+  }
+
+  // ================================================================
+  // セールスチャンネルへプラン・エージェント確認通知（リアルタイム）
+  // ================================================================
+  try {
+    // 顧客を検索してCRMリンクを作成
+    const { data: matchedCustomer } = await supabase
+      .from("customers")
+      .select("id")
+      .eq("email", email)
+      .single();
+
+    // 営業担当を取得
+    let salesPerson: string | null = null;
+    if (matchedCustomer) {
+      const { data: pipeline } = await supabase
+        .from("sales_pipeline")
+        .select("sales_person")
+        .eq("customer_id", matchedCustomer.id)
+        .single();
+      salesPerson = pipeline?.sales_person || null;
+    }
+
+    // 営業担当のSlack IDを取得
+    let mention = "";
+    if (salesPerson) {
+      const { data: mappingRow } = await supabase
+        .from("app_settings")
+        .select("value")
+        .eq("key", "staff_slack_mapping")
+        .single();
+      if (mappingRow?.value) {
+        const mapping = typeof mappingRow.value === "object"
+          ? mappingRow.value as Record<string, string>
+          : JSON.parse(String(mappingRow.value));
+        const slackId = mapping[salesPerson] || mapping[salesPerson.split(/[\s　]/)[0]];
+        if (slackId) mention = `<@${slackId}> `;
+        else mention = `@${salesPerson} `;
+      }
+    }
+
+    // 確認通知先チャンネルを取得
+    const { data: channelSetting } = await supabase
+      .from("app_settings")
+      .select("value")
+      .eq("key", "slack_channel_enrollment_confirmation")
+      .single();
+    const confirmChannel = channelSetting?.value
+      ? String(channelSetting.value).replace(/"/g, "")
+      : "C094YLMKR4K"; // デフォルト: #sales
+
+    const agentUsage = body.agent_usage || body["エージェント利用"] || null;
+    const crmUrl = matchedCustomer
+      ? `https://strategists-crm.vercel.app/customers/${matchedCustomer.id}`
+      : "";
+
+    const lines = [
+      `${mention}📋 *入塾フォーム受信 — 確認リクエスト*`,
+      `受講生: ${name}`,
+      `申込プラン: ${plan_name || "未入力"}`,
+      `エージェント利用: ${agentUsage || "未入力"}`,
+      ``,
+      `⚠️ *お客様入力のため、プランとエージェント利用が正しいかご確認ください*`,
+      `正しければCRMで確定してください。`,
+      crmUrl,
+    ].filter(Boolean);
+
+    await sendSlackMessage(confirmChannel, lines.join("\n"));
+  } catch (e) {
+    console.error("Enrollment confirmation notification error:", e);
   }
 
   // 自動招待が有効か確認

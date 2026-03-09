@@ -1,5 +1,6 @@
 import { createServiceClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { notifyEnrollmentFormReceived } from "@/lib/slack";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -154,27 +155,20 @@ export async function GET(request: Request) {
         // pipeline → 成約
         await upsertRelated(db, "sales_pipeline", customerId, { stage: "成約" });
 
-        // contracts
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const contractUpd: Record<string, any> = {};
-        if (rd["申込プラン"]) {
-          contractUpd.plan_name = rd["申込プラン"];
-          if (rd["申込プラン"].includes("補助金")) contractUpd.subsidy_eligible = true;
-        }
-        if (rd["エージェント利用"]) {
-          const av = rd["エージェント利用"];
-          if (av.includes("フル")) contractUpd.referral_category = "フル利用";
-          else if (av.includes("一部")) contractUpd.referral_category = "一部利用";
-        }
-        if (Object.keys(contractUpd).length > 0) {
-          await upsertRelated(db, "contracts", customerId, contractUpd);
+        // ⚠️ プランとエージェント利用はお客様入力なので自動書き込みしない
+        // Slack通知で営業チームに確認を仰ぐ
+        const planFromForm = rd["申込プラン"] || null;
+        const agentFromForm = rd["エージェント利用"] || null;
+        const subsidyEligible = planFromForm ? planFromForm.includes("補助金") : false;
+
+        // 補助金フラグだけは自動設定（プラン名には書かない）
+        if (subsidyEligible) {
+          await upsertRelated(db, "contracts", customerId, { subsidy_eligible: true });
         }
 
-        // learning_records
+        // learning_records（希望年収のみ自動反映）
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const lrUpd: Record<string, any> = {};
-        if (rd["申込プラン"]) lrUpd.progress_text = rd["申込プラン"];
-        if (rd["エージェント利用"]) lrUpd.selection_status = rd["エージェント利用"];
         if (rd["希望年収"]) {
           const salary = parseInt(rd["希望年収"], 10);
           if (!isNaN(salary)) lrUpd.desired_salary = salary;
@@ -182,6 +176,38 @@ export async function GET(request: Request) {
         if (Object.keys(lrUpd).length > 0) {
           await upsertRelated(db, "learning_records", customerId, lrUpd);
         }
+
+        // 営業担当者を取得（メンション用）
+        let salesPerson: string | null = null;
+        try {
+          const { data: pipeline } = await db
+            .from("sales_pipeline")
+            .select("sales_person")
+            .eq("customer_id", customerId)
+            .single();
+          salesPerson = pipeline?.sales_person || null;
+        } catch { /* ignore */ }
+
+        // 顧客名を取得
+        let customerName = "不明";
+        try {
+          const { data: cust } = await db
+            .from("customers")
+            .select("name")
+            .eq("id", customerId)
+            .single();
+          customerName = cust?.name || "不明";
+        } catch { /* ignore */ }
+
+        // Slack通知: プランとエージェント利用の確認リクエスト
+        await notifyEnrollmentFormReceived({
+          customerName,
+          customerId,
+          planName: planFromForm,
+          agentUsage: agentFromForm,
+          subsidyEligible,
+          salesPerson,
+        });
 
         stats.入塾フォーム++;
       } catch { stats.errors++; }
