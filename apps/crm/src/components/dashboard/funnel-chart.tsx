@@ -63,6 +63,7 @@ function SingleFunnelChart({
             yAxisId="left"
             tick={{ fontSize: 10, fill: "#9ca3af" }}
             stroke="rgba(255,255,255,0.1)"
+            unit="人"
           />
           <YAxis
             yAxisId="right"
