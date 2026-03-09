@@ -46,10 +46,19 @@ export async function POST(request: Request) {
 
     // If refreshed, update stored tokens
     if (result.refreshed) {
-      const newExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-      await db.from("app_settings").upsert({ key: "freee_access_token", value: accessToken }, { onConflict: "key" });
-      await db.from("app_settings").upsert({ key: "freee_refresh_token", value: refreshToken }, { onConflict: "key" });
-      await db.from("app_settings").upsert({ key: "freee_token_expires_at", value: newExpiry }, { onConflict: "key" });
+      const ttlMs = (result.expiresIn || 86400) * 1000;
+      const newExpiry = new Date(Date.now() + ttlMs).toISOString();
+      const tokenUpdates = [
+        { key: "freee_access_token", value: accessToken },
+        { key: "freee_refresh_token", value: refreshToken },
+        { key: "freee_token_expires_at", value: newExpiry },
+      ];
+      for (const u of tokenUpdates) {
+        await db.from("app_settings").upsert(
+          { key: u.key, value: u.value, updated_at: new Date().toISOString() },
+          { onConflict: "key" },
+        );
+      }
     }
   } catch {
     return NextResponse.json({ error: "freeeトークンの更新に失敗しました。再連携してください。" }, { status: 401 });
