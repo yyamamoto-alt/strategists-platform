@@ -58,7 +58,7 @@ const navGroups: NavGroup[] = [
     items: [
       { name: "ユーザー管理", href: "/users", roles: ["admin"] },
       { name: "データ連携", href: "/data-sync", roles: ["admin"] },
-      { name: "自動連携", href: "/automations", roles: ["admin"] },
+      { name: "自動連携 (旧Zapier)", href: "/automations", roles: ["admin"] },
       { name: "設定", href: "/settings", roles: ["admin"] },
     ],
     collapsible: true,

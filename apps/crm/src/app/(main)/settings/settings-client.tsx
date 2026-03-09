@@ -119,12 +119,56 @@ const SECTIONS: SettingsSectionConfig[] = [
         placeholder: "チャンネルを選択...",
       },
       {
+        key: "slack_notify_payment_success",
+        label: "決済成功通知（Apps/Stripe）",
+        type: "toggle",
+      },
+      {
+        key: "slack_channel_payment_success",
+        label: "└ 通知先チャンネル",
+        type: "slack_channel",
+        placeholder: "チャンネルを選択...",
+      },
+      {
+        key: "slack_notify_jicoo",
+        label: "Jicoo予約通知",
+        type: "toggle",
+      },
+      {
+        key: "slack_channel_jicoo",
+        label: "└ 通知先チャンネル",
+        type: "slack_channel",
+        placeholder: "チャンネルを選択...",
+      },
+      {
+        key: "slack_notify_form_sync",
+        label: "フォーム同期通知（営業/入塾/指導報告）",
+        type: "toggle",
+      },
+      {
+        key: "slack_channel_form_sync",
+        label: "└ 通知先チャンネル",
+        type: "slack_channel",
+        placeholder: "チャンネルを選択...",
+      },
+      {
         key: "slack_notify_stage_transition",
         label: "ステージ自動遷移通知",
         type: "toggle",
       },
       {
         key: "slack_channel_stage_transition",
+        label: "└ 通知先チャンネル",
+        type: "slack_channel",
+        placeholder: "チャンネルを選択...",
+      },
+      {
+        key: "slack_notify_daily_report",
+        label: "日次売上レポート",
+        type: "toggle",
+      },
+      {
+        key: "slack_channel_daily_report",
         label: "└ 通知先チャンネル",
         type: "slack_channel",
         placeholder: "チャンネルを選択...",

@@ -60,20 +60,25 @@ export async function notifyStageTransition(text: string) {
 }
 
 // ================================================================
-// Zapier移管: イベント通知
+// Zapier移管: イベント通知（app_settings で ON/OFF・チャンネル管理）
 // ================================================================
 
-/** Zapier移管チャンネルマッピング（zapfile.json由来） */
-const CHANNELS = {
-  /** 営業/決済/リマインド全般 */
-  sales: "C094YLMKR4K",
-  /** Jicoo予約・営業フォーム通知 */
+/** デフォルトチャンネル（app_settingsに未設定時のフォールバック） */
+const DEFAULT_CHANNELS = {
+  payment_success: "C094YLMKR4K",
   jicoo: "C07QXD9N524",
-  /** 入塾フォーム */
-  enrollment: "C0AAZMEH37E",
-  /** 売上レポート（毎日） */
-  report: "C0951QVAJ5N",
+  form_sync: "C07QXD9N524",
+  daily_report: "C0951QVAJ5N",
 } as const;
+
+/** 通知設定を取得（enabled + channel）。未設定時はデフォルトON */
+async function getNotifyConfig(type: string, defaultChannel: string) {
+  const enabled = await getSetting(`slack_notify_${type}`);
+  // 明示的に "false" でない限りON（初回はapp_settingsに行がないのでデフォルトON）
+  if (enabled === "false") return null;
+  const channel = await getSetting(`slack_channel_${type}`);
+  return channel || defaultChannel;
+}
 
 /** Jicoo予約通知 */
 export async function notifyJicooBooking(data: {
@@ -84,6 +89,9 @@ export async function notifyJicooBooking(data: {
   matched: boolean;
   customerUrl?: string;
 }) {
+  const channel = await getNotifyConfig("jicoo", DEFAULT_CHANNELS.jicoo);
+  if (!channel) return;
+
   const emoji = data.event.includes("cancel") ? "❌" : "📅";
   const eventLabel = data.event.includes("cancel") ? "キャンセル"
     : data.event.includes("reschedule") ? "日程変更" : "新規予約";
@@ -100,7 +108,7 @@ export async function notifyJicooBooking(data: {
   ];
   if (data.customerUrl) lines.push(data.customerUrl);
 
-  await sendSlackMessage(CHANNELS.jicoo, lines.join("\n"));
+  await sendSlackMessage(channel, lines.join("\n"));
 }
 
 /** 決済成功通知（Apps/Stripe共通） */
@@ -112,6 +120,9 @@ export async function notifyPaymentSuccess(data: {
   matched: boolean;
   customerUrl?: string;
 }) {
+  const channel = await getNotifyConfig("payment_success", DEFAULT_CHANNELS.payment_success);
+  if (!channel) return;
+
   const amountStr = `¥${data.amount.toLocaleString()}`;
   const lines = [
     `💰 *${data.source}決済完了*`,
@@ -122,10 +133,10 @@ export async function notifyPaymentSuccess(data: {
   ];
   if (data.customerUrl) lines.push(data.customerUrl);
 
-  await sendSlackMessage(CHANNELS.sales, lines.join("\n"));
+  await sendSlackMessage(channel, lines.join("\n"));
 }
 
-/** 営業フォーム同期通知 */
+/** フォーム同期通知（営業報告/入塾/指導報告） */
 export async function notifyFormSync(data: {
   sourceName: string;
   customerName: string;
@@ -133,12 +144,13 @@ export async function notifyFormSync(data: {
   customerId?: string;
   extraFields?: Record<string, string>;
 }) {
+  const channel = await getNotifyConfig("form_sync", DEFAULT_CHANNELS.form_sync);
+  if (!channel) return;
+
   const emoji = data.action === "created" ? "🆕"
     : data.action === "updated" ? "📝" : "⚠️";
   const actionLabel = data.action === "created" ? "新規作成"
     : data.action === "updated" ? "更新" : "未マッチ";
-
-  const channel = data.sourceName === "入塾フォーム" ? CHANNELS.enrollment : CHANNELS.jicoo;
 
   const lines = [
     `${emoji} *${data.sourceName}* — ${actionLabel}`,
@@ -160,5 +172,7 @@ export async function notifyFormSync(data: {
 
 /** 日次売上レポート */
 export async function notifyDailyReport(text: string) {
-  await sendSlackMessage(CHANNELS.report, text);
+  const channel = await getNotifyConfig("daily_report", DEFAULT_CHANNELS.daily_report);
+  if (!channel) return;
+  await sendSlackMessage(channel, text);
 }
