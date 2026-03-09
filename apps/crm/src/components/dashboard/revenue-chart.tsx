@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect, useCallback } from "react";
 import {
   XAxis,
   YAxis,
@@ -29,6 +30,81 @@ const formatPeriodTick = (v: string) => {
   return m === "01" ? `${y}/${m}` : m;
 };
 
+// --- カラー設定 ---
+const SERIES_KEYS = [
+  { key: "kisotsu", label: "既卒スクール" },
+  { key: "subsidy", label: "補助金" },
+  { key: "shinsotsu", label: "新卒スクール" },
+  { key: "agent", label: "人材確定" },
+  { key: "note", label: "note売上" },
+  { key: "myvision", label: "MyVision受託" },
+  { key: "other", label: "その他" },
+  { key: "projected", label: "人材見込" },
+  { key: "ltv", label: "見込みLTV" },
+] as const;
+
+type ColorKey = (typeof SERIES_KEYS)[number]["key"];
+
+const DEFAULT_COLORS: Record<ColorKey, string> = {
+  kisotsu: "#dc2626",
+  subsidy: "#f87171",
+  shinsotsu: "#1e3a5f",
+  agent: "#c2410c",
+  note: "#41c9b4",
+  myvision: "#22d3ee",
+  other: "#9c9ead",
+  projected: "#ff6b00",
+  ltv: "#f28e2b",
+};
+
+const STORAGE_KEY = "crm-revenue-chart-colors";
+
+function loadColors(): Record<ColorKey, string> {
+  if (typeof window === "undefined") return { ...DEFAULT_COLORS };
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) return { ...DEFAULT_COLORS, ...JSON.parse(saved) };
+  } catch {}
+  return { ...DEFAULT_COLORS };
+}
+
+function ColorPicker({ colors, onChange, onClose }: {
+  colors: Record<ColorKey, string>;
+  onChange: (key: ColorKey, color: string) => void;
+  onClose: () => void;
+}) {
+  return (
+    <div className="absolute top-8 right-0 z-50 bg-[#1A1A1A] border border-white/15 rounded-lg p-3 shadow-xl min-w-[200px]">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs text-gray-400 font-medium">配色設定</span>
+        <button onClick={onClose} className="text-gray-500 hover:text-white text-sm">✕</button>
+      </div>
+      <div className="space-y-1.5">
+        {SERIES_KEYS.map(({ key, label }) => (
+          <div key={key} className="flex items-center gap-2">
+            <input
+              type="color"
+              value={colors[key]}
+              onChange={(e) => onChange(key, e.target.value)}
+              className="w-6 h-6 rounded cursor-pointer border-0 bg-transparent [&::-webkit-color-swatch-wrapper]:p-0 [&::-webkit-color-swatch]:rounded"
+            />
+            <span className="text-[11px] text-gray-300">{label}</span>
+          </div>
+        ))}
+      </div>
+      <button
+        onClick={() => {
+          localStorage.removeItem(STORAGE_KEY);
+          for (const { key } of SERIES_KEYS) onChange(key, DEFAULT_COLORS[key]);
+        }}
+        className="mt-2 text-[10px] text-gray-500 hover:text-gray-300"
+      >
+        デフォルトに戻す
+      </button>
+    </div>
+  );
+}
+
 export function RevenueChart({ data, threeTierData }: RevenueChartProps) {
   if (threeTierData && threeTierData.length > 0) {
     return <UnifiedChart data={threeTierData} />;
@@ -38,109 +114,87 @@ export function RevenueChart({ data, threeTierData }: RevenueChartProps) {
 
 /** 統合チャート: 確定売上（棒）+ 見込みLTVポテンシャル（ドットのみ） */
 function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
+  const [colors, setColors] = useState<Record<ColorKey, string>>(DEFAULT_COLORS);
+  const [showPicker, setShowPicker] = useState(false);
+
+  useEffect(() => { setColors(loadColors()); }, []);
+
+  const handleColorChange = useCallback((key: ColorKey, color: string) => {
+    setColors((prev) => {
+      const next = { ...prev, [key]: color };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
   return (
-    <ResponsiveContainer width="100%" height={600}>
-      <ComposedChart data={data} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
-        <XAxis
-          dataKey="period"
-          tick={{ fontSize: 8, fill: "#9ca3af" }}
-          stroke="rgba(255,255,255,0.1)"
-          angle={-45}
-          textAnchor="end"
-          height={45}
-          interval={0}
-          tickFormatter={formatPeriodTick}
-        />
-        <YAxis
-          tickFormatter={formatYen}
-          tick={{ fontSize: 11, fill: "#9ca3af" }}
-          stroke="rgba(255,255,255,0.1)"
-          domain={[0, 10000000]}
-          ticks={[0, 1000000, 2000000, 3000000, 4000000, 5000000, 6000000, 7000000, 8000000, 9000000, 10000000]}
-        />
-        <Tooltip
-          formatter={(value) => `¥${Number(value).toLocaleString()}`}
-          contentStyle={{
-            backgroundColor: "#1A1A1A",
-            border: "1px solid rgba(255,255,255,0.1)",
-            borderRadius: "8px",
-            color: "#fff",
-          }}
-          labelStyle={{ color: "#9ca3af" }}
-        />
-        <Legend iconSize={10} wrapperStyle={{ fontSize: 11, color: "#9ca3af" }} />
+    <div className="relative">
+      <button
+        onClick={() => setShowPicker(!showPicker)}
+        className="absolute top-0 right-0 z-10 p-1.5 text-gray-500 hover:text-gray-300 transition-colors"
+        title="配色設定"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+        </svg>
+      </button>
+      {showPicker && (
+        <ColorPicker colors={colors} onChange={handleColorChange} onClose={() => setShowPicker(false)} />
+      )}
+      <ResponsiveContainer width="100%" height={600}>
+        <ComposedChart data={data} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+          <XAxis
+            dataKey="period"
+            tick={{ fontSize: 8, fill: "#9ca3af" }}
+            stroke="rgba(255,255,255,0.1)"
+            angle={-45}
+            textAnchor="end"
+            height={45}
+            interval={0}
+            tickFormatter={formatPeriodTick}
+          />
+          <YAxis
+            tickFormatter={formatYen}
+            tick={{ fontSize: 11, fill: "#9ca3af" }}
+            stroke="rgba(255,255,255,0.1)"
+            domain={[0, 10000000]}
+            ticks={[0, 1000000, 2000000, 3000000, 4000000, 5000000, 6000000, 7000000, 8000000, 9000000, 10000000]}
+          />
+          <Tooltip
+            formatter={(value) => `¥${Number(value).toLocaleString()}`}
+            contentStyle={{
+              backgroundColor: "#1A1A1A",
+              border: "1px solid rgba(255,255,255,0.1)",
+              borderRadius: "8px",
+              color: "#fff",
+            }}
+            labelStyle={{ color: "#9ca3af" }}
+          />
+          <Legend iconSize={10} wrapperStyle={{ fontSize: 11, color: "#9ca3af" }} />
 
-        {/* 積み上げ棒: 確定売上セグメント内訳 */}
-        <Bar
-          dataKey="confirmed_school_kisotsu"
-          name="既卒スクール"
-          fill="#dc2626"
-          stackId="revenue"
-          radius={[0, 0, 0, 0]}
-        />
-        <Bar
-          dataKey="confirmed_subsidy"
-          name="補助金"
-          fill="#f87171"
-          stackId="revenue"
-        />
-        <Bar
-          dataKey="confirmed_school_shinsotsu"
-          name="新卒スクール"
-          fill="#1e3a5f"
-          stackId="revenue"
-        />
-        <Bar
-          dataKey="confirmed_agent"
-          name="人材確定"
-          fill="#c2410c"
-          stackId="revenue"
-        />
+          <Bar dataKey="confirmed_school_kisotsu" name="既卒スクール" fill={colors.kisotsu} stackId="revenue" radius={[0, 0, 0, 0]} />
+          <Bar dataKey="confirmed_subsidy" name="補助金" fill={colors.subsidy} stackId="revenue" />
+          <Bar dataKey="confirmed_school_shinsotsu" name="新卒スクール" fill={colors.shinsotsu} stackId="revenue" />
+          <Bar dataKey="confirmed_agent" name="人材確定" fill={colors.agent} stackId="revenue" />
+          <Bar dataKey="content_revenue" name="note売上" fill={colors.note} stackId="revenue" />
+          <Bar dataKey="myvision_revenue" name="MyVision受託" fill={colors.myvision} stackId="revenue" />
+          <Bar dataKey="other_misc_revenue" name="その他" fill={colors.other} stackId="revenue" />
+          <Bar dataKey="projected_agent" name="人材見込" fill={colors.projected} fillOpacity={0.55} stackId="revenue" radius={[4, 4, 0, 0]} />
 
-        {/* その他売上 */}
-        <Bar
-          dataKey="content_revenue"
-          name="note売上"
-          fill="#41c9b4"
-          stackId="revenue"
-        />
-        <Bar
-          dataKey="myvision_revenue"
-          name="MyVision受託"
-          fill="#22d3ee"
-          stackId="revenue"
-        />
-        <Bar
-          dataKey="other_misc_revenue"
-          name="その他"
-          fill="#9c9ead"
-          stackId="revenue"
-        />
-
-        {/* 人材見込売上（半透明オレンジ） */}
-        <Bar
-          dataKey="projected_agent"
-          name="人材見込"
-          fill="#ff6b00"
-          fillOpacity={0.55}
-          stackId="revenue"
-          radius={[4, 4, 0, 0]}
-        />
-
-        {/* 見込みLTV: ドットのみ（MAXポテンシャル表示） */}
-        <Line
-          type="monotone"
-          dataKey="expected_ltv_total"
-          name="見込みLTV（MAXポテンシャル）"
-          stroke="transparent"
-          strokeWidth={0}
-          dot={{ r: 5, fill: "#f28e2b", stroke: "#fff", strokeWidth: 1.5 }}
-          activeDot={{ r: 7, fill: "#f28e2b", stroke: "#fff", strokeWidth: 2 }}
-          connectNulls={false}
-        />
-      </ComposedChart>
-    </ResponsiveContainer>
+          <Line
+            type="monotone"
+            dataKey="expected_ltv_total"
+            name="見込みLTV（MAXポテンシャル）"
+            stroke="transparent"
+            strokeWidth={0}
+            dot={{ r: 5, fill: colors.ltv, stroke: "#fff", strokeWidth: 1.5 }}
+            activeDot={{ r: 7, fill: colors.ltv, stroke: "#fff", strokeWidth: 2 }}
+            connectNulls={false}
+          />
+        </ComposedChart>
+      </ResponsiveContainer>
+    </div>
   );
 }
 
