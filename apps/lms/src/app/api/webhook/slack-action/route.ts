@@ -60,8 +60,79 @@ export async function POST(request: Request) {
     return new Response("", { status: 200 });
   }
 
-  const applicationId = action.value;
   const userName = payload.user?.name || payload.user?.username || "不明";
+
+  // ================================================================
+  // 入塾フォーム: プラン・エージェント利用の確認/却下
+  // ================================================================
+  if (actionId === "confirm_enrollment_data") {
+    try {
+      const confirmData = JSON.parse(action.value);
+      const { customer_id, plan_name, agent_usage } = confirmData;
+
+      if (!customer_id) {
+        return respondToSlack(payload, "⚠️ 顧客IDが見つかりません。CRMで手動確認してください。");
+      }
+
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+      const svcKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      if (!supabaseUrl || !svcKey) return respondToSlack(payload, "❌ サーバー設定エラー");
+
+      const db = createClient(supabaseUrl, svcKey, { auth: { persistSession: false, autoRefreshToken: false } });
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const contractUpd: Record<string, any> = {};
+      if (plan_name) {
+        contractUpd.plan_name = plan_name;
+        if (plan_name.includes("補助金")) contractUpd.subsidy_eligible = true;
+      }
+      if (agent_usage) {
+        if (agent_usage.includes("フル")) contractUpd.referral_category = "フル利用";
+        else if (agent_usage.includes("一部")) contractUpd.referral_category = "一部利用";
+        else contractUpd.referral_category = agent_usage;
+      }
+
+      if (Object.keys(contractUpd).length > 0) {
+        contractUpd.updated_at = new Date().toISOString();
+        const { count } = await db
+          .from("contracts")
+          .update(contractUpd)
+          .eq("customer_id", customer_id);
+
+        if (count === 0) {
+          await db.from("contracts").insert({ customer_id, ...contractUpd });
+        }
+      }
+
+      const crmUrl = `https://strategists-crm.vercel.app/customers/${customer_id}`;
+      return respondToSlack(
+        payload,
+        `✅ *確認完了* (by ${userName})\nプラン: ${plan_name || "-"}\nエージェント利用: ${agent_usage || "-"}\nCRMに反映しました。\n${crmUrl}`
+      );
+    } catch (e) {
+      console.error("Enrollment confirm error:", e);
+      return respondToSlack(payload, `❌ エラー: ${e}`);
+    }
+  }
+
+  if (actionId === "reject_enrollment_data") {
+    try {
+      const rejectData = JSON.parse(action.value);
+      const { customer_id } = rejectData;
+      const crmUrl = customer_id
+        ? `https://strategists-crm.vercel.app/customers/${customer_id}?edit=true`
+        : "";
+
+      return respondToSlack(
+        payload,
+        `⚠️ *修正が必要* (by ${userName})\nCRMで正しいプラン・エージェント利用を入力してください。\n${crmUrl}`
+      );
+    } catch (e) {
+      return respondToSlack(payload, `❌ エラー: ${e}`);
+    }
+  }
+
+  const applicationId = action.value;
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;

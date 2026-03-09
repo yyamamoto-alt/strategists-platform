@@ -200,22 +200,71 @@ export async function POST(request: Request) {
       : "C094YLMKR4K"; // デフォルト: #sales
 
     const agentUsage = body.agent_usage || body["エージェント利用"] || null;
-    const crmUrl = matchedCustomer
-      ? `https://strategists-crm.vercel.app/customers/${matchedCustomer.id}`
+    const customerId = matchedCustomer?.id || null;
+    const crmUrl = customerId
+      ? `https://strategists-crm.vercel.app/customers/${customerId}`
       : "";
 
-    const lines = [
-      `${mention}📋 *入塾フォーム受信 — 確認リクエスト*`,
-      `受講生: ${name}`,
-      `申込プラン: ${plan_name || "未入力"}`,
-      `エージェント利用: ${agentUsage || "未入力"}`,
-      ``,
-      `⚠️ *お客様入力のため、プランとエージェント利用が正しいかご確認ください*`,
-      `正しければCRMで確定してください。`,
-      crmUrl,
-    ].filter(Boolean);
+    // ボタンのvalueにJSON埋め込み（customer_id + フォームデータ）
+    const confirmPayload = JSON.stringify({
+      customer_id: customerId,
+      plan_name: plan_name || null,
+      agent_usage: agentUsage,
+    });
 
-    await sendSlackMessage(confirmChannel, lines.join("\n"));
+    const fallbackText = `${mention}📋 入塾フォーム受信 — ${name} のプラン・エージェント利用を確認してください`;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const blocks: any[] = [
+      {
+        type: "header",
+        text: { type: "plain_text", text: "📋 入塾フォーム受信 — 確認リクエスト", emoji: true },
+      },
+      {
+        type: "section",
+        fields: [
+          { type: "mrkdwn", text: `*受講生:*\n${name}` },
+          { type: "mrkdwn", text: `*メール:*\n${email}` },
+          { type: "mrkdwn", text: `*申込プラン（お客様入力）:*\n${plan_name || "未入力"}` },
+          { type: "mrkdwn", text: `*エージェント利用（お客様入力）:*\n${agentUsage || "未入力"}` },
+        ],
+      },
+      ...(mention ? [{
+        type: "context",
+        elements: [{ type: "mrkdwn", text: `担当: ${mention}` }],
+      }] : []),
+      ...(crmUrl ? [{
+        type: "context",
+        elements: [{ type: "mrkdwn", text: `<${crmUrl}|CRMで詳細を見る>` }],
+      }] : []),
+      { type: "divider" },
+      {
+        type: "section",
+        text: { type: "mrkdwn", text: "⚠️ *お客様入力のため、正しいかご確認ください*\nOKならそのままCRMに反映されます。修正が必要な場合はCRMで直接修正してください。" },
+      },
+      {
+        type: "actions",
+        block_id: `enrollment_confirm_${customerId || "unknown"}`,
+        elements: [
+          {
+            type: "button",
+            text: { type: "plain_text", text: "✅ プラン・エージェント利用 OK", emoji: true },
+            style: "primary",
+            action_id: "confirm_enrollment_data",
+            value: confirmPayload,
+          },
+          {
+            type: "button",
+            text: { type: "plain_text", text: "❌ 修正が必要", emoji: true },
+            style: "danger",
+            action_id: "reject_enrollment_data",
+            value: confirmPayload,
+          },
+        ],
+      },
+    ];
+
+    await sendSlackMessage(confirmChannel, fallbackText, blocks);
   } catch (e) {
     console.error("Enrollment confirmation notification error:", e);
   }
