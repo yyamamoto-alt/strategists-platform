@@ -288,6 +288,61 @@ export async function sendInviteApprovalRequest(
   );
 }
 
+interface DmTemplate {
+  header: string;
+  titleFormat: string;
+  planLabel: string;
+  contractLabel: string;
+  sessionsLabel: string;
+  startDateLabel: string;
+  endDateLabel: string;
+  emailLabel: string;
+  sheetLinkText: string;
+  closing: string;
+}
+
+const DEFAULT_DM_TEMPLATE: DmTemplate = {
+  header: "新規受講生の指導依頼",
+  titleFormat: "【指導依頼】{{studentName}} 様",
+  planLabel: "プラン:",
+  contractLabel: "契約期間:",
+  sessionsLabel: "総指導回数:",
+  startDateLabel: "指導開始日:",
+  endDateLabel: "指導終了日:",
+  emailLabel: "メール:",
+  sheetLinkText: "プログレスシートを開く",
+  closing: "よろしくお願いいたします。",
+};
+
+async function fetchDmTemplate(): Promise<DmTemplate> {
+  try {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!url || !key) return DEFAULT_DM_TEMPLATE;
+
+    const res = await fetch(
+      `${url}/rest/v1/app_settings?key=eq.mentor_dm_template&select=value`,
+      {
+        headers: {
+          "apikey": key,
+          "Authorization": `Bearer ${key}`,
+        },
+      }
+    );
+
+    if (!res.ok) return DEFAULT_DM_TEMPLATE;
+
+    const rows = await res.json();
+    if (!rows || rows.length === 0) return DEFAULT_DM_TEMPLATE;
+
+    const raw = rows[0].value;
+    const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+    return { ...DEFAULT_DM_TEMPLATE, ...parsed };
+  } catch {
+    return DEFAULT_DM_TEMPLATE;
+  }
+}
+
 /** メンターにDMで指導依頼を送信 */
 export async function sendMentorAssignmentDM(
   mentorName: string,
@@ -354,27 +409,32 @@ export async function sendMentorAssignmentDM(
   const dmChannel = openData.channel.id;
   const si = studentInfo;
 
+  // テンプレート取得
+  const tpl = await fetchDmTemplate();
+
+  const title = tpl.titleFormat.replace(/\{\{studentName\}\}/g, si.name);
+
   const lines = [
-    `*【指導依頼】${si.name} 様*`,
+    `*${title}*`,
     "",
-    `プラン: ${si.planName || "未指定"}`,
+    `${tpl.planLabel} ${si.planName || "未指定"}`,
   ];
-  if (si.contractMonths) lines.push(`契約期間: ${si.contractMonths}ヶ月`);
-  if (si.totalSessions) lines.push(`総指導回数: ${si.totalSessions}回`);
-  if (si.coachingStartDate) lines.push(`指導開始日: ${si.coachingStartDate}`);
-  if (si.coachingEndDate) lines.push(`指導終了日: ${si.coachingEndDate}`);
-  lines.push(`メール: ${si.email}`);
+  if (si.contractMonths) lines.push(`${tpl.contractLabel} ${si.contractMonths}ヶ月`);
+  if (si.totalSessions) lines.push(`${tpl.sessionsLabel} ${si.totalSessions}回`);
+  if (si.coachingStartDate) lines.push(`${tpl.startDateLabel} ${si.coachingStartDate}`);
+  if (si.coachingEndDate) lines.push(`${tpl.endDateLabel} ${si.coachingEndDate}`);
+  lines.push(`${tpl.emailLabel} ${si.email}`);
   if (si.progressSheetUrl) {
     lines.push("");
-    lines.push(`<${si.progressSheetUrl}|プログレスシートを開く>`);
+    lines.push(`<${si.progressSheetUrl}|${tpl.sheetLinkText}>`);
   }
   lines.push("");
-  lines.push("よろしくお願いいたします。");
+  lines.push(tpl.closing);
 
   const blocks: SlackBlock[] = [
     {
       type: "header",
-      text: { type: "plain_text", text: "新規受講生の指導依頼", emoji: true },
+      text: { type: "plain_text", text: tpl.header, emoji: true },
     },
     {
       type: "section",

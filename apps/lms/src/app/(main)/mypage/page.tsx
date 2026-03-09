@@ -1,7 +1,15 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { User, Briefcase, GraduationCap, BookOpen } from "lucide-react";
+import { User, Briefcase, GraduationCap, BookOpen, UserCheck, ExternalLink, MessageCircle, Calendar } from "lucide-react";
+
+interface MentorInfo {
+  name: string;
+  booking_url: string | null;
+  line_url: string | null;
+  profile_text: string | null;
+  role: string;
+}
 
 interface MyPageData {
   customer: {
@@ -25,6 +33,7 @@ interface MyPageData {
     total_sessions: number | null;
     remaining_sessions: number | null;
   } | null;
+  mentors: MentorInfo[];
 }
 
 function InfoRow({ label, value }: { label: string; value: string | null | undefined }) {
@@ -44,6 +53,81 @@ function Section({ title, icon: Icon, children }: { title: string; icon: typeof 
         <h2 className="text-sm font-semibold text-white">{title}</h2>
       </div>
       <div className="px-4 py-1">{children}</div>
+    </div>
+  );
+}
+
+function MentorCard({ mentor }: { mentor: MentorInfo }) {
+  const roleLabel = mentor.role === "primary" ? "主担当" : "副担当";
+  return (
+    <div className="bg-gradient-to-br from-surface-card to-surface-card/80 border border-white/10 rounded-xl overflow-hidden">
+      <div className="p-4 space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-brand/20 flex items-center justify-center">
+            <span className="text-brand font-bold text-lg">{mentor.name.charAt(0)}</span>
+          </div>
+          <div>
+            <p className="text-lg font-bold text-white">{mentor.name}</p>
+            <p className="text-xs text-gray-400">{roleLabel}</p>
+          </div>
+        </div>
+
+        {mentor.profile_text && (
+          <p className="text-sm text-gray-300 leading-relaxed bg-white/[0.03] rounded-lg p-3">
+            {mentor.profile_text}
+          </p>
+        )}
+
+        <div className="space-y-2.5">
+          {mentor.booking_url && (
+            <div>
+              <a
+                href={mentor.booking_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 w-full py-3 px-4 bg-brand hover:bg-brand/90 text-white font-semibold rounded-lg transition-colors text-sm"
+              >
+                <Calendar className="w-4 h-4" />
+                面談を予約する
+                <ExternalLink className="w-3.5 h-3.5 ml-1 opacity-70" />
+              </a>
+              <p className="text-[11px] text-gray-500 mt-1.5 text-center">* ブックマークしておくと便利です</p>
+            </div>
+          )}
+          {mentor.line_url && (
+            <a
+              href={mentor.line_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2 w-full py-2.5 px-4 bg-[#06C755] hover:bg-[#06C755]/90 text-white font-semibold rounded-lg transition-colors text-sm"
+            >
+              <MessageCircle className="w-4 h-4" />
+              LINEで友達追加
+              <ExternalLink className="w-3.5 h-3.5 ml-1 opacity-70" />
+            </a>
+          )}
+        </div>
+
+        {!mentor.booking_url && !mentor.line_url && (
+          <p className="text-xs text-gray-500 text-center py-2">メンターの連絡先情報は準備中です。</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function MentorsSection({ mentors }: { mentors: MentorInfo[] }) {
+  if (mentors.length === 0) return null;
+  return (
+    <div className="bg-gradient-to-br from-surface-card to-surface-card/80 border border-white/10 rounded-xl overflow-hidden">
+      <div className="px-4 py-3 border-b border-white/10 flex items-center gap-2">
+        <UserCheck className="w-4 h-4 text-brand" />
+        <h2 className="text-sm font-semibold text-white">担当メンター</h2>
+        {mentors.length > 1 && <span className="text-xs text-gray-500">{mentors.length}名</span>}
+      </div>
+      <div className="divide-y divide-white/5">
+        {mentors.map((m, i) => <MentorCard key={i} mentor={m} />)}
+      </div>
     </div>
   );
 }
@@ -75,11 +159,14 @@ export default function MyPage() {
     );
   }
 
-  const { customer, contract, learning } = data;
+  const { customer, contract, learning, mentors } = data;
 
   return (
     <div className="p-6 bg-surface min-h-screen space-y-4 max-w-3xl">
       <h1 className="text-2xl font-bold text-white">マイページ</h1>
+
+      {/* メンターセクション（最上部に目立つ配置） */}
+      <MentorsSection mentors={mentors || []} />
 
       <Section title="基本情報" icon={User}>
         <InfoRow label="名前" value={customer.name} />

@@ -184,10 +184,49 @@ export async function POST(request: Request) {
         customer_id: customerId,
         source: "lms",
         course_ids: courseIds,
+        assigned_mentor_name: selectedMentor || null,
       });
 
       if (invErr) {
         return respondToSlack(payload, `❌ 招待作成エラー: ${invErr.message}`);
+      }
+
+      // learning_recordsのmentor_nameを更新
+      if (selectedMentor && customerId) {
+        await supabase
+          .from("learning_records")
+          .update({ mentor_name: selectedMentor })
+          .eq("customer_id", customerId);
+      }
+
+      // student_mentorsに登録（招待受諾後にuser_idを紐づけるため、emailで仮保存）
+      if (selectedMentor) {
+        const mentorList = await fetchMentors();
+        const mentorRec = mentorList.find(m => m.name === selectedMentor);
+        if (mentorRec) {
+          // 既存ユーザーを検索（既にアカウントがある場合）
+          const { data: existingUser } = await supabase
+            .from("users_view")
+            .select("id")
+            .eq("email", application.email)
+            .maybeSingle();
+
+          if (existingUser) {
+            // 既存のprimaryメンターを解除
+            await supabase
+              .from("student_mentors")
+              .update({ is_active: false, updated_at: new Date().toISOString() })
+              .eq("user_id", existingUser.id)
+              .eq("role", "primary")
+              .eq("is_active", true);
+
+            await supabase.from("student_mentors").insert({
+              user_id: existingUser.id,
+              mentor_id: mentorRec.id,
+              role: "primary",
+            });
+          }
+        }
       }
 
       // メンター詳細情報をDBから取得

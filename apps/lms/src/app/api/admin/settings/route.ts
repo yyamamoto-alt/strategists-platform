@@ -14,7 +14,12 @@ export async function GET() {
   const { data, error } = await (supabase as any)
     .from("app_settings")
     .select("key, value, description")
-    .in("key", ["auto_invite_enabled", "auto_invite_slack_channel"]);
+    .in("key", [
+      "auto_invite_enabled",
+      "auto_invite_slack_channel",
+      "invite_email_template",
+      "mentor_dm_template",
+    ]);
 
   if (error) {
     console.error("settings GET error:", error);
@@ -43,7 +48,12 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: "updates配列が必要です" }, { status: 400 });
   }
 
-  const allowedKeys = ["auto_invite_enabled", "auto_invite_slack_channel"];
+  const allowedKeys = [
+    "auto_invite_enabled",
+    "auto_invite_slack_channel",
+    "invite_email_template",
+    "mentor_dm_template",
+  ];
   const supabase = createAdminClient();
   const db = supabase as any;
 
