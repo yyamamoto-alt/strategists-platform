@@ -162,6 +162,17 @@ const SECTIONS: SettingsSectionConfig[] = [
         type: "slack_channel",
         placeholder: "チャンネルを選択...",
       },
+      {
+        key: "slack_notify_sales_reminder",
+        label: "営業リマインド（毎朝）",
+        type: "toggle",
+      },
+      {
+        key: "slack_channel_sales_reminder",
+        label: "└ 通知先チャンネル",
+        type: "slack_channel",
+        placeholder: "チャンネルを選択...",
+      },
     ],
   },
   {
@@ -218,6 +229,86 @@ export function SettingsClient({ settings, freeeConnected, freeeCompanyName }: P
   const [slackLoading, setSlackLoading] = useState(false);
   const [freeSyncing, setFreeSyncing] = useState(false);
   const [freeSyncResult, setFreeSyncResult] = useState<string | null>(null);
+
+  // Staff mapping state
+  const [staffMapping, setStaffMapping] = useState<Record<string, string>>({});
+  const [staffEdits, setStaffEdits] = useState<{ name: string; slackId: string }[]>([]);
+  const [staffLoading, setStaffLoading] = useState(false);
+  const [staffSaving, setStaffSaving] = useState(false);
+  const [staffToast, setStaffToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [newStaffName, setNewStaffName] = useState("");
+  const [newStaffSlackId, setNewStaffSlackId] = useState("");
+
+  // Fetch staff mapping
+  useEffect(() => {
+    setStaffLoading(true);
+    fetch("/api/staff-mapping")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data && typeof data === "object" && !Array.isArray(data)) {
+          setStaffMapping(data);
+          setStaffEdits(
+            Object.entries(data).map(([name, slackId]) => ({
+              name,
+              slackId: slackId as string,
+            }))
+          );
+        }
+      })
+      .catch(() => {})
+      .finally(() => setStaffLoading(false));
+  }, []);
+
+  const handleStaffEdit = useCallback((index: number, field: "name" | "slackId", value: string) => {
+    setStaffEdits((prev) => {
+      const next = [...prev];
+      next[index] = { ...next[index], [field]: value };
+      return next;
+    });
+  }, []);
+
+  const handleStaffDelete = useCallback((index: number) => {
+    setStaffEdits((prev) => prev.filter((_, i) => i !== index));
+  }, []);
+
+  const handleStaffAdd = useCallback(() => {
+    if (!newStaffName.trim()) return;
+    setStaffEdits((prev) => [...prev, { name: newStaffName.trim(), slackId: newStaffSlackId.trim() }]);
+    setNewStaffName("");
+    setNewStaffSlackId("");
+  }, [newStaffName, newStaffSlackId]);
+
+  const handleStaffSave = useCallback(async () => {
+    setStaffSaving(true);
+    setStaffToast(null);
+    const mapping: Record<string, string> = {};
+    for (const entry of staffEdits) {
+      if (entry.name.trim()) {
+        mapping[entry.name.trim()] = entry.slackId.trim();
+      }
+    }
+    try {
+      const res = await fetch("/api/staff-mapping", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(mapping),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "保存に失敗しました");
+      }
+      setStaffMapping(mapping);
+      setStaffToast({ type: "success", message: "スタッフマッピングを保存しました" });
+    } catch (err) {
+      setStaffToast({
+        type: "error",
+        message: err instanceof Error ? err.message : "保存に失敗しました",
+      });
+    } finally {
+      setStaffSaving(false);
+      setTimeout(() => setStaffToast(null), 4000);
+    }
+  }, [staffEdits]);
 
   useEffect(() => {
     setSlackLoading(true);
@@ -584,6 +675,113 @@ export function SettingsClient({ settings, freeeConnected, freeeCompanyName }: P
                   freeeと連携する
                 </a>
               </div>
+            )}
+          </div>
+        </div>
+
+        {/* スタッフ管理 */}
+        <div className="mt-6 bg-surface-card border border-white/10 rounded-xl overflow-hidden">
+          <div className="px-6 py-4 border-b border-white/10">
+            <h2 className="text-lg font-semibold text-white">スタッフ管理</h2>
+            <p className="text-sm text-gray-400 mt-0.5">
+              営業スタッフのSlack User IDマッピングを管理します。営業リマインドDMの送信先として使用されます。
+            </p>
+          </div>
+          <div className="px-6 py-4">
+            {staffLoading ? (
+              <p className="text-sm text-gray-400">読み込み中...</p>
+            ) : (
+              <>
+                {staffToast && (
+                  <div
+                    className={`mb-4 px-4 py-3 rounded-lg text-sm ${
+                      staffToast.type === "success"
+                        ? "bg-green-900/40 text-green-300 border border-green-800/50"
+                        : "bg-red-900/40 text-red-300 border border-red-800/50"
+                    }`}
+                  >
+                    {staffToast.message}
+                  </div>
+                )}
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-xs text-gray-400 border-b border-white/10">
+                      <th className="text-left pb-2 font-medium">スタッフ名</th>
+                      <th className="text-left pb-2 font-medium">Slack User ID</th>
+                      <th className="pb-2 w-10"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {staffEdits.map((entry, index) => (
+                      <tr key={index} className="border-b border-white/5">
+                        <td className="py-2 pr-3">
+                          <input
+                            type="text"
+                            value={entry.name}
+                            onChange={(e) => handleStaffEdit(index, "name", e.target.value)}
+                            className="w-full px-2 py-1.5 bg-white/5 border border-white/10 rounded text-sm text-white placeholder-gray-600"
+                            placeholder="名前"
+                          />
+                        </td>
+                        <td className="py-2 pr-3">
+                          <input
+                            type="text"
+                            value={entry.slackId}
+                            onChange={(e) => handleStaffEdit(index, "slackId", e.target.value)}
+                            className="w-full px-2 py-1.5 bg-white/5 border border-white/10 rounded text-sm text-white placeholder-gray-600"
+                            placeholder="U0XXXXXXXXX"
+                          />
+                        </td>
+                        <td className="py-2 text-center">
+                          <button
+                            onClick={() => handleStaffDelete(index)}
+                            className="text-gray-400 hover:text-red-400 transition-colors text-xs"
+                            title="削除"
+                          >
+                            ✕
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                {/* Add new staff row */}
+                <div className="mt-3 flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={newStaffName}
+                    onChange={(e) => setNewStaffName(e.target.value)}
+                    className="flex-1 px-2 py-1.5 bg-white/5 border border-white/10 rounded text-sm text-white placeholder-gray-600"
+                    placeholder="新しいスタッフ名"
+                  />
+                  <input
+                    type="text"
+                    value={newStaffSlackId}
+                    onChange={(e) => setNewStaffSlackId(e.target.value)}
+                    className="flex-1 px-2 py-1.5 bg-white/5 border border-white/10 rounded text-sm text-white placeholder-gray-600"
+                    placeholder="Slack User ID"
+                  />
+                  <button
+                    onClick={handleStaffAdd}
+                    disabled={!newStaffName.trim()}
+                    className="px-3 py-1.5 text-sm text-gray-400 hover:text-white border border-white/10 rounded hover:bg-white/5 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    追加
+                  </button>
+                </div>
+
+                {/* Save button */}
+                <div className="mt-4 flex justify-end">
+                  <button
+                    onClick={handleStaffSave}
+                    disabled={staffSaving}
+                    className="px-4 py-2 text-sm font-medium bg-brand text-white rounded-lg hover:bg-brand/90 transition-colors disabled:opacity-50"
+                  >
+                    {staffSaving ? "保存中..." : "保存"}
+                  </button>
+                </div>
+              </>
             )}
           </div>
         </div>

@@ -141,3 +141,114 @@ export async function notifyDailyReport(text: string) {
   if (!channel) return;
   await sendSlackMessage(channel, text);
 }
+
+// ================================================================
+// Slack DM送信
+// ================================================================
+
+/** Slack DMを送信（user IDを指定） */
+export async function sendSlackDM(userId: string, text: string) {
+  if (!SLACK_BOT_TOKEN) {
+    console.warn("SLACK_BOT_TOKEN not set, skipping Slack DM");
+    return;
+  }
+
+  try {
+    // conversations.open でDMチャンネルを開く
+    const openRes = await fetch("https://slack.com/api/conversations.open", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${SLACK_BOT_TOKEN}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ users: userId }),
+    });
+    const openData = await openRes.json();
+    if (!openData.ok) {
+      console.error("Slack conversations.open error:", openData.error);
+      return;
+    }
+
+    const dmChannelId = openData.channel.id;
+    await sendSlackMessage(dmChannelId, text);
+  } catch (e) {
+    console.error("Slack DM failed:", e);
+  }
+}
+
+// ================================================================
+// Staff Slack ID マッピング
+// ================================================================
+
+/** app_settings の staff_slack_mapping から営業スタッフ名 → Slack User ID を取得 */
+export async function getStaffSlackMapping(): Promise<Record<string, string>> {
+  const supabase = createServiceClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data } = await (supabase as any)
+    .from("app_settings")
+    .select("value")
+    .eq("key", "staff_slack_mapping")
+    .single();
+
+  if (!data?.value) return {};
+  if (typeof data.value === "object") return data.value as Record<string, string>;
+  try {
+    return JSON.parse(String(data.value));
+  } catch {
+    return {};
+  }
+}
+
+/** 営業スタッフ名からSlack User IDを引く（部分一致対応） */
+export function findSlackUserId(
+  name: string | null,
+  mapping: Record<string, string>
+): string | null {
+  if (!name) return null;
+  // 完全一致
+  if (mapping[name]) return mapping[name];
+  // 苗字一致（"山本 太郎" → "山本"）
+  const surname = name.split(/[\s　]/)[0];
+  if (surname && mapping[surname]) return mapping[surname];
+  return null;
+}
+
+// ================================================================
+// 通知ログ記録
+// ================================================================
+
+/** notification_logsテーブルにログを記録 */
+export async function logNotification(data: {
+  type: string;
+  channel?: string;
+  recipient?: string;
+  customer_id?: string;
+  message: string;
+  status: "success" | "failed";
+  error_message?: string;
+  metadata?: Record<string, unknown>;
+}) {
+  try {
+    const supabase = createServiceClient();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase as any).from("notification_logs").insert({
+      type: data.type,
+      channel: data.channel || null,
+      recipient: data.recipient || null,
+      customer_id: data.customer_id || null,
+      message: data.message.substring(0, 2000),
+      status: data.status,
+      error_message: data.error_message || null,
+      metadata: data.metadata || null,
+    });
+  } catch (e) {
+    console.error("Failed to log notification:", e);
+  }
+}
+
+/** 営業リマインド通知 */
+export async function notifySalesReminder(text: string) {
+  const channel = await getNotifyConfig("sales_reminder", DEFAULT_CHANNELS.payment_success);
+  if (!channel) return;
+  await sendSlackMessage(channel, text);
+}
