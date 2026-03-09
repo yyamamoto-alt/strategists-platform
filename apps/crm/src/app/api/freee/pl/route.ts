@@ -68,7 +68,13 @@ export async function GET(request: Request) {
     try {
       const cache: PLCache = typeof rawCacheValue === "string" ? JSON.parse(rawCacheValue) : rawCacheValue;
       const cacheAge = Date.now() - new Date(cache.cachedAt).getTime();
-      if (cacheAge < CACHE_TTL_MS && cache.startYear === startYear && cache.endYear === endYear) {
+      // 空データキャッシュは無視（再取得させる）
+      if (
+        cache.data.length > 0 &&
+        cacheAge < CACHE_TTL_MS &&
+        cache.startYear === startYear &&
+        cache.endYear === endYear
+      ) {
         return NextResponse.json(cache.data, {
           headers: { "X-Cache": "HIT", "X-Cache-Age": String(Math.round(cacheAge / 1000)) },
         });
@@ -101,19 +107,27 @@ export async function GET(request: Request) {
     }
 
     const companyId = Number(settingMap.freee_company_id);
+    console.log("[freee PL] Fetching data:", { companyId, startYear, endYear });
     const plData = await fetchMonthlyPL(accessToken, companyId, startYear, endYear);
+    console.log("[freee PL] Got", plData.length, "months of data");
 
-    // キャッシュ保存
-    const cachePayload: PLCache = {
-      data: plData,
-      startYear,
-      endYear,
-      cachedAt: new Date().toISOString(),
-    };
-    await db.from("app_settings").upsert(
-      { key: CACHE_KEY, value: cachePayload, updated_at: new Date().toISOString() },
-      { onConflict: "key" },
-    );
+    // 空データはキャッシュしない（トークン失敗やデータなし時に空キャッシュが残るのを防ぐ）
+    if (plData.length > 0) {
+      const cachePayload: PLCache = {
+        data: plData,
+        startYear,
+        endYear,
+        cachedAt: new Date().toISOString(),
+      };
+      await db.from("app_settings").upsert(
+        { key: CACHE_KEY, value: cachePayload, updated_at: new Date().toISOString() },
+        { onConflict: "key" },
+      );
+    } else {
+      // 空データの場合、古いキャッシュを削除（空キャッシュが残り続ける問題を防ぐ）
+      console.warn("[freee PL] Got empty data, clearing cache");
+      await db.from("app_settings").delete().eq("key", CACHE_KEY);
+    }
 
     return NextResponse.json(plData, {
       headers: { "X-Cache": "MISS" },

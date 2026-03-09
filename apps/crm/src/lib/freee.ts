@@ -256,8 +256,13 @@ export async function fetchTrialPL(
       prevRev = cumulative.revenue;
       prevCost = cumulative.cost_of_sales;
       prevSga = cumulative.sga;
-    } catch {
-      // 月データなければスキップ（未来の月など）
+    } catch (e) {
+      // 未来の月は404等でスキップ、認証エラーはthrow
+      const msg = e instanceof Error ? e.message : String(e);
+      console.warn(`[freee PL] Month ${m} of FY${fiscalYear} failed: ${msg}`);
+      if (msg.includes("401") || msg.includes("403")) {
+        throw e;
+      }
     }
   }
 
@@ -278,8 +283,12 @@ export async function fetchMonthlyPL(
     try {
       const { monthly } = await fetchTrialPL(accessToken, companyId, year);
       all.push(...monthly);
-    } catch {
-      // 年度データなければスキップ
+    } catch (e) {
+      console.error(`[freee PL] fetchTrialPL failed for year ${year}:`, e instanceof Error ? e.message : e);
+      // APIエラー（認証失敗等）はthrowして呼び出し元に伝搬させる
+      if (e instanceof Error && (e.message.includes("401") || e.message.includes("403"))) {
+        throw e;
+      }
     }
   }
   // 0値のみの月を除外
