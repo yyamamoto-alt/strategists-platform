@@ -82,7 +82,7 @@ function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
         <Bar
           dataKey="confirmed_school_shinsotsu"
           name="新卒スクール"
-          fill="#22c55e"
+          fill="#1e3a5f"
           stackId="revenue"
         />
         <Bar
@@ -122,8 +122,8 @@ function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
         <Bar
           dataKey="projected_agent"
           name="人材見込"
-          fill="#f97316"
-          fillOpacity={0.45}
+          fill="#ff6b00"
+          fillOpacity={0.55}
           stackId="revenue"
           radius={[4, 4, 0, 0]}
         />
