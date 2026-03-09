@@ -74,22 +74,35 @@ export function getStageColor(stage: string): string {
 export function getChannelColor(channel: string): string {
   const colors: Record<string, string> = {
     "Google広告": "bg-green-600 text-white",
-    "YouTube広告": "bg-red-600 text-white",
-    "Meta広告": "bg-blue-600 text-white",
-    "Instagram広告": "bg-pink-500 text-white",
-    "SEO/自然検索": "bg-teal-600 text-white",
-    "SNS": "bg-sky-500 text-white",
-    "Twitter": "bg-sky-500 text-white",
-    "X(Twitter)": "bg-sky-500 text-white",
-    "紹介": "bg-purple-600 text-white",
-    "口コミ": "bg-purple-500 text-white",
+    "SEO(直LP)": "bg-teal-600 text-white",
+    "SEO(Blog)": "bg-teal-500 text-white",
+    "SEO": "bg-teal-600 text-white",
+    "X": "bg-gray-800 text-white",
+    "Youtube": "bg-red-600 text-white",
+    "YouTube広告": "bg-red-700 text-white",
+    "YouTube": "bg-red-600 text-white",
+    "コンサルタイムズ": "bg-indigo-600 text-white",
     "note": "bg-emerald-600 text-white",
-    "YouTube": "bg-red-500 text-white",
+    "有料note": "bg-emerald-700 text-white",
+    "ココナラ": "bg-sky-600 text-white",
+    "Udemy": "bg-violet-600 text-white",
+    "アフィリエイト": "bg-amber-600 text-white",
+    "インスタ": "bg-pink-500 text-white",
+    "Instagram広告": "bg-pink-600 text-white",
+    "FB広告": "bg-blue-700 text-white",
+    "Meta広告": "bg-blue-600 text-white",
+    "口コミ・紹介": "bg-purple-600 text-white",
+    "口コミ": "bg-purple-500 text-white",
+    "紹介": "bg-purple-600 text-white",
+    "イベント": "bg-rose-600 text-white",
+    "Prism": "bg-cyan-700 text-white",
     "LINE": "bg-green-500 text-white",
+    "SNS": "bg-sky-500 text-white",
     "直接流入": "bg-indigo-500 text-white",
+    "不明": "bg-gray-500 text-white",
     "その他": "bg-gray-500 text-white",
   };
-  // 部分一致でマッチ
+  if (colors[channel]) return colors[channel];
   for (const [key, val] of Object.entries(colors)) {
     if (channel.includes(key) || key.includes(channel)) return val;
   }
@@ -97,9 +110,60 @@ export function getChannelColor(channel: string): string {
 }
 
 export function getAttributeColor(attribute: string): string {
-  return attribute.includes("既卒")
-    ? "bg-purple-500/20 text-purple-300"
-    : "bg-cyan-500/20 text-cyan-300";
+  if (attribute.includes("既卒")) return "bg-purple-600 text-white";
+  if (attribute.includes("27卒")) return "bg-sky-600 text-white";
+  if (attribute.includes("28卒")) return "bg-sky-500 text-white";
+  if (attribute.includes("26卒")) return "bg-sky-700 text-white";
+  return "bg-cyan-600 text-white";
+}
+
+export function getPlanColor(plan: string): string {
+  const colors: Record<string, string> = {
+    "自社エージェント専用プラン": "bg-violet-600 text-white",
+    "自社エージェント併用プラン": "bg-indigo-600 text-white",
+    "自社エージェント単体": "bg-fuchsia-600 text-white",
+    "その他": "bg-gray-500 text-white",
+  };
+  if (colors[plan]) return colors[plan];
+  // プラン名の部分一致
+  if (plan.includes("スタンダード")) return "bg-blue-600 text-white";
+  if (plan.includes("ライト")) return "bg-sky-500 text-white";
+  if (plan.includes("ミニマム")) return "bg-teal-500 text-white";
+  if (plan.includes("選コミュ")) return "bg-amber-600 text-white";
+  if (plan.includes("総コン")) return "bg-orange-600 text-white";
+  if (plan.includes("エージェント")) return "bg-violet-600 text-white";
+  if (plan.includes("動画")) return "bg-pink-500 text-white";
+  if (plan.includes("追加")) return "bg-orange-500 text-white";
+  return "bg-gray-500 text-white";
+}
+
+export function getSalesPersonColor(name: string): string {
+  // 担当者名からハッシュで安定した色を割り当て
+  const palette = [
+    "bg-blue-600 text-white",
+    "bg-emerald-600 text-white",
+    "bg-violet-600 text-white",
+    "bg-rose-600 text-white",
+    "bg-amber-600 text-white",
+    "bg-cyan-600 text-white",
+    "bg-indigo-600 text-white",
+    "bg-pink-600 text-white",
+    "bg-teal-600 text-white",
+    "bg-orange-600 text-white",
+  ];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = ((hash << 5) - hash + name.charCodeAt(i)) | 0;
+  }
+  return palette[Math.abs(hash) % palette.length];
+}
+
+export function getProbabilityColor(prob: number): string {
+  if (prob >= 0.8) return "bg-red-600 text-white";
+  if (prob >= 0.6) return "bg-orange-500 text-white";
+  if (prob >= 0.4) return "bg-yellow-500 text-black";
+  if (prob >= 0.2) return "bg-sky-500 text-white";
+  return "bg-gray-500 text-white";
 }
 
 export function getDealStatusColor(status: string): string {

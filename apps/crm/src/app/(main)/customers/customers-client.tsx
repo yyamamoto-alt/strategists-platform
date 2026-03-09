@@ -9,6 +9,9 @@ import {
   getStageColor,
   getAttributeColor,
   getChannelColor,
+  getPlanColor,
+  getSalesPersonColor,
+  getProbabilityColor,
 } from "@/lib/utils";
 import type { CustomerWithRelations } from "@strategy-school/shared-db";
 import type { ChannelAttribution } from "@/lib/data/marketing-settings";
@@ -31,11 +34,9 @@ import {
   type SpreadsheetColumn,
 } from "@/components/spreadsheet-table";
 
-interface CustomersClientProps {
-  customers: CustomerWithRelations[];
-  attributionMap: Record<string, ChannelAttribution>;
-  firstPaidMap: Record<string, string>;
-}
+
+
+
 
 // 日付フォーマット: YY/MM/DD（26/02/21形式）
 function fmtDate(d: string | null | undefined): string {
@@ -87,7 +88,7 @@ const VIEW_COLUMNS: Record<ViewTab, string[] | null> = {
     // マーケ: 経路営業のみ
     "sales_route",
     // 営業: 営業日, 角度, 返答日, 営業担当
-    "sales_date", "probability", "response_date", "sales_person",
+    "sales_date", "probability", "response_deadline", "sales_person",
     // 人材紹介
     "referral_category", "referral_status", "external_agents",
     "offer_rank", "offer_salary", "referral_fee_rate", "margin",
@@ -105,7 +106,7 @@ const VIEW_COLUMNS: Record<ViewTab, string[] | null> = {
   sales: [
     "application_date", "name", "attribute", "stage", "subsidy_eligible",
     "confirmed_amount", "rev_plus", "rev_agent", "rev_eq", "rev_total",
-    "probability", "sales_date", "response_date",
+    "probability", "sales_date", "response_deadline",
     "first_amount", "discount",
     "sales_person", "sales_content", "sales_strategy",
     "decision_factor", "application_reason",
@@ -206,10 +207,14 @@ function InlineStageSelect({ customerId, currentStage, onUpdate }: { customerId:
   );
 }
 
-export function CustomersClient({ customers, attributionMap, firstPaidMap }: CustomersClientProps) {
+export function CustomersClient() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const initialSearch = searchParams.get("search") || "";
+  const [customers, setCustomers] = useState<CustomerWithRelations[]>([]);
+  const [attributionMap, setAttributionMap] = useState<Record<string, ChannelAttribution>>({});
+  const [firstPaidMap, setFirstPaidMap] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(true);
   const [attributeFilter, setAttributeFilter] = useState<string>("");
   const [stageFilter, setStageFilter] = useState<string>("");
   const [contractFilter, setContractFilter] = useState<string>("");
@@ -217,6 +222,25 @@ export function CustomersClient({ customers, attributionMap, firstPaidMap }: Cus
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [creating, setCreating] = useState(false);
   const [stageOverrides, setStageOverrides] = useState<Record<string, string>>({});
+
+  // APIから非同期でデータ取得（ページ遷移を高速化）
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/customers")
+      .then((res) => res.json())
+      .then((data) => {
+        if (cancelled) return;
+        setCustomers(data.customers || []);
+        setAttributionMap(data.attributionMap || {});
+        setFirstPaidMap(data.firstPaidMap || {});
+        setLoading(false);
+      })
+      .catch(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, []);
+
 
   const handleStageUpdate = useCallback(async (customerId: string, newStage: string) => {
     setStageOverrides((prev) => ({ ...prev, [customerId]: newStage }));
@@ -314,9 +338,9 @@ export function CustomersClient({ customers, attributionMap, firstPaidMap }: Cus
         ), sortValue: (c) => c.name },
 
       // ─── 属性 ───
-      { key: "attribute", label: "属性", width: 44, category: "base",
+      { key: "attribute", label: "属性", width: 52, category: "base",
         render: (c) => (
-          <span className={`inline-block px-1 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap ${getAttributeColor(c.attribute)}`}>{c.attribute.includes("既卒") ? "既卒" : "新卒"}</span>
+          <span className={`inline-block px-1.5 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap ${getAttributeColor(c.attribute)}`}>{c.attribute.includes("既卒") ? "既卒" : "新卒"}</span>
         ), sortValue: (c) => c.attribute,
         filterValue: (c) => c.attribute?.includes("既卒") ? "既卒" : "新卒" },
 
@@ -408,7 +432,7 @@ export function CustomersClient({ customers, attributionMap, firstPaidMap }: Cus
         render: (c) => <span className="text-xs">{c.pipeline?.agent_interest_at_application || "-"}</span>,
         sortValue: (c) => String(c.pipeline?.agent_interest_at_application || "") },
 
-      { key: "meeting_scheduled", label: "面接予定", width: 78, category: "sales",
+      { key: "meeting_scheduled", label: "追加指導日", width: 82, category: "sales",
         render: (c) => <span className="text-xs">{fmtDate(c.pipeline?.meeting_scheduled_date)}</span>,
         sortValue: (c) => c.pipeline?.meeting_scheduled_date || "" },
 
@@ -418,15 +442,22 @@ export function CustomersClient({ customers, attributionMap, firstPaidMap }: Cus
         render: (c) => <span className="text-xs">{fmtDate(c.pipeline?.sales_date)}</span>,
         sortValue: (c) => c.pipeline?.sales_date || "" },
 
-      { key: "probability", label: "確度", width: 60, align: "right" as const, category: "sales",
-        render: (c) => c.pipeline?.probability != null ? formatPercent(c.pipeline.probability) : "-",
+      { key: "probability", label: "確度", width: 60, align: "center" as const, category: "sales",
+        render: (c) => {
+          const p = c.pipeline?.probability;
+          return p != null ? <span className={`inline-block px-1.5 py-0.5 rounded-full text-[10px] font-medium ${getProbabilityColor(p)}`}>{formatPercent(p)}</span> : <span className="text-gray-600 text-xs">-</span>;
+        },
         sortValue: (c) => c.pipeline?.probability || 0 },
 
-      { key: "response_date", label: "返答日", width: 78, category: "sales",
-        render: (c) => <span className="text-xs">{fmtDate(c.pipeline?.response_date)}</span> },
+      { key: "response_deadline", label: "返答期限", width: 82, category: "sales",
+        render: (c) => <span className="text-xs">{fmtDate(c.pipeline?.response_deadline)}</span>,
+        sortValue: (c) => c.pipeline?.response_deadline || "" },
 
-      { key: "sales_person", label: "営業担当", width: 80, category: "sales",
-        render: (c) => <span className="text-xs">{c.pipeline?.sales_person || "-"}</span>,
+      { key: "sales_person", label: "営業担当", width: 90, category: "sales",
+        render: (c) => {
+          const sp = c.pipeline?.sales_person;
+          return sp ? <span className={`inline-block px-1.5 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap ${getSalesPersonColor(sp)}`}>{sp}</span> : <span className="text-gray-600 text-xs">-</span>;
+        },
         filterValue: (c) => c.pipeline?.sales_person || "" },
 
       { key: "sales_content", label: "営業内容", width: 240, category: "sales",        render: (c) => c.pipeline?.sales_content || "-" },
@@ -502,7 +533,10 @@ export function CustomersClient({ customers, attributionMap, firstPaidMap }: Cus
         render: (c) => <span className="text-xs">{c.contract?.enrollment_status || "-"}</span>,
         filterValue: (c) => c.contract?.enrollment_status || "" },
       { key: "plan_name", label: "プラン名", width: 150, category: "education",
-        render: (c) => c.contract?.plan_name || "-",
+        render: (c) => {
+          const p = c.contract?.plan_name;
+          return p ? <span className={`inline-block px-1.5 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap ${getPlanColor(p)}`}>{p}</span> : <span className="text-gray-600 text-xs">-</span>;
+        },
         filterValue: (c) => c.contract?.plan_name || "" },
       { key: "mentor_name", label: "メンター", width: 80, category: "education",
         render: (c) => <span className="text-xs">{c.learning?.mentor_name || "-"}</span>,
@@ -715,7 +749,11 @@ export function CustomersClient({ customers, attributionMap, firstPaidMap }: Cus
       </div>
 
       {/* テーブル */}
-      <SpreadsheetTable
+      {loading ? (
+        <div className="bg-surface-card rounded-xl border border-white/10 p-8 text-center">
+          <div className="text-gray-400 text-sm">読み込み中...</div>
+        </div>
+      ) : (<SpreadsheetTable
         columns={spreadsheetColumns}
         data={baseFiltered}
         getRowKey={(c) => c.id}
@@ -731,6 +769,7 @@ export function CustomersClient({ customers, attributionMap, firstPaidMap }: Cus
           (attributionMap[c.id]?.marketing_channel?.toLowerCase().includes(q) ?? false)
         }
       />
+      )}
 
       {/* 新規登録モーダル */}
       {showCreateModal && (
