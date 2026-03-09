@@ -185,6 +185,10 @@ function ColumnFilter<T>({
   );
 }
 
+/** 固定行高さ（2テーブル間の行揃え用） */
+const ROW_H = 26;
+const HEADER_H = 30;
+
 export function SpreadsheetTable<T>({
   columns,
   data,
@@ -364,39 +368,94 @@ export function SpreadsheetTable<T>({
     [columnWidths]
   );
 
-  // stickyLeftを実際のカラム幅から動的に計算
-  const stickyLeftMap = useMemo(() => {
-    const map: Record<string, number> = {};
-    let acc = 0;
-    for (const col of columns) {
-      if (col.stickyLeft !== undefined) {
-        map[col.key] = acc;
-        acc += getColWidth(col);
-      }
-    }
-    return map;
-  }, [columns, getColWidth]);
+  // 固定列と可変列を分離
+  const frozenCols = useMemo(
+    () => columns.filter((col) => col.stickyLeft !== undefined),
+    [columns]
+  );
+  const scrollCols = useMemo(
+    () => columns.filter((col) => col.stickyLeft === undefined),
+    [columns]
+  );
+  const frozenWidth = useMemo(
+    () => frozenCols.reduce((sum, col) => sum + getColWidth(col), 0),
+    [frozenCols, getColWidth]
+  );
+  const hasFrozen = frozenCols.length > 0;
 
-  // sticky列の合計幅（最後のsticky列の右端位置）
-  const totalStickyWidth = useMemo(() => {
-    let max = 0;
-    for (const col of columns) {
-      if (col.stickyLeft !== undefined) {
-        const left = stickyLeftMap[col.key] || 0;
-        max = Math.max(max, left + getColWidth(col));
-      }
-    }
-    return max;
-  }, [columns, stickyLeftMap, getColWidth]);
+  // ヘッダーセル描画
+  const renderTh = useCallback(
+    (col: SpreadsheetColumn<T>, inFrozen: boolean) => {
+      const cat = col.category || "base";
+      const isSortable = !!col.sortValue;
+      return (
+        <th
+          key={col.key}
+          onClick={isSortable ? () => handleSort(col.key) : undefined}
+          className={cn(
+            "py-1.5 px-2 text-[11px] font-semibold whitespace-nowrap select-none relative",
+            col.computed
+              ? "text-amber-400/80 border-b-2 border-amber-500/40"
+              : CATEGORY_HEADER_TEXT[cat],
+            CATEGORY_HEADER_COLORS[cat],
+            inFrozen ? "bg-surface-elevated" : "",
+            col.align === "right" ? "text-right" : "text-left",
+            isSortable && "cursor-pointer hover:text-gray-300 transition-colors"
+          )}
+          style={{
+            width: getColWidth(col),
+            minWidth: 40,
+            maxWidth: getColWidth(col),
+            height: HEADER_H,
+          }}
+        >
+          <span className="inline-flex items-center gap-0.5 overflow-hidden">
+            {col.label}
+            {col.computed && col.formula && <FormulaTooltip formula={col.formula} />}
+            {sortKey === col.key && (
+              <span className="text-brand ml-0.5">{sortDir === "asc" ? "↑" : "↓"}</span>
+            )}
+          </span>
+          <div
+            onMouseDown={(e) => handleResizeStart(e, col.key)}
+            className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-brand/50 active:bg-brand/70 transition-colors"
+          />
+        </th>
+      );
+    },
+    [getColWidth, handleSort, handleResizeStart, sortKey, sortDir]
+  );
 
-  // 最後のsticky列のキー（右端に影を付ける用）
-  const lastStickyKey = useMemo(() => {
-    let last = "";
-    for (const col of columns) {
-      if (col.stickyLeft !== undefined) last = col.key;
-    }
-    return last;
-  }, [columns]);
+  // ボディセル描画
+  const renderTd = useCallback(
+    (col: SpreadsheetColumn<T>, item: T, rowIdx: number, inFrozen: boolean) => {
+      const cat = col.category || "base";
+      return (
+        <td
+          key={col.key}
+          className={cn(
+            "py-0.5 px-2 text-xs overflow-hidden whitespace-nowrap text-ellipsis",
+            col.align === "right"
+              ? "text-right"
+              : col.align === "center"
+                ? "text-center"
+                : "text-left",
+            inFrozen
+              ? "font-medium text-white bg-surface-card"
+              : cn("text-gray-300", CATEGORY_CELL_COLORS[cat])
+          )}
+          style={{
+            width: getColWidth(col),
+            maxWidth: getColWidth(col),
+            height: ROW_H,
+          }}
+        >
+          {col.render(item)}
+        </td>
+      );
+    },
+    [getColWidth]
+  );
 
   return (
     <div>
@@ -422,101 +481,74 @@ export function SpreadsheetTable<T>({
       </div>
       <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 overflow-hidden">
         <div ref={scrollContainerRef} className="overflow-auto max-h-[calc(100vh-180px)]">
-          <table className="min-w-max w-full">
-            <thead className="bg-surface-elevated border-b border-white/10 sticky top-0 z-30">
-              <tr>
-                {columns.map((col) => {
-                  const cat = col.category || "base";
-                  const isSticky = col.stickyLeft !== undefined;
-                  const isSortable = !!col.sortValue;
-                  const hasFilter = !!col.filterValue;
-                  return (
-                    <th
-                      key={col.key}
-                      onClick={isSortable ? () => handleSort(col.key) : undefined}
-                      className={cn(
-                        "py-1.5 px-2 text-[11px] font-semibold whitespace-nowrap select-none relative",
-                        col.computed
-                          ? "text-amber-400/80 border-b-2 border-amber-500/40"
-                          : CATEGORY_HEADER_TEXT[cat],
-                        CATEGORY_HEADER_COLORS[cat],
-                        col.align === "right" ? "text-right" : "text-left",
-                        isSortable && "cursor-pointer hover:text-gray-300 transition-colors",
-                        isSticky && "sticky z-40 bg-surface-elevated"
-                      )}
-                      style={{
-                        width: getColWidth(col),
-                        minWidth: 40,
-                        maxWidth: getColWidth(col),
-                        ...(isSticky ? { left: stickyLeftMap[col.key] ?? 0 } : {}),
-                        ...(col.key === lastStickyKey ? { boxShadow: "2px 0 4px rgba(0,0,0,0.3)" } : {}),
-                      }}
-                    >
-                      <span className="inline-flex items-center gap-0.5 overflow-hidden">
-                        {col.label}
-                        {col.computed && col.formula && <FormulaTooltip formula={col.formula} />}
-                        {sortKey === col.key && (
-                          <span className="text-brand ml-0.5">{sortDir === "asc" ? "↑" : "↓"}</span>
-                        )}
-                      </span>
-                      <div
-                        onMouseDown={(e) => handleResizeStart(e, col.key)}
-                        className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-brand/50 active:bg-brand/70 transition-colors"
-                      />
-                    </th>
-                  );
-                })}
-              </tr>
-            </thead>
-            <tbody>
-              {visibleData.map((item, rowIdx) => (
-                <tr
-                  key={getRowKey(item)}
-                  className={cn(
-                    "border-b border-white/[0.06] hover:bg-white/5 transition-colors group",
-                    rowIdx % 2 === 1 && "bg-white/[0.015]"
-                  )}
-                >
-                  {columns.map((col) => {
-                    const cat = col.category || "base";
-                    const isSticky = col.stickyLeft !== undefined;
-                    return (
-                      <td
-                        key={col.key}
+          <div className="flex" style={{ minWidth: "max-content" }}>
+            {/* ═══ 固定列ペイン ═══ */}
+            {hasFrozen && (
+              <div
+                className="sticky left-0 z-20 flex-shrink-0 bg-surface-card"
+                style={{ width: frozenWidth, boxShadow: "3px 0 6px rgba(0,0,0,0.4)" }}
+              >
+                <table className="w-full border-collapse" style={{ tableLayout: "fixed" }}>
+                  <thead className="bg-surface-elevated border-b border-white/10 sticky top-0 z-30">
+                    <tr>
+                      {frozenCols.map((col) => renderTh(col, true))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {visibleData.map((item, rowIdx) => (
+                      <tr
+                        key={getRowKey(item)}
                         className={cn(
-                          "py-0.5 px-2 text-xs overflow-hidden whitespace-nowrap text-ellipsis",
-                          col.align === "right"
-                            ? "text-right"
-                            : col.align === "center"
-                              ? "text-center"
-                              : "text-left",
-                          isSticky
-                            ? "sticky z-10 font-medium text-white transition-colors bg-surface-card group-hover:bg-surface-elevated"
-                            : cn("text-gray-300", CATEGORY_CELL_COLORS[cat]),
-                          rowIdx % 2 === 1 && !isSticky && "bg-blend-multiply"
+                          "border-b border-white/[0.06] hover:bg-white/5 transition-colors",
+                          rowIdx % 2 === 1 && "bg-white/[0.015]"
                         )}
-                        style={{
-                          width: getColWidth(col),
-                          maxWidth: getColWidth(col),
-                          ...(isSticky ? { left: stickyLeftMap[col.key] ?? 0 } : {}),
-                          ...(col.key === lastStickyKey ? { boxShadow: "2px 0 4px rgba(0,0,0,0.3)" } : {}),
-                        }}
                       >
-                        {col.render(item)}
+                        {frozenCols.map((col) => renderTd(col, item, rowIdx, true))}
+                      </tr>
+                    ))}
+                    {visibleData.length === 0 && (
+                      <tr>
+                        <td colSpan={frozenCols.length} className="py-8 text-center text-gray-500 text-sm">
+                          &nbsp;
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* ═══ 可変列ペイン ═══ */}
+            <div className="flex-shrink-0">
+              <table className="border-collapse" style={{ tableLayout: "fixed" }}>
+                <thead className="bg-surface-elevated border-b border-white/10 sticky top-0 z-20">
+                  <tr>
+                    {scrollCols.map((col) => renderTh(col, false))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {visibleData.map((item, rowIdx) => (
+                    <tr
+                      key={getRowKey(item)}
+                      className={cn(
+                        "border-b border-white/[0.06] hover:bg-white/5 transition-colors",
+                        rowIdx % 2 === 1 && "bg-white/[0.015]"
+                      )}
+                    >
+                      {scrollCols.map((col) => renderTd(col, item, rowIdx, false))}
+                    </tr>
+                  ))}
+                  {visibleData.length === 0 && (
+                    <tr>
+                      <td colSpan={scrollCols.length} className="py-8 text-center text-gray-500 text-sm">
+                        データがありません
                       </td>
-                    );
-                  })}
-                </tr>
-              ))}
-              {visibleData.length === 0 && (
-                <tr>
-                  <td colSpan={columns.length} className="py-8 text-center text-gray-500 text-sm">
-                    データがありません
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
           <div ref={sentinelRef} className="h-1" />
           {hasMore && (
             <div className="py-2 text-center text-xs text-gray-500">
