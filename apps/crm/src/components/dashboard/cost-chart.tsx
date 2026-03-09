@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import {
   XAxis,
   YAxis,
@@ -20,34 +20,82 @@ interface PLData {
   sga: number;
 }
 
+const LOCALSTORAGE_KEY = "crm-cost-chart-cache";
+
 const formatYen = (value: number) => {
   if (value === 0) return "0";
   if (Math.abs(value) >= 10000) return `${(value / 10000).toFixed(0)}万`;
   return value.toLocaleString();
 };
 
+/** localStorageからキャッシュ読み込み */
+function loadCachedData(): PLData[] | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(LOCALSTORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed.data) ? parsed.data : null;
+  } catch {
+    return null;
+  }
+}
+
+/** localStorageにキャッシュ保存 */
+function saveCachedData(data: PLData[]) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(LOCALSTORAGE_KEY, JSON.stringify({ data, savedAt: Date.now() }));
+  } catch {}
+}
+
+function buildApiUrl() {
+  const now = new Date();
+  const m = now.getMonth() + 1;
+  const fy = m >= 4 ? now.getFullYear() : now.getFullYear() - 1;
+  return `/api/freee/pl?startYear=${fy - 1}&endYear=${fy}`;
+}
+
 export function CostChart() {
-  const [plData, setPlData] = useState<PLData[] | null>(null);
+  const [plData, setPlData] = useState<PLData[] | null>(() => loadCachedData());
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const currentDate = new Date();
-    const currentMonth = currentDate.getMonth() + 1;
-    const currentFiscalYear = currentMonth >= 4 ? currentDate.getFullYear() : currentDate.getFullYear() - 1;
+  const fetchData = useCallback((isRefresh: boolean) => {
+    const url = buildApiUrl();
+    if (isRefresh) setRefreshing(true);
 
-    fetch(`/api/freee/pl?startYear=${currentFiscalYear - 1}&endYear=${currentFiscalYear}`)
+    fetch(url)
       .then((r) => {
         if (!r.ok) throw new Error("freee未連携またはデータ取得失敗");
         return r.json();
       })
       .then((d) => {
-        if (Array.isArray(d)) setPlData(d);
-        else throw new Error(d.error || "不明なエラー");
+        if (Array.isArray(d) && d.length > 0) {
+          setPlData(d);
+          saveCachedData(d);
+          setError(null);
+        } else if (d.error) {
+          throw new Error(d.error);
+        }
       })
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
-  }, []);
+      .catch((e) => {
+        // キャッシュがあればエラーを表示しない
+        if (!plData) setError(e.message);
+      })
+      .finally(() => {
+        setLoading(false);
+        setRefreshing(false);
+      });
+  }, [plData]);
+
+  useEffect(() => {
+    // キャッシュがあれば即表示、なければローディング
+    if (plData) setLoading(false);
+    // バックグラウンドで最新データを取得
+    fetchData(!!plData);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const chartData = useMemo(() => {
     if (!plData) return [];
@@ -77,7 +125,7 @@ export function CostChart() {
     };
   }, [chartData]);
 
-  if (loading) {
+  if (loading && !plData) {
     return (
       <div className="flex items-center justify-center h-[300px] text-gray-500 text-sm">
         freeeデータ読み込み中...
@@ -85,7 +133,7 @@ export function CostChart() {
     );
   }
 
-  if (error) {
+  if (error && !plData) {
     return (
       <div className="flex items-center justify-center h-[200px]">
         <div className="px-4 py-2 bg-red-900/20 border border-red-800/30 rounded-lg text-sm text-red-400">
@@ -105,6 +153,13 @@ export function CostChart() {
 
   return (
     <div>
+      {/* 更新中インジケータ */}
+      {refreshing && (
+        <div className="text-[10px] text-gray-500 mb-1 text-right">
+          最新データ取得中...
+        </div>
+      )}
+
       <ResponsiveContainer width="100%" height={350}>
         <ComposedChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
@@ -139,7 +194,6 @@ export function CostChart() {
           />
           <Legend iconSize={10} wrapperStyle={{ fontSize: 11, color: "#9ca3af" }} />
 
-          {/* コスト積み上げ棒グラフ */}
           <Bar
             dataKey="cost_of_sales"
             name="売上原価"
@@ -155,8 +209,6 @@ export function CostChart() {
             stackId="cost"
             radius={[2, 2, 0, 0]}
           />
-
-          {/* 営業利益ライン */}
           <Line
             type="monotone"
             dataKey="profit"
