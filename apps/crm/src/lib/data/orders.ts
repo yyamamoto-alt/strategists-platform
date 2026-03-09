@@ -1,7 +1,7 @@
 import "server-only";
 
 import { createServiceClient } from "@/lib/supabase/server";
-import { unstable_cache } from "next/cache";
+import { unstable_cache, revalidateTag } from "next/cache";
 import type { Order } from "@strategy-school/shared-db";
 
 // ================================================================
@@ -107,6 +107,9 @@ export async function upsertOrder(
     console.error("Failed to upsert order:", error);
     return null;
   }
+
+  // キャッシュ無効化 → 注文一覧に即反映
+  revalidateTag("orders");
 
   return data as Order;
 }
