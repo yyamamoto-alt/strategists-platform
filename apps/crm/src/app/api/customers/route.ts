@@ -1,10 +1,14 @@
 import { createServiceClient } from "@/lib/supabase/server";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { fetchCustomersWithRelations, fetchFirstPaidDates } from "@/lib/data/customers";
 import { fetchChannelAttributions } from "@/lib/data/marketing-settings";
 
-export async function GET() {
-  const [customers, attributions, firstPaidMap] = await Promise.all([
+export async function GET(request: NextRequest) {
+  const { searchParams } = request.nextUrl;
+  const limit = parseInt(searchParams.get("limit") || "0", 10);
+  const offset = parseInt(searchParams.get("offset") || "0", 10);
+
+  const [allCustomers, attributions, firstPaidMap] = await Promise.all([
     fetchCustomersWithRelations(),
     fetchChannelAttributions(),
     fetchFirstPaidDates(),
@@ -15,7 +19,12 @@ export async function GET() {
     attributionMap[a.customer_id] = a;
   }
 
-  return NextResponse.json({ customers, attributionMap, firstPaidMap });
+  const total = allCustomers.length;
+  const customers = limit > 0 ? allCustomers.slice(offset, offset + limit) : allCustomers;
+
+  const res = NextResponse.json({ customers, attributionMap, firstPaidMap, total });
+  res.headers.set("Cache-Control", "private, max-age=30, stale-while-revalidate=60");
+  return res;
 }
 
 export async function POST(request: Request) {

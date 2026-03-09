@@ -223,17 +223,37 @@ export function CustomersClient() {
   const [creating, setCreating] = useState(false);
   const [stageOverrides, setStageOverrides] = useState<Record<string, string>>({});
 
-  // APIから非同期でデータ取得（ページ遷移を高速化）
+  const [totalCount, setTotalCount] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  // 段階的読み込み: 最初に100件、その後バックグラウンドで残りを取得
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/customers")
+    // Step 1: 最初の100件を高速表示
+    fetch("/api/customers?limit=100")
       .then((res) => res.json())
       .then((data) => {
         if (cancelled) return;
         setCustomers(data.customers || []);
         setAttributionMap(data.attributionMap || {});
         setFirstPaidMap(data.firstPaidMap || {});
+        setTotalCount(data.total || 0);
         setLoading(false);
+
+        // Step 2: 残りをバックグラウンドで取得
+        if (data.total > 100) {
+          setLoadingMore(true);
+          fetch("/api/customers?limit=0&offset=0")
+            .then((res2) => res2.json())
+            .then((fullData) => {
+              if (cancelled) return;
+              setCustomers(fullData.customers || []);
+              setAttributionMap(fullData.attributionMap || {});
+              setFirstPaidMap(fullData.firstPaidMap || {});
+              setLoadingMore(false);
+            })
+            .catch(() => { if (!cancelled) setLoadingMore(false); });
+        }
       })
       .catch(() => {
         if (!cancelled) setLoading(false);
@@ -657,7 +677,7 @@ export function CustomersClient() {
       <div className="flex items-center gap-3 flex-wrap">
         <h1 className="text-lg font-bold text-white shrink-0">顧客一覧</h1>
         <span className="text-xs text-gray-500 shrink-0">
-          {baseFiltered.length}件
+          {baseFiltered.length}件{loadingMore ? ` / ${totalCount}件 読込中...` : totalCount > 0 && totalCount !== baseFiltered.length ? ` / ${totalCount}件` : ""}
         </span>
 
         <button
