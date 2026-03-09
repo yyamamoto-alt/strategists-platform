@@ -89,9 +89,14 @@ function isConducted(stage: string | undefined | null): boolean {
   return !NOT_CONDUCTED_STAGES.has(stage);
 }
 
-/** 失注（結果確定: ネガティブ）判定 */
+/** 失注（結果確定: ネガティブ）判定
+ *  検討中/長期検討 = 実質失注として含める
+ *  その他購入/動画講座購入 = 本コース不成約として含める
+ */
 const LOST_STAGES = new Set([
   "失注", "失注見込", "失注見込(自動)", "CL", "全額返金",
+  "検討中", "長期検討",
+  "その他購入", "動画講座購入",
 ]);
 function isStageLost(stage: string | undefined | null): boolean {
   if (!stage) return false;
@@ -154,14 +159,15 @@ export function computeFunnelMetrics(
   return Array.from(byMonth.entries())
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([period, m]) => {
-      // 実施率 = 実施数 / 日程確定数
+      // 実施率 = 実施数 / (申込数 - 未実施かつ営業予定日が未来の件数)
+      const conductDenom = m.applications - m.pending_future;
       // 成約率 = 成約数 / (成約数 + 失注数) — 結果確定者のみで計算
       const closingDenom = m.closed + m.lost;
       return {
         period,
         ...m,
         scheduling_rate: m.applications > 0 ? m.scheduled / m.applications : 0,
-        conduct_rate: m.scheduled > 0 ? m.conducted / m.scheduled : 0,
+        conduct_rate: conductDenom > 0 ? m.conducted / conductDenom : 0,
         closing_rate: closingDenom > 0 ? m.closed / closingDenom : 0,
       };
     });

@@ -58,7 +58,7 @@ export function KpiCards({
     {
       title: "面談実施率",
       value: formatPercent(latestFunnel.conduct_rate),
-      subtitle: `実施: ${latestFunnel.conducted}件 / 日程確定: ${latestFunnel.scheduled}件`,
+      subtitle: `実施: ${latestFunnel.conducted}件 / 申込: ${latestFunnel.applications - latestFunnel.pending_future}件`,
       color: "bg-pink-500",
     },
   ];
