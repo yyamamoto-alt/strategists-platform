@@ -14,7 +14,36 @@ deploy_app() {
   [ -f vercel.json ] && cp vercel.json vercel.json.bak
 
   # Create vercel.json for this app
-  cat > vercel.json <<EOF
+  # CRM includes cron definitions; LMS does not
+  if [ "$app" = "crm" ]; then
+    cat > vercel.json <<EOF
+{
+  "framework": "nextjs",
+  "buildCommand": "npm run build:crm",
+  "outputDirectory": "apps/crm/.next",
+  "installCommand": "npm install",
+  "crons": [
+    { "path": "/api/cron/daily-report", "schedule": "0 0 * * *" },
+    { "path": "/api/cron/stage-transitions", "schedule": "0 0 * * *" },
+    { "path": "/api/cron/sync-spreadsheets", "schedule": "*/5 * * * *" },
+    { "path": "/api/cron/sync-automations", "schedule": "*/5 * * * *" },
+    { "path": "/api/cron/sync-analytics", "schedule": "0 15 * * *" },
+    { "path": "/api/cron/sales-reminder", "schedule": "0 0 * * *" },
+    { "path": "/api/cron/mentor-reminder", "schedule": "0 0 * * *" },
+    { "path": "/api/cron/weekly-sales-report", "schedule": "0 1 * * 1" },
+    { "path": "/api/cron/ca-reminder", "schedule": "0 0 * * *" },
+    { "path": "/api/cron/payment-confirm", "schedule": "0 0 1 * *" },
+    { "path": "/api/cron/jicoo-availability", "schedule": "0 0 * * 1,3,5" },
+    { "path": "/api/cron/work-status-report", "schedule": "15 0 * * 0" },
+    { "path": "/api/cron/mentor-status-report", "schedule": "30 0 * * 0" },
+    { "path": "/api/cron/coaching-consumption-alert", "schedule": "0 0 1 * *" },
+    { "path": "/api/cron/student-reminder", "schedule": "0 0 * * *" },
+    { "path": "/api/cron/coaching-start-notification", "schedule": "0 0 * * *" }
+  ]
+}
+EOF
+  else
+    cat > vercel.json <<EOF
 {
   "framework": "nextjs",
   "buildCommand": "npm run build:$app",
@@ -22,6 +51,7 @@ deploy_app() {
   "installCommand": "npm install"
 }
 EOF
+  fi
 
   # Link and deploy
   rm -rf .vercel

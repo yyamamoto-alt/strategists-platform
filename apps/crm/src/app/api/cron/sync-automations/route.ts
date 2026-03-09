@@ -66,17 +66,29 @@ export async function GET(request: Request) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as any;
 
-  const { data: automations, error: fetchError } = await db
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: allAutomations, error: fetchError } = await db
     .from("automations")
     .select("*")
-    .eq("is_active", true)
-    .limit(100);
+    .limit(200);
 
-  if (fetchError || !automations || automations.length === 0) {
+  if (fetchError) {
+    return NextResponse.json({
+      success: false,
+      message: "Failed to fetch automations",
+      error: fetchError.message,
+    });
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const automations = (allAutomations || []).filter((a: any) => a.is_active === true);
+
+  if (automations.length === 0) {
     return NextResponse.json({
       success: true,
       message: "No active automations",
       processed: 0,
+      total: allAutomations?.length || 0,
     });
   }
 
