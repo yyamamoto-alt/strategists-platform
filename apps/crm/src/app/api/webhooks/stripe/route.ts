@@ -51,9 +51,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  // charge.succeeded 以外のイベントは無視（ログだけ）
+  // charge.succeeded のみ処理。payment_intent.succeeded は無視（charge.succeeded と二重発火するため）
   const eventType = payload.type as string;
-  if (eventType && eventType !== "charge.succeeded" && eventType !== "payment_intent.succeeded") {
+  if (eventType !== "charge.succeeded") {
     return NextResponse.json({ received: true, skipped: eventType });
   }
 
@@ -67,10 +67,12 @@ export async function POST(request: Request) {
     );
   }
 
-  // 顧客マッチング
+  // 顧客マッチング（email, phone, nameKana, name の4引数）
   const match = await matchCustomer(
     normalized.contact_email,
-    normalized.contact_phone
+    normalized.contact_phone,
+    null,
+    normalized.contact_name,
   );
 
   if (match) {
@@ -89,7 +91,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Failed to upsert order" }, { status: 500 });
   }
 
-  // Slack通知（決済成功）
+  // Slack通知（決済成功）— メール・カード情報も付加して特定しやすくする
+  const cardInfo = normalized.card_brand && normalized.card_last4
+    ? `${normalized.card_brand} *${normalized.card_last4}`
+    : undefined;
   await notifyPaymentSuccess({
     source: "Stripe",
     name: normalized.contact_name || "不明",
@@ -99,6 +104,8 @@ export async function POST(request: Request) {
     customerUrl: match
       ? `https://strategists-crm.vercel.app/customers/${match.customer_id}`
       : undefined,
+    email: normalized.contact_email || undefined,
+    cardInfo,
   });
 
   return NextResponse.json({

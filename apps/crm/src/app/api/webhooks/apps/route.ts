@@ -64,10 +64,12 @@ export async function POST(request: Request) {
     }, { status: 400 });
   }
 
-  // 顧客マッチング
+  // 顧客マッチング（email, phone, nameKana, name の4引数）
   const match = await matchCustomer(
     normalized.contact_email,
-    normalized.contact_phone
+    normalized.contact_phone,
+    null,
+    normalized.contact_name,
   );
 
   if (match) {
@@ -101,7 +103,10 @@ export async function POST(request: Request) {
       `🚨 決済エラー: ${errName}\n商品: ${plan}\nカード: ${card}\n${errorMsg}${customerUrl ? `\n${customerUrl}` : ""}`
     );
   } else {
-    // 決済成功通知
+    // 決済成功通知 — メール・カード情報も付加
+    const cardInfo = normalized.card_brand && normalized.card_last4
+      ? `${normalized.card_brand} *${normalized.card_last4}`
+      : normalized.card_last4 ? `*${normalized.card_last4}` : undefined;
     await notifyPaymentSuccess({
       source: "Apps",
       name: normalized.contact_name || "不明",
@@ -111,6 +116,8 @@ export async function POST(request: Request) {
       customerUrl: match
         ? `https://strategists-crm.vercel.app/customers/${match.customer_id}`
         : undefined,
+      email: normalized.contact_email || undefined,
+      cardInfo,
     });
   }
 

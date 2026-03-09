@@ -5,46 +5,114 @@ import { calcTaxFields } from "@/lib/data/orders";
 // Stripe ペイメント → Order 正規化
 // ================================================================
 
+/**
+ * Stripe webhook ペイロードから charge オブジェクトを抽出する。
+ * - charge.succeeded: data.object が charge そのもの
+ * - payment_intent.succeeded: data.object が PaymentIntent → charges.data[0] or latest_charge(展開時)
+ */
+function extractCharge(payload: Record<string, unknown>): Record<string, unknown> | undefined {
+  const dataObj = (payload.data as Record<string, unknown>)?.object as Record<string, unknown> | undefined;
+  if (!dataObj) return undefined;
+
+  const eventType = payload.type as string;
+
+  // charge.succeeded: data.object が charge
+  if (eventType === "charge.succeeded") {
+    return dataObj;
+  }
+
+  // payment_intent.succeeded: data.object が PaymentIntent
+  if (eventType === "payment_intent.succeeded") {
+    // charges が展開されている場合（expand: ["charges"]）
+    const charges = dataObj.charges as Record<string, unknown> | undefined;
+    if (charges?.data && Array.isArray(charges.data) && charges.data.length > 0) {
+      return charges.data[0] as Record<string, unknown>;
+    }
+    // latest_charge がオブジェクトとして展開されている場合
+    if (dataObj.latest_charge && typeof dataObj.latest_charge === "object") {
+      return dataObj.latest_charge as Record<string, unknown>;
+    }
+    // charge が展開されていない → PaymentIntent 自体からフォールバック
+    return undefined;
+  }
+
+  // その他のイベント: data.object をそのまま返す
+  return dataObj;
+}
+
 export function normalizeStripePayment(
   payload: Record<string, unknown>
 ): Partial<Order> & { source: string; source_record_id: string } {
-  const charge = (payload.data as Record<string, unknown>)?.object as Record<
-    string,
-    unknown
-  > | undefined;
+  const dataObj = (payload.data as Record<string, unknown>)?.object as Record<string, unknown> | undefined;
+  const charge = extractCharge(payload);
+  const eventType = payload.type as string;
+  const isPaymentIntent = eventType === "payment_intent.succeeded";
 
-  const amount = (charge?.amount as number) || 0;
-  const paidAt = charge?.created
-    ? new Date((charge.created as number) * 1000).toISOString()
-    : null;
+  // PaymentIntent の場合、charge が取れなくても PaymentIntent 自体から情報を取る
+  const billingDetails = (charge?.billing_details as Record<string, unknown>)
+    || (isPaymentIntent && dataObj ? (dataObj.billing_details as Record<string, unknown>) : undefined)
+    || {};
+  const metadata = (charge?.metadata as Record<string, unknown>)
+    || (dataObj?.metadata as Record<string, unknown>)
+    || {};
+  const cardDetails = (
+    (charge?.payment_method_details as Record<string, unknown>)?.card as Record<string, unknown>
+  ) || {};
+
+  // 金額: charge.amount → PaymentIntent.amount
+  const amount = (charge?.amount as number)
+    || (isPaymentIntent && dataObj ? (dataObj.amount as number) : 0)
+    || 0;
+
+  // 支払い日時
+  const createdTs = (charge?.created as number) || (dataObj?.created as number);
+  const paidAt = createdTs ? new Date(createdTs * 1000).toISOString() : null;
   const tax = calcTaxFields(amount, paidAt);
+
+  // 氏名: billing_details.name → metadata.customer_name → metadata.name
+  const contactName = (billingDetails.name as string)
+    || (metadata.customer_name as string)
+    || (metadata.name as string)
+    || null;
+
+  // メール: billing_details.email → receipt_email → metadata.email
+  const contactEmail = (billingDetails.email as string)
+    || (charge?.receipt_email as string)
+    || (dataObj?.receipt_email as string)
+    || (metadata.email as string)
+    || null;
+
+  // 商品名: charge.description → PaymentIntent.description → metadata.product_name → metadata.plan_name
+  const productName = (charge?.description as string)
+    || (isPaymentIntent && dataObj ? (dataObj.description as string) : null)
+    || (metadata.product_name as string)
+    || (metadata.plan_name as string)
+    || null;
+
+  // source_record_id: charge.id → PaymentIntent.id → event.id
+  const sourceRecordId = (charge?.id as string)
+    || (dataObj?.id as string)
+    || (payload.id as string)
+    || "";
+
+  // ステータス判定
+  const status = (charge?.status === "succeeded")
+    || (isPaymentIntent && dataObj?.status === "succeeded")
+    ? "paid" : "pending";
 
   return {
     source: "stripe",
-    source_record_id: (charge?.id as string) || (payload.id as string) || "",
+    source_record_id: sourceRecordId,
     amount,
     ...tax,
-    status: charge?.status === "succeeded" ? "paid" : "pending",
+    status,
     payment_method: "credit_card",
     paid_at: paidAt,
-    card_brand: (
-      (charge?.payment_method_details as Record<string, unknown>)
-        ?.card as Record<string, unknown>
-    )?.brand as string | undefined || null,
-    card_last4: (
-      (charge?.payment_method_details as Record<string, unknown>)
-        ?.card as Record<string, unknown>
-    )?.last4 as string | undefined || null,
-    contact_email:
-      (charge?.billing_details as Record<string, unknown>)?.email as
-        | string
-        | null || null,
-    contact_name:
-      (charge?.billing_details as Record<string, unknown>)?.name as
-        | string
-        | null || null,
-    product_name:
-      (charge?.description as string) || null,
+    card_brand: (cardDetails.brand as string) || null,
+    card_last4: (cardDetails.last4 as string) || null,
+    contact_email: contactEmail,
+    contact_name: contactName,
+    product_name: productName,
     order_type: "other",
     raw_data: payload as Record<string, unknown>,
   };

@@ -118,6 +118,8 @@ export async function notifyPaymentSuccess(data: {
   product: string;
   matched: boolean;
   customerUrl?: string;
+  email?: string;
+  cardInfo?: string;
 }) {
   const channel = await getNotifyConfig("payment_success", DEFAULT_CHANNELS.payment_success);
   if (!channel) return;
@@ -128,8 +130,11 @@ export async function notifyPaymentSuccess(data: {
     `氏名: ${data.name}`,
     `商品: ${data.product}`,
     `金額: ${amountStr}`,
-    data.matched ? "✅ 顧客マッチ済み" : "⚠️ 未マッチ",
   ];
+  // メール・カード情報があれば追加（マッチや特定の手がかりになる）
+  if (data.email) lines.push(`メール: ${data.email}`);
+  if (data.cardInfo) lines.push(`カード: ${data.cardInfo}`);
+  lines.push(data.matched ? "✅ 顧客マッチ済み" : "⚠️ 未マッチ");
   if (data.customerUrl) lines.push(data.customerUrl);
 
   await sendSlackMessage(channel, lines.join("\n"));
