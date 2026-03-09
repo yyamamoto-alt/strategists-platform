@@ -417,12 +417,7 @@ export function computeThreeTierRevenue(
       const monthExtrapolation = period === currentPeriod
         ? (new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate() / Math.max(1, new Date().getDate()))
         : 1;
-      let expectedLtvTotal = Math.round(m.expected_ltv * monthExtrapolation);
-
-      // MAXラインは棒グラフ合計（confirmed + projected）を下回ってはならない
-      if (expectedLtvTotal < projectedTotal) {
-        expectedLtvTotal = projectedTotal;
-      }
+      const expectedLtvTotal = Math.round(m.expected_ltv * monthExtrapolation);
 
       return {
         period,
