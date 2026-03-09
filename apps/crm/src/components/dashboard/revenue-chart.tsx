@@ -40,7 +40,7 @@ const SERIES_KEYS = [
   { key: "myvision", label: "MyVision受託" },
   { key: "other", label: "その他" },
   { key: "projected", label: "人材見込" },
-  { key: "ltv", label: "MAXポテンシャル（伸び代）" },
+  { key: "ltv", label: "着地見込（forecast）" },
 ] as const;
 
 type ColorKey = (typeof SERIES_KEYS)[number]["key"];
@@ -122,7 +122,7 @@ export function RevenueChart({ data, threeTierData }: RevenueChartProps) {
   return <FallbackChart data={data} />;
 }
 
-/** 統合チャート: 確定売上（棒）+ MAXポテンシャル伸び代（縞々棒） */
+/** 統合チャート: 確定売上（棒）+ 着地見込伸び代（縞々棒） */
 function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
   const [colors, setColors] = useState<Record<ColorKey, string>>(DEFAULT_COLORS);
   const [showPicker, setShowPicker] = useState(false);
@@ -137,7 +137,7 @@ function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
     });
   }, []);
 
-  // 伸び代（MAXポテンシャル - 棒グラフ合計）を計算
+  // 伸び代（着地見込 - 棒グラフ合計）を計算
   const chartData = useMemo(() => {
     return data.map((d) => {
       const barTotal =
@@ -213,7 +213,7 @@ function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
           <Bar dataKey="projected_agent" name="人材見込" fill={colors.projected} fillOpacity={0.55} stackId="revenue" />
           <Bar
             dataKey="ltv_gap"
-            name="MAXポテンシャル（伸び代）"
+            name="着地見込（forecast）"
             fill="url(#stripe-ltv)"
             stroke={colors.ltv}
             strokeWidth={0.5}
