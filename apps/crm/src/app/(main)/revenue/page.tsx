@@ -23,7 +23,13 @@ async function fetchOtherRevenueSummary(): Promise<OtherRevenueSummary> {
   if (data) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     for (const r of data as any[]) {
-      const period = (r.revenue_date as string).slice(0, 7).replace("-", "/");
+      let period = (r.revenue_date as string).slice(0, 7).replace("-", "/");
+      // MyVision受託は入金月ではなく役務提供月（-1ヶ月）に計上
+      if (r.category === "myvision") {
+        const [y, m] = period.split("/").map(Number);
+        const d = new Date(y, m - 2, 1);
+        period = `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, "0")}`;
+      }
       if (!summary[period]) summary[period] = { note: 0, myvision: 0, other: 0 };
       const amount = Number(r.amount) || 0;
       if (r.category === "note") summary[period].note += amount;

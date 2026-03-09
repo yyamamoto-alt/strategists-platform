@@ -69,11 +69,17 @@ export default async function DashboardPage() {
     .select("category, amount, revenue_date");
 
   if (otherRevenues && otherRevenues.length > 0) {
-    // 月別に集計
+    // 月別に集計（MyVision受託は役務提供月 = 入金月-1ヶ月で計上）
     const otherByMonth: Record<string, { note: number; myvision: number; other: number }> = {};
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     for (const r of otherRevenues as any[]) {
-      const period = (r.revenue_date as string).slice(0, 7).replace("-", "/");
+      let period = (r.revenue_date as string).slice(0, 7).replace("-", "/");
+      // MyVision受託は入金月ではなく役務提供月（-1ヶ月）に計上
+      if (r.category === "myvision") {
+        const [y, m] = period.split("/").map(Number);
+        const d = new Date(y, m - 2, 1); // m-1 → 0-indexed = m-2
+        period = `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, "0")}`;
+      }
       if (!otherByMonth[period]) otherByMonth[period] = { note: 0, myvision: 0, other: 0 };
       const amount = Number(r.amount) || 0;
       if (r.category === "note") otherByMonth[period].note += amount;
@@ -84,22 +90,24 @@ export default async function DashboardPage() {
     // ThreeTierRevenueにマージ（既存の月にマージ + 新規月を追加）
     const existingPeriods = new Set(threeTierRevenue.map((t) => t.period));
     for (const [period, amounts] of Object.entries(otherByMonth)) {
+      const otherTotal = amounts.note + amounts.myvision + amounts.other;
       const existing = threeTierRevenue.find((t) => t.period === period);
       if (existing) {
-        existing.content_revenue = amounts.note;
-        existing.myvision_revenue = amounts.myvision;
-        existing.other_misc_revenue = amounts.other;
-        existing.confirmed_total += amounts.note + amounts.myvision + amounts.other;
-        existing.projected_total += amounts.note + amounts.myvision + amounts.other;
+        existing.content_revenue = (existing.content_revenue || 0) + amounts.note;
+        existing.myvision_revenue = (existing.myvision_revenue || 0) + amounts.myvision;
+        existing.other_misc_revenue = (existing.other_misc_revenue || 0) + amounts.other;
+        existing.confirmed_total += otherTotal;
+        existing.projected_total += otherTotal;
+        // 見込みLTVにはその他売上を加算するが日数進捗補正は適用しない（実績確定額のため）
+        existing.expected_ltv_total += otherTotal;
       } else if (!existingPeriods.has(period)) {
-        const total = amounts.note + amounts.myvision + amounts.other;
         threeTierRevenue.push({
           period,
           confirmed_school: 0, confirmed_school_kisotsu: 0, confirmed_school_shinsotsu: 0,
           confirmed_agent: 0, confirmed_subsidy: 0,
-          confirmed_total: total,
-          projected_agent: 0, projected_total: total,
-          forecast_total: total, expected_ltv_total: 0,
+          confirmed_total: otherTotal,
+          projected_agent: 0, projected_total: otherTotal,
+          forecast_total: otherTotal, expected_ltv_total: otherTotal,
           content_revenue: amounts.note,
           myvision_revenue: amounts.myvision,
           other_misc_revenue: amounts.other,
