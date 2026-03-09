@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 interface Student {
   id: string;
@@ -34,6 +34,234 @@ interface Course {
   title: string;
 }
 
+interface Mentor {
+  id: string;
+  name: string;
+  booking_url: string | null;
+  line_url: string | null;
+  is_active: boolean;
+}
+
+interface StudentMentor {
+  id: string;
+  mentor_id: string;
+  role: "primary" | "sub";
+  assigned_at: string;
+  is_active: boolean;
+  mentors: {
+    id: string;
+    name: string;
+    booking_url: string | null;
+    line_url: string | null;
+  };
+}
+
+// --- メンターアサイン管理パネル ---
+function MentorAssignmentPanel({ student, allMentors }: { student: Student; allMentors: Mentor[] }) {
+  const [assignments, setAssignments] = useState<StudentMentor[]>([]);
+  const [loadingAssignments, setLoadingAssignments] = useState(true);
+  const [addMentorId, setAddMentorId] = useState("");
+  const [addRole, setAddRole] = useState<"primary" | "sub">("sub");
+  const [saving, setSaving] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchAssignments = useCallback(async () => {
+    setLoadingAssignments(true);
+    try {
+      const res = await fetch(`/api/admin/student-mentors?user_id=${student.user_id}`);
+      if (res.ok) {
+        const data = await res.json();
+        setAssignments(data);
+      }
+    } catch {
+      setError("メンター情報の取得に失敗しました");
+    } finally {
+      setLoadingAssignments(false);
+    }
+  }, [student.user_id]);
+
+  useEffect(() => {
+    fetchAssignments();
+  }, [fetchAssignments]);
+
+  const handleAdd = async () => {
+    if (!addMentorId) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/student-mentors", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: student.user_id, mentor_id: addMentorId, role: addRole }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        setError(data.error || "追加に失敗しました");
+        return;
+      }
+      setAddMentorId("");
+      setAddRole("sub");
+      await fetchAssignments();
+    } catch {
+      setError("追加に失敗しました");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleChangeRole = async (assignment: StudentMentor, newRole: "primary" | "sub") => {
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/student-mentors", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: student.user_id, mentor_id: assignment.mentor_id, role: newRole }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        setError(data.error || "変更に失敗しました");
+        return;
+      }
+      await fetchAssignments();
+    } catch {
+      setError("変更に失敗しました");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleRemove = async (assignmentId: string) => {
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/student-mentors", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: assignmentId }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        setError(data.error || "解除に失敗しました");
+        return;
+      }
+      setConfirmDeleteId(null);
+      await fetchAssignments();
+    } catch {
+      setError("解除に失敗しました");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // 既にアサイン済みのメンターIDを除外
+  const assignedMentorIds = assignments.map((a) => a.mentor_id);
+  const availableMentors = allMentors.filter((m) => m.is_active && !assignedMentorIds.includes(m.id));
+
+  if (loadingAssignments) {
+    return (
+      <div className="px-4 py-3 text-xs text-gray-500">読み込み中...</div>
+    );
+  }
+
+  return (
+    <div className="px-4 py-3 space-y-3">
+      <div className="text-xs font-semibold text-gray-400 mb-1">担当メンター</div>
+
+      {error && (
+        <div className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded px-2 py-1">
+          {error}
+        </div>
+      )}
+
+      {/* 現在のアサイン */}
+      {assignments.length === 0 ? (
+        <div className="text-xs text-gray-500">メンター未割当</div>
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          {assignments.map((a) => (
+            <div
+              key={a.id}
+              className="flex items-center gap-1.5 bg-surface-elevated border border-white/10 rounded-lg px-2.5 py-1.5"
+            >
+              <span className="text-sm text-white">{a.mentors.name}</span>
+              <button
+                onClick={() => handleChangeRole(a, a.role === "primary" ? "sub" : "primary")}
+                disabled={saving}
+                className={`px-1.5 py-0.5 rounded text-[10px] font-bold cursor-pointer transition-colors ${
+                  a.role === "primary"
+                    ? "bg-red-500/20 text-red-400 hover:bg-red-500/30"
+                    : "bg-gray-500/20 text-gray-400 hover:bg-gray-500/30"
+                }`}
+                title={`クリックで${a.role === "primary" ? "副担当" : "主担当"}に変更`}
+              >
+                {a.role === "primary" ? "主担当" : "副担当"}
+              </button>
+              {confirmDeleteId === a.id ? (
+                <span className="flex items-center gap-1 ml-1">
+                  <button
+                    onClick={() => handleRemove(a.id)}
+                    disabled={saving}
+                    className="text-[10px] text-red-400 hover:text-red-300 font-medium"
+                  >
+                    解除する
+                  </button>
+                  <button
+                    onClick={() => setConfirmDeleteId(null)}
+                    className="text-[10px] text-gray-500 hover:text-gray-400"
+                  >
+                    取消
+                  </button>
+                </span>
+              ) : (
+                <button
+                  onClick={() => setConfirmDeleteId(a.id)}
+                  className="text-gray-600 hover:text-red-400 transition-colors ml-0.5"
+                  title="解除"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* メンター追加 */}
+      <div className="flex items-center gap-2">
+        <select
+          value={addMentorId}
+          onChange={(e) => setAddMentorId(e.target.value)}
+          className="flex-1 max-w-[200px] px-2 py-1.5 bg-surface-elevated border border-white/10 rounded text-xs text-white focus:outline-none focus:ring-1 focus:ring-brand"
+        >
+          <option value="">メンターを選択...</option>
+          {availableMentors.map((m) => (
+            <option key={m.id} value={m.id}>{m.name}</option>
+          ))}
+        </select>
+        <select
+          value={addRole}
+          onChange={(e) => setAddRole(e.target.value as "primary" | "sub")}
+          className="px-2 py-1.5 bg-surface-elevated border border-white/10 rounded text-xs text-white focus:outline-none focus:ring-1 focus:ring-brand"
+        >
+          <option value="sub">副担当</option>
+          <option value="primary">主担当</option>
+        </select>
+        <button
+          onClick={handleAdd}
+          disabled={!addMentorId || saving}
+          className="px-3 py-1.5 bg-brand/20 text-brand rounded text-xs font-medium hover:bg-brand/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {saving ? "..." : "追加"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function StudentsAdminClient({ students, invitations }: Props) {
   const [showForm, setShowForm] = useState(false);
   const [email, setEmail] = useState("");
@@ -46,11 +274,18 @@ export function StudentsAdminClient({ students, invitations }: Props) {
   const [sendEmail, setSendEmail] = useState(false);
   const [courses, setCourses] = useState<Course[]>([]);
   const [selectedCourseIds, setSelectedCourseIds] = useState<string[]>([]);
+  const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
+  const [allMentors, setAllMentors] = useState<Mentor[]>([]);
 
   useEffect(() => {
     fetch("/api/admin/courses/list")
       .then((res) => res.json())
       .then((data) => setCourses(data.courses || []))
+      .catch(() => {});
+    // メンター一覧を取得
+    fetch("/api/admin/mentors")
+      .then((res) => res.json())
+      .then((data) => { if (Array.isArray(data)) setAllMentors(data); })
       .catch(() => {});
   }, []);
 
@@ -300,6 +535,7 @@ export function StudentsAdminClient({ students, invitations }: Props) {
         <table className="w-full">
           <thead className="bg-surface-elevated border-b border-white/10">
             <tr>
+              <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 w-6"></th>
               <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">メール</th>
               <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">ロール</th>
               <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">紐付け顧客</th>
@@ -309,27 +545,52 @@ export function StudentsAdminClient({ students, invitations }: Props) {
           <tbody>
             {students.length === 0 ? (
               <tr>
-                <td colSpan={4} className="py-8 text-center text-sm text-gray-500">
+                <td colSpan={5} className="py-8 text-center text-sm text-gray-500">
                   アカウントがありません
                 </td>
               </tr>
             ) : (
-              students.map((s) => (
-                <tr key={s.id} className="border-b border-white/[0.08] hover:bg-white/5">
-                  <td className="py-3 px-4 text-sm text-white">{s.email}</td>
-                  <td className="py-3 px-4">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                      s.role === "admin" ? "bg-red-100 text-red-800" :
-                      s.role === "mentor" ? "bg-blue-100 text-blue-800" :
-                      "bg-green-100 text-green-800"
-                    }`}>
-                      {s.role === "admin" ? "管理者" : s.role === "mentor" ? "メンター" : "受講生"}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4 text-sm text-gray-300">{s.customer_name || "-"}</td>
-                  <td className="py-3 px-4 text-sm text-gray-400">{formatDate(s.created_at)}</td>
-                </tr>
-              ))
+              students.map((s) => {
+                const isExpanded = expandedUserId === s.user_id;
+                return (
+                  <tr key={s.id} className="border-b border-white/[0.08]">
+                    <td colSpan={5} className="p-0">
+                      <div
+                        className="flex items-center cursor-pointer hover:bg-white/5 transition-colors"
+                        onClick={() => setExpandedUserId(isExpanded ? null : s.user_id)}
+                      >
+                        <div className="py-3 px-4 w-6 text-gray-500">
+                          <svg
+                            className={`w-3.5 h-3.5 transition-transform ${isExpanded ? "rotate-90" : ""}`}
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
+                        </div>
+                        <div className="py-3 px-4 text-sm text-white flex-1">{s.email}</div>
+                        <div className="py-3 px-4">
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                            s.role === "admin" ? "bg-red-100 text-red-800" :
+                            s.role === "mentor" ? "bg-blue-100 text-blue-800" :
+                            "bg-green-100 text-green-800"
+                          }`}>
+                            {s.role === "admin" ? "管理者" : s.role === "mentor" ? "メンター" : "受講生"}
+                          </span>
+                        </div>
+                        <div className="py-3 px-4 text-sm text-gray-300">{s.customer_name || "-"}</div>
+                        <div className="py-3 px-4 text-sm text-gray-400">{formatDate(s.created_at)}</div>
+                      </div>
+                      {isExpanded && (
+                        <div className="border-t border-white/[0.05] bg-surface-elevated/50">
+                          <MentorAssignmentPanel student={s} allMentors={allMentors} />
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>

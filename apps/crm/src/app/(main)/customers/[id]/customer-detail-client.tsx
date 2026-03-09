@@ -28,6 +28,7 @@ import {
 import { useRouter } from "next/navigation";
 import type { CustomerWithRelations, Activity, Order } from "@strategy-school/shared-db";
 import type { CustomerEmail, ApplicationHistoryRecord } from "@/lib/data/spreadsheet-sync";
+import type { MentorAssignment } from "@/lib/data/mentors";
 import { useAuth } from "@/lib/auth-context";
 
 // ================================================================
@@ -762,6 +763,7 @@ interface CustomerDetailClientProps {
   emails: CustomerEmail[];
   applicationHistory: ApplicationHistoryRecord[];
   orders: Order[];
+  mentors: MentorAssignment[];
 }
 
 export function CustomerDetailClient({
@@ -770,6 +772,7 @@ export function CustomerDetailClient({
   emails,
   applicationHistory,
   orders,
+  mentors,
 }: CustomerDetailClientProps) {
   const [customer, setCustomer] = useState(initialCustomer);
   const [isEditing, setIsEditing] = useState(false);
@@ -1030,6 +1033,53 @@ export function CustomerDetailClient({
               </div>
             )}
           </Section>
+
+          {/* 担当メンター */}
+          {mentors.length > 0 && (
+            <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-4">
+              <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">担当メンター</h2>
+              <div className="space-y-2">
+                {mentors.map((assignment) => (
+                  <div key={assignment.id} className="flex items-center justify-between bg-surface-elevated rounded-lg px-3 py-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-gray-200">{assignment.mentor.name}</span>
+                      {assignment.role === "primary" ? (
+                        <span className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium rounded bg-red-500/20 text-red-400 border border-red-500/30">
+                          主担当
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium rounded bg-gray-500/20 text-gray-400 border border-gray-500/30">
+                          副担当
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {assignment.mentor.line_url && (
+                        <a
+                          href={assignment.mentor.line_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-green-400 hover:text-green-300 hover:underline"
+                        >
+                          LINE
+                        </a>
+                      )}
+                      {assignment.mentor.booking_url && (
+                        <a
+                          href={assignment.mentor.booking_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-blue-400 hover:text-blue-300 hover:underline"
+                        >
+                          予約
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* プロフィール */}
           <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-4">
