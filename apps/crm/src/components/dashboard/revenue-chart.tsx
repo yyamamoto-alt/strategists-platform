@@ -32,10 +32,24 @@ const formatYen = (value: number) => {
   return value.toString();
 };
 
-const formatPeriodTick = (v: string) => {
+const formatPeriodLabel = (v: string, quarterly: boolean) => {
+  if (quarterly) {
+    // "2026/Q1" → "2026/1-3"
+    const match = v.match(/^(\d{4})\/Q(\d)$/);
+    if (match) {
+      const year = match[1];
+      const q = Number(match[2]);
+      const startMonth = (q - 1) * 3 + 1;
+      const endMonth = q * 3;
+      return `${year}/${startMonth}-${endMonth}`;
+    }
+    return v;
+  }
   const [y, m] = v.split("/");
   return m === "01" ? `${y}/${m}` : m;
 };
+
+const formatPeriodTick = (v: string) => formatPeriodLabel(v, false);
 
 // --- カラー設定 ---
 const SERIES_KEYS = [
@@ -262,6 +276,35 @@ function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
   }, [monthlyData]);
 
   const chartData = periodMode === "quarterly" ? quarterlyData : monthlyData;
+  const isQuarterly = periodMode === "quarterly";
+
+  // Y軸の上限を動的に計算（データの最大値に余裕を持たせる）
+  const yMax = useMemo(() => {
+    let max = 0;
+    for (const d of chartData) {
+      const barTotal =
+        (d.confirmed_school_kisotsu || 0) +
+        (d.confirmed_subsidy || 0) +
+        (d.confirmed_school_shinsotsu || 0) +
+        (d.confirmed_agent || 0) +
+        (d.content_revenue || 0) +
+        (d.myvision_revenue || 0) +
+        (d.other_misc_revenue || 0) +
+        (d.projected_agent || 0) +
+        (d.ltv_gap || 0);
+      if (barTotal > max) max = barTotal;
+    }
+    // 100万単位で切り上げ + 余裕
+    const step = 1000000;
+    return Math.ceil(max * 1.1 / step) * step || 10000000;
+  }, [chartData]);
+
+  const yTicks = useMemo(() => {
+    const step = yMax <= 10000000 ? 1000000 : yMax <= 30000000 ? 2000000 : 5000000;
+    const ticks: number[] = [];
+    for (let i = 0; i <= yMax; i += step) ticks.push(i);
+    return ticks;
+  }, [yMax]);
 
   const showCost = showCostOverlay && plData !== null;
 
@@ -343,15 +386,15 @@ function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
             textAnchor="end"
             height={45}
             interval={0}
-            tickFormatter={formatPeriodTick}
+            tickFormatter={(v: string) => formatPeriodLabel(v, isQuarterly)}
           />
           <YAxis
             yAxisId="left"
             tickFormatter={formatYen}
             tick={{ fontSize: 11, fill: "#9ca3af" }}
             stroke="rgba(255,255,255,0.1)"
-            domain={[0, 10000000]}
-            ticks={[0, 1000000, 2000000, 3000000, 4000000, 5000000, 6000000, 7000000, 8000000, 9000000, 10000000]}
+            domain={[0, yMax]}
+            ticks={yTicks}
           />
           {showCost && (
             <YAxis
