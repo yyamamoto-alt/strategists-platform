@@ -635,7 +635,7 @@ function buildPipelineFields(c: CustomerWithRelations): FieldDef[] {
       "キャンセル", "直前キャンセル",
     ], table: "pipeline", getValue: () => c.pipeline?.stage || "-" },
     { key: "probability", label: "営業角度", source: "sync", type: "number", table: "pipeline", getValue: () => c.pipeline?.probability != null ? formatPercent(c.pipeline.probability) : "-" },
-    { key: "meeting_scheduled_date", label: "面談予定日", source: "manual", type: "date", table: "pipeline", getValue: () => formatDate(c.pipeline?.meeting_scheduled_date ?? null) },
+    { key: "meeting_scheduled_date", label: "追加指導日", source: "manual", type: "date", table: "pipeline", getValue: () => formatDate(c.pipeline?.meeting_scheduled_date ?? null) },
     { key: "meeting_url", label: "会議URL", source: "sync", table: "pipeline", getValue: () => {
       const url = (c.pipeline as Record<string, unknown> | undefined)?.meeting_url as string | null;
       return url || "-";
@@ -654,8 +654,9 @@ function buildPipelineFields(c: CustomerWithRelations): FieldDef[] {
     { key: "sales_person_3", label: "営業担当③", source: "sync", table: "pipeline", getValue: () => (p.sales_person_3 as string) || "-" },
     { key: "decision_factor", label: "ネック要因", source: "sync", table: "pipeline", getValue: () => c.pipeline?.decision_factor || "-" },
     { key: "comparison_services", label: "比較サービス", source: "sync", table: "pipeline", getValue: () => c.pipeline?.comparison_services || "-" },
-    // 返答日①②③（営業報告フォームから同期）
-    { key: "response_date", label: "返答日①", source: "sync", type: "date", table: "pipeline", getValue: () => formatDate(c.pipeline?.response_date ?? null) },
+    // 返答期限（営業報告フォームから同期：検討中/成約見込等の場合）
+    { key: "response_deadline", label: "返答期限", source: "sync", type: "date", table: "pipeline", getValue: () => formatDate((p.response_deadline as string) ?? null) },
+    // 旧返答日②③（過去データ互換）
     { key: "response_date_2", label: "返答日②", source: "sync", type: "date", table: "pipeline", getValue: () => formatDate(c.pipeline?.response_date_2 ?? null) },
     { key: "response_date_3", label: "返答日③", source: "sync", type: "date", table: "pipeline", getValue: () => formatDate(c.pipeline?.response_date_3 ?? null) },
     // 提案プラン①②③（営業報告フォームから同期）
@@ -837,7 +838,7 @@ export function CustomerDetailClient({
       if (isNaN(d.getTime())) return s;
       return d.toISOString().slice(0, 10);
     };
-    const dateKeys = new Set(["meeting_scheduled_date", "sales_date", "sales_date_2", "sales_date_3", "response_date", "response_date_2", "response_date_3", "payment_date", "coaching_end_date", "last_coaching_date", "placement_date", "application_date"]);
+    const dateKeys = new Set(["meeting_scheduled_date", "sales_date", "sales_date_2", "sales_date_3", "response_deadline", "response_date_2", "response_date_3", "payment_date", "coaching_end_date", "last_coaching_date", "placement_date", "application_date"]);
     // customer fields
     const cFields = customer as unknown as unknown as Record<string, unknown>;
     for (const key of ["name", "email", "phone", "attribute", "priority", "university", "faculty", "notes", "caution_notes"]) {
@@ -846,7 +847,7 @@ export function CustomerDetailClient({
     // pipeline fields
     if (customer.pipeline) {
       const p = customer.pipeline as unknown as Record<string, unknown>;
-      for (const key of ["stage", "probability", "meeting_scheduled_date", "sales_date", "sales_date_2", "sales_date_3", "response_date", "response_date_2", "response_date_3", "decision_factor", "sales_content", "sales_strategy"]) {
+      for (const key of ["stage", "probability", "meeting_scheduled_date", "sales_date", "sales_date_2", "sales_date_3", "response_deadline", "response_date_2", "response_date_3", "decision_factor", "sales_content", "sales_strategy"]) {
         vals[`pipeline.${key}`] = dateKeys.has(key) ? toDateValue(p[key]) : (p[key] != null ? String(p[key]) : "");
       }
     }
