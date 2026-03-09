@@ -78,7 +78,9 @@ const VIEW_COLUMNS: Record<ViewTab, string[] | null> = {
   overview: [
     // 基本
     "application_date", "name", "attribute", "stage",
-    // 帰属チャネル（検討状況の右）
+    // 営業日程（検討状況のすぐ右）
+    "meeting_scheduled", "additional_coaching_date", "response_deadline",
+    // 帰属チャネル
     "marketing_channel",
     "subsidy_eligible",
     "career_history", "is_agent_customer",
@@ -88,8 +90,8 @@ const VIEW_COLUMNS: Record<ViewTab, string[] | null> = {
     "plan_name",
     // マーケ: 経路営業のみ
     "sales_route",
-    // 営業: 営業予定日, 営業日, 追加指導日, 角度, 返答期限, 営業担当
-    "meeting_scheduled", "sales_date", "additional_coaching_date", "probability", "response_deadline", "sales_person",
+    // 営業: 角度, 営業担当
+    "probability", "sales_person",
     // 人材紹介（紹介ステータスまで）
     "referral_category", "referral_status", "external_agents",
   ],
