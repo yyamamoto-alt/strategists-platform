@@ -8,7 +8,6 @@ import {
   formatPercent,
   getStageColor,
   getAttributeColor,
-  getDealStatusColor,
 } from "@/lib/utils";
 import type { CustomerWithRelations } from "@strategy-school/shared-db";
 import type { ChannelAttribution } from "@/lib/data/marketing-settings";
@@ -76,7 +75,7 @@ const VIEW_COLUMNS: Record<ViewTab, string[] | null> = {
   overview: [
     // 基本 〜 見込みLTV
     "application_date", "name", "attribute", "career_history",
-    "is_agent_customer", "stage", "deal_status", "subsidy_eligible",
+    "is_agent_customer", "stage", "subsidy_eligible",
     "confirmed_amount", "rev_agent", "rev_total", "projected_amount",
     // プラン名
     "plan_name",
@@ -92,14 +91,14 @@ const VIEW_COLUMNS: Record<ViewTab, string[] | null> = {
   ],
   all: null, // 全カラム表示
   marketing: [
-    "application_date", "name", "attribute", "stage", "deal_status", "subsidy_eligible",
+    "application_date", "name", "attribute", "stage", "subsidy_eligible",
     "rev_total",
     "marketing_channel", "initial_channel", "application_reason",
     "sales_route", "comparison_services",
     "utm_source", "utm_medium", "utm_id", "utm_campaign",
   ],
   sales: [
-    "application_date", "name", "attribute", "stage", "deal_status", "subsidy_eligible",
+    "application_date", "name", "attribute", "stage", "subsidy_eligible",
     "confirmed_amount", "rev_agent", "rev_total", "projected_amount",
     "probability", "sales_date", "response_date",
     "first_amount", "discount",
@@ -112,7 +111,7 @@ const VIEW_COLUMNS: Record<ViewTab, string[] | null> = {
     "payment_date", "additional_notes",
   ],
   education: [
-    "application_date", "name", "attribute", "stage", "deal_status", "subsidy_eligible",
+    "application_date", "name", "attribute", "stage", "subsidy_eligible",
     "rev_total",
     "offer_company",
     "enrollment_status", "plan_name", "mentor_name",
@@ -133,7 +132,7 @@ const VIEW_COLUMNS: Record<ViewTab, string[] | null> = {
     "extension_days",
   ],
   agent: [
-    "application_date", "name", "attribute", "stage", "deal_status", "subsidy_eligible",
+    "application_date", "name", "attribute", "stage", "subsidy_eligible",
     "confirmed_amount", "rev_agent", "rev_total", "projected_amount",
     "is_agent_customer", "referral_category", "referral_status",
     "external_agents",
@@ -147,11 +146,11 @@ const VIEW_COLUMNS: Record<ViewTab, string[] | null> = {
 const CLOSED_STAGES = new Set(["成約", "成約(追加指導経由)", "途中解約(成約)"]);
 
 const STAGE_OPTIONS = [
-  { group: "アクティブ", options: ["日程未確", "検討中", "長期検討"] },
+  { group: "未実施", options: ["日程未確", "未実施"] },
+  { group: "アクティブ", options: ["検討中", "長期検討"] },
   { group: "成約", options: ["成約", "成約(追加指導経由)", "成約見込(未入金)", "途中解約(成約)"] },
   { group: "購入・追加", options: ["その他購入", "動画講座購入", "追加指導", "追加指導(NoShow)", "追加指導(CL)"] },
-  { group: "未実施", options: ["NoShow", "Noshow", "未実施", "実施不可", "非実施対象"] },
-  { group: "失注", options: ["失注", "失注見込", "失注見込(自動)", "CL", "全額返金"] },
+  { group: "失注", options: ["失注", "失注見込", "失注見込(自動)", "CL", "NoShow", "全額返金"] },
   { group: "その他", options: ["キャンセル", "直前キャンセル"] },
 ];
 
@@ -310,7 +309,7 @@ export function CustomersClient({ customers, attributionMap, firstPaidMap }: Cus
         ), sortValue: (c) => c.name },
 
       // ─── 属性 ───
-      { key: "attribute", label: "属性", width: 44, category: "base",
+      { key: "attribute", label: "属性", width: 48, category: "base",
         render: (c) => (
           <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${getAttributeColor(c.attribute)}`}>{c.attribute.includes("既卒") ? "既卒" : "新卒"}</span>
         ), sortValue: (c) => c.attribute,
@@ -321,7 +320,7 @@ export function CustomersClient({ customers, attributionMap, firstPaidMap }: Cus
         render: (c) => <Truncated value={c.career_history} width={220} /> },
 
       // ─── 人材紹介利用 ───
-      { key: "is_agent_customer", label: "エージェント利用", width: 44, align: "center" as const,
+      { key: "is_agent_customer", label: "エージェント利用", width: 32, align: "center" as const,
         render: (c) => isAgentCustomer(c)
           ? <span className="text-purple-400 text-sm">&#9745;</span>
           : <span className="text-gray-600 text-sm">&#9744;</span>,
@@ -336,13 +335,6 @@ export function CustomersClient({ customers, attributionMap, firstPaidMap }: Cus
           ) : "-";
         }, sortValue: (c) => stageOverrides[c.id] || c.pipeline?.stage || "",
         filterValue: (c) => stageOverrides[c.id] || c.pipeline?.stage || "" },
-
-      // ─── 実施状況（検討状況の横） ───
-      { key: "deal_status", label: "実施状況", width: 80, category: "sales",
-        render: (c) => c.pipeline ? (
-          <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${getDealStatusColor(c.pipeline.deal_status)}`}>{c.pipeline.deal_status}</span>
-        ) : "-", sortValue: (c) => c.pipeline?.deal_status || "",
-        filterValue: (c) => c.pipeline?.deal_status || "" },
 
       // ─── 補助金対象（検討状況の右） ───
       { key: "subsidy_eligible", label: "補助金", width: 50, align: "center" as const, category: "agent",
@@ -663,8 +655,11 @@ export function CustomersClient({ customers, attributionMap, firstPaidMap }: Cus
           className="px-2 py-1 bg-surface-elevated border border-white/10 text-white rounded text-xs focus:outline-none focus:ring-1 focus:ring-brand"
         >
           <option value="">全ステージ</option>
-          <optgroup label="アクティブ">
+          <optgroup label="未実施">
             <option value="日程未確">日程未確</option>
+            <option value="未実施">未実施</option>
+          </optgroup>
+          <optgroup label="アクティブ">
             <option value="検討中">検討中</option>
             <option value="長期検討">長期検討</option>
           </optgroup>
@@ -681,18 +676,12 @@ export function CustomersClient({ customers, attributionMap, firstPaidMap }: Cus
             <option value="追加指導(NoShow)">追加指導(NoShow)</option>
             <option value="追加指導(CL)">追加指導(CL)</option>
           </optgroup>
-          <optgroup label="未実施">
-            <option value="NoShow">NoShow</option>
-            <option value="Noshow">Noshow</option>
-            <option value="未実施">未実施</option>
-            <option value="実施不可">実施不可</option>
-            <option value="非実施対象">非実施対象</option>
-          </optgroup>
           <optgroup label="失注">
             <option value="失注">失注</option>
             <option value="失注見込">失注見込</option>
             <option value="失注見込(自動)">失注見込(自動)</option>
             <option value="CL">CL</option>
+            <option value="NoShow">NoShow</option>
             <option value="全額返金">全額返金</option>
           </optgroup>
           <optgroup label="その他">
@@ -772,12 +761,10 @@ export function CustomersClient({ customers, attributionMap, firstPaidMap }: Cus
                 <div>
                   <label className="text-xs text-gray-400 block mb-1">ステージ</label>
                   <select name="stage" className="w-full px-3 py-2 bg-surface border border-white/10 rounded text-sm text-white focus:outline-none focus:ring-1 focus:ring-brand">
-                    <option value="問い合わせ">問い合わせ</option>
+                    <option value="日程未確">日程未確</option>
                     <option value="未実施">未実施</option>
-                    <option value="日程確定">日程確定</option>
                     <option value="検討中">検討中</option>
                     <option value="成約">成約</option>
-                    <option value="実施不可">実施不可</option>
                   </select>
                 </div>
               </div>

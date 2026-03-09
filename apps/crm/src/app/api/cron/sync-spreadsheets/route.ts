@@ -192,17 +192,17 @@ export async function GET(request: Request) {
         // ============================================================
 
         // 直近の同期済みraw_dataハッシュを取得（重複検知用ダブルチェック）
-        const { data: recentHistory } = await db
-          .from("application_history")
-          .select("raw_data")
-          .eq("source", connection.name)
-          .order("applied_at", { ascending: false })
-          .limit(500);
-        const knownHashes = new Set<string>(
-          (recentHistory || []).map((h: { raw_data: Record<string, unknown> }) =>
-            JSON.stringify(h.raw_data)
-          )
-        );
+        const [{ data: recentHistory }, { data: recentUnmatched }] = await Promise.all([
+          db.from("application_history").select("raw_data").eq("source", connection.name).order("applied_at", { ascending: false }).limit(500),
+          db.from("unmatched_records").select("raw_data").eq("connection_id", connection.id).order("created_at", { ascending: false }).limit(500),
+        ]);
+        const knownHashes = new Set<string>();
+        for (const h of (recentHistory || [])) {
+          knownHashes.add(JSON.stringify((h as { raw_data: Record<string, unknown> }).raw_data));
+        }
+        for (const h of (recentUnmatched || [])) {
+          knownHashes.add(JSON.stringify((h as { raw_data: Record<string, unknown> }).raw_data));
+        }
 
         for (const row of dataRows) {
           if (row.every((cell: string) => !cell || cell.trim() === "")) continue;
