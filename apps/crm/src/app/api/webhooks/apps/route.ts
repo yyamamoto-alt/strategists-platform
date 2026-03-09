@@ -20,22 +20,20 @@ export async function POST(request: Request) {
   const signature = request.headers.get("x-apps-signature") || request.headers.get("X-Apps-Signature");
   const secret = process.env.APPS_WEBHOOK_SECRET?.trim();
 
-  if (secret && signature) {
-    const expected = crypto
-      .createHmac("sha256", secret)
-      .update(rawBody)
-      .digest("hex");
-    if (signature !== expected) {
-      // デバッグ: 署名不一致でもraw_dataを保存
-      const dbg = createServiceClient();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (dbg as any).from("unmatched_records").insert({
-          raw_data: { _debug: "signature_mismatch", body: rawBody.substring(0, 500) },
-        name: "apps_sig_debug",
-        status: "pending",
-      });
-      return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
-    }
+  if (!secret) {
+    console.error("APPS_WEBHOOK_SECRET is not configured");
+    return NextResponse.json({ error: "Server configuration error" }, { status: 500 });
+  }
+  if (!signature) {
+    return NextResponse.json({ error: "Missing signature" }, { status: 401 });
+  }
+
+  const expected = crypto
+    .createHmac("sha256", secret)
+    .update(rawBody)
+    .digest("hex");
+  if (signature !== expected) {
+    return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
   }
 
   let payload: Record<string, unknown>;

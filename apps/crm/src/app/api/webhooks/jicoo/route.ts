@@ -160,7 +160,8 @@ export async function POST(request: Request) {
         .digest("hex");
 
       if (sig !== expected) {
-        console.warn("Jicoo signature mismatch, skipping verification");
+        console.warn("Jicoo signature mismatch — rejecting request");
+        return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
       }
     }
   }
