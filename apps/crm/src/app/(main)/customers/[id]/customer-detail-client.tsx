@@ -22,6 +22,7 @@ import {
   calcScheduleProgress,
   calcProgressStatus,
   isAgentConfirmed,
+  isAgentCustomer,
   getSubsidyAmount,
   getSchoolRevenue,
 } from "@/lib/calc-fields";
@@ -565,11 +566,10 @@ function RevenueSection({ customer, orders }: { customer: CustomerWithRelations;
   const agentConfirmed = isAgentConfirmed(customer) ? calcExpectedReferralFee(customer) : 0;
   const confirmedTotal = schoolConfirmed + subsidy + agentConfirmed;
 
-  const agentProjected = calcAgentProjectedRevenue(customer);
-  const salesProjection = calcSalesProjection(customer);
-
-  const closingProb = calcClosingProbability(customer);
-  const expectedLtv = calcExpectedLTV(customer);
+  const isAgent = isAgentCustomer(customer);
+  const agentProjected = isAgent ? calcAgentProjectedRevenue(customer) : 0;
+  // ordersベースの確定売上 + 人材見込を使った成約者見込LTV
+  const projectedTotal = confirmedTotal + agentProjected;
 
   const Row = ({ label, value, bold, sub }: { label: string; value: string; bold?: boolean; sub?: boolean }) => (
     <div className={`flex items-center justify-between py-1 ${sub ? "pl-4" : ""}`}>
@@ -583,7 +583,7 @@ function RevenueSection({ customer, orders }: { customer: CustomerWithRelations;
   return (
     <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-4">
       <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">売上サマリー</h2>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className={`grid grid-cols-1 ${isAgent ? "md:grid-cols-3" : "md:grid-cols-1 max-w-md"} gap-4`}>
         {/* 確定売上 */}
         <div className="bg-surface-elevated rounded-lg p-3">
           <p className="text-[10px] font-semibold text-green-400 uppercase tracking-wider mb-1">確定売上</p>
@@ -594,31 +594,27 @@ function RevenueSection({ customer, orders }: { customer: CustomerWithRelations;
           <Row label="合計" value={formatCurrency(confirmedTotal)} bold />
         </div>
 
-        {/* 見込売上（成約者） */}
-        <div className="bg-surface-elevated rounded-lg p-3">
-          <p className="text-[10px] font-semibold text-amber-400 uppercase tracking-wider mb-1">見込売上</p>
-          <Row label="確定売上" value={formatCurrency(confirmedTotal)} sub />
-          {agentProjected > 0 && <Row label="人材（見込）" value={formatCurrency(agentProjected)} sub />}
-          <Divider />
-          <Row label="成約者見込LTV" value={salesProjection > 0 ? formatCurrency(salesProjection) : "-"} bold />
-        </div>
+        {/* 見込売上 — 人材紹介利用者のみ表示 */}
+        {isAgent && (
+          <div className="bg-surface-elevated rounded-lg p-3">
+            <p className="text-[10px] font-semibold text-amber-400 uppercase tracking-wider mb-1">見込売上</p>
+            <Row label="確定売上" value={formatCurrency(confirmedTotal)} sub />
+            {agentProjected > 0 && <Row label="人材（見込）" value={formatCurrency(agentProjected)} sub />}
+            <Divider />
+            <Row label="成約者見込LTV" value={projectedTotal > 0 ? formatCurrency(projectedTotal) : "-"} bold />
+          </div>
+        )}
 
-        {/* 期待値（未成約含む） */}
-        <div className="bg-surface-elevated rounded-lg p-3">
-          <p className="text-[10px] font-semibold text-blue-400 uppercase tracking-wider mb-1">期待値</p>
-          <Row label="成約見込率" value={formatPercent(closingProb)} sub />
-          {salesProjection > 0 ? (
-            <>
-              <Row label="= 見込売上（成約済）" value="" sub />
-            </>
-          ) : (
-            <>
-              <Row label={`デフォルトLTV × ${formatPercent(closingProb)}`} value="" sub />
-            </>
-          )}
-          <Divider />
-          <Row label="見込LTV" value={expectedLtv > 0 ? formatCurrency(expectedLtv) : "-"} bold />
-        </div>
+        {/* 期待値 — 人材紹介利用者のみ表示 */}
+        {isAgent && (
+          <div className="bg-surface-elevated rounded-lg p-3">
+            <p className="text-[10px] font-semibold text-blue-400 uppercase tracking-wider mb-1">期待値</p>
+            <Row label="成約見込率" value={formatPercent(calcClosingProbability(customer))} sub />
+            <Row label="見込売上" value={projectedTotal > 0 ? formatCurrency(projectedTotal) : "-"} sub />
+            <Divider />
+            <Row label="見込LTV" value={projectedTotal > 0 ? formatCurrency(projectedTotal) : formatCurrency(calcExpectedLTV(customer))} bold />
+          </div>
+        )}
       </div>
     </div>
   );
