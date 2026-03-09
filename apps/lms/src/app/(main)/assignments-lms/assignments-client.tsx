@@ -24,7 +24,7 @@ const mainColumns = [
 // テーブルには表示しないキー（メタデータ系）
 const hiddenKeys = ["メールアドレス", "名前", "タイムスタンプ"];
 
-export function AssignmentsClient({ assignments }: { assignments: Assignment[] }) {
+export function AssignmentsClient({ assignments, isAdmin }: { assignments: Assignment[]; isAdmin?: boolean }) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   return (

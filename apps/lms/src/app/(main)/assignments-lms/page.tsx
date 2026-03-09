@@ -13,8 +13,15 @@ async function fetchAssignments(userEmail: string | null) {
     .from("application_history")
     .select("id, source, raw_data, applied_at, customer_id, customers ( name )")
     .eq("source", "課題提出")
-    .order("applied_at", { ascending: false })
-    .limit(1000);
+    .order("applied_at", { ascending: false });
+
+  // userEmailがある場合、raw_data->>'メールアドレス' でサーバー側フィルタ
+  if (userEmail) {
+    query = query.eq("raw_data->>メールアドレス", userEmail);
+    query = query.limit(200);
+  } else {
+    query = query.limit(1000);
+  }
 
   const { data, error } = await query;
 
@@ -42,7 +49,10 @@ async function fetchAssignments(userEmail: string | null) {
 export default async function AssignmentsLmsPage() {
   const session = await getLmsSession();
   const isAdmin = session?.role === "admin" || session?.role === "mentor";
-  const userEmail = isAdmin ? null : session?.user?.email || null;
+  // 管理者はテスト用アカウントのデータを表示、受講生は自分のデータのみ
+  const userEmail = isAdmin
+    ? "tomo.tshiro@hotmail.com"
+    : session?.user?.email || null;
   const assignments = await fetchAssignments(userEmail);
-  return <AssignmentsClient assignments={assignments} />;
+  return <AssignmentsClient assignments={assignments} isAdmin={isAdmin} />;
 }

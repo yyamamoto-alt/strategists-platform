@@ -3,9 +3,10 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
+import { startNavigationProgress } from "./navigation-progress";
 
 interface NavItem {
   name: string;
@@ -33,9 +34,16 @@ const adminNavigation: NavItem[] = [
 
 function NavSection({ title, items, role }: { title: string; items: NavItem[]; role: string | null }) {
   const pathname = usePathname();
+  const [loadingHref, setLoadingHref] = useState<string | null>(null);
   const filteredItems = items.filter(
     (item) => !item.roles || (role && item.roles.includes(role))
   );
+
+  // パス変更でローディング解除
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    setLoadingHref(null);
+  }, [pathname]);
 
   if (filteredItems.length === 0) return null;
 
@@ -47,25 +55,34 @@ function NavSection({ title, items, role }: { title: string; items: NavItem[]; r
         </p>
       )}
       {filteredItems.map((item) => {
-        // /courses と /courses/manage の重複防止
         const isActive =
           pathname === item.href ||
           (pathname?.startsWith(item.href + "/") &&
-            // /courses/manage は /courses の子として誤判定しない
             !(item.href === "/courses" && pathname?.startsWith("/courses/manage")));
+        const isLoading = loadingHref === item.href;
         return (
           <Link
             key={item.href}
             href={item.href}
+            onClick={() => {
+              if (!isActive) {
+                setLoadingHref(item.href);
+                startNavigationProgress();
+              }
+            }}
             className={cn(
               "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors",
               isActive
                 ? "bg-brand-muted text-white"
-                : "text-gray-300 hover:bg-white/5 hover:text-white"
+                : "text-gray-300 hover:bg-white/5 hover:text-white",
+              isLoading && "bg-white/5"
             )}
           >
             <span className="text-lg">{item.icon}</span>
-            <span>{item.name}</span>
+            <span className="flex-1">{item.name}</span>
+            {isLoading && (
+              <div className="w-4 h-4 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
+            )}
           </Link>
         );
       })}

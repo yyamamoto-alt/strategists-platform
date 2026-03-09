@@ -21,12 +21,21 @@ async function fetchMentorReports(userEmail: string | null): Promise<MentorRepor
   const db = supabase as any;
 
   // application_history からメンター指導報告を取得
-  const { data: reports, error } = await db
+  // userEmailがある場合、raw_data->>'顧客メールアドレス' でサーバー側フィルタ
+  let reportsQuery = db
     .from("application_history")
     .select("id, source, raw_data, applied_at, customer_id, customers ( name )")
     .eq("source", "メンター指導報告")
-    .order("applied_at", { ascending: false })
-    .limit(2000);
+    .order("applied_at", { ascending: false });
+
+  if (userEmail) {
+    reportsQuery = reportsQuery.eq("raw_data->>顧客メールアドレス", userEmail);
+    reportsQuery = reportsQuery.limit(200);
+  } else {
+    reportsQuery = reportsQuery.limit(2000);
+  }
+
+  const { data: reports, error } = await reportsQuery;
 
   if (error) {
     console.error("mentor reports fetch error:", error);
@@ -34,10 +43,19 @@ async function fetchMentorReports(userEmail: string | null): Promise<MentorRepor
   }
 
   // coaching_reports からレベル情報を取得（メールアドレスでマッチ）
-  const { data: coachingData } = await db
+  // userEmailがある場合、サーバー側でemailフィルタ
+  let coachingQuery = db
     .from("coaching_reports")
-    .select("email, coaching_date, level_fermi, level_case, level_mck")
-    .limit(5000) as { data: any[] | null };
+    .select("email, coaching_date, level_fermi, level_case, level_mck");
+
+  if (userEmail) {
+    coachingQuery = coachingQuery.eq("email", userEmail);
+    coachingQuery = coachingQuery.limit(500);
+  } else {
+    coachingQuery = coachingQuery.limit(5000);
+  }
+
+  const { data: coachingData } = await coachingQuery as { data: any[] | null };
 
   // email + date でレベルをルックアップ
   const levelMap = new Map<string, { level_fermi: string | null; level_case: string | null; level_mck: string | null }>();
@@ -84,7 +102,10 @@ async function fetchMentorReports(userEmail: string | null): Promise<MentorRepor
 export default async function ProgressSheetsPage() {
   const session = await getLmsSession();
   const isAdmin = session?.role === "admin" || session?.role === "mentor";
-  const userEmail = isAdmin ? null : session?.user?.email || null;
+  // 管理者はテスト用アカウントのデータを表示、受講生は自分のデータのみ
+  const userEmail = isAdmin
+    ? "tomo.tshiro@hotmail.com"
+    : session?.user?.email || null;
   const reports = await fetchMentorReports(userEmail);
-  return <ProgressSheetsClient reports={reports} />;
+  return <ProgressSheetsClient reports={reports} isAdmin={isAdmin} />;
 }

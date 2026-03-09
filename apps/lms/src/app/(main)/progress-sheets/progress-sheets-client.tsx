@@ -47,7 +47,7 @@ function LevelBadge({ level }: { level: string | null }) {
   );
 }
 
-export function ProgressSheetsClient({ reports }: { reports: MentorReport[] }) {
+export function ProgressSheetsClient({ reports, isAdmin }: { reports: MentorReport[]; isAdmin?: boolean }) {
   return (
     <div className="p-5 bg-surface min-h-screen">
       <div className="flex items-center justify-between mb-4">

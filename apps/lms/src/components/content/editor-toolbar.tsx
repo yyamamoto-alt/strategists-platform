@@ -61,7 +61,7 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-0.5 px-3 py-2 border-b border-white/10 bg-surface">
+    <div className="flex flex-wrap items-center gap-0.5 px-3 py-2 border-b border-white/10 bg-surface sticky top-0 z-10">
       {/* Undo / Redo */}
       <ToolbarButton onClick={() => editor.chain().focus().undo().run()} disabled={!editor.can().undo()} title="元に戻す">
         <Undo className="w-4 h-4" />
