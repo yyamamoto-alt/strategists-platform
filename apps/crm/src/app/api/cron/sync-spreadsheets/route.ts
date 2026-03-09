@@ -112,66 +112,145 @@ export async function GET(request: Request) {
       let rowsSkipped = 0;
       const syncedRecords: { action: string; name: string | null; email: string | null; summary: Record<string, string> }[] = [];
 
-      // 直近の同期済みraw_dataハッシュを取得（重複検知用ダブルチェック）
-      const { data: recentHistory } = await db
-        .from("application_history")
-        .select("raw_data")
-        .eq("source", connection.name)
-        .order("applied_at", { ascending: false })
-        .limit(500);
-      const knownHashes = new Set<string>(
-        (recentHistory || []).map((h: { raw_data: Record<string, unknown> }) =>
-          JSON.stringify(h.raw_data)
-        )
-      );
+      // ============================================================
+      // note販売など orders テーブルに直接同期するタイプ
+      // ============================================================
+      if (connection.source_type === "note_sales") {
+        // ヘッダーから列インデックスを取得
+        const colIdx = (name: string) => headers.indexOf(name);
+        const iTimestamp = colIdx("タイムスタンプ");
+        const iName = colIdx("名前");
+        const iProduct = colIdx("商品名");
+        const iType = colIdx("商品タイプ");
+        const iPrice = colIdx("値段");
+        const iOrderId = colIdx("注文ID");
 
-      for (const row of dataRows) {
-        if (row.every((cell: string) => !cell || cell.trim() === "")) continue;
+        // 既存の source_record_id を取得（重複防止）
+        const { data: existingOrders } = await db
+          .from("orders")
+          .select("source_record_id")
+          .eq("source", "note")
+          .not("source_record_id", "is", null);
+        const existingIds = new Set(
+          (existingOrders || []).map((o: { source_record_id: string }) => o.source_record_id)
+        );
 
-        try {
-          const fields = extractFieldsFromRow(row, headers, columnMapping);
-          const rawData: Record<string, string> = {};
-          headers.forEach((h: string, i: number) => {
-            if (i < row.length && row[i]) rawData[h] = row[i];
-          });
+        for (const row of dataRows) {
+          if (row.every((cell: string) => !cell || cell.trim() === "")) continue;
 
-          // ダブルチェック: まったく同じraw_dataが既にあればスキップ
-          const rawHash = JSON.stringify(rawData);
-          if (knownHashes.has(rawHash)) {
-            rowsSkipped++;
-            continue;
-          }
-          knownHashes.add(rawHash);
+          try {
+            const orderId = iOrderId >= 0 ? row[iOrderId] : null;
+            if (!orderId) continue;
 
-          const result = await upsertFromSpreadsheet(
-            connection.id,
-            syncLog?.id,
-            fields,
-            rawData,
-            connection.name,
-            connection.auto_create_customer === true
-          );
-
-          if (result.action === "created") rowsCreated++;
-          else if (result.action === "updated") rowsUpdated++;
-          else if (result.action === "unmatched") rowsUnmatched++;
-
-          if (syncedRecords.length < 100) {
-            const summaryKeys = headers.slice(0, 5);
-            const summary: Record<string, string> = {};
-            for (const k of summaryKeys) {
-              if (rawData[k]) summary[k] = String(rawData[k]).substring(0, 100);
+            // 既存チェック
+            if (existingIds.has(orderId)) {
+              rowsSkipped++;
+              continue;
             }
-            syncedRecords.push({
-              action: result.action,
-              name: fields.name || null,
-              email: fields.email || null,
-              summary,
+
+            const amount = iPrice >= 0 && row[iPrice] ? parseInt(row[iPrice].replace(/[,¥]/g, ""), 10) || 0 : 0;
+            const timestamp = iTimestamp >= 0 ? row[iTimestamp] : null;
+            const paidAt = timestamp ? new Date(timestamp.replace(" +0900", "+09:00")).toISOString() : null;
+            const productName = iProduct >= 0 ? row[iProduct] : null;
+            const productType = iType >= 0 ? row[iType] : null;
+            const contactName = iName >= 0 ? row[iName] : null;
+
+            let orderType = "other";
+            if (productType === "教科書") orderType = "note_textbook";
+            else if (productType === "マガジン") orderType = "note_magazine";
+            else if (productType === "動画講座") orderType = "note_video";
+
+            const { error: insertError } = await db.from("orders").insert({
+              source: "note",
+              source_record_id: orderId,
+              amount,
+              status: "paid",
+              payment_method: "other",
+              paid_at: paidAt,
+              match_status: "not_applicable",
+              order_type: orderType,
+              product_name: productName,
+              contact_name: contactName,
+              raw_data: Object.fromEntries(headers.map((h: string, i: number) => [h, row[i] || ""])),
             });
+
+            if (insertError) {
+              console.error(`note order insert error:`, insertError);
+              rowsUnmatched++;
+            } else {
+              rowsCreated++;
+              existingIds.add(orderId);
+            }
+          } catch (rowErr) {
+            console.error(`Row processing error in ${connection.name}:`, rowErr);
           }
-        } catch (rowErr) {
-          console.error(`Row processing error in ${connection.name}:`, rowErr);
-          // 1行のエラーで全体を止めない
+        }
+      } else {
+        // ============================================================
+        // 通常のフォーム同期（application_history + customer matching）
+        // ============================================================
+
+        // 直近の同期済みraw_dataハッシュを取得（重複検知用ダブルチェック）
+        const { data: recentHistory } = await db
+          .from("application_history")
+          .select("raw_data")
+          .eq("source", connection.name)
+          .order("applied_at", { ascending: false })
+          .limit(500);
+        const knownHashes = new Set<string>(
+          (recentHistory || []).map((h: { raw_data: Record<string, unknown> }) =>
+            JSON.stringify(h.raw_data)
+          )
+        );
+
+        for (const row of dataRows) {
+          if (row.every((cell: string) => !cell || cell.trim() === "")) continue;
+
+          try {
+            const fields = extractFieldsFromRow(row, headers, columnMapping);
+            const rawData: Record<string, string> = {};
+            headers.forEach((h: string, i: number) => {
+              if (i < row.length && row[i]) rawData[h] = row[i];
+            });
+
+            // ダブルチェック: まったく同じraw_dataが既にあればスキップ
+            const rawHash = JSON.stringify(rawData);
+            if (knownHashes.has(rawHash)) {
+              rowsSkipped++;
+              continue;
+            }
+            knownHashes.add(rawHash);
+
+            const result = await upsertFromSpreadsheet(
+              connection.id,
+              syncLog?.id,
+              fields,
+              rawData,
+              connection.name,
+              connection.auto_create_customer === true
+            );
+
+            if (result.action === "created") rowsCreated++;
+            else if (result.action === "updated") rowsUpdated++;
+            else if (result.action === "unmatched") rowsUnmatched++;
+
+            if (syncedRecords.length < 100) {
+              const summaryKeys = headers.slice(0, 5);
+              const summary: Record<string, string> = {};
+              for (const k of summaryKeys) {
+                if (rawData[k]) summary[k] = String(rawData[k]).substring(0, 100);
+              }
+              syncedRecords.push({
+                action: result.action,
+                name: fields.name || null,
+                email: fields.email || null,
+                summary,
+              });
+            }
+          } catch (rowErr) {
+            console.error(`Row processing error in ${connection.name}:`, rowErr);
+            // 1行のエラーで全体を止めない
+          }
         }
       }
 
