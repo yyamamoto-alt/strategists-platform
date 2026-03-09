@@ -159,7 +159,7 @@ export async function GET(request: Request) {
             else if (productType === "マガジン") orderType = "note_magazine";
             else if (productType === "動画講座") orderType = "note_video";
 
-            const { error: insertError } = await db.from("orders").insert({
+            const { data: upsertResult, error: insertError } = await db.from("orders").upsert({
               source: "note",
               source_record_id: orderId,
               amount,
@@ -171,14 +171,16 @@ export async function GET(request: Request) {
               product_name: productName,
               contact_name: contactName,
               raw_data: Object.fromEntries(headers.map((h: string, i: number) => [h, row[i] || ""])),
-            });
+            }, { onConflict: "source,source_record_id", ignoreDuplicates: true }).select("id");
 
             if (insertError) {
               console.error(`note order insert error:`, insertError);
               rowsUnmatched++;
-            } else {
+            } else if (upsertResult && upsertResult.length > 0) {
               rowsCreated++;
               existingIds.add(orderId);
+            } else {
+              rowsSkipped++;
             }
           } catch (rowErr) {
             console.error(`Row processing error in ${connection.name}:`, rowErr);
