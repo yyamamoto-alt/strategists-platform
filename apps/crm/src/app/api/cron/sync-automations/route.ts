@@ -96,10 +96,43 @@ export async function GET(request: Request) {
 
   for (const automation of automations) {
     try {
-      const startRow =
-        automation.last_synced_row > 0
-          ? automation.last_synced_row + 1
-          : undefined;
+      // ★ 初回実行（last_synced_row = 0）の場合、既存データをスキップして
+      //   現在の行数を記録するだけにする（過去データの一斉送信を防止）
+      if (automation.last_synced_row === 0 || automation.last_synced_row === null) {
+        const allRows = await fetchSheetData(
+          automation.spreadsheet_id,
+          automation.sheet_name
+        );
+        const currentRowCount = allRows.length > 0 ? allRows.length - 1 : 0; // ヘッダー除く
+        const headers = allRows.length > 0 ? allRows[0] : [];
+
+        await db
+          .from("automations")
+          .update({
+            last_synced_row: currentRowCount + 1, // 次回は新しい行のみ
+            known_headers: headers,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", automation.id);
+
+        await db.from("automation_logs").insert({
+          automation_id: automation.id,
+          status: "initialized",
+          new_rows_count: 0,
+          notifications_sent: 0,
+          details: { skipped_existing: currentRowCount, reason: "first_run_skip" },
+        });
+
+        results.push({
+          name: automation.name,
+          new_rows: 0,
+          initialized: true,
+          skipped_existing: currentRowCount,
+        });
+        continue;
+      }
+
+      const startRow = automation.last_synced_row + 1;
 
       const allRows = await fetchSheetData(
         automation.spreadsheet_id,
@@ -121,6 +154,44 @@ export async function GET(request: Request) {
 
       const headers = allRows[0];
       const dataRows = allRows.slice(1);
+
+      // ★ 安全上限: 1回の実行で送信する通知数を制限（異常な大量送信を防止）
+      const MAX_NOTIFICATIONS_PER_RUN = 20;
+      if (dataRows.length > MAX_NOTIFICATIONS_PER_RUN) {
+        console.warn(
+          `[sync-automations] ${automation.name}: ${dataRows.length} rows detected, exceeds limit of ${MAX_NOTIFICATIONS_PER_RUN}. Skipping to prevent mass notification.`
+        );
+
+        // last_synced_rowを進めて次回から新規行のみ処理
+        const totalRow = automation.last_synced_row + dataRows.length;
+        await db
+          .from("automations")
+          .update({
+            last_synced_row: totalRow,
+            last_triggered_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", automation.id);
+
+        await db.from("automation_logs").insert({
+          automation_id: automation.id,
+          status: "skipped_too_many",
+          new_rows_count: dataRows.length,
+          notifications_sent: 0,
+          details: {
+            reason: `Exceeded max ${MAX_NOTIFICATIONS_PER_RUN} notifications per run`,
+            actual_rows: dataRows.length,
+          },
+        });
+
+        results.push({
+          name: automation.name,
+          new_rows: dataRows.length,
+          skipped: true,
+          reason: `exceeded_limit_${MAX_NOTIFICATIONS_PER_RUN}`,
+        });
+        continue;
+      }
 
       // ヘッダー変更検知
       const prevHeaders: string[] = automation.known_headers || [];
@@ -165,9 +236,7 @@ export async function GET(request: Request) {
       }
 
       // last_synced_row更新
-      const totalRow = startRow
-        ? automation.last_synced_row + dataRows.length
-        : dataRows.length + 1;
+      const totalRow = automation.last_synced_row + dataRows.length;
 
       await db
         .from("automations")
