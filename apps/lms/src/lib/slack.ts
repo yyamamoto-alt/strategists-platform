@@ -76,6 +76,11 @@ function mapPlanToCourseIds(planName: string | null | undefined): string[] {
 
 export { mapPlanToCourseIds };
 
+function formatYen(amount: number | undefined | null): string {
+  if (!amount) return "¥0";
+  return `¥${amount.toLocaleString()}`;
+}
+
 export async function sendInviteApprovalRequest(
   channel: string,
   application: {
@@ -83,12 +88,44 @@ export async function sendInviteApprovalRequest(
     name: string;
     email: string;
     planName?: string | null;
+    paymentInfo?: {
+      contractPlan?: string;
+      confirmedAmount?: number;
+      billingStatus?: string;
+      subsidyAmount?: number;
+      payments: { date: string; amount: number; method: string }[];
+      totalPaid: number;
+    };
   }
 ) {
   const autoMappedCourseIds = mapPlanToCourseIds(application.planName);
   const autoMappedLabel = autoMappedCourseIds.length > 0
     ? COURSE_OPTIONS.filter(c => autoMappedCourseIds.includes(c.value)).map(c => c.label).join(", ")
     : "自動マッピングなし";
+
+  const pi = application.paymentInfo;
+
+  // 決済内訳テキストを生成
+  let paymentDetailText = "_決済情報なし（新規顧客の可能性）_";
+  if (pi && (pi.payments.length > 0 || pi.confirmedAmount)) {
+    const lines: string[] = [];
+    if (pi.contractPlan) lines.push(`契約プラン: ${pi.contractPlan}`);
+    lines.push(`確定売上: ${formatYen(pi.confirmedAmount)}`);
+    lines.push(`請求ステータス: ${pi.billingStatus || "不明"}`);
+    if (pi.subsidyAmount) lines.push(`補助金: ${formatYen(pi.subsidyAmount)}`);
+    lines.push(`入金済み合計: ${formatYen(pi.totalPaid)}`);
+    if (pi.payments.length > 0) {
+      lines.push("");
+      lines.push("*直近の決済履歴:*");
+      for (const p of pi.payments.slice(0, 5)) {
+        lines.push(`  ${p.date}  ${formatYen(p.amount)}  (${p.method})`);
+      }
+      if (pi.payments.length > 5) {
+        lines.push(`  ...他 ${pi.payments.length - 5} 件`);
+      }
+    }
+    paymentDetailText = lines.join("\n");
+  }
 
   const blocks: SlackBlock[] = [
     {
@@ -106,12 +143,18 @@ export async function sendInviteApprovalRequest(
       type: "section",
       fields: [
         { type: "mrkdwn", text: `*申請プラン:*\n${application.planName || "未指定"}` },
-        { type: "mrkdwn", text: `*自動マッピング:*\n${autoMappedLabel}` },
+        { type: "mrkdwn", text: `*コース自動マッピング:*\n${autoMappedLabel}` },
       ],
     },
+    { type: "divider" },
     {
       type: "section",
-      text: { type: "mrkdwn", text: "コースを変更する場合は下のドロップダウンから選択してください。変更しない場合は自動マッピングが適用されます。" },
+      text: { type: "mrkdwn", text: `*入金・決済情報*\n${paymentDetailText}` },
+    },
+    { type: "divider" },
+    {
+      type: "section",
+      text: { type: "mrkdwn", text: "コースを変更する場合は下のドロップダウンから選択してください。" },
     },
     {
       type: "actions",

@@ -81,6 +81,62 @@ export async function POST(request: Request) {
     );
   }
 
+  // 顧客の決済・契約情報を取得
+  let paymentInfo: {
+    contractPlan?: string;
+    confirmedAmount?: number;
+    billingStatus?: string;
+    subsidyAmount?: number;
+    payments: { date: string; amount: number; method: string }[];
+    totalPaid: number;
+  } = { payments: [], totalPaid: 0 };
+
+  try {
+    // メールアドレスで顧客を検索
+    const { data: customer } = await supabase
+      .from("customers")
+      .select("id, name, attribute")
+      .eq("email", email)
+      .single();
+
+    if (customer) {
+      // 契約情報
+      const { data: contract } = await supabase
+        .from("contracts")
+        .select("plan_name, confirmed_amount, billing_status, subsidy_eligible, subsidy_amount, contract_amount, discount")
+        .eq("customer_id", customer.id)
+        .single();
+
+      if (contract) {
+        paymentInfo.contractPlan = contract.plan_name;
+        paymentInfo.confirmedAmount = contract.confirmed_amount;
+        paymentInfo.billingStatus = contract.billing_status;
+        paymentInfo.subsidyAmount = contract.subsidy_eligible ? contract.subsidy_amount : 0;
+      }
+
+      // ordersテーブルから決済履歴を取得
+      const { data: orders } = await supabase
+        .from("orders")
+        .select("paid_at, ordered_at, amount, payment_method, status, product_name")
+        .eq("customer_id", customer.id)
+        .order("ordered_at", { ascending: false })
+        .limit(10);
+
+      if (orders && orders.length > 0) {
+        paymentInfo.payments = orders.map((o: Record<string, unknown>) => ({
+          date: ((o.paid_at || o.ordered_at) as string || "").split("T")[0],
+          amount: (o.amount as number) || 0,
+          method: o.payment_method === "bank_transfer" ? "銀行振込" : "カード/Apps",
+        }));
+        paymentInfo.totalPaid = orders
+          .filter((o: Record<string, unknown>) => o.status === "paid")
+          .reduce((sum: number, o: Record<string, unknown>) => sum + ((o.amount as number) || 0), 0);
+      }
+    }
+  } catch (e) {
+    console.error("Payment info fetch error:", e);
+  }
+
   // 自動招待が有効か確認
   let autoInviteTriggered = false;
   try {
@@ -98,12 +154,13 @@ export async function POST(request: Request) {
     const slackChannel = settingsMap.auto_invite_slack_channel?.replace(/"/g, "");
 
     if (autoEnabled && slackChannel) {
-      // Slack承認リクエスト送信
+      // Slack承認リクエスト送信（決済情報付き）
       await sendInviteApprovalRequest(slackChannel, {
         id: data.id,
         name,
         email,
         planName: plan_name,
+        paymentInfo,
       });
 
       // ステータスを更新

@@ -48,6 +48,16 @@ function LevelBadge({ level }: { level: string | null }) {
 }
 
 export function ProgressSheetsClient({ reports, isAdmin }: { reports: MentorReport[]; isAdmin?: boolean }) {
+  // 指導日（降順） → 回次（降順）でソート
+  const sorted = [...reports].sort((a, b) => {
+    const dateA = (a.raw_data["指導日"] || "").replace(/\//g, "-");
+    const dateB = (b.raw_data["指導日"] || "").replace(/\//g, "-");
+    if (dateA !== dateB) return dateB.localeCompare(dateA);
+    const numA = parseInt(a.raw_data["回次（合計指導回数）"] || "0", 10);
+    const numB = parseInt(b.raw_data["回次（合計指導回数）"] || "0", 10);
+    return numB - numA;
+  });
+
   return (
     <div className="p-5 bg-surface min-h-screen">
       <div className="flex items-center justify-between mb-4">
@@ -76,7 +86,7 @@ export function ProgressSheetsClient({ reports, isAdmin }: { reports: MentorRepo
               </tr>
             </thead>
             <tbody>
-              {reports.map((report, i) => {
+              {sorted.map((report, i) => {
                 const d = report.raw_data;
                 return (
                   <tr
