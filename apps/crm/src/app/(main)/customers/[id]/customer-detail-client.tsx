@@ -368,7 +368,7 @@ function buildContractFields(c: CustomerWithRelations, firstPaidDate?: string | 
   return [
     { key: "plan_name", label: "プラン", source: "manual", table: "contract", getValue: () => c.contract?.plan_name || "-" },
     { key: "changed_plan", label: "変更プラン", source: "manual", table: "contract", getValue: () => c.contract?.changed_plan || "-" },
-    { key: "confirmed_amount", label: "確定売上", source: "auto", table: "contract", getValue: () => paidTotal != null && paidTotal > 0 ? formatCurrency(paidTotal) : "-" },
+    { key: "confirmed_amount", label: "確定売上", source: "sync", table: "contract", getValue: () => paidTotal != null && paidTotal > 0 ? formatCurrency(paidTotal) : "-" },
     { key: "first_amount", label: "一次金額", source: "manual", type: "number", table: "contract", getValue: () => c.contract?.first_amount ? formatCurrency(c.contract.first_amount) : "-" },
     { key: "discount", label: "割引", source: "manual", type: "number", table: "contract", getValue: () => c.contract?.discount ? formatCurrency(c.contract.discount) : "なし" },
     { key: "billing_status", label: "請求状況", source: "manual", type: "select", options: ["未請求", "請求済", "入金済", "返金済"], table: "contract", getValue: () => c.contract?.billing_status || "-" },
