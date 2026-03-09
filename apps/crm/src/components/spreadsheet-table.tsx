@@ -364,6 +364,40 @@ export function SpreadsheetTable<T>({
     [columnWidths]
   );
 
+  // stickyLeftを実際のカラム幅から動的に計算
+  const stickyLeftMap = useMemo(() => {
+    const map: Record<string, number> = {};
+    let acc = 0;
+    for (const col of columns) {
+      if (col.stickyLeft !== undefined) {
+        map[col.key] = acc;
+        acc += getColWidth(col);
+      }
+    }
+    return map;
+  }, [columns, getColWidth]);
+
+  // sticky列の合計幅（最後のsticky列の右端位置）
+  const totalStickyWidth = useMemo(() => {
+    let max = 0;
+    for (const col of columns) {
+      if (col.stickyLeft !== undefined) {
+        const left = stickyLeftMap[col.key] || 0;
+        max = Math.max(max, left + getColWidth(col));
+      }
+    }
+    return max;
+  }, [columns, stickyLeftMap, getColWidth]);
+
+  // 最後のsticky列のキー（右端に影を付ける用）
+  const lastStickyKey = useMemo(() => {
+    let last = "";
+    for (const col of columns) {
+      if (col.stickyLeft !== undefined) last = col.key;
+    }
+    return last;
+  }, [columns]);
+
   return (
     <div>
       <div className="flex items-center gap-2 mb-2">
@@ -414,7 +448,8 @@ export function SpreadsheetTable<T>({
                         width: getColWidth(col),
                         minWidth: 40,
                         maxWidth: getColWidth(col),
-                        ...(isSticky ? { left: col.stickyLeft } : {}),
+                        ...(isSticky ? { left: stickyLeftMap[col.key] ?? 0 } : {}),
+                        ...(col.key === lastStickyKey ? { boxShadow: "2px 0 4px rgba(0,0,0,0.3)" } : {}),
                       }}
                     >
                       <span className="inline-flex items-center gap-0.5 overflow-hidden">
@@ -463,7 +498,8 @@ export function SpreadsheetTable<T>({
                         style={{
                           width: getColWidth(col),
                           maxWidth: getColWidth(col),
-                          ...(isSticky ? { left: col.stickyLeft } : {}),
+                          ...(isSticky ? { left: stickyLeftMap[col.key] ?? 0 } : {}),
+                          ...(col.key === lastStickyKey ? { boxShadow: "2px 0 4px rgba(0,0,0,0.3)" } : {}),
                         }}
                       >
                         {col.render(item)}
