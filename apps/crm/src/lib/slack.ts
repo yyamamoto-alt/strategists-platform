@@ -166,33 +166,40 @@ export async function notifyDailyReport(text: string) {
 // Slack DM送信
 // ================================================================
 
-/** Slack DMを送信（user IDを指定） */
+/** Slack DMを送信（user IDを指定） - 失敗時はエラーをthrow */
 export async function sendSlackDM(userId: string, text: string) {
   if (!SLACK_BOT_TOKEN) {
-    console.warn("SLACK_BOT_TOKEN not set, skipping Slack DM");
-    return;
+    throw new Error("SLACK_BOT_TOKEN not set");
   }
 
-  try {
-    // conversations.open でDMチャンネルを開く
-    const openRes = await fetch("https://slack.com/api/conversations.open", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${SLACK_BOT_TOKEN}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ users: userId }),
-    });
-    const openData = await openRes.json();
-    if (!openData.ok) {
-      console.error("Slack conversations.open error:", openData.error);
-      return;
-    }
+  // conversations.open でDMチャンネルを開く
+  const openRes = await fetch("https://slack.com/api/conversations.open", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${SLACK_BOT_TOKEN}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ users: userId }),
+  });
+  const openData = await openRes.json();
+  if (!openData.ok) {
+    throw new Error(`conversations.open failed: ${openData.error}`);
+  }
 
-    const dmChannelId = openData.channel.id;
-    await sendSlackMessage(dmChannelId, text);
-  } catch (e) {
-    console.error("Slack DM failed:", e);
+  const dmChannelId = openData.channel.id;
+
+  // chat.postMessage でDM送信
+  const msgRes = await fetch("https://slack.com/api/chat.postMessage", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${SLACK_BOT_TOKEN}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ channel: dmChannelId, text }),
+  });
+  const msgData = await msgRes.json();
+  if (!msgData.ok) {
+    throw new Error(`chat.postMessage failed: ${msgData.error}`);
   }
 }
 
