@@ -141,12 +141,12 @@ export function calcClosingProbability(c: CustomerWithRelations): number {
   if (stage === "NoShow" || stage === "実施不可" || stage === "非実施対象") return 0;
 
   // --- 保留 → 0% ---
-  if (stage === "保留" || c.pipeline?.deal_status === "保留") return 0;
+  if (stage === "保留") return 0;
 
   // --- アクティブステージ: 営業角度ベース ---
   if (stage === "検討中") return t * 0.80;
   if (stage === "長期検討") return t * 0.50;
-  if (stage === "日程確定") return 0.20;
+  if (stage === "未実施") return 0.20;
   if (stage === "日程未確") return 0.05;
 
   // --- レガシー値 ---

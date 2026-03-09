@@ -9,7 +9,6 @@ import {
   formatPercent,
   getStageColor,
   getAttributeColor,
-  getDealStatusColor,
 } from "@/lib/utils";
 import {
   calcClosingProbability,
@@ -116,20 +115,6 @@ export function SalesClient({ customers }: SalesClientProps) {
             "-"
           ),
         sortValue: (c) => c.pipeline?.stage || "",
-      },
-      {
-        key: "deal_status",
-        label: "商談状況",
-        width: 90,
-        render: (c) =>
-          c.pipeline ? (
-            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getDealStatusColor(c.pipeline.deal_status)}`}>
-              {c.pipeline.deal_status}
-            </span>
-          ) : (
-            "-"
-          ),
-        sortValue: (c) => c.pipeline?.deal_status || "",
       },
       {
         key: "meeting_scheduled",

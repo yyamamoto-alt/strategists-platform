@@ -222,13 +222,6 @@ export function PipelineClient({ customers }: PipelineClientProps) {
                           {formatCurrency(calcExpectedLTV(customer))}
                         </span>
                       </div>
-                      {/* 実施状況 */}
-                      {customer.pipeline.deal_status && (
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] text-gray-500">実施状況</span>
-                          <span className="text-xs text-gray-300">{customer.pipeline.deal_status}</span>
-                        </div>
-                      )}
                       {/* 検討内容 */}
                       {customer.pipeline.sales_content && (
                         <div className="mt-1">

@@ -9,7 +9,6 @@ import {
   formatPercent,
   getStageColor,
   getAttributeColor,
-  getDealStatusColor,
 } from "@/lib/utils";
 import {
   calcSalesProjection,
@@ -596,16 +595,14 @@ function buildPipelineFields(c: CustomerWithRelations): FieldDef[] {
   const p = c.pipeline as any;
   return [
     { key: "stage", label: "ステージ", source: "manual", type: "select", options: [
-      "日程未確", "検討中", "長期検討",
+      "日程未確", "未実施",
+      "検討中", "長期検討",
       "成約", "成約(追加指導経由)", "成約見込(未入金)", "途中解約(成約)",
       "その他購入", "動画講座購入", "追加指導", "追加指導(NoShow)", "追加指導(CL)",
-      "NoShow", "Noshow", "未実施", "実施不可", "非実施対象",
-      "失注", "失注見込", "失注見込(自動)", "CL", "全額返金",
+      "NoShow", "CL",
+      "失注", "失注見込", "失注見込(自動)", "全額返金",
       "キャンセル", "直前キャンセル",
     ], table: "pipeline", getValue: () => c.pipeline?.stage || "-" },
-    { key: "deal_status", label: "実施状況", source: "sync", type: "select", options: [
-      "未対応", "実施", "未実施", "noshow", "キャンセル", "実施不可",
-    ], table: "pipeline", getValue: () => c.pipeline?.deal_status || "-" },
     { key: "probability", label: "営業角度", source: "sync", type: "number", table: "pipeline", getValue: () => c.pipeline?.probability != null ? formatPercent(c.pipeline.probability) : "-" },
     { key: "meeting_scheduled_date", label: "面談予定日", source: "manual", type: "date", table: "pipeline", getValue: () => formatDate(c.pipeline?.meeting_scheduled_date ?? null) },
     // 営業日①②③（営業報告フォームから同期）
@@ -800,7 +797,7 @@ export function CustomerDetailClient({
     // pipeline fields
     if (customer.pipeline) {
       const p = customer.pipeline as unknown as Record<string, unknown>;
-      for (const key of ["stage", "deal_status", "probability", "meeting_scheduled_date", "sales_date", "sales_date_2", "sales_date_3", "response_date", "response_date_2", "response_date_3", "decision_factor", "sales_content", "sales_strategy"]) {
+      for (const key of ["stage", "probability", "meeting_scheduled_date", "sales_date", "sales_date_2", "sales_date_3", "response_date", "response_date_2", "response_date_3", "decision_factor", "sales_content", "sales_strategy"]) {
         vals[`pipeline.${key}`] = p[key] != null ? String(p[key]) : "";
       }
     }
@@ -938,11 +935,6 @@ export function CustomerDetailClient({
               {customer.pipeline && (
                 <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getStageColor(customer.pipeline.stage)}`}>
                   {customer.pipeline.stage}
-                </span>
-              )}
-              {customer.pipeline && (
-                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getDealStatusColor(customer.pipeline.deal_status)}`}>
-                  {customer.pipeline.deal_status}
                 </span>
               )}
             </div>

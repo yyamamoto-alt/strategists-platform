@@ -32,7 +32,7 @@ async function applyAutoStageChanges() {
     const ids = overdueRecords.map((r: { id: string }) => r.id);
     await db
       .from("sales_pipeline")
-      .update({ stage: "失注見込(自動)", deal_status: "失注見込" })
+      .update({ stage: "失注見込(自動)" })
       .in("id", ids);
   }
 

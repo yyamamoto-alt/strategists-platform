@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import type { CustomerWithRelations } from "@strategy-school/shared-db";
 import { isShinsotsu } from "@/lib/calc-fields";
-import { formatCurrency, getStageColor, getDealStatusColor } from "@/lib/utils";
+import { formatCurrency, getStageColor } from "@/lib/utils";
 import { SpreadsheetTable, type SpreadsheetColumn } from "@/components/spreadsheet-table";
 
 interface Props {
@@ -117,15 +117,6 @@ function buildColumns(paidMap: Record<string, string>): SpreadsheetColumn<Custom
       label: "営業日",
       width: 90,
       render: (c) => <span className="text-gray-300 text-xs">{c.pipeline?.sales_date || "-"}</span>,
-    },
-    {
-      key: "deal_status",
-      label: "実施状況",
-      width: 80,
-      render: (c) => {
-        const s = c.pipeline?.deal_status || "-";
-        return <span className={`text-xs px-1.5 py-0.5 rounded ${getDealStatusColor(s)}`}>{s}</span>;
-      },
     },
     {
       key: "stage",

@@ -78,6 +78,13 @@ function isAdditionalCoaching(stage: string | undefined | null): boolean {
   return stage.startsWith("追加指導");
 }
 
+/** 面談実施済み判定: 日程未確・未実施以外のstageは実施済み */
+const NOT_CONDUCTED_STAGES = new Set(["日程未確", "未実施"]);
+function isConducted(stage: string | undefined | null): boolean {
+  if (!stage) return false;
+  return !NOT_CONDUCTED_STAGES.has(stage);
+}
+
 export function computeFunnelMetrics(
   customers: CustomerWithRelations[]
 ): FunnelMetrics[] {
@@ -101,22 +108,18 @@ export function computeFunnelMetrics(
 
     if (c.pipeline) {
       const s = c.pipeline.stage;
-      const dealStatus = c.pipeline.deal_status;
       // 日程確定以降（日程未確以外すべて）
       if (s !== "日程未確") {
         m.scheduled++;
         // scheduled_actionable: 面談日が到来済み or 日付未設定 or 既に実施済みの場合のみカウント
         const meetingDate = c.pipeline.meeting_scheduled_date;
-        const alreadyConducted = dealStatus === "実施" || isStageClosed(s);
+        const alreadyConducted = isConducted(s);
         if (alreadyConducted || !meetingDate || meetingDate <= today) {
           m.scheduled_actionable++;
         }
       }
-      // 面談実施: deal_status が「実施」を含む or 成約系ステージ
-      if (
-        dealStatus === "実施" ||
-        isStageClosed(s)
-      ) {
+      // 面談実施: stageが日程未確・未実施以外
+      if (isConducted(s)) {
         m.conducted++;
       }
       // 追加指導（成約率分母から除外）
@@ -231,8 +234,7 @@ function computeRecentClosingRate(
     const m = byMonth.get(period)!;
     if (!c.pipeline) continue;
     const s = c.pipeline.stage;
-    const dealStatus = c.pipeline.deal_status;
-    if (dealStatus === "実施" || isStageClosed(s)) {
+    if (isConducted(s)) {
       m.conducted++;
     }
     if (isAdditionalCoaching(s)) {
@@ -667,13 +669,12 @@ export function computeChannelFunnelPivot(
 
     if (c.pipeline) {
       const s = c.pipeline.stage;
-      const dealStatus = c.pipeline.deal_status;
 
       if (s !== "日程未確") {
         p.scheduled++;
         ch.scheduled++;
       }
-      if (dealStatus === "実施" || isStageClosed(s)) {
+      if (isConducted(s)) {
         p.conducted++;
         ch.conducted++;
       }
@@ -824,7 +825,6 @@ function computeSegmentData(
     // ファネルステップ
     if (c.pipeline) {
       const s = c.pipeline.stage;
-      const dealStatus = c.pipeline.deal_status;
 
       // 日程確定
       if (s !== "日程未確") {
@@ -834,7 +834,7 @@ function computeSegmentData(
         grandTotals.scheduled++;
       }
       // 面談実施
-      if (dealStatus === "実施" || isStageClosed(s)) {
+      if (isConducted(s)) {
         pf.conducted++;
         ch.totals.conducted++;
         pt.conducted++;
