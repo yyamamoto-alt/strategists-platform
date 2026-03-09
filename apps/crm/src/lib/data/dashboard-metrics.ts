@@ -993,15 +993,17 @@ function computeSegmentData(
     }
   }
 
-  // 売上計算: revenue = confirmed + agent, forecast = confirmed + agent + pipeline期待値 × 月消化率補正
+  // 売上計算: revenue = confirmed + agent
+  // forecast = (confirmed + agent) × 月消化率補正 + pipeline期待値（確率補正済みのため補正不要）
+  // ※ ダッシュボードの forecast_total と同じ計算式
   for (const p of allPeriods) {
     const conf = confirmedRevenue[p] || 0;
     const agentRev = agentRevByPeriod[p] || 0;
     revenue[p] = conf + agentRev;
     revenueTotal += revenue[p];
-    const forecast = conf + agentRev + (forecastByPeriod[p] || 0);
     const monthMul = getMonthProgressMultiplier(p);
-    forecastRevenue[p] = Math.round(forecast * monthMul);
+    const pipelineExpected = forecastByPeriod[p] || 0;
+    forecastRevenue[p] = Math.round((conf + agentRev) * monthMul + pipelineExpected);
     forecastRevenueTotal += forecastRevenue[p];
   }
 
@@ -1249,7 +1251,7 @@ export interface OrderBasedRevenue {
  * orders テーブルから月別売上を計算（段階的切替用）
  * 既存の computeRevenueMetrics() と並行して比較するために使用
  */
-export async function computeOrderBasedRevenue(): Promise<OrderBasedRevenue[]> {
+async function computeOrderBasedRevenueRaw(): Promise<OrderBasedRevenue[]> {
   const supabase = createServiceClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as any;
@@ -1304,3 +1306,9 @@ export async function computeOrderBasedRevenue(): Promise<OrderBasedRevenue[]> {
   results.sort((a, b) => a.period.localeCompare(b.period));
   return results;
 }
+
+export const computeOrderBasedRevenue = unstable_cache(
+  computeOrderBasedRevenueRaw,
+  ["order-based-revenue"],
+  { revalidate: 60, tags: ["orders"] }
+);

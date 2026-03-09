@@ -1,11 +1,12 @@
 import "server-only";
 
 import { createServiceClient } from "@/lib/supabase/server";
+import { unstable_cache } from "next/cache";
 import type { LtvConfig } from "@/lib/calc-fields";
 import { DEFAULT_LTV_CONFIG } from "@/lib/calc-fields";
 
 /** app_settings からLTV設定を取得 */
-export async function fetchLtvConfig(): Promise<LtvConfig> {
+async function fetchLtvConfigRaw(): Promise<LtvConfig> {
   try {
     const supabase = createServiceClient();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -30,3 +31,9 @@ export async function fetchLtvConfig(): Promise<LtvConfig> {
     return DEFAULT_LTV_CONFIG;
   }
 }
+
+export const fetchLtvConfig = unstable_cache(
+  fetchLtvConfigRaw,
+  ["ltv-config"],
+  { revalidate: 300, tags: ["settings"] }
+);

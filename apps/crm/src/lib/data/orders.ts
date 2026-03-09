@@ -65,7 +65,7 @@ export async function fetchOrdersByCustomer(
   return data as Order[];
 }
 
-export async function fetchUnmatchedOrders(): Promise<Order[]> {
+async function fetchUnmatchedOrdersRaw(): Promise<Order[]> {
   const supabase = createServiceClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as any;
@@ -83,6 +83,12 @@ export async function fetchUnmatchedOrders(): Promise<Order[]> {
 
   return data as Order[];
 }
+
+export const fetchUnmatchedOrders = unstable_cache(
+  fetchUnmatchedOrdersRaw,
+  ["unmatched-orders"],
+  { revalidate: 60, tags: ["orders"] }
+);
 
 // ================================================================
 // Upsert（冪等: UNIQUE(source, source_record_id) を活用）
@@ -127,7 +133,7 @@ export interface ReconciliationItem {
   difference: number;
 }
 
-export async function fetchReconciliationReport(): Promise<
+async function fetchReconciliationReportRaw(): Promise<
   ReconciliationItem[]
 > {
   const supabase = createServiceClient();
@@ -192,3 +198,9 @@ export async function fetchReconciliationReport(): Promise<
   results.sort((a, b) => Math.abs(b.difference) - Math.abs(a.difference));
   return results;
 }
+
+export const fetchReconciliationReport = unstable_cache(
+  fetchReconciliationReportRaw,
+  ["reconciliation-report"],
+  { revalidate: 60, tags: ["orders"] }
+);
