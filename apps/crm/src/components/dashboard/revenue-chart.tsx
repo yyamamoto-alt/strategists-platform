@@ -75,26 +75,26 @@ function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
         <Bar
           dataKey="confirmed_school_kisotsu"
           name="既卒スクール"
-          fill="#4e79a7"
+          fill="#dc2626"
           stackId="revenue"
           radius={[0, 0, 0, 0]}
         />
         <Bar
           dataKey="confirmed_school_shinsotsu"
           name="新卒スクール"
-          fill="#59a14f"
+          fill="#22c55e"
           stackId="revenue"
         />
         <Bar
           dataKey="confirmed_agent"
           name="人材確定"
-          fill="#e15759"
+          fill="#c2410c"
           stackId="revenue"
         />
         <Bar
           dataKey="confirmed_subsidy"
           name="補助金"
-          fill="#76b7b2"
+          fill="#f87171"
           stackId="revenue"
         />
 
@@ -102,13 +102,13 @@ function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
         <Bar
           dataKey="content_revenue"
           name="note売上"
-          fill="#b07aa1"
+          fill="#41c9b4"
           stackId="revenue"
         />
         <Bar
           dataKey="myvision_revenue"
           name="MyVision受託"
-          fill="#edc948"
+          fill="#22d3ee"
           stackId="revenue"
         />
         <Bar
@@ -118,11 +118,11 @@ function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
           stackId="revenue"
         />
 
-        {/* 人材見込売上（半透明、バーン系） */}
+        {/* 人材見込売上（半透明オレンジ） */}
         <Bar
           dataKey="projected_agent"
           name="人材見込"
-          fill="#f28e2b"
+          fill="#f97316"
           fillOpacity={0.45}
           stackId="revenue"
           radius={[4, 4, 0, 0]}
