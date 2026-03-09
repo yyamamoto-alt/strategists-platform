@@ -147,18 +147,13 @@ function analyzeAllSlots(allSlots: Slot[], now: Date, totalDays: number, t: Thre
   return { totalSlots, nearSlots, midSlots, farSlots, eveningWeekendSlots, dailyBreakdown, alerts };
 }
 
-function formatReport(analysis: ReturnType<typeof analyzeAllSlots>, eventTypeNames: string[]): string {
+function formatReport(analysis: ReturnType<typeof analyzeAllSlots>, eventTypeName: string): string {
   const { totalSlots, nearSlots, midSlots, farSlots, eveningWeekendSlots, dailyBreakdown, alerts } = analysis;
   const hasAlert = alerts.length > 0;
   const icon = hasAlert ? "⚠️" : "✅";
 
-  const targetLabel = eventTypeNames.length > 0
-    ? `対象: ${eventTypeNames.join(", ")}`
-    : "全イベントタイプ合算";
-
   const lines: string[] = [
-    `${icon} *Jicoo 空き枠レポート* — 合計 *${totalSlots}枠*`,
-    `_${targetLabel}_`,
+    `${icon} *Jicoo 空き枠レポート — ${eventTypeName}* — 合計 *${totalSlots}枠*`,
     "",
     `📊 *期間別*`,
     `　今後5日: *${nearSlots}枠* ｜ 4〜10日目: *${midSlots}枠* ｜ 10日目〜: *${farSlots}枠*`,
@@ -229,9 +224,8 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: true, message: "No matching event types" });
     }
 
-    // 2. 空き枠を合算取得（7日制限があるので分割）
+    // 2. 予約ページごとに個別に分析・通知
     const now = new Date();
-    const allSlots: Slot[] = [];
     const periods: [string, string][] = [];
 
     for (let d = 0; d < config.totalDays; d += 7) {
@@ -241,7 +235,15 @@ export async function GET(request: Request) {
       periods.push([start, end]);
     }
 
+    const results: {
+      eventType: string;
+      totalSlots: number;
+      alerts: string[];
+    }[] = [];
+
     for (const et of eventTypes) {
+      const slots: Slot[] = [];
+
       for (const [pStart, pEnd] of periods) {
         try {
           const res = await fetch(
@@ -250,30 +252,27 @@ export async function GET(request: Request) {
           );
           if (!res.ok) continue;
           const data = await res.json();
-          allSlots.push(...((data?.data || []) as Slot[]));
+          slots.push(...((data?.data || []) as Slot[]));
         } catch {
           // skip
         }
       }
+
+      // 個別分析
+      const analysis = analyzeAllSlots(slots, now, config.totalDays, config.thresholds);
+      const report = formatReport(analysis, et.name);
+      await notifyJicooAvailability(report);
+
+      results.push({
+        eventType: et.name,
+        totalSlots: analysis.totalSlots,
+        alerts: analysis.alerts,
+      });
     }
-
-    // 3. 分析
-    const analysis = analyzeAllSlots(allSlots, now, config.totalDays, config.thresholds);
-
-    // 4. Slack通知
-    const eventTypeNames = eventTypes.map((et) => et.name);
-    const report = formatReport(analysis, eventTypeNames);
-    await notifyJicooAvailability(report);
 
     return NextResponse.json({
       success: true,
-      eventTypes: eventTypeNames,
-      totalSlots: analysis.totalSlots,
-      nearSlots: analysis.nearSlots,
-      midSlots: analysis.midSlots,
-      farSlots: analysis.farSlots,
-      eveningWeekendSlots: analysis.eveningWeekendSlots,
-      alerts: analysis.alerts,
+      results,
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Unknown error";
