@@ -393,6 +393,34 @@ const SYSTEM_AUTOMATIONS: SystemAutomation[] = [
     isActive: true,
     steps: 3,
   },
+  {
+    id: "sys-student-reminder",
+    name: "受講者リマインドメール",
+    description: "受講期限の当日・1ヶ月前に受講者へリマインドメールを送信（⚠️初期OFF）",
+    category: "cron",
+    trigger: { icon: "clock", label: "毎日 0:00 (UTC)" },
+    actions: [
+      { icon: "database", label: "期限チェック" },
+      { icon: "mail", label: "メール送信" },
+    ],
+    schedule: "0 0 * * *",
+    isActive: true,
+    steps: 3,
+  },
+  {
+    id: "sys-coaching-start-notification",
+    name: "受講開始日リマインドメール",
+    description: "初回指導完了時に受講者へ受講期間案内メールを送信（⚠️初期OFF）",
+    category: "cron",
+    trigger: { icon: "clock", label: "毎日 0:00 (UTC)" },
+    actions: [
+      { icon: "database", label: "初回指導検知" },
+      { icon: "mail", label: "メール送信" },
+    ],
+    schedule: "0 0 * * *",
+    isActive: true,
+    steps: 3,
+  },
 ];
 
 // ================================================================

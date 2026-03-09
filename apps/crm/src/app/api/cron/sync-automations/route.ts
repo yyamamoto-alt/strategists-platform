@@ -6,6 +6,40 @@ import { sendSlackMessage } from "@/lib/slack";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
+async function checkAndSendEscalation(
+  automationName: string,
+  rowData: Record<string, string>,
+  channel: string
+) {
+  if (!automationName.includes("評価")) return;
+
+  // 評価値を探す
+  const ratingKey = Object.keys(rowData).find((k) => k.includes("評価"));
+  if (!ratingKey) return;
+  const ratingValue = rowData[ratingKey];
+  if (!ratingValue || (!/^1/.test(ratingValue) && !/^2/.test(ratingValue))) return;
+
+  // 低評価検出 — エスカレーションメッセージ送信
+  const mentorKey = Object.keys(rowData).find((k) => k.includes("メンター"));
+  const nameKey = Object.keys(rowData).find((k) => k.includes("名前") || k.includes("氏名"));
+  const feedbackKey = Object.keys(rowData).find((k) => k.includes("連絡") || k.includes("依頼"));
+
+  const mentor = mentorKey ? rowData[mentorKey] : "不明";
+  const studentName = nameKey ? rowData[nameKey] : "不明";
+  const feedback = feedbackKey ? rowData[feedbackKey] : "なし";
+
+  const escalationMessage = [
+    "<@U07GRS0T681><@U03TF7YESK1>",
+    "*低評価がついてます*",
+    `*担当メンター：* ${mentor}`,
+    `*名前：* ${studentName}`,
+    `*評価：* ${ratingValue}`,
+    `*運営への連絡・依頼事項：* ${feedback}`,
+  ].join("\n");
+
+  await sendSlackMessage(channel, escalationMessage);
+}
+
 function buildSlackMessage(
   automationName: string,
   rowData: Record<string, string>,
@@ -109,6 +143,7 @@ export async function GET(request: Request) {
           automation.message_template
         );
         await sendSlackMessage(automation.slack_channel_id, message);
+        await checkAndSendEscalation(automation.name, rowData, automation.slack_channel_id);
         notificationsSent++;
 
         // Slack APIレートリミット対策（1秒1回制限）

@@ -929,7 +929,8 @@ export function CustomerDetailClient({
       });
       if (res.ok) {
         setIsEditing(false);
-        window.location.reload();
+        setEditValues({});
+        router.refresh();
       } else {
         const data = await res.json();
         alert(data.error || "保存に失敗しました");

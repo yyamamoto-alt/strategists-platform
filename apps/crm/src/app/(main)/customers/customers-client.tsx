@@ -8,6 +8,7 @@ import {
   formatPercent,
   getStageColor,
   getAttributeColor,
+  getChannelColor,
 } from "@/lib/utils";
 import type { CustomerWithRelations } from "@strategy-school/shared-db";
 import type { ChannelAttribution } from "@/lib/data/marketing-settings";
@@ -74,12 +75,13 @@ const VIEW_TABS: { key: ViewTab; label: string }[] = [
 const VIEW_COLUMNS: Record<ViewTab, string[] | null> = {
   overview: [
     // 基本
-    "application_date", "name", "attribute", "stage", "subsidy_eligible",
-    "career_history", "is_agent_customer",
-    // 売上（計算式表示: 確定 + 人材見込 = 見込含む）
-    "confirmed_amount", "rev_plus", "rev_agent", "rev_eq", "rev_total",
-    // 帰属チャネル
+    "application_date", "name", "attribute", "stage",
+    // 帰属チャネル（検討状況の右）
     "marketing_channel",
+    "subsidy_eligible",
+    "career_history", "is_agent_customer",
+    // 売上（見込含む = 確定 + 人材見込）
+    "rev_total", "rev_eq", "confirmed_amount", "rev_plus", "rev_agent",
     // プラン名
     "plan_name",
     // マーケ: 経路営業のみ
@@ -334,8 +336,8 @@ export function CustomersClient({ customers, attributionMap, firstPaidMap }: Cus
         filterValue: (c) => c.contract?.subsidy_eligible ? "対象" : "" },
 
       // ─── 経歴 ───
-      { key: "career_history", label: "経歴", width: 220,
-        render: (c) => <Truncated value={c.career_history} width={220} /> },
+      { key: "career_history", label: "経歴", width: 500,
+        render: (c) => <Truncated value={c.career_history} width={500} /> },
 
       // ─── 人材紹介利用 ───
       { key: "is_agent_customer", label: "エージェント利用", width: 24, align: "center" as const,
@@ -355,8 +357,7 @@ export function CustomersClient({ customers, attributionMap, firstPaidMap }: Cus
       { key: "rev_plus", label: "+", width: 16, align: "center" as const, category: "sales",
         render: () => <span className="text-gray-500 text-[10px]">+</span> },
 
-      { key: "rev_agent", label: "人材見込", width: 90, align: "right" as const, computed: true, category: "sales",
-        formula: "想定年収 × 入社至る率 × 内定確度 × 紹介料率 × マージン",
+      { key: "rev_agent", label: "人材見込", width: 90, align: "right" as const, category: "sales",
         render: (c) => {
           if (!isAgentCustomer(c)) return <span className="text-gray-600 text-xs">-</span>;
           const v = calcExpectedReferralFee(c);
@@ -366,8 +367,7 @@ export function CustomersClient({ customers, attributionMap, firstPaidMap }: Cus
       { key: "rev_eq", label: "=", width: 16, align: "center" as const, category: "sales",
         render: () => <span className="text-gray-500 text-[10px]">=</span> },
 
-      { key: "rev_total", label: "見込含む売上", width: 100, align: "right" as const, computed: true, category: "sales",
-        formula: "確定売上 + 人材見込み売上",
+      { key: "rev_total", label: "見込含む売上", width: 100, align: "right" as const, category: "sales",
         render: (c) => {
           const school = getSchoolRevenue(c);
           const agent = isAgentCustomer(c) ? calcExpectedReferralFee(c) : 0;
@@ -384,7 +384,7 @@ export function CustomersClient({ customers, attributionMap, firstPaidMap }: Cus
       { key: "marketing_channel", label: "帰属チャネル", width: 110, category: "base",
         render: (c) => {
           const attr = attributionMap[c.id];
-          return attr ? <span className="text-white font-medium text-xs">{attr.marketing_channel}</span> : <span className="text-gray-600 text-xs">-</span>;
+          return attr ? <span className={`inline-block px-1.5 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap ${getChannelColor(attr.marketing_channel)}`}>{attr.marketing_channel}</span> : <span className="text-gray-600 text-xs">-</span>;
         }, sortValue: (c) => attributionMap[c.id]?.marketing_channel || "" },
 
       // ═══ マーケティング（タブ内） ═══
