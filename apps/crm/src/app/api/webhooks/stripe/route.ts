@@ -15,27 +15,33 @@ import crypto from "crypto";
 export async function POST(request: Request) {
   const rawBody = await request.text();
 
-  // Stripe署名検証
+  // Stripe署名検証（必須）
   const sigHeader = request.headers.get("stripe-signature");
-  const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET?.trim();
 
-  if (endpointSecret && sigHeader) {
-    // Stripe の署名形式: t=timestamp,v1=signature
-    const elements = sigHeader.split(",");
-    const timestamp = elements.find((e) => e.startsWith("t="))?.slice(2);
-    const sig = elements.find((e) => e.startsWith("v1="))?.slice(3);
+  if (!endpointSecret || !sigHeader) {
+    console.error("Stripe webhook: missing secret or signature header");
+    return NextResponse.json({ error: "Missing signature" }, { status: 401 });
+  }
 
-    if (timestamp && sig) {
-      const signedPayload = `${timestamp}.${rawBody}`;
-      const expected = crypto
-        .createHmac("sha256", endpointSecret)
-        .update(signedPayload)
-        .digest("hex");
+  // Stripe の署名形式: t=timestamp,v1=signature
+  const elements = sigHeader.split(",");
+  const timestamp = elements.find((e) => e.startsWith("t="))?.slice(2);
+  const sig = elements.find((e) => e.startsWith("v1="))?.slice(3);
 
-      if (sig !== expected) {
-        return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
-      }
+  if (timestamp && sig) {
+    const signedPayload = `${timestamp}.${rawBody}`;
+    const expected = crypto
+      .createHmac("sha256", endpointSecret)
+      .update(signedPayload)
+      .digest("hex");
+
+    if (sig !== expected) {
+      console.error("Stripe webhook: signature mismatch");
+      return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
     }
+  } else {
+    return NextResponse.json({ error: "Invalid signature format" }, { status: 401 });
   }
 
   let payload: Record<string, unknown>;

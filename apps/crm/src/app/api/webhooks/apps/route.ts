@@ -18,7 +18,7 @@ export async function POST(request: Request) {
 
   // 署名検証
   const signature = request.headers.get("x-apps-signature") || request.headers.get("X-Apps-Signature");
-  const secret = process.env.APPS_WEBHOOK_SECRET;
+  const secret = process.env.APPS_WEBHOOK_SECRET?.trim();
 
   if (secret && signature) {
     const expected = crypto
