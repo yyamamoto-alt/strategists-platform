@@ -411,11 +411,10 @@ export function computeThreeTierRevenue(
       m.confirmed_subsidy += getSubsidyAmount(c);
     }
 
-    // --- Tier 2: 人材見込み（確定除外、受講中のみ — Excel Col BU 準拠） ---
-    // isCurrentlyEnrolled: 成約/入金済/追加指導 かつ 指導終了日が未来
-    // calcAgentProjectedRevenue を使用: 「一部利用」は0.5倍（calcExpectedLTVと一致させる）
-    const enrolledAgent = isAgentCustomer(c) && !isAgentConfirmed(c) && isCurrentlyEnrolled(c);
-    if (enrolledAgent) {
+    // --- Tier 2: 人材見込み（確定除外） ---
+    // 受講中かどうかは無関係 — 人材紹介の確定/未確定のみで判定
+    const unconfirmedAgent = isAgentCustomer(c) && !isAgentConfirmed(c);
+    if (unconfirmedAgent) {
       const fee = calcAgentProjectedRevenue(c);
       if (fee > 0) {
         m.projected_agent += fee;
@@ -431,8 +430,8 @@ export function computeThreeTierRevenue(
         const potentialSchool =
           (isShinsotsu(c.attribute) ? DEFAULT_LTV_CONFIG.defaultLtvShinsotsu : DEFAULT_LTV_CONFIG.defaultLtvKisotsu);
         m.forecast_school += potentialSchool * prob;
-        // エージェント売上期待値（Tier 2で計上済みの受講中顧客は除外）
-        if (isAgentCustomer(c) && !enrolledAgent) {
+        // エージェント売上期待値（Tier 2で計上済みの顧客は除外）
+        if (isAgentCustomer(c) && !unconfirmedAgent) {
           m.forecast_agent += calcExpectedReferralFee(c) * prob;
         }
         // 補助金期待値
