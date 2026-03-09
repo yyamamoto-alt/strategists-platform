@@ -300,7 +300,7 @@ async function syncFormFieldsToRelatedTables(
       const nextDate = normalizeDateStr(rawData["次回実施日 or 検討結果連絡日"]);
       const result = rawData["結果"] || "";
       if (result.includes("追加指導") || result === "枠確保") {
-        pipelineUpdate.meeting_scheduled_date = nextDate;
+        pipelineUpdate.additional_coaching_date = nextDate;
       } else {
         pipelineUpdate.response_deadline = nextDate;
       }

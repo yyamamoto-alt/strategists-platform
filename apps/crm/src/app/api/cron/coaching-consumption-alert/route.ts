@@ -66,15 +66,12 @@ interface LearningRow {
   coaching_end_date: string;
   total_sessions: number;
   completed_sessions: number;
+  customer_id: string;
   customers: {
     id: string;
     name: string;
     email: string;
   };
-  sales_pipeline: Array<{
-    stage: string;
-    sales_person: string | null;
-  }> | null;
 }
 
 interface AlertEntry {
@@ -129,14 +126,11 @@ export async function GET(request: Request) {
       coaching_end_date,
       total_sessions,
       completed_sessions,
+      customer_id,
       customers!inner (
         id,
         name,
         email
-      ),
-      sales_pipeline:sales_pipeline!customer_id (
-        stage,
-        sales_person
       )
     `
     )
@@ -152,6 +146,24 @@ export async function GET(request: Request) {
     );
   }
 
+  // sales_pipeline は learning_records と直接FK関係がないため、別クエリで取得し customer_id で紐付け
+  const customerIds = (rows || []).map((r: { customer_id: string }) => r.customer_id).filter(Boolean);
+  const pipelineMap = new Map<string, Array<{ stage: string; sales_person: string | null }>>();
+
+  if (customerIds.length > 0) {
+    const { data: pipelines } = await supabase
+      .from("sales_pipeline")
+      .select("customer_id, stage, sales_person")
+      .in("customer_id", customerIds);
+
+    for (const p of (pipelines || []) as { customer_id: string; stage: string; sales_person: string | null }[]) {
+      if (!pipelineMap.has(p.customer_id)) {
+        pipelineMap.set(p.customer_id, []);
+      }
+      pipelineMap.get(p.customer_id)!.push({ stage: p.stage, sales_person: p.sales_person });
+    }
+  }
+
   const validStages = new Set(["成約", "入金済", "追加指導"]);
 
   // ================================================================
@@ -160,9 +172,9 @@ export async function GET(request: Request) {
   const alerts: AlertEntry[] = [];
   const nowMs = jst.getTime();
 
-  for (const row of (rows || []) as LearningRow[]) {
+  for (const row of (rows || []) as (LearningRow & { customer_id: string })[]) {
     // ステージフィルタ: sales_pipeline のいずれかが有効ステージか
-    const pipelines = row.sales_pipeline || [];
+    const pipelines = pipelineMap.get(row.customer_id) || [];
     const hasValidStage = pipelines.some((sp) => validStages.has(sp.stage));
     if (!hasValidStage) continue;
 

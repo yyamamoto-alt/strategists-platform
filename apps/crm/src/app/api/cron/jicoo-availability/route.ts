@@ -199,29 +199,17 @@ export async function GET(request: Request) {
   const headers = { Authorization: `Bearer ${JICOO_API_KEY}` };
 
   try {
-    // 1. イベントタイプ取得
-    const etRes = await fetch(`${JICOO_API_BASE}/event_types?perPage=50`, { headers });
-    if (!etRes.ok) {
-      return NextResponse.json({ error: `Event types: ${etRes.status}` }, { status: 500 });
-    }
-    const etData = await etRes.json();
-    let eventTypes = ((etData?.data || []) as {
-      uid: string; name: string; status: string;
-    }[]).filter((et) => et.status === "enable");
-
-    // 対象イベントタイプをフィルタ（UID優先、なければ名前部分一致）
-    if (config.targetEventUids.length > 0) {
-      eventTypes = eventTypes.filter((et) =>
-        config.targetEventUids.includes(et.uid),
-      );
-    } else if (config.targetEventNames.length > 0) {
-      eventTypes = eventTypes.filter((et) =>
-        config.targetEventNames.some((target) => et.name.includes(target)),
-      );
-    }
+    // 1. 対象イベントタイプを設定から取得（UIDベースで直接利用）
+    // event_types API は権限制約で403になるため、設定済みUIDを直接使用する
+    const eventTypes = config.targetEventUids.map((uid) => {
+      // targetEventNamesが設定されていれば対応する名前を使用、なければUID表示
+      const nameIndex = config.targetEventUids.indexOf(uid);
+      const name = config.targetEventNames[nameIndex] || `イベント(${uid})`;
+      return { uid, name };
+    });
 
     if (eventTypes.length === 0) {
-      return NextResponse.json({ success: true, message: "No matching event types" });
+      return NextResponse.json({ success: true, message: "No target event UIDs configured" });
     }
 
     // 2. 予約ページごとに個別に分析・通知

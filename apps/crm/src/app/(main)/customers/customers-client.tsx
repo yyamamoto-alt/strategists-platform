@@ -87,8 +87,8 @@ const VIEW_COLUMNS: Record<ViewTab, string[] | null> = {
     "plan_name",
     // マーケ: 経路営業のみ
     "sales_route",
-    // 営業: 営業日, 角度, 返答日, 営業担当
-    "sales_date", "probability", "response_deadline", "sales_person",
+    // 営業: 営業予定日, 営業日, 追加指導日, 角度, 返答期限, 営業担当
+    "meeting_scheduled", "sales_date", "additional_coaching_date", "probability", "response_deadline", "sales_person",
     // 人材紹介
     "referral_category", "referral_status", "external_agents",
     "offer_rank", "offer_salary", "referral_fee_rate", "margin",
@@ -106,7 +106,7 @@ const VIEW_COLUMNS: Record<ViewTab, string[] | null> = {
   sales: [
     "application_date", "name", "attribute", "stage", "subsidy_eligible",
     "confirmed_amount", "rev_plus", "rev_agent", "rev_eq", "rev_total",
-    "probability", "sales_date", "response_deadline",
+    "meeting_scheduled", "probability", "sales_date", "additional_coaching_date", "response_deadline",
     "first_amount", "discount",
     "sales_person", "sales_content", "sales_strategy",
     "decision_factor", "application_reason",
@@ -432,7 +432,7 @@ export function CustomersClient() {
         render: (c) => <span className="text-xs">{c.pipeline?.agent_interest_at_application || "-"}</span>,
         sortValue: (c) => String(c.pipeline?.agent_interest_at_application || "") },
 
-      { key: "meeting_scheduled", label: "追加指導日", width: 82, category: "sales",
+      { key: "meeting_scheduled", label: "営業予定日", width: 82, category: "sales",
         render: (c) => <span className="text-xs">{fmtDate(c.pipeline?.meeting_scheduled_date)}</span>,
         sortValue: (c) => c.pipeline?.meeting_scheduled_date || "" },
 
@@ -448,6 +448,17 @@ export function CustomersClient() {
           return p != null ? <span className={`inline-block px-1.5 py-0.5 rounded-full text-[10px] font-medium ${getProbabilityColor(p)}`}>{formatPercent(p)}</span> : <span className="text-gray-600 text-xs">-</span>;
         },
         sortValue: (c) => c.pipeline?.probability || 0 },
+
+      { key: "additional_coaching_date", label: "追加指導日", width: 82, category: "sales",
+        render: (c) => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const d = (c.pipeline as any)?.additional_coaching_date;
+          return <span className="text-xs">{fmtDate(d)}</span>;
+        },
+        sortValue: (c) => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          return (c.pipeline as any)?.additional_coaching_date || "";
+        }},
 
       { key: "response_deadline", label: "返答期限", width: 82, category: "sales",
         render: (c) => <span className="text-xs">{fmtDate(c.pipeline?.response_deadline)}</span>,

@@ -117,7 +117,7 @@ export async function GET(request: Request) {
           const nextDate = normalizeDateStr(rd["次回実施日 or 検討結果連絡日"]);
           const result = rd["結果"] || "";
           if (result.includes("追加指導") || result === "枠確保") {
-            upd.meeting_scheduled_date = nextDate;
+            upd.additional_coaching_date = nextDate;
           } else {
             upd.response_deadline = nextDate;
           }

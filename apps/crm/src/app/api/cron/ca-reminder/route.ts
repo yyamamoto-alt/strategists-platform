@@ -59,10 +59,33 @@ export async function GET(request: Request) {
   };
 
   // agent_service_enrolled=true の顧客でアクティブなパイプラインを取得
+  // agent_service_enrolled は agent_records テーブルにあるため、先にエージェント利用中の顧客IDを取得
+  const { data: agentCustomers, error: agentError } = await supabase
+    .from("agent_records")
+    .select("customer_id")
+    .eq("agent_service_enrolled", true);
+
+  if (agentError) {
+    console.error("Agent records query error:", agentError);
+    return NextResponse.json({ ok: false, error: agentError.message }, { status: 500 });
+  }
+
+  const agentCustomerIds = (agentCustomers || []).map((r: { customer_id: string }) => r.customer_id);
+
+  if (agentCustomerIds.length === 0) {
+    return NextResponse.json({
+      ok: true,
+      date: today,
+      message: "対象顧客なし（エージェント利用者0名）",
+      results,
+      timestamp: now.toISOString(),
+    });
+  }
+
   const { data: targets, error } = await supabase
     .from("sales_pipeline")
     .select("id, customer_id, sales_person, stage, customers!inner(name, email)")
-    .eq("customers.agent_service_enrolled", true)
+    .in("customer_id", agentCustomerIds)
     .in("stage", ACTIVE_AGENT_STAGES);
 
   if (error) {

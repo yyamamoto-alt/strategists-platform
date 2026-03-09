@@ -156,6 +156,7 @@ export interface SalesPipeline {
   additional_plan?: string | null;
   additional_discount_info?: string | null;
   additional_notes?: string | null;
+  additional_coaching_date?: string | null;
   initial_channel?: string | null;
   customer?: Customer;
 }

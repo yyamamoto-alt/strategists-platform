@@ -620,104 +620,133 @@ function RevenueSection({ customer, orders }: { customer: CustomerWithRelations;
   );
 }
 
-function buildPipelineFields(c: CustomerWithRelations): FieldDef[] {
+/** 営業セクションをサブグループに分割して返す */
+function buildPipelineFieldGroups(c: CustomerWithRelations): { label: string; fields: FieldDef[] }[] {
   if (!c.pipeline) return [];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const p = c.pipeline as any;
+
   return [
-    { key: "stage", label: "ステージ", source: "manual", type: "select", options: [
-      "日程未確", "未実施", "実施不可",
-      "検討中", "長期検討",
-      "成約", "成約(追加指導経由)", "成約見込(未入金)", "途中解約(成約)",
-      "その他購入", "動画講座購入", "追加指導", "追加指導(NoShow)", "追加指導(CL)",
-      "NoShow", "CL",
-      "失注", "失注見込", "失注見込(自動)", "全額返金",
-      "キャンセル", "直前キャンセル",
-    ], table: "pipeline", getValue: () => c.pipeline?.stage || "-" },
-    { key: "probability", label: "営業角度", source: "sync", type: "number", table: "pipeline", getValue: () => c.pipeline?.probability != null ? formatPercent(c.pipeline.probability) : "-" },
-    { key: "meeting_scheduled_date", label: "追加指導日", source: "manual", type: "date", table: "pipeline", getValue: () => formatDate(c.pipeline?.meeting_scheduled_date ?? null) },
-    { key: "meeting_url", label: "会議URL", source: "sync", table: "pipeline", getValue: () => {
-      const url = (c.pipeline as Record<string, unknown> | undefined)?.meeting_url as string | null;
-      return url || "-";
-    }},
-    // 営業日①②③（営業報告フォームから同期）
-    { key: "sales_date", label: "営業日①", source: "sync", type: "date", table: "pipeline", getValue: () => formatDate(c.pipeline?.sales_date ?? null) },
-    { key: "sales_date_2", label: "営業日②", source: "sync", type: "date", table: "pipeline", getValue: () => formatDate(c.pipeline?.sales_date_2 ?? null) },
-    { key: "sales_date_3", label: "営業日③", source: "sync", type: "date", table: "pipeline", getValue: () => formatDate(c.pipeline?.sales_date_3 ?? null) },
-    // 営業日区分①②③（営業報告フォームから同期）
-    { key: "meeting_category_1", label: "営業日①区分", source: "sync", table: "pipeline", getValue: () => (p.meeting_category_1 as string) || "-" },
-    { key: "meeting_category_2", label: "営業日②区分", source: "sync", table: "pipeline", getValue: () => (p.meeting_category_2 as string) || "-" },
-    { key: "meeting_category_3", label: "営業日③区分", source: "sync", table: "pipeline", getValue: () => (p.meeting_category_3 as string) || "-" },
-    // 営業担当①②③（営業報告フォームから同期）
-    { key: "sales_person", label: "営業担当①", source: "sync", table: "pipeline", getValue: () => c.pipeline?.sales_person || "-" },
-    { key: "sales_person_2", label: "営業担当②", source: "sync", table: "pipeline", getValue: () => (p.sales_person_2 as string) || "-" },
-    { key: "sales_person_3", label: "営業担当③", source: "sync", table: "pipeline", getValue: () => (p.sales_person_3 as string) || "-" },
-    { key: "decision_factor", label: "ネック要因", source: "sync", table: "pipeline", getValue: () => c.pipeline?.decision_factor || "-" },
-    { key: "comparison_services", label: "比較サービス", source: "sync", table: "pipeline", getValue: () => c.pipeline?.comparison_services || "-" },
-    // 返答期限（営業報告フォームから同期：検討中/成約見込等の場合）
-    { key: "response_deadline", label: "返答期限", source: "sync", type: "date", table: "pipeline", getValue: () => formatDate((p.response_deadline as string) ?? null) },
-    // 旧返答日②③（過去データ互換）
-    { key: "response_date_2", label: "返答日②", source: "sync", type: "date", table: "pipeline", getValue: () => formatDate(c.pipeline?.response_date_2 ?? null) },
-    { key: "response_date_3", label: "返答日③", source: "sync", type: "date", table: "pipeline", getValue: () => formatDate(c.pipeline?.response_date_3 ?? null) },
-    // 提案プラン①②③（営業報告フォームから同期）
-    { key: "additional_plan", label: "提案プラン①", source: "sync", table: "pipeline", getValue: () => c.pipeline?.additional_plan || "-" },
-    { key: "additional_plan_2", label: "提案プラン②", source: "sync", table: "pipeline", getValue: () => (p.additional_plan_2 as string) || "-" },
-    { key: "additional_plan_3", label: "提案プラン③", source: "sync", table: "pipeline", getValue: () => (p.additional_plan_3 as string) || "-" },
-    { key: "projected_amount", label: "売上見込", source: "manual", type: "number", table: "pipeline", getValue: () => c.pipeline?.projected_amount ? formatCurrency(c.pipeline.projected_amount) : "-" },
-    { key: "agent_interest", label: "エージェント希望", source: "sync", getValue: () => c.pipeline?.agent_interest_at_application ? "あり" : "なし" },
-    { key: "lead_time", label: "リードタイム", source: "sync", getValue: () => c.pipeline?.lead_time || "-" },
-    { key: "initial_channel", label: "初回認知経路", source: "sync", getValue: () => c.pipeline?.initial_channel || "-" },
-    { key: "marketing_memo", label: "マーケメモ", source: "manual", type: "textarea", table: "pipeline", getValue: () => c.pipeline?.marketing_memo || "-" },
-    { key: "sales_route", label: "経路(営業)", source: "sync", getValue: () => c.pipeline?.sales_route || c.pipeline?.route_by_sales || "-" },
-    { key: "agent_confirmation", label: "エージェント利用意向", source: "sync", getValue: () => c.pipeline?.agent_confirmation || "-" },
-    { key: "first_reward_category", label: "一次報酬分類", source: "sync", getValue: () => c.pipeline?.first_reward_category || "-" },
-    { key: "performance_reward_category", label: "成果報酬分類", source: "sync", getValue: () => c.pipeline?.performance_reward_category || "-" },
-    { key: "google_ads_target", label: "Google広告成果対象", source: "sync", getValue: () => c.pipeline?.google_ads_target || "-" },
-    { key: "sales_form_status", label: "営業フォーム提出状況", source: "sync", getValue: () => c.pipeline?.sales_form_status || "-" },
+    { label: "ステータス", fields: [
+      { key: "stage", label: "ステージ", source: "manual", type: "select", options: [
+        "日程未確", "未実施", "実施不可",
+        "検討中", "長期検討",
+        "成約", "成約(追加指導経由)", "成約見込(未入金)", "途中解約(成約)",
+        "その他購入", "動画講座購入", "追加指導", "追加指導(NoShow)", "追加指導(CL)",
+        "NoShow", "CL",
+        "失注", "失注見込", "失注見込(自動)", "全額返金",
+        "キャンセル", "直前キャンセル",
+      ], table: "pipeline", getValue: () => c.pipeline?.stage || "-" },
+      { key: "probability", label: "営業角度", source: "sync", type: "number", table: "pipeline", getValue: () => c.pipeline?.probability != null ? formatPercent(c.pipeline.probability) : "-" },
+      { key: "projected_amount", label: "売上見込", source: "manual", type: "number", table: "pipeline", getValue: () => c.pipeline?.projected_amount ? formatCurrency(c.pipeline.projected_amount) : "-" },
+      { key: "lead_time", label: "リードタイム", source: "sync", getValue: () => c.pipeline?.lead_time || "-" },
+    ]},
+    { label: "日程", fields: [
+      { key: "meeting_scheduled_date", label: "営業予定日", source: "manual", type: "date", table: "pipeline", getValue: () => formatDate(c.pipeline?.meeting_scheduled_date ?? null) },
+      { key: "additional_coaching_date", label: "追加指導日", source: "manual", type: "date", table: "pipeline", getValue: () => formatDate((p.additional_coaching_date as string) ?? null) },
+      { key: "response_deadline", label: "返答期限", source: "sync", type: "date", table: "pipeline", getValue: () => formatDate((p.response_deadline as string) ?? null) },
+      { key: "meeting_url", label: "会議URL", source: "sync", table: "pipeline", getValue: () => {
+        const url = (c.pipeline as Record<string, unknown> | undefined)?.meeting_url as string | null;
+        return url || "-";
+      }},
+    ]},
+    { label: "営業活動", fields: [
+      { key: "sales_date", label: "営業日①", source: "sync", type: "date", table: "pipeline", getValue: () => formatDate(c.pipeline?.sales_date ?? null) },
+      { key: "meeting_category_1", label: "区分①", source: "sync", table: "pipeline", getValue: () => (p.meeting_category_1 as string) || "-" },
+      { key: "sales_person", label: "担当①", source: "sync", table: "pipeline", getValue: () => c.pipeline?.sales_person || "-" },
+      { key: "additional_plan", label: "提案プラン①", source: "sync", table: "pipeline", getValue: () => c.pipeline?.additional_plan || "-" },
+      { key: "sales_date_2", label: "営業日②", source: "sync", type: "date", table: "pipeline", getValue: () => formatDate(c.pipeline?.sales_date_2 ?? null) },
+      { key: "meeting_category_2", label: "区分②", source: "sync", table: "pipeline", getValue: () => (p.meeting_category_2 as string) || "-" },
+      { key: "sales_person_2", label: "担当②", source: "sync", table: "pipeline", getValue: () => (p.sales_person_2 as string) || "-" },
+      { key: "additional_plan_2", label: "提案プラン②", source: "sync", table: "pipeline", getValue: () => (p.additional_plan_2 as string) || "-" },
+      { key: "sales_date_3", label: "営業日③", source: "sync", type: "date", table: "pipeline", getValue: () => formatDate(c.pipeline?.sales_date_3 ?? null) },
+      { key: "meeting_category_3", label: "区分③", source: "sync", table: "pipeline", getValue: () => (p.meeting_category_3 as string) || "-" },
+      { key: "sales_person_3", label: "担当③", source: "sync", table: "pipeline", getValue: () => (p.sales_person_3 as string) || "-" },
+      { key: "additional_plan_3", label: "提案プラン③", source: "sync", table: "pipeline", getValue: () => (p.additional_plan_3 as string) || "-" },
+    ]},
+    { label: "判断材料", fields: [
+      { key: "decision_factor", label: "ネック要因", source: "sync", table: "pipeline", getValue: () => c.pipeline?.decision_factor || "-" },
+      { key: "comparison_services", label: "比較サービス", source: "sync", table: "pipeline", getValue: () => c.pipeline?.comparison_services || "-" },
+      { key: "agent_interest", label: "エージェント希望", source: "sync", getValue: () => c.pipeline?.agent_interest_at_application ? "あり" : "なし" },
+      { key: "agent_confirmation", label: "エージェント利用意向", source: "sync", getValue: () => c.pipeline?.agent_confirmation || "-" },
+      { key: "sales_content", label: "営業内容", source: "manual", type: "textarea", table: "pipeline", getValue: () => c.pipeline?.sales_content || "-" },
+      { key: "sales_strategy", label: "営業戦略", source: "manual", type: "textarea", table: "pipeline", getValue: () => c.pipeline?.sales_strategy || "-" },
+    ]},
+    { label: "マーケティング", fields: [
+      { key: "initial_channel", label: "初回認知経路", source: "sync", getValue: () => c.pipeline?.initial_channel || "-" },
+      { key: "sales_route", label: "経路(営業)", source: "sync", getValue: () => c.pipeline?.sales_route || c.pipeline?.route_by_sales || "-" },
+      { key: "first_reward_category", label: "一次報酬分類", source: "sync", getValue: () => c.pipeline?.first_reward_category || "-" },
+      { key: "performance_reward_category", label: "成果報酬分類", source: "sync", getValue: () => c.pipeline?.performance_reward_category || "-" },
+      { key: "google_ads_target", label: "Google広告成果対象", source: "sync", getValue: () => c.pipeline?.google_ads_target || "-" },
+      { key: "sales_form_status", label: "営業フォーム提出状況", source: "sync", getValue: () => c.pipeline?.sales_form_status || "-" },
+      { key: "marketing_memo", label: "マーケメモ", source: "manual", type: "textarea", table: "pipeline", getValue: () => c.pipeline?.marketing_memo || "-" },
+    ]},
   ];
 }
 
-function buildLearningFields(c: CustomerWithRelations, appHistory?: ApplicationHistoryRecord[]): FieldDef[] {
+// 後方互換: pipelineFields全体のフラットリストも生成
+function buildPipelineFields(c: CustomerWithRelations): FieldDef[] {
+  return buildPipelineFieldGroups(c).flatMap(g => g.fields);
+}
+
+/** 学習セクションをサブグループに分割 */
+function buildLearningFieldGroups(c: CustomerWithRelations, appHistory?: ApplicationHistoryRecord[]): { label: string; fields: FieldDef[] }[] {
   if (!c.learning) return [];
   const firstCoachingDate = appHistory ? calcFirstCoachingDate(appHistory) : null;
+
   return [
-    { key: "mentor_name", label: "指導メンター", source: "sync", table: "learning", getValue: () => c.learning?.mentor_name || "-" },
-    { key: "contract_months", label: "契約月数", source: "manual", type: "number", table: "learning", getValue: () => c.learning?.contract_months != null ? `${c.learning.contract_months}ヶ月` : "-" },
-    { key: "coaching_start_date", label: "指導開始日", source: "calc", getValue: () => firstCoachingDate ? formatDate(firstCoachingDate) : "-" },
-    { key: "coaching_end_date", label: "指導終了日", source: "manual", type: "date", table: "learning", getValue: () => formatDate(c.learning?.coaching_end_date ?? null) },
-    { key: "last_coaching_date", label: "最終指導日", source: "sync", type: "date", table: "learning", getValue: () => formatDate(c.learning?.last_coaching_date ?? null) },
-    { key: "total_sessions", label: "契約指導回数", source: "manual", type: "number", table: "learning", getValue: () => c.learning?.total_sessions?.toString() || "-" },
-    { key: "completed_sessions", label: "指導完了数", source: "sync", type: "number", table: "learning", getValue: () => c.learning?.completed_sessions != null ? c.learning.completed_sessions.toString() : "-" },
-    { key: "remaining", label: "残指導回数", source: "calc", getValue: () => `${calcRemainingSessions(c)}回` },
-    { key: "schedule_progress", label: "日程消化率", source: "calc", getValue: () => { const v = calcScheduleProgress(c); return v !== null ? formatPercent(v) : "-"; } },
-    { key: "session_progress", label: "指導消化率", source: "calc", getValue: () => { const v = calcSessionProgress(c); return v !== null ? formatPercent(v) : "-"; } },
-    { key: "progress_status", label: "進捗", source: "calc", getValue: () => calcProgressStatus(c) },
-    { key: "current_level", label: "現在のレベル", source: "manual", table: "learning", getValue: () => c.learning?.current_level || "-" },
-    { key: "level_fermi", label: "フェルミ", source: "sync", getValue: () => c.learning?.level_fermi || "-" },
-    { key: "level_case", label: "ケース", source: "sync", getValue: () => c.learning?.level_case || "-" },
-    { key: "level_mck", label: "McK", source: "sync", getValue: () => c.learning?.level_mck || "-" },
-    { key: "weekly_sessions", label: "週あたり指導数", source: "manual", type: "number", table: "learning", getValue: () => c.learning?.weekly_sessions?.toString() || "-" },
-    { key: "extension_days", label: "延長(日)", source: "manual", type: "number", table: "learning", getValue: () => c.learning?.extension_days?.toString() || "-" },
-    { key: "coaching_requests", label: "指導要望", source: "manual", type: "textarea", table: "learning", getValue: () => c.learning?.coaching_requests || "-" },
-    { key: "enrollment_reason", label: "入会理由", source: "manual", type: "textarea", table: "learning", getValue: () => c.learning?.enrollment_reason || "-" },
-    { key: "selection_status", label: "選考状況", source: "manual", table: "learning", getValue: () => c.learning?.selection_status || "-" },
-    { key: "level_up_range", label: "レベルアップ幅", source: "sync", getValue: () => c.learning?.level_up_range || "-" },
-    { key: "mentoring_satisfaction", label: "メンタリング満足度", source: "sync", getValue: () => c.learning?.mentoring_satisfaction || "-" },
-    { key: "initial_coaching_level", label: "指導開始時レベル", source: "sync", getValue: () => c.learning?.initial_coaching_level || "-" },
-    { key: "attendance_rate", label: "出席率", source: "sync", getValue: () => c.learning?.attendance_rate != null ? formatPercent(c.learning.attendance_rate) : "-" },
-    { key: "progress_text", label: "進捗テキスト", source: "sync", getValue: () => c.learning?.progress_text || "-" },
-    { key: "case_interview_progress", label: "ケース面接進捗", source: "sync", getValue: () => c.learning?.case_interview_progress || "-" },
-    { key: "case_interview_weaknesses", label: "ケース面接苦手", source: "sync", getValue: () => c.learning?.case_interview_weaknesses || "-" },
-    { key: "behavior_session1", label: "ビヘイビア1回目", source: "sync", getValue: () => c.learning?.behavior_session1 || "-" },
-    { key: "behavior_session2", label: "ビヘイビア2回目", source: "sync", getValue: () => c.learning?.behavior_session2 || "-" },
-    { key: "assessment_session1", label: "アセスメント1回目", source: "sync", getValue: () => c.learning?.assessment_session1 || "-" },
-    { key: "assessment_session2", label: "アセスメント2回目", source: "sync", getValue: () => c.learning?.assessment_session2 || "-" },
-    { key: "offer_probability_at_end", label: "内定確度判定(終了時)", source: "sync", getValue: () => c.learning?.offer_probability_at_end || "-" },
-    { key: "additional_coaching_proposal", label: "追加指導提案(終了時)", source: "sync", getValue: () => c.learning?.additional_coaching_proposal || "-" },
-    { key: "interview_timing_at_end", label: "面接予定(終了時)", source: "sync", getValue: () => c.learning?.interview_timing_at_end || "-" },
-    { key: "target_companies_at_end", label: "受験企業(終了時)", source: "sync", getValue: () => c.learning?.target_companies_at_end || "-" },
-    { key: "start_email_sent", label: "開始メール送付", source: "sync", getValue: () => c.learning?.start_email_sent || "-" },
+    { label: "指導概要", fields: [
+      { key: "mentor_name", label: "指導メンター", source: "sync", table: "learning", getValue: () => c.learning?.mentor_name || "-" },
+      { key: "contract_months", label: "契約月数", source: "manual", type: "number", table: "learning", getValue: () => c.learning?.contract_months != null ? `${c.learning.contract_months}ヶ月` : "-" },
+      { key: "coaching_start_date", label: "指導開始日", source: "calc", getValue: () => firstCoachingDate ? formatDate(firstCoachingDate) : "-" },
+      { key: "coaching_end_date", label: "指導終了日", source: "manual", type: "date", table: "learning", getValue: () => formatDate(c.learning?.coaching_end_date ?? null) },
+      { key: "last_coaching_date", label: "最終指導日", source: "sync", type: "date", table: "learning", getValue: () => formatDate(c.learning?.last_coaching_date ?? null) },
+      { key: "weekly_sessions", label: "週あたり指導数", source: "manual", type: "number", table: "learning", getValue: () => c.learning?.weekly_sessions?.toString() || "-" },
+      { key: "extension_days", label: "延長(日)", source: "manual", type: "number", table: "learning", getValue: () => c.learning?.extension_days?.toString() || "-" },
+      { key: "start_email_sent", label: "開始メール送付", source: "sync", getValue: () => c.learning?.start_email_sent || "-" },
+    ]},
+    { label: "進捗", fields: [
+      { key: "total_sessions", label: "契約指導回数", source: "manual", type: "number", table: "learning", getValue: () => c.learning?.total_sessions?.toString() || "-" },
+      { key: "completed_sessions", label: "指導完了数", source: "sync", type: "number", table: "learning", getValue: () => c.learning?.completed_sessions != null ? c.learning.completed_sessions.toString() : "-" },
+      { key: "remaining", label: "残指導回数", source: "calc", getValue: () => `${calcRemainingSessions(c)}回` },
+      { key: "schedule_progress", label: "日程消化率", source: "calc", getValue: () => { const v = calcScheduleProgress(c); return v !== null ? formatPercent(v) : "-"; } },
+      { key: "session_progress", label: "指導消化率", source: "calc", getValue: () => { const v = calcSessionProgress(c); return v !== null ? formatPercent(v) : "-"; } },
+      { key: "progress_status", label: "進捗", source: "calc", getValue: () => calcProgressStatus(c) },
+      { key: "attendance_rate", label: "出席率", source: "sync", getValue: () => c.learning?.attendance_rate != null ? formatPercent(c.learning.attendance_rate) : "-" },
+    ]},
+    { label: "レベル", fields: [
+      { key: "current_level", label: "現在のレベル", source: "manual", table: "learning", getValue: () => c.learning?.current_level || "-" },
+      { key: "initial_coaching_level", label: "指導開始時レベル", source: "sync", getValue: () => c.learning?.initial_coaching_level || "-" },
+      { key: "level_fermi", label: "フェルミ", source: "sync", getValue: () => c.learning?.level_fermi || "-" },
+      { key: "level_case", label: "ケース", source: "sync", getValue: () => c.learning?.level_case || "-" },
+      { key: "level_mck", label: "McK", source: "sync", getValue: () => c.learning?.level_mck || "-" },
+      { key: "level_up_range", label: "レベルアップ幅", source: "sync", getValue: () => c.learning?.level_up_range || "-" },
+    ]},
+    { label: "評価・選考", fields: [
+      { key: "selection_status", label: "選考状況", source: "manual", table: "learning", getValue: () => c.learning?.selection_status || "-" },
+      { key: "mentoring_satisfaction", label: "メンタリング満足度", source: "sync", getValue: () => c.learning?.mentoring_satisfaction || "-" },
+      { key: "behavior_session1", label: "ビヘイビア1回目", source: "sync", getValue: () => c.learning?.behavior_session1 || "-" },
+      { key: "behavior_session2", label: "ビヘイビア2回目", source: "sync", getValue: () => c.learning?.behavior_session2 || "-" },
+      { key: "assessment_session1", label: "アセスメント1回目", source: "sync", getValue: () => c.learning?.assessment_session1 || "-" },
+      { key: "assessment_session2", label: "アセスメント2回目", source: "sync", getValue: () => c.learning?.assessment_session2 || "-" },
+      { key: "coaching_requests", label: "指導要望", source: "manual", type: "textarea", table: "learning", getValue: () => c.learning?.coaching_requests || "-" },
+      { key: "enrollment_reason", label: "入会理由", source: "manual", type: "textarea", table: "learning", getValue: () => c.learning?.enrollment_reason || "-" },
+    ]},
+    { label: "指導終了時", fields: [
+      { key: "offer_probability_at_end", label: "内定確度判定", source: "sync", getValue: () => c.learning?.offer_probability_at_end || "-" },
+      { key: "additional_coaching_proposal", label: "追加指導提案", source: "sync", getValue: () => c.learning?.additional_coaching_proposal || "-" },
+      { key: "interview_timing_at_end", label: "面接予定", source: "sync", getValue: () => c.learning?.interview_timing_at_end || "-" },
+      { key: "target_companies_at_end", label: "受験企業", source: "sync", getValue: () => c.learning?.target_companies_at_end || "-" },
+      { key: "progress_text", label: "進捗テキスト", source: "sync", getValue: () => c.learning?.progress_text || "-" },
+      { key: "case_interview_progress", label: "ケース面接進捗", source: "sync", getValue: () => c.learning?.case_interview_progress || "-" },
+      { key: "case_interview_weaknesses", label: "ケース面接苦手", source: "sync", getValue: () => c.learning?.case_interview_weaknesses || "-" },
+    ]},
   ];
+}
+
+// 後方互換: learningFieldsのフラットリスト
+function buildLearningFields(c: CustomerWithRelations, appHistory?: ApplicationHistoryRecord[]): FieldDef[] {
+  return buildLearningFieldGroups(c, appHistory).flatMap(g => g.fields);
 }
 
 // エージェントセクションは専用ページ(/agents)に移動済み
@@ -726,40 +755,32 @@ function buildLearningFields(c: CustomerWithRelations, appHistory?: ApplicationH
 // セクションコンポーネント
 // ================================================================
 
-function Section({
-  title,
+function FieldGrid({
   fields,
   customer,
   isEditing,
   editValues,
   onEditChange,
   cols = 4,
-  children,
 }: {
-  title: string;
   fields: FieldDef[];
   customer: CustomerWithRelations;
   isEditing: boolean;
   editValues: Record<string, string>;
   onEditChange: (key: string, value: string) => void;
   cols?: number;
-  children?: React.ReactNode;
 }) {
-  if (fields.length === 0 && !children) return null;
-
   const gridCls = cols === 5
     ? "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-x-4 gap-y-2"
     : cols === 3
       ? "grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-2"
       : "grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-2";
 
-  // テキスト系のフィールドとグリッド系を分離
   const gridFields = fields.filter(f => f.type !== "textarea");
   const textFields = fields.filter(f => f.type === "textarea");
 
   return (
-    <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-4">
-      <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">{title}</h2>
+    <>
       <div className={gridCls}>
         {gridFields.map((f) => (
           <InlineField
@@ -783,6 +804,73 @@ function Section({
           />
         </div>
       ))}
+    </>
+  );
+}
+
+function Section({
+  title,
+  fields,
+  customer,
+  isEditing,
+  editValues,
+  onEditChange,
+  cols = 4,
+  children,
+}: {
+  title: string;
+  fields: FieldDef[];
+  customer: CustomerWithRelations;
+  isEditing: boolean;
+  editValues: Record<string, string>;
+  onEditChange: (key: string, value: string) => void;
+  cols?: number;
+  children?: React.ReactNode;
+}) {
+  if (fields.length === 0 && !children) return null;
+
+  return (
+    <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-4">
+      <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">{title}</h2>
+      <FieldGrid fields={fields} customer={customer} isEditing={isEditing} editValues={editValues} onEditChange={onEditChange} cols={cols} />
+      {children}
+    </div>
+  );
+}
+
+/** サブグループ付きセクション — 内部を小見出しで区切る */
+function GroupedSection({
+  title,
+  groups,
+  customer,
+  isEditing,
+  editValues,
+  onEditChange,
+  cols = 4,
+  children,
+}: {
+  title: string;
+  groups: { label: string; fields: FieldDef[] }[];
+  customer: CustomerWithRelations;
+  isEditing: boolean;
+  editValues: Record<string, string>;
+  onEditChange: (key: string, value: string) => void;
+  cols?: number;
+  children?: React.ReactNode;
+}) {
+  if (groups.length === 0 && !children) return null;
+
+  return (
+    <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-4">
+      <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">{title}</h2>
+      <div className="space-y-4">
+        {groups.map((g) => (
+          <div key={g.label}>
+            <p className="text-[11px] font-medium text-gray-500 border-b border-white/[0.06] pb-1 mb-2">{g.label}</p>
+            <FieldGrid fields={g.fields} customer={customer} isEditing={isEditing} editValues={editValues} onEditChange={onEditChange} cols={cols} />
+          </div>
+        ))}
+      </div>
       {children}
     </div>
   );
@@ -838,7 +926,7 @@ export function CustomerDetailClient({
       if (isNaN(d.getTime())) return s;
       return d.toISOString().slice(0, 10);
     };
-    const dateKeys = new Set(["meeting_scheduled_date", "sales_date", "sales_date_2", "sales_date_3", "response_deadline", "response_date_2", "response_date_3", "payment_date", "coaching_end_date", "last_coaching_date", "placement_date", "application_date"]);
+    const dateKeys = new Set(["meeting_scheduled_date", "additional_coaching_date", "sales_date", "sales_date_2", "sales_date_3", "response_deadline", "response_date_2", "response_date_3", "payment_date", "coaching_end_date", "last_coaching_date", "placement_date", "application_date"]);
     // customer fields
     const cFields = customer as unknown as unknown as Record<string, unknown>;
     for (const key of ["name", "email", "phone", "attribute", "priority", "university", "faculty", "notes", "caution_notes"]) {
@@ -847,7 +935,7 @@ export function CustomerDetailClient({
     // pipeline fields
     if (customer.pipeline) {
       const p = customer.pipeline as unknown as Record<string, unknown>;
-      for (const key of ["stage", "probability", "meeting_scheduled_date", "sales_date", "sales_date_2", "sales_date_3", "response_deadline", "response_date_2", "response_date_3", "decision_factor", "sales_content", "sales_strategy"]) {
+      for (const key of ["stage", "probability", "meeting_scheduled_date", "additional_coaching_date", "sales_date", "sales_date_2", "sales_date_3", "response_deadline", "response_date_2", "response_date_3", "decision_factor", "sales_content", "sales_strategy"]) {
         vals[`pipeline.${key}`] = dateKeys.has(key) ? toDateValue(p[key]) : (p[key] != null ? String(p[key]) : "");
       }
     }
@@ -967,7 +1055,9 @@ export function CustomerDetailClient({
   }, [orders]);
   const contractFields = useMemo(() => buildContractFields(customer, firstPaidDate, paidTotal), [customer, firstPaidDate, paidTotal]);
   const pipelineFields = useMemo(() => buildPipelineFields(customer), [customer]);
+  const pipelineGroups = useMemo(() => buildPipelineFieldGroups(customer), [customer]);
   const learningFields = useMemo(() => buildLearningFields(customer, applicationHistory), [customer, applicationHistory]);
+  const learningGroups = useMemo(() => buildLearningFieldGroups(customer, applicationHistory), [customer, applicationHistory]);
 
   return (
     <div className="p-4 space-y-3">
@@ -1074,16 +1164,16 @@ export function CustomerDetailClient({
 
         {/* 右カラム */}
         <div className="space-y-3">
-          <Section title="営業・商談" fields={pipelineFields} customer={customer} isEditing={isEditing} editValues={editValues} onEditChange={handleEditChange} cols={4} />
+          <GroupedSection title="営業・商談" groups={pipelineGroups} customer={customer} isEditing={isEditing} editValues={editValues} onEditChange={handleEditChange} cols={4} />
 
-          <Section title="学習状況" fields={learningFields} customer={customer} isEditing={isEditing} editValues={editValues} onEditChange={handleEditChange} cols={4}>
+          <GroupedSection title="学習状況" groups={learningGroups} customer={customer} isEditing={isEditing} editValues={editValues} onEditChange={handleEditChange} cols={4}>
             {customer.learning?.case_interview_progress && (
               <div className="mt-3">
                 <p className="text-[10px] text-gray-500 font-medium flex items-center gap-0.5">ケース面接対策 <SourceBadge source="sync" /></p>
                 <p className="text-sm text-gray-300 whitespace-pre-line bg-surface-elevated p-2 rounded mt-0.5">{customer.learning.case_interview_progress}</p>
               </div>
             )}
-          </Section>
+          </GroupedSection>
 
           {/* 担当メンター */}
           {mentors.length > 0 && (
