@@ -420,14 +420,6 @@ export function SpreadsheetTable<T>({
                       <span className="inline-flex items-center gap-0.5 overflow-hidden">
                         {col.label}
                         {col.computed && col.formula && <FormulaTooltip formula={col.formula} />}
-                        {hasFilter && (
-                          <ColumnFilter
-                            column={col}
-                            data={data}
-                            value={columnFilters[col.key] || ""}
-                            onChange={(val) => handleColumnFilter(col.key, val)}
-                          />
-                        )}
                         {sortKey === col.key && (
                           <span className="text-brand ml-0.5">{sortDir === "asc" ? "↑" : "↓"}</span>
                         )}
