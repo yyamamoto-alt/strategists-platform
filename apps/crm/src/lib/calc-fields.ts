@@ -90,12 +90,19 @@ export function getSubsidyAmount(c: CustomerWithRelations): number {
 // Phase 3: 算出フィールド（Excel パリティ用）
 // ================================================================
 
+/** 直近実績ベースの成約率（外部から注入） */
+export interface RecentClosingRates {
+  kisotsu: number;   // 既卒の直近成約率 (0-1)
+  shinsotsu: number; // 新卒の直近成約率 (0-1)
+}
+
 /** 成約見込率（Excel Col DB: IFS formula — スプレッドシート完全準拠）
  *
  * T7 = pipeline.probability（営業角度: 営業マンが報告フォームで入力する 0–1）
  * DC7 = attribute（既卒/新卒）
+ * recentRates = 直近3ヶ月の既卒/新卒別成約率（未実施/日程未確のLTV計算に使用）
  */
-export function calcClosingProbability(c: CustomerWithRelations): number {
+export function calcClosingProbability(c: CustomerWithRelations, recentRates?: RecentClosingRates): number {
   const stage = c.pipeline?.stage;
   if (!stage) return 0;
 
@@ -141,8 +148,23 @@ export function calcClosingProbability(c: CustomerWithRelations): number {
   // --- アクティブステージ: 営業角度ベース ---
   if (stage === "検討中") return t * 0.80;
   if (stage === "長期検討") return t * 0.50;
-  if (stage === "未実施") return 0.20;
-  if (stage === "日程未確") return 0.05;
+  // --- 未実施/日程未確: 直近実績ベースの成約率 × 日程確定→実施の遷移率 ---
+  if (stage === "未実施") {
+    if (recentRates) {
+      // 日程確定済み → 実施遷移率90%を加味
+      const rate = isShinsotsu(c.attribute) ? recentRates.shinsotsu : recentRates.kisotsu;
+      return rate * 0.90;
+    }
+    return isShinsotsu(c.attribute) ? 0.15 : 0.30;
+  }
+  if (stage === "日程未確") {
+    if (recentRates) {
+      // 日程未確 → 日程確定遷移率50% × 実施遷移率90%を加味
+      const rate = isShinsotsu(c.attribute) ? recentRates.shinsotsu : recentRates.kisotsu;
+      return rate * 0.50 * 0.90;
+    }
+    return isShinsotsu(c.attribute) ? 0.05 : 0.10;
+  }
 
   // --- レガシー値 ---
   if (stage === "提案中") return t * 0.80;
@@ -189,12 +211,12 @@ export const DEFAULT_LTV_CONFIG: LtvConfig = {
 };
 
 /** 見込LTV（d）= 成約者はc(成約者見込LTV)、未成約者は見込み成約率×見込み単価 */
-export function calcExpectedLTV(c: CustomerWithRelations, config?: LtvConfig): number {
+export function calcExpectedLTV(c: CustomerWithRelations, config?: LtvConfig, recentRates?: RecentClosingRates): number {
   const cfg = config || DEFAULT_LTV_CONFIG;
   const salesProjection = calcSalesProjection(c);
   if (salesProjection > 0) return salesProjection;
   const defaultLTV = isShinsotsu(c.attribute) ? cfg.defaultLtvShinsotsu : cfg.defaultLtvKisotsu;
-  return Math.round(defaultLTV * calcClosingProbability(c));
+  return Math.round(defaultLTV * calcClosingProbability(c, recentRates));
 }
 
 /** 残指導回数 */
@@ -243,10 +265,7 @@ export function calcConfirmedRevenue(c: CustomerWithRelations): number {
 /** 人材見込売上（人材紹介区分に基づく乗数）（Excel Col BU） */
 export function calcAgentProjectedRevenue(c: CustomerWithRelations): number {
   if (!isCurrentlyEnrolled(c) || !isAgentCustomer(c) || isAgentConfirmed(c)) return 0;
-  const fee = calcExpectedReferralFee(c);
-  const cat = c.contract?.referral_category;
-  let multiplier = 1.0;
-  if (cat === "フル利用") multiplier = 1.0;
-  else if (cat === "一部利用") multiplier = 0.5;
-  return Math.round(fee * multiplier);
+  // offer_rank（S/A/B/C/D）に基づく報酬期待値をそのまま使用
+  // 一部利用/フル利用の区別は廃止（確定分は calcExpectedReferralFee で100%計上済み）
+  return calcExpectedReferralFee(c);
 }
