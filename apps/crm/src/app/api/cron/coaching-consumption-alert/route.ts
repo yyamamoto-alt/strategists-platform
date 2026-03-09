@@ -76,6 +76,7 @@ interface LearningRow {
 
 interface AlertEntry {
   name: string;
+  planName: string;
   scheduleProgress: number;
   sessionProgress: number;
   diff: number;
@@ -149,6 +150,7 @@ export async function GET(request: Request) {
   // sales_pipeline は learning_records と直接FK関係がないため、別クエリで取得し customer_id で紐付け
   const customerIds = (rows || []).map((r: { customer_id: string }) => r.customer_id).filter(Boolean);
   const pipelineMap = new Map<string, Array<{ stage: string; sales_person: string | null }>>();
+  const contractMap = new Map<string, string>();
 
   if (customerIds.length > 0) {
     const { data: pipelines } = await supabase
@@ -161,6 +163,15 @@ export async function GET(request: Request) {
         pipelineMap.set(p.customer_id, []);
       }
       pipelineMap.get(p.customer_id)!.push({ stage: p.stage, sales_person: p.sales_person });
+    }
+
+    const { data: contracts } = await supabase
+      .from("contracts")
+      .select("customer_id, plan_name")
+      .in("customer_id", customerIds);
+
+    for (const c of (contracts || []) as { customer_id: string; plan_name: string }[]) {
+      if (c.plan_name) contractMap.set(c.customer_id, c.plan_name);
     }
   }
 
@@ -205,6 +216,7 @@ export async function GET(request: Request) {
 
       alerts.push({
         name: row.customers.name,
+        planName: contractMap.get(row.customer_id) || "不明",
         scheduleProgress: Math.round(scheduleProgress),
         sessionProgress: Math.round(sessionProgress),
         diff: Math.round(diff),
@@ -241,6 +253,7 @@ export async function GET(request: Request) {
     for (const entry of alerts) {
       lines.push(
         `氏名: ${entry.name}`,
+        `プラン: ${entry.planName}`,
         `日程消化率: ${entry.scheduleProgress}%`,
         `指導消化率: ${entry.sessionProgress}%`,
         `指導期限: ${entry.coachingEndDate}`,

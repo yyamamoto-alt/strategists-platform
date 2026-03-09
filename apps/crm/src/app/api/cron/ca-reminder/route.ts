@@ -12,8 +12,8 @@ import { NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-/** CAリマインド通知先チャンネル */
-const CA_REMINDER_CHANNEL = "C094YLMKR4K";
+/** CAリマインド通知先チャンネル (ca_report) */
+const CA_REMINDER_CHANNEL = "C0ACH34578V";
 
 /** エージェント対応中のアクティブステージ */
 const ACTIVE_AGENT_STAGES = [
@@ -53,9 +53,16 @@ export async function GET(request: Request) {
 
   const mapping = await getStaffSlackMapping();
 
+  // 7日後の日付（1週間前リマインド用）
+  const sevenDaysLater = new Date(now);
+  sevenDaysLater.setDate(sevenDaysLater.getDate() + 7);
+  const sevenDaysLaterStr = sevenDaysLater.toISOString().slice(0, 10);
+
   const results = {
     total_customers: 0,
     cas_notified: 0,
+    today_reminders: 0,
+    upcoming_reminders: 0,
   };
 
   // agent_service_enrolled=true の顧客でアクティブなパイプラインを取得
@@ -84,7 +91,7 @@ export async function GET(request: Request) {
 
   const { data: targets, error } = await supabase
     .from("sales_pipeline")
-    .select("id, customer_id, sales_person, stage, customers!inner(name, email)")
+    .select("id, customer_id, sales_person, stage, meeting_scheduled_date, customers!inner(name, email, attribute)")
     .in("customer_id", agentCustomerIds)
     .in("stage", ACTIVE_AGENT_STAGES);
 
@@ -104,15 +111,28 @@ export async function GET(request: Request) {
   }
 
   // sales_person（CA）ごとにグループ化
-  const caGroups: Record<string, Array<{
+  interface CustomerEntry {
     customerName: string;
     customerId: string;
     stage: string;
-  }>> = {};
+    attribute: string;
+    meetingDate: string | null;
+    isToday: boolean;
+    isUpcoming: boolean;
+  }
+
+  const caGroups: Record<string, CustomerEntry[]> = {};
 
   for (const row of targets) {
     const salesPerson = row.sales_person || "未設定";
     const customerName = (row.customers as any)?.name || "不明";
+    const attribute = (row.customers as any)?.attribute || "不明";
+    const meetingDate = row.meeting_scheduled_date || null;
+    const isToday = meetingDate === today;
+    const isUpcoming = meetingDate === sevenDaysLaterStr;
+
+    if (isToday) results.today_reminders++;
+    if (isUpcoming) results.upcoming_reminders++;
 
     if (!caGroups[salesPerson]) {
       caGroups[salesPerson] = [];
@@ -121,6 +141,10 @@ export async function GET(request: Request) {
       customerName,
       customerId: row.customer_id,
       stage: row.stage,
+      attribute,
+      meetingDate,
+      isToday,
+      isUpcoming,
     });
     results.total_customers++;
   }
@@ -129,18 +153,50 @@ export async function GET(request: Request) {
   for (const [caName, customers] of Object.entries(caGroups)) {
     const slackUserId = findSlackUserId(caName, mapping);
 
+    // 当日リマインド対象を先頭に表示
+    const todayItems = customers.filter(c => c.isToday);
+    const upcomingItems = customers.filter(c => c.isUpcoming);
+    const otherItems = customers.filter(c => !c.isToday && !c.isUpcoming);
+
     const lines = [
       `📋 *CAリマインド（${today}）*`,
-      `担当: ${caName}`,
-      `対応が必要な顧客: ${customers.length}名`,
+      `担当CA: ${caName}`,
+      `対応中の顧客: ${customers.length}名`,
       ``,
     ];
 
-    for (const c of customers) {
-      lines.push(
-        `• ${c.customerName}（${c.stage}）`,
-        `  https://strategists-crm.vercel.app/customers/${c.customerId}`,
-      );
+    if (todayItems.length > 0) {
+      lines.push(`🔴 *【本日対応】当日リマインド*`);
+      for (const c of todayItems) {
+        lines.push(
+          `• ${c.customerName}（${c.attribute}）- ${c.stage}`,
+          `  担当: ${caName} ｜ 面談日: ${c.meetingDate}`,
+          `  https://strategists-crm.vercel.app/customers/${c.customerId}`,
+        );
+      }
+      lines.push(``);
+    }
+
+    if (upcomingItems.length > 0) {
+      lines.push(`🟡 *【1週間前リマインド】*`);
+      for (const c of upcomingItems) {
+        lines.push(
+          `• ${c.customerName}（${c.attribute}）- ${c.stage}`,
+          `  担当: ${caName} ｜ 面談予定日: ${c.meetingDate}`,
+          `  https://strategists-crm.vercel.app/customers/${c.customerId}`,
+        );
+      }
+      lines.push(``);
+    }
+
+    if (otherItems.length > 0) {
+      lines.push(`📌 *対応中の顧客一覧*`);
+      for (const c of otherItems) {
+        lines.push(
+          `• ${c.customerName}（${c.attribute}）- ${c.stage}`,
+          `  https://strategists-crm.vercel.app/customers/${c.customerId}`,
+        );
+      }
     }
 
     const msg = lines.join("\n");
@@ -164,10 +220,20 @@ export async function GET(request: Request) {
     ``,
   ];
 
+  if (results.today_reminders > 0) {
+    summaryLines.push(`🔴 *本日対応: ${results.today_reminders}件*`);
+  }
+  if (results.upcoming_reminders > 0) {
+    summaryLines.push(`🟡 *1週間後予定: ${results.upcoming_reminders}件*`);
+  }
+  summaryLines.push(``);
+
   for (const [caName, customers] of Object.entries(caGroups)) {
     summaryLines.push(`*${caName}*: ${customers.length}名`);
     for (const c of customers) {
-      summaryLines.push(`  • ${c.customerName}（${c.stage}）`);
+      const prefix = c.isToday ? "🔴" : c.isUpcoming ? "🟡" : "•";
+      const dateInfo = c.meetingDate ? ` [面談: ${c.meetingDate}]` : "";
+      summaryLines.push(`  ${prefix} ${c.customerName}（${c.attribute} / ${c.stage}）${dateInfo}`);
     }
     summaryLines.push(``);
   }

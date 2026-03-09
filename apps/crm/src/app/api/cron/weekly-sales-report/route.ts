@@ -223,6 +223,12 @@ export async function GET(request: Request) {
   const message = lines.join("\n");
   await sendSlackMessage(channel, message);
 
+  // 経営reportチャンネルにも送信
+  const REPORT_CHANNEL = "C0951QVAJ5N";
+  if (channel !== REPORT_CHANNEL) {
+    await sendSlackMessage(REPORT_CHANNEL, message);
+  }
+
   return NextResponse.json({
     ok: true,
     week: label,

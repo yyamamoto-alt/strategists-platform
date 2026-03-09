@@ -3,6 +3,7 @@ import { matchCustomer } from "@/lib/customer-matching";
 import { upsertOrder } from "@/lib/data/orders";
 import { normalizeStripePayment } from "@/lib/order-normalizers";
 import { notifyPaymentSuccess } from "@/lib/slack";
+import { createServiceClient } from "@/lib/supabase/server";
 import type { Order } from "@strategy-school/shared-db";
 import crypto from "crypto";
 
@@ -80,6 +81,33 @@ export async function POST(request: Request) {
     normalized.match_status = "matched";
   } else {
     normalized.match_status = "unmatched";
+  }
+
+  // 顧客マッチ時: sales_pipeline を「成約」に自動更新
+  if (match) {
+    const supabase = createServiceClient();
+    const db = supabase as any;
+    const { data: existingPipeline } = await db
+      .from("sales_pipeline")
+      .select("id")
+      .eq("customer_id", match.customer_id)
+      .maybeSingle();
+
+    if (existingPipeline) {
+      await db
+        .from("sales_pipeline")
+        .update({ stage: "成約", updated_at: new Date().toISOString() })
+        .eq("id", existingPipeline.id);
+    } else {
+      await db
+        .from("sales_pipeline")
+        .insert({
+          customer_id: match.customer_id,
+          stage: "成約",
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        });
+    }
   }
 
   // Upsert

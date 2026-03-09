@@ -265,7 +265,10 @@ export async function POST(request: Request) {
       console.error("Jicoo application_history insert error:", histErr);
     }
 
-    // Slack通知
+    // Slack通知（属性・UTM・担当者情報を含む）
+    const answers = obj.answers as { value?: string }[] | undefined;
+    const attribute = answers?.find((a) => a.value && (a.value.includes("既卒") || a.value.includes("新卒")))?.value || undefined;
+    const tracking = obj.tracking as Record<string, string> | undefined;
     await notifyJicooBooking({
       event,
       name,
@@ -273,6 +276,10 @@ export async function POST(request: Request) {
       startedAt,
       matched: true,
       customerUrl: `https://strategists-crm.vercel.app/customers/${match.customer_id}`,
+      attribute,
+      utmSource: tracking?.utm_source,
+      utmMedium: tracking?.utm_medium,
+      hostName: jicooDetails.hostName || undefined,
     });
 
     // ビヘイビア/アセスメント専用チャンネル通知
@@ -338,7 +345,12 @@ export async function POST(request: Request) {
       // 帰属チャネルをリアルタイム計算
       computeAttributionForCustomer(newCustomer.id).catch(() => {});
 
-      // Slack通知（新規作成）
+      // ビヘイビア/アセスメント専用チャンネル通知 + Slack通知
+      const jicooDetailsForNew = await fetchJicooBookingDetails(obj);
+
+      // Slack通知（新規作成 — 属性・UTM・担当者情報を含む）
+      const answers = obj.answers as { value?: string }[] | undefined;
+      const attribute = answers?.find((a) => a.value && (a.value.includes("既卒") || a.value.includes("新卒")))?.value || undefined;
       await notifyJicooBooking({
         event,
         name,
@@ -346,10 +358,12 @@ export async function POST(request: Request) {
         startedAt,
         matched: false,
         customerUrl: `https://strategists-crm.vercel.app/customers/${newCustomer.id}`,
+        attribute,
+        utmSource: tracking?.utm_source,
+        utmMedium: tracking?.utm_medium,
+        hostName: jicooDetailsForNew.hostName || undefined,
       });
 
-      // ビヘイビア/アセスメント専用チャンネル通知
-      const jicooDetailsForNew = await fetchJicooBookingDetails(obj);
       await sendTargetedEventNotification(event, obj, jicooDetailsForNew, name, startedAt);
 
       return NextResponse.json({

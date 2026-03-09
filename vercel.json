@@ -9,7 +9,7 @@
     { "path": "/api/cron/mentor-reminder", "schedule": "0 0 * * *" },
     { "path": "/api/cron/weekly-sales-report", "schedule": "0 1 * * 1" },
     { "path": "/api/cron/ca-reminder", "schedule": "0 0 * * *" },
-    { "path": "/api/cron/payment-confirm", "schedule": "0 0 1 * *" },
+    { "path": "/api/cron/payment-confirm", "schedule": "0 4 14 * *" },
     { "path": "/api/cron/jicoo-availability", "schedule": "0 0 * * 1,3,5" },
     { "path": "/api/cron/work-status-report", "schedule": "15 0 * * 0" },
     { "path": "/api/cron/mentor-status-report", "schedule": "30 0 * * 0" },

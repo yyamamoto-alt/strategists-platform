@@ -58,43 +58,46 @@ export async function GET(request: Request) {
 
   // アクティブなパイプライン（失注系・成約済み・入金済みを除く）
   const activeStages = [
-    "問い合わせ", "日程未確", "未実施", "実施済", "検討中", "長期検討",
+    "問い合わせ", "日程未確", "未実施", "検討中", "追加指導", "枠確保",
   ];
 
   // ============================================================
-  // 1. response_date = 今日 → 担当者にリマインドDM
+  // 1. response_date = 今日 → チャンネルにリマインド（担当者メンション + CC）
   // ============================================================
   const { data: todayTargets } = await supabase
     .from("sales_pipeline")
-    .select("id, customer_id, sales_person, stage, customers!inner(name, email)")
+    .select("id, customer_id, sales_person, stage, meeting_result, additional_notes, customers!inner(name, email, attribute)")
     .eq("response_date", today)
     .in("stage", activeStages);
 
   if (todayTargets && todayTargets.length > 0) {
     for (const row of todayTargets) {
       const customerName = (row.customers as any)?.name || "不明";
+      const attribute = (row.customers as any)?.attribute || "不明";
       const salesPerson = row.sales_person || null;
       const slackUserId = findSlackUserId(salesPerson, mapping);
+      const mentionStr = slackUserId ? `<@${slackUserId}>` : (salesPerson || "未設定");
+      const ccStr = CC_USER_IDS.map((id) => `<@${id}>`).join(" ");
 
       const msg = [
-        `📞 *営業リマインド*`,
-        `顧客: ${customerName}`,
-        `ステージ: ${row.stage}`,
-        `本日が連絡予定日です。対応をお願いします。`,
-        `https://strategists-crm.vercel.app/customers/${row.customer_id}`,
+        `📌 *${customerName}*`,
+        `🎓 属性: ${attribute}`,
+        `🧑‍💼 担当: ${mentionStr}`,
+        `📝 結果: ${row.meeting_result || "未記入"}`,
+        `🗒️ メモ: ${row.additional_notes || "なし"}`,
+        `連絡予定日なので入会意向を確認してください。確認したらスレッドで返答してください。`,
+        `cc: ${ccStr}`,
       ].join("\n");
 
-      if (slackUserId) {
-        await sendSlackDM(slackUserId, msg);
-        await logNotification({
-          type: "sales_reminder",
-          recipient: slackUserId,
-          customer_id: row.customer_id,
-          message: msg,
-          status: "success",
-          metadata: { sales_person: salesPerson, trigger: "today" },
-        });
-      }
+      await sendSlackMessage(REMINDER_CHANNEL, msg);
+      await logNotification({
+        type: "sales_reminder",
+        channel: REMINDER_CHANNEL,
+        customer_id: row.customer_id,
+        message: msg,
+        status: "success",
+        metadata: { sales_person: salesPerson, trigger: "today" },
+      });
       results.today_reminders++;
     }
   }
@@ -127,7 +130,7 @@ export async function GET(request: Request) {
       if (slackUserId) {
         await sendSlackDM(
           slackUserId,
-          `⚠️ *5日経過リマインド*\n顧客: ${customerName}\n連絡予定日から5日が経過しています。至急対応をお願いします。\nhttps://strategists-crm.vercel.app/customers/${row.customer_id}`
+          `⚠️ *5日経過リマインド*\n顧客: ${customerName}\n連絡予定日から5日が経過しています。至急対応をお願いします。\n断りの連絡があった場合は、失注処理をしてください。ない場合はリマインドしてください。\nhttps://strategists-crm.vercel.app/customers/${row.customer_id}`
         );
       }
       results.five_day_escalations++;
@@ -162,6 +165,7 @@ export async function GET(request: Request) {
 
     const lostLines: string[] = [
       `🚨 *14日未対応 → 自動失注見込*`,
+      `管理DBは自動で失注見込に変わっています。`,
       ``,
     ];
 

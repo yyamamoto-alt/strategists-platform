@@ -1,5 +1,6 @@
 import { createServiceClient } from "@/lib/supabase/server";
 import { sendSlackMessage, isSystemAutomationEnabled } from "@/lib/slack";
+import { fetchSheetData } from "@/lib/google-sheets";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -51,6 +52,10 @@ interface MentorStats {
   activeStudentCount: number;
   completedSessions30d: number;
   cancelledSessions30d: number;
+  utilization?: string;       // 稼働率
+  rating?: string;            // 評価
+  capacity?: string;          // キャパ
+  additionalRequest?: string; // 追加希望人数
 }
 
 /**
@@ -143,6 +148,37 @@ export async function GET(request: Request) {
   }
 
   // ------------------------------------------------------------------
+  // 3.5. Fetch mentor data from Google Sheets (メンター管理シート)
+  // ------------------------------------------------------------------
+  let sheetData = new Map<string, { utilization: string; rating: string; capacity: string; additionalRequest: string }>();
+  try {
+    const rows = await fetchSheetData("1Kv2Sctxl_ZYRcaPSd9HjoYo2J6bu85OR1lPiDpo4HcY", "メンター管理");
+    if (rows.length >= 2) {
+      const headers = rows[0];
+      const nameIdx = headers.findIndex((h: string) => h.includes("メンター") || h.includes("名前"));
+      const utilIdx = headers.findIndex((h: string) => h.includes("稼働率"));
+      const ratingIdx = headers.findIndex((h: string) => h.includes("評価"));
+      const capIdx = headers.findIndex((h: string) => h.includes("キャパ"));
+      const addIdx = headers.findIndex((h: string) => h.includes("追加希望"));
+
+      for (let i = 1; i < rows.length; i++) {
+        const row = rows[i];
+        const name = nameIdx >= 0 ? row[nameIdx]?.trim() : "";
+        if (!name) continue;
+        sheetData.set(name, {
+          utilization: utilIdx >= 0 ? row[utilIdx] || "" : "",
+          rating: ratingIdx >= 0 ? row[ratingIdx] || "" : "",
+          capacity: capIdx >= 0 ? row[capIdx] || "" : "",
+          additionalRequest: addIdx >= 0 ? row[addIdx] || "" : "",
+        });
+      }
+    }
+  } catch (e) {
+    console.warn("Failed to fetch mentor sheet data:", e);
+    // Continue without sheet data
+  }
+
+  // ------------------------------------------------------------------
   // 4. Build stats per mentor
   // ------------------------------------------------------------------
   const mentorStatsList: MentorStats[] = [];
@@ -155,6 +191,9 @@ export async function GET(request: Request) {
     const completedSessions30d = completedMap.get(mentorName) || 0;
     const cancelledSessions30d = cancelledMap.get(mentorName) || 0;
 
+    // Merge sheet data if available
+    const sheet = sheetData.get(mentorName);
+
     // Only include mentors with active students OR recent sessions
     if (activeStudentCount > 0 || completedSessions30d > 0 || cancelledSessions30d > 0) {
       mentorStatsList.push({
@@ -163,6 +202,10 @@ export async function GET(request: Request) {
         activeStudentCount,
         completedSessions30d,
         cancelledSessions30d,
+        utilization: sheet?.utilization,
+        rating: sheet?.rating,
+        capacity: sheet?.capacity,
+        additionalRequest: sheet?.additionalRequest,
       });
     }
   }
@@ -183,6 +226,15 @@ export async function GET(request: Request) {
       lines.push(
         `　　セッション(30日): 完了${m.completedSessions30d}回 / キャンセル${m.cancelledSessions30d}回`
       );
+      // スプレッドシートからの追加情報
+      const sheetParts: string[] = [];
+      if (m.utilization) sheetParts.push(`稼働率: ${m.utilization}`);
+      if (m.rating) sheetParts.push(`評価: ${m.rating}`);
+      if (m.capacity) sheetParts.push(`キャパ: ${m.capacity}名`);
+      if (m.additionalRequest) sheetParts.push(`追加希望: ${m.additionalRequest}名`);
+      if (sheetParts.length > 0) {
+        lines.push(`　　${sheetParts.join(" / ")}`);
+      }
     }
   }
 

@@ -88,7 +88,42 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Failed to upsert order" }, { status: 500 });
   }
 
-  // Slack通知
+  // 顧客マッチ時: sales_pipeline を「成約」に自動更新（upsert）
+  if (match) {
+    const supabase = createServiceClient();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const db = supabase as any;
+    const { data: existingPipeline } = await db
+      .from("sales_pipeline")
+      .select("id")
+      .eq("customer_id", match.customer_id)
+      .maybeSingle();
+
+    if (existingPipeline) {
+      await db
+        .from("sales_pipeline")
+        .update({ stage: "成約", updated_at: new Date().toISOString() })
+        .eq("id", existingPipeline.id);
+    } else {
+      await db
+        .from("sales_pipeline")
+        .insert({
+          customer_id: match.customer_id,
+          stage: "成約",
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        });
+    }
+  }
+
+  // 分割払いの2回目以降はSlack通知をスキップ（DB保存は上で完了済み）
+  const installmentIndex = normalized.installment_index as number | null;
+  const installmentTotal = normalized.installment_total as number | null;
+  const isSubsequentInstallment =
+    installmentIndex != null && installmentTotal != null &&
+    installmentIndex > 1 && installmentTotal > 1;
+
+  // Slack通知（初回決済 or 一括決済のみ）
   const event = (payload.event as string) || "";
   if (event === "payment_error") {
     const errName = normalized.contact_name || "不明";
@@ -102,7 +137,7 @@ export async function POST(request: Request) {
     await notifyPaymentError(
       `🚨 決済エラー: ${errName}\n商品: ${plan}\nカード: ${card}\n${errorMsg}${customerUrl ? `\n${customerUrl}` : ""}`
     );
-  } else {
+  } else if (!isSubsequentInstallment) {
     // 決済成功通知 — メール・カード情報も付加
     const cardInfo = normalized.card_brand && normalized.card_last4
       ? `${normalized.card_brand} *${normalized.card_last4}`

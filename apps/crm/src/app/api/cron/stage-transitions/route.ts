@@ -131,6 +131,41 @@ export async function GET(request: Request) {
     }
   }
 
+  // 3. 成約 → 受講中（初回指導セッションが完了している場合）
+  {
+    const { data: seiyakuTargets } = await supabase
+      .from("sales_pipeline")
+      .select("id, customer_id")
+      .eq("stage", "成約");
+
+    if (seiyakuTargets && seiyakuTargets.length > 0) {
+      const customerIds = seiyakuTargets.map((r: { customer_id: string }) => r.customer_id);
+      // 初回指導セッション完了済みの顧客IDを取得
+      const { data: completedSessions } = await supabase
+        .from("coaching_sessions")
+        .select("customer_id")
+        .in("customer_id", customerIds)
+        .eq("status", "完了");
+
+      if (completedSessions && completedSessions.length > 0) {
+        const completedCustomerIds = new Set(
+          completedSessions.map((s: { customer_id: string }) => s.customer_id)
+        );
+        const pipelineIdsToUpdate = seiyakuTargets
+          .filter((r: { customer_id: string }) => completedCustomerIds.has(r.customer_id))
+          .map((r: { id: string }) => r.id);
+
+        if (pipelineIdsToUpdate.length > 0) {
+          const { count } = await supabase
+            .from("sales_pipeline")
+            .update({ stage: "受講中", updated_at: new Date().toISOString() })
+            .in("id", pipelineIdsToUpdate);
+          results["成約→受講中(初回指導完了)"] = count || pipelineIdsToUpdate.length;
+        }
+      }
+    }
+  }
+
   // Slack通知
   const totalTransitioned = Object.values(results).reduce((s, n) => s + n, 0);
   if (totalTransitioned > 0) {

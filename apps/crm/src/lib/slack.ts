@@ -87,6 +87,10 @@ export async function notifyJicooBooking(data: {
   startedAt: string | null;
   matched: boolean;
   customerUrl?: string;
+  attribute?: string;
+  utmSource?: string;
+  utmMedium?: string;
+  hostName?: string;
 }) {
   const channel = await getNotifyConfig("jicoo", DEFAULT_CHANNELS.jicoo);
   if (!channel) return;
@@ -101,10 +105,13 @@ export async function notifyJicooBooking(data: {
   const lines = [
     `${emoji} *Jicoo ${eventLabel}*`,
     `氏名: ${data.name || "不明"}`,
-    `メール: ${data.email || "不明"}`,
-    `日時: ${dateStr}`,
-    data.matched ? "✅ 顧客マッチ済み" : "⚠️ 新規顧客として作成",
   ];
+  if (data.attribute) lines.push(`属性: ${data.attribute}`);
+  lines.push(`メール: ${data.email || "不明"}`);
+  lines.push(`日時: ${dateStr}`);
+  if (data.hostName) lines.push(`担当者: ${data.hostName}`);
+  if (data.utmSource) lines.push(`流入元: ${data.utmSource}${data.utmMedium ? ` / ${data.utmMedium}` : ""}`);
+  lines.push(data.matched ? "✅ 顧客マッチ済み" : "⚠️ 新規顧客として作成");
   if (data.customerUrl) lines.push(data.customerUrl);
 
   await sendSlackMessage(channel, lines.join("\n"));
