@@ -274,8 +274,22 @@ export function OrdersClient({ orders: initialOrders, reconciliation }: OrdersCl
         key: "customer_name",
         label: "顧客名",
         width: 160,
-        render: (r) => r.customer_name,
+        render: (r) => (
+          <Link
+            href={`/customers/${r.customer_id}`}
+            className="text-brand hover:underline"
+          >
+            {r.customer_name}
+          </Link>
+        ),
         sortValue: (r) => r.customer_name,
+      },
+      {
+        key: "application_date",
+        label: "申込日",
+        width: 110,
+        render: (r) => formatDate(r.application_date),
+        sortValue: (r) => r.application_date || "",
       },
       {
         key: "contract_confirmed",

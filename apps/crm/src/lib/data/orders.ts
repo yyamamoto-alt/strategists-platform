@@ -121,6 +121,7 @@ export async function upsertOrder(
 export interface ReconciliationItem {
   customer_id: string;
   customer_name: string;
+  application_date: string | null;
   contract_confirmed: number;
   orders_total: number;
   difference: number;
@@ -144,16 +145,16 @@ export async function fetchReconciliationReport(): Promise<
     .select("customer_id, amount")
     .not("customer_id", "is", null);
 
-  // 顧客名の取得
+  // 顧客名・申込日の取得
   const { data: customers } = await db
     .from("customers")
-    .select("id, name");
+    .select("id, name, application_date");
 
   if (!contracts || !orders || !customers) return [];
 
-  const customerMap = new Map<string, string>();
+  const customerMap = new Map<string, { name: string; application_date: string | null }>();
   for (const c of customers) {
-    customerMap.set(c.id, c.name || "不明");
+    customerMap.set(c.id, { name: c.name || "不明", application_date: c.application_date || null });
   }
 
   // 契約の confirmed_amount をマップ
@@ -192,9 +193,11 @@ export async function fetchReconciliationReport(): Promise<
     const diff = contractTotal - ordersTotal;
 
     if (diff !== 0) {
+      const cust = customerMap.get(id);
       results.push({
         customer_id: id,
-        customer_name: customerMap.get(id) || "不明",
+        customer_name: cust?.name || "不明",
+        application_date: cust?.application_date || null,
         contract_confirmed: contractTotal,
         orders_total: ordersTotal,
         difference: diff,
