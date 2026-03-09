@@ -3,7 +3,7 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { matchCustomer } from "@/lib/customer-matching";
 import { upsertOrder } from "@/lib/data/orders";
 import { normalizeAppsPayment } from "@/lib/order-normalizers";
-import { notifyPaymentError } from "@/lib/slack";
+import { notifyPaymentError, notifyPaymentSuccess } from "@/lib/slack";
 import type { Order } from "@strategy-school/shared-db";
 import crypto from "crypto";
 
@@ -86,10 +86,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Failed to upsert order" }, { status: 500 });
   }
 
-  // 決済エラー時のSlack通知
+  // Slack通知
   const event = (payload.event as string) || "";
   if (event === "payment_error") {
-    const name = normalized.contact_name || "不明";
+    const errName = normalized.contact_name || "不明";
     const plan = normalized.product_name || "不明";
     const card = normalized.card_last4 ? `*${normalized.card_last4}` : "不明";
     const errorMsg = (payload.message as string) || "";
@@ -98,8 +98,20 @@ export async function POST(request: Request) {
       : null;
 
     await notifyPaymentError(
-      `🚨 決済エラー: ${name}\n商品: ${plan}\nカード: ${card}\n${errorMsg}${customerUrl ? `\n${customerUrl}` : ""}`
+      `🚨 決済エラー: ${errName}\n商品: ${plan}\nカード: ${card}\n${errorMsg}${customerUrl ? `\n${customerUrl}` : ""}`
     );
+  } else {
+    // 決済成功通知
+    await notifyPaymentSuccess({
+      source: "Apps",
+      name: normalized.contact_name || "不明",
+      amount: normalized.amount || 0,
+      product: normalized.product_name || "不明",
+      matched: !!match,
+      customerUrl: match
+        ? `https://strategists-crm.vercel.app/customers/${match.customer_id}`
+        : undefined,
+    });
   }
 
   return NextResponse.json({

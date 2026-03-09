@@ -546,12 +546,14 @@ export interface FunnelMetrics {
   pending_future: number;
   conducted: number;
   closed: number;
-  /** 追加指導数（成約率分母から除外） */
+  /** 追加指導数（参考値） */
   additional_coaching: number;
+  /** 結果確定: 失注系（失注/失注見込/失注見込(自動)/CL/全額返金） */
+  lost: number;
   scheduling_rate: number;
-  /** 実施率: conducted / (applications - pending_future) */
+  /** 実施率: conducted / scheduled */
   conduct_rate: number;
-  /** 成約率: closed / (conducted - additional_coaching) */
+  /** 成約率: closed / (closed + lost) — 結果確定者のみで計算 */
   closing_rate: number;
 }
 
@@ -657,7 +659,9 @@ export interface PLFunnelCounts {
   scheduled: number;
   conducted: number;
   closed: number;
-  /** 追加指導ステージ（成約率分母から除外） */
+  /** 失注系（成約率分母に使用） */
+  lost: number;
+  /** 追加指導ステージ（参考値） */
   additional_coaching: number;
 }
 

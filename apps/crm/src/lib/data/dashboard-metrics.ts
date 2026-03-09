@@ -89,6 +89,15 @@ function isConducted(stage: string | undefined | null): boolean {
   return !NOT_CONDUCTED_STAGES.has(stage);
 }
 
+/** 失注（結果確定: ネガティブ）判定 */
+const LOST_STAGES = new Set([
+  "失注", "失注見込", "失注見込(自動)", "CL", "全額返金",
+]);
+function isStageLost(stage: string | undefined | null): boolean {
+  if (!stage) return false;
+  return LOST_STAGES.has(stage);
+}
+
 export function computeFunnelMetrics(
   customers: CustomerWithRelations[]
 ): FunnelMetrics[] {
@@ -96,7 +105,7 @@ export function computeFunnelMetrics(
   const today = new Date().toISOString().slice(0, 10);
   const byMonth = new Map<
     string,
-    { applications: number; scheduled: number; pending_future: number; conducted: number; closed: number; additional_coaching: number }
+    { applications: number; scheduled: number; pending_future: number; conducted: number; closed: number; lost: number; additional_coaching: number }
   >();
 
   for (const c of filtered) {
@@ -105,7 +114,7 @@ export function computeFunnelMetrics(
     const period = date.slice(0, 7).replace("-", "/");
 
     if (!byMonth.has(period)) {
-      byMonth.set(period, { applications: 0, scheduled: 0, pending_future: 0, conducted: 0, closed: 0, additional_coaching: 0 });
+      byMonth.set(period, { applications: 0, scheduled: 0, pending_future: 0, conducted: 0, closed: 0, lost: 0, additional_coaching: 0 });
     }
     const m = byMonth.get(period)!;
     m.applications++;
@@ -116,18 +125,18 @@ export function computeFunnelMetrics(
       if (s !== "日程未確") {
         m.scheduled++;
       }
-      // 未実施かつ営業予定日が未来 → 実施率の分母から除外（時間の問題で実施される可能性が高い）
+      // 未実施かつ営業予定日が未来 → 参考値（pending_future）
       if (s === "未実施") {
         const meetingDate = c.pipeline.meeting_scheduled_date;
         if (meetingDate && meetingDate > today) {
           m.pending_future++;
         }
       }
-      // 面談実施: stageが日程未確・未実施以外
+      // 面談実施: stageが NOT_CONDUCTED_STAGES 以外
       if (isConducted(s)) {
         m.conducted++;
       }
-      // 追加指導（成約率分母から除外）
+      // 追加指導（参考値）
       if (isAdditionalCoaching(s)) {
         m.additional_coaching++;
       }
@@ -135,21 +144,24 @@ export function computeFunnelMetrics(
       if (isStageClosed(s)) {
         m.closed++;
       }
+      // 失注判定（成約率の分母に使用）
+      if (isStageLost(s)) {
+        m.lost++;
+      }
     }
   }
 
   return Array.from(byMonth.entries())
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([period, m]) => {
-      // 実施率 = 実施数 / (申込数 - 未実施かつ営業予定日が未来の件数)
-      const conductDenom = m.applications - m.pending_future;
-      // 成約率分母: 実施 - 追加指導（結果未確定のため除外）
-      const closingDenom = m.conducted - m.additional_coaching;
+      // 実施率 = 実施数 / 日程確定数
+      // 成約率 = 成約数 / (成約数 + 失注数) — 結果確定者のみで計算
+      const closingDenom = m.closed + m.lost;
       return {
         period,
         ...m,
         scheduling_rate: m.applications > 0 ? m.scheduled / m.applications : 0,
-        conduct_rate: conductDenom > 0 ? m.conducted / conductDenom : 0,
+        conduct_rate: m.scheduled > 0 ? m.conducted / m.scheduled : 0,
         closing_rate: closingDenom > 0 ? m.closed / closingDenom : 0,
       };
     });
@@ -670,6 +682,7 @@ export function computeChannelFunnelPivot(
       scheduled: number;
       conducted: number;
       closed: number;
+      lost: number;
       revenue: number;
       additional_coaching: number;
     }
@@ -691,6 +704,7 @@ export function computeChannelFunnelPivot(
         scheduled: 0,
         conducted: 0,
         closed: 0,
+        lost: 0,
         revenue: 0,
         additional_coaching: 0,
       });
@@ -723,6 +737,9 @@ export function computeChannelFunnelPivot(
         p.closed++;
         ch.closed++;
       }
+      if (isStageLost(s)) {
+        ch.lost++;
+      }
     }
 
     // 確定売上: 支払い実績ベース（ステージ不問）
@@ -742,8 +759,8 @@ export function computeChannelFunnelPivot(
       });
 
       const ltvPerApp = ch.applications > 0 ? Math.round(ch.revenue / ch.applications) : 0;
-      // 成約率分母: 実施 - 追加指導
-      const closingDenom = ch.conducted - ch.additional_coaching;
+      // 成約率分母: 結果確定者のみ（成約 + 失注）
+      const closingDenom = (ch.closed || 0) + (ch.lost || 0);
 
       return {
         channel,
@@ -789,7 +806,7 @@ function computeSegmentData(
 
   // 月別トータル
   const periodTotals = new Map<string, PLFunnelCounts>();
-  const grandTotals: PLFunnelCounts = { applications: 0, scheduled: 0, conducted: 0, closed: 0, additional_coaching: 0 };
+  const grandTotals: PLFunnelCounts = { applications: 0, scheduled: 0, conducted: 0, closed: 0, lost: 0, additional_coaching: 0 };
 
   // 売上
   const confirmedRevenue: Record<string, number> = {};
@@ -839,18 +856,18 @@ function computeSegmentData(
       channelMap.set(channel, {
         isPaid,
         funnel: new Map(),
-        totals: { applications: 0, scheduled: 0, conducted: 0, closed: 0, additional_coaching: 0 },
+        totals: { applications: 0, scheduled: 0, conducted: 0, closed: 0, lost: 0, additional_coaching: 0 },
       });
     }
     const ch = channelMap.get(channel)!;
 
     if (!ch.funnel.has(period)) {
-      ch.funnel.set(period, { applications: 0, scheduled: 0, conducted: 0, closed: 0, additional_coaching: 0 });
+      ch.funnel.set(period, { applications: 0, scheduled: 0, conducted: 0, closed: 0, lost: 0, additional_coaching: 0 });
     }
     const pf = ch.funnel.get(period)!;
 
     if (!periodTotals.has(period)) {
-      periodTotals.set(period, { applications: 0, scheduled: 0, conducted: 0, closed: 0, additional_coaching: 0 });
+      periodTotals.set(period, { applications: 0, scheduled: 0, conducted: 0, closed: 0, lost: 0, additional_coaching: 0 });
     }
     const pt = periodTotals.get(period)!;
 
@@ -892,6 +909,13 @@ function computeSegmentData(
         ch.totals.closed++;
         pt.closed++;
         grandTotals.closed++;
+      }
+      // 失注（成約率分母に使用）
+      if (isStageLost(s)) {
+        pf.lost++;
+        ch.totals.lost++;
+        pt.lost++;
+        grandTotals.lost++;
       }
     }
 

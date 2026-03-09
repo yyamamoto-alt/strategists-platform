@@ -36,7 +36,7 @@ export function KpiCards({
     {
       title: "今月成約率",
       value: formatPercent(latestFunnel.closing_rate),
-      subtitle: `成約: ${latestFunnel.closed}件 / 実施: ${latestFunnel.conducted}件`,
+      subtitle: `成約: ${latestFunnel.closed}件 / 確定: ${latestFunnel.closed + latestFunnel.lost}件`,
       color: "bg-purple-500",
     },
     {
@@ -58,7 +58,7 @@ export function KpiCards({
     {
       title: "面談実施率",
       value: formatPercent(latestFunnel.conduct_rate),
-      subtitle: `実施: ${latestFunnel.conducted}件 / 申込: ${latestFunnel.applications - latestFunnel.pending_future}件`,
+      subtitle: `実施: ${latestFunnel.conducted}件 / 日程確定: ${latestFunnel.scheduled}件`,
       color: "bg-pink-500",
     },
   ];

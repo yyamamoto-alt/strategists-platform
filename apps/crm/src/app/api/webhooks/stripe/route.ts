@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { matchCustomer } from "@/lib/customer-matching";
 import { upsertOrder } from "@/lib/data/orders";
 import { normalizeStripePayment } from "@/lib/order-normalizers";
+import { notifyPaymentSuccess } from "@/lib/slack";
 import type { Order } from "@strategy-school/shared-db";
 import crypto from "crypto";
 
@@ -81,6 +82,18 @@ export async function POST(request: Request) {
   if (!result) {
     return NextResponse.json({ error: "Failed to upsert order" }, { status: 500 });
   }
+
+  // Slack通知（決済成功）
+  await notifyPaymentSuccess({
+    source: "Stripe",
+    name: normalized.contact_name || "不明",
+    amount: normalized.amount || 0,
+    product: normalized.product_name || "不明",
+    matched: !!match,
+    customerUrl: match
+      ? `https://strategists-crm.vercel.app/customers/${match.customer_id}`
+      : undefined,
+  });
 
   return NextResponse.json({
     success: true,

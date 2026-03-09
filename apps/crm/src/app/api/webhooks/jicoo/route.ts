@@ -1,5 +1,6 @@
 import { createServiceClient } from "@/lib/supabase/server";
 import { matchCustomer } from "@/lib/customer-matching";
+import { notifyJicooBooking } from "@/lib/slack";
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 
@@ -109,6 +110,16 @@ export async function POST(request: Request) {
       notes: `Jicoo ${event}: ${name || email || "unknown"} (${match.match_type}マッチ)`,
     });
 
+    // Slack通知
+    await notifyJicooBooking({
+      event,
+      name,
+      email,
+      startedAt,
+      matched: true,
+      customerUrl: `https://strategists-crm.vercel.app/customers/${match.customer_id}`,
+    });
+
     return NextResponse.json({
       success: true,
       matched: true,
@@ -156,6 +167,16 @@ export async function POST(request: Request) {
         source: "Jicoo",
         raw_data: body,
         notes: `Jicoo ${event}: 自動作成`,
+      });
+
+      // Slack通知（新規作成）
+      await notifyJicooBooking({
+        event,
+        name,
+        email,
+        startedAt,
+        matched: false,
+        customerUrl: `https://strategists-crm.vercel.app/customers/${newCustomer.id}`,
       });
 
       return NextResponse.json({

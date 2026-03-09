@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createServiceClient } from "@/lib/supabase/server";
+import { notifyFormSync } from "@/lib/slack";
 
 export interface MatchResult {
   customer_id: string;
@@ -445,6 +446,21 @@ export async function upsertFromSpreadsheet(
       });
     }
 
+    // Slack通知
+    await notifyFormSync({
+      sourceName,
+      customerName: name || email || "不明",
+      action: "updated",
+      customerId: match.customer_id,
+      extraFields: sourceName === "営業報告"
+        ? { "担当": rawData["営業担当者名"] || "", "結果": rawData["結果"] || "" }
+        : sourceName === "入塾フォーム"
+        ? { "プラン": rawData["申込プラン"] || "" }
+        : sourceName === "メンター指導報告"
+        ? { "メンター": rawData["メンター名"] || "", "回次": rawData["回次（合計指導回数）"] || "" }
+        : undefined,
+    });
+
     return { action: "updated", customer_id: match.customer_id, match_type: match.match_type };
   }
 
@@ -521,6 +537,14 @@ export async function upsertFromSpreadsheet(
       source: sourceName,
       raw_data: rawData,
       notes: `${sourceName}から自動作成`,
+    });
+
+    // Slack通知
+    await notifyFormSync({
+      sourceName,
+      customerName: name || email || "不明",
+      action: "created",
+      customerId: newCustomer.id,
     });
 
     return { action: "created", customer_id: newCustomer.id };
