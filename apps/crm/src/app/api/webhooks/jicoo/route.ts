@@ -12,69 +12,79 @@ function md5(text: string): string {
 const JICOO_API_KEY = process.env.JICOO_API_KEY;
 const JICOO_API_BASE = "https://api.jicoo.com/v1";
 
+interface JicooBookingDetails {
+  hostName: string | null;
+  meetingUrl: string | null;
+  eventName: string | null;
+}
+
 /**
- * Jicoo REST APIで担当者（host）名を取得
- * 1. webhookペイロードの obj.hosts をチェック
- * 2. なければ REST API GET /v1/bookings でhosts[].userIdを取得
- * 3. Organization Users APIでuserId→名前に変換
+ * Jicoo REST APIから予約の追加情報を取得
+ * - 担当者名 (hosts → Organization Users)
+ * - オンライン会議URL (url)
+ * - イベント名 (name)
  */
-async function resolveJicooHost(
+async function fetchJicooBookingDetails(
   obj: Record<string, unknown>,
-): Promise<string | null> {
-  if (!JICOO_API_KEY) return null;
+): Promise<JicooBookingDetails> {
+  const empty: JicooBookingDetails = { hostName: null, meetingUrl: null, eventName: null };
+  if (!JICOO_API_KEY) return empty;
   const headers = { Authorization: `Bearer ${JICOO_API_KEY}` };
 
   try {
-    // Step 1: webhookペイロードにhostsがあるかチェック
+    const uid = obj.uid as string | undefined;
     let hostUserIds: string[] = [];
+    let meetingUrl: string | null = null;
+    let eventName: string | null = null;
+
+    // Step 1: webhookペイロードから直接取得を試みる
     const webhookHosts = obj.hosts as { userId: string; role: string }[] | undefined;
     if (webhookHosts && webhookHosts.length > 0) {
       hostUserIds = webhookHosts.map((h) => h.userId);
     }
+    if (obj.url) meetingUrl = obj.url as string;
+    if (obj.name) eventName = obj.name as string;
 
-    // Step 2: なければREST APIで予約詳細を取得
-    if (hostUserIds.length === 0) {
-      const uid = obj.uid as string | undefined;
-      if (uid) {
-        const bookingsRes = await fetch(
-          `${JICOO_API_BASE}/bookings?perPage=50&status=open`,
-          { headers },
-        );
-        if (bookingsRes.ok) {
-          const bookingsData = await bookingsRes.json();
-          const booking = bookingsData?.data?.find(
-            (b: { uid: string }) => b.uid === uid,
-          );
-          if (booking?.hosts) {
-            hostUserIds = booking.hosts.map(
-              (h: { userId: string }) => h.userId,
-            );
+    // Step 2: 不足情報があればREST APIで予約詳細を取得
+    if ((hostUserIds.length === 0 || !meetingUrl) && uid) {
+      const bookingsRes = await fetch(
+        `${JICOO_API_BASE}/bookings?perPage=50&status=open`,
+        { headers },
+      );
+      if (bookingsRes.ok) {
+        const bookingsData = await bookingsRes.json();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const booking = bookingsData?.data?.find((b: any) => b.uid === uid);
+        if (booking) {
+          if (hostUserIds.length === 0 && booking.hosts) {
+            hostUserIds = booking.hosts.map((h: { userId: string }) => h.userId);
+          }
+          if (!meetingUrl && booking.url) meetingUrl = booking.url;
+          if (!eventName && booking.name) eventName = booking.name;
+        }
+      }
+    }
+
+    // Step 3: Organization Users APIでホスト名を解決
+    let hostName: string | null = null;
+    if (hostUserIds.length > 0) {
+      const usersRes = await fetch(`${JICOO_API_BASE}/organization/users`, { headers });
+      if (usersRes.ok) {
+        const usersData = await usersRes.json();
+        const users = usersData?.data as { id: string; name: string }[] | undefined;
+        if (users) {
+          for (const hostId of hostUserIds) {
+            const user = users.find((u) => u.id === hostId);
+            if (user?.name) { hostName = user.name; break; }
           }
         }
       }
     }
 
-    if (hostUserIds.length === 0) return null;
-
-    // Step 3: Organization Users APIで名前を解決
-    const usersRes = await fetch(`${JICOO_API_BASE}/organization/users`, {
-      headers,
-    });
-    if (!usersRes.ok) return null;
-    const usersData = await usersRes.json();
-    const users = usersData?.data as { id: string; name: string }[] | undefined;
-    if (!users) return null;
-
-    // hostUserIdsの最初のユーザーの名前を返す
-    for (const hostId of hostUserIds) {
-      const user = users.find((u) => u.id === hostId);
-      if (user?.name) return user.name;
-    }
-
-    return null;
+    return { hostName, meetingUrl, eventName };
   } catch (e) {
-    console.error("Jicoo host resolution error:", e);
-    return null;
+    console.error("Jicoo booking details error:", e);
+    return empty;
   }
 }
 
@@ -152,10 +162,13 @@ export async function POST(request: Request) {
         pipelineUpdate.stage = "未実施";
       }
 
-      // Jicoo REST APIで担当者（host）を取得
-      const hostName = await resolveJicooHost(obj);
-      if (hostName) {
-        pipelineUpdate.sales_person = hostName;
+      // Jicoo REST APIで担当者・会議URL・イベント名を取得
+      const jicooDetails = await fetchJicooBookingDetails(obj);
+      if (jicooDetails.hostName) {
+        pipelineUpdate.sales_person = jicooDetails.hostName;
+      }
+      if (jicooDetails.meetingUrl) {
+        pipelineUpdate.meeting_url = jicooDetails.meetingUrl;
       }
 
       // Jicoo tracking → UTMを記録

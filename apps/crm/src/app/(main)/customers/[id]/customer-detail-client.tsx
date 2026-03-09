@@ -298,6 +298,10 @@ function InlineField({
             <span className="text-sm text-gray-500">なし</span>
           )}
         </div>
+      ) : displayValue.startsWith("http") ? (
+        <a href={displayValue} target="_blank" rel="noopener noreferrer" className="text-sm text-brand hover:underline mt-0.5 truncate block" title={displayValue}>
+          {displayValue.length > 40 ? displayValue.slice(0, 40) + "..." : displayValue}
+        </a>
       ) : (
         <p className="text-sm text-white mt-0.5 truncate" title={displayValue}>
           {displayValue}
@@ -606,6 +610,10 @@ function buildPipelineFields(c: CustomerWithRelations): FieldDef[] {
     ], table: "pipeline", getValue: () => c.pipeline?.stage || "-" },
     { key: "probability", label: "営業角度", source: "sync", type: "number", table: "pipeline", getValue: () => c.pipeline?.probability != null ? formatPercent(c.pipeline.probability) : "-" },
     { key: "meeting_scheduled_date", label: "面談予定日", source: "manual", type: "date", table: "pipeline", getValue: () => formatDate(c.pipeline?.meeting_scheduled_date ?? null) },
+    { key: "meeting_url", label: "会議URL", source: "sync", table: "pipeline", getValue: () => {
+      const url = (c.pipeline as Record<string, unknown> | undefined)?.meeting_url as string | null;
+      return url || "-";
+    }},
     // 営業日①②③（営業報告フォームから同期）
     { key: "sales_date", label: "営業日①", source: "sync", type: "date", table: "pipeline", getValue: () => formatDate(c.pipeline?.sales_date ?? null) },
     { key: "sales_date_2", label: "営業日②", source: "sync", type: "date", table: "pipeline", getValue: () => formatDate(c.pipeline?.sales_date_2 ?? null) },
