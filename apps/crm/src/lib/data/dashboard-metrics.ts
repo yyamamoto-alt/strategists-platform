@@ -358,9 +358,10 @@ export function computeThreeTierRevenue(
 
     // --- Tier 2: 人材見込み（確定除外、受講中のみ — Excel Col BU 準拠） ---
     // isCurrentlyEnrolled: 成約/入金済/追加指導 かつ 指導終了日が未来
+    // calcAgentProjectedRevenue を使用: 「一部利用」は0.5倍（calcExpectedLTVと一致させる）
     const enrolledAgent = isAgentCustomer(c) && !isAgentConfirmed(c) && isCurrentlyEnrolled(c);
     if (enrolledAgent) {
-      const fee = calcExpectedReferralFee(c);
+      const fee = calcAgentProjectedRevenue(c);
       if (fee > 0) {
         m.projected_agent += fee;
       }
@@ -412,11 +413,16 @@ export function computeThreeTierRevenue(
       const forecastTotal = projectedTotal * monthMultiplier + forecastFromPipeline;
 
       // MAXライン: 過去月はフル値、当月のみ日数按分で月末推定に拡大
-      // 例: 3/6時点 → 6日分のデータしかないので 31/6 ≈ 5.17倍して月全体を推定
+      // 例: 3/9時点 → 9日分のデータしかないので 31/9 ≈ 3.4倍して月全体を推定
       const monthExtrapolation = period === currentPeriod
         ? (new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate() / Math.max(1, new Date().getDate()))
         : 1;
-      const expectedLtvTotal = Math.round(m.expected_ltv * monthExtrapolation);
+      let expectedLtvTotal = Math.round(m.expected_ltv * monthExtrapolation);
+
+      // MAXラインは棒グラフ合計（confirmed + projected）を下回ってはならない
+      if (expectedLtvTotal < projectedTotal) {
+        expectedLtvTotal = projectedTotal;
+      }
 
       return {
         period,
