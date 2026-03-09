@@ -52,7 +52,8 @@ function filterByAnalyticsPeriod(
 /** 成約判定: 「成約」「入金済」「途中解約(成約)」。動画講座購入/その他購入/追加指導/成約見込は除外 */
 function isStageClosed(stage: string | undefined | null): boolean {
   if (!stage) return false;
-  return stage === "成約" || stage === "入金済" || stage === "途中解約(成約)";
+  return stage === "成約" || stage === "入金済" || stage === "途中解約(成約)"
+    || stage === "追加指導" || stage === "受講終了" || stage === "卒業";
 }
 
 /** 期間文字列を取得（Excel PL準拠: 申込月ベース） */

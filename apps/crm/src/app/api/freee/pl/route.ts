@@ -85,24 +85,29 @@ export async function GET(request: Request) {
   }
 
   try {
-    const { accessToken, refreshToken, refreshed } = await getValidAccessToken(
+    const { accessToken, refreshToken, refreshed, expiresIn } = await getValidAccessToken(
       settingMap.freee_access_token,
       settingMap.freee_refresh_token,
       settingMap.freee_token_expires_at,
     );
 
     if (refreshed) {
-      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+      // freeeの実際のexpires_inを使用（デフォルト24時間）
+      const ttlMs = (expiresIn || 86400) * 1000;
+      const expiresAt = new Date(Date.now() + ttlMs).toISOString();
       const updates = [
         { key: "freee_access_token", value: accessToken },
         { key: "freee_refresh_token", value: refreshToken },
         { key: "freee_token_expires_at", value: expiresAt },
       ];
       for (const u of updates) {
-        await db.from("app_settings").upsert(
+        const { error } = await db.from("app_settings").upsert(
           { key: u.key, value: u.value, updated_at: new Date().toISOString() },
           { onConflict: "key" },
         );
+        if (error) {
+          console.error(`[freee PL] Failed to save ${u.key}:`, error);
+        }
       }
     }
 
@@ -135,6 +140,11 @@ export async function GET(request: Request) {
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Unknown error";
     console.error("freee PL fetch error:", msg);
-    return NextResponse.json({ error: msg }, { status: 500 });
+    // 認証エラーの場合は再認証を促す
+    const isAuthError = msg.includes("401") || msg.includes("403") || msg.includes("invalid_grant") || msg.includes("expired");
+    return NextResponse.json(
+      { error: isAuthError ? "freee認証切れ — 設定画面から再連携してください" : msg },
+      { status: isAuthError ? 401 : 500 },
+    );
   }
 }

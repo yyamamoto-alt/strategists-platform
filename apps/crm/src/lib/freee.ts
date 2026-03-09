@@ -80,20 +80,23 @@ export async function getValidAccessToken(
   storedAccessToken: string,
   storedRefreshToken: string,
   expiresAt: string
-): Promise<{ accessToken: string; refreshToken: string; refreshed: boolean }> {
+): Promise<{ accessToken: string; refreshToken: string; refreshed: boolean; expiresIn: number }> {
   const now = new Date();
   const expiry = new Date(expiresAt);
 
   // Refresh 5 minutes before expiry
   if (now < new Date(expiry.getTime() - 5 * 60 * 1000)) {
-    return { accessToken: storedAccessToken, refreshToken: storedRefreshToken, refreshed: false };
+    return { accessToken: storedAccessToken, refreshToken: storedRefreshToken, refreshed: false, expiresIn: 0 };
   }
 
+  console.log("[freee] Access token expired, refreshing...");
   const tokens = await refreshAccessToken(storedRefreshToken);
+  console.log("[freee] Token refreshed, expires_in:", tokens.expires_in);
   return {
     accessToken: tokens.access_token,
     refreshToken: tokens.refresh_token,
     refreshed: true,
+    expiresIn: tokens.expires_in,
   };
 }
 

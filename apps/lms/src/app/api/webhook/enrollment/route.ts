@@ -32,9 +32,13 @@ export async function POST(request: Request) {
   const body = await request.json();
   const { name, email, phone, motivation, experience, plan_name, webhook_secret } = body;
 
-  // Webhook認証
+  // Webhook認証（必須）
   const expectedSecret = process.env.WEBHOOK_SECRET;
-  if (expectedSecret && webhook_secret !== expectedSecret) {
+  if (!expectedSecret) {
+    console.error("WEBHOOK_SECRET is not configured");
+    return NextResponse.json({ error: "Server configuration error" }, { status: 500 });
+  }
+  if (webhook_secret !== expectedSecret) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

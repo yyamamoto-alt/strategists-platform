@@ -136,8 +136,13 @@ export function CostChart() {
   if (error && !plData) {
     return (
       <div className="flex items-center justify-center h-[200px]">
-        <div className="px-4 py-2 bg-red-900/20 border border-red-800/30 rounded-lg text-sm text-red-400">
-          {error}
+        <div className="px-4 py-2 bg-red-900/20 border border-red-800/30 rounded-lg text-sm text-red-400 text-center">
+          <p>{error}</p>
+          {error.includes("再連携") && (
+            <a href="/settings" className="mt-2 inline-block text-xs text-blue-400 underline hover:text-blue-300">
+              設定画面へ →
+            </a>
+          )}
         </div>
       </div>
     );

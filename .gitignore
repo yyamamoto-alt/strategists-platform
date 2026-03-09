@@ -4,6 +4,7 @@ node_modules/
 .env.local
 .env.*.local
 .env.vercel
+.env.vercel-check
 dist/
 *.tsbuildinfo
 .vercel
