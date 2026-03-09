@@ -297,6 +297,74 @@ const SYSTEM_AUTOMATIONS: SystemAutomation[] = [
     isActive: true,
     steps: 4,
   },
+  {
+    id: "sys-weekly-sales-report",
+    name: "週次営業レポート",
+    description: "毎週月曜に営業KPI（新規申込・面談・成約・担当者別実績）をSlack配信",
+    category: "cron",
+    trigger: { icon: "clock", label: "毎週月曜 1:00 (UTC)" },
+    actions: [
+      { icon: "database", label: "KPI集計" },
+      { icon: "slack", label: "Slack通知" },
+    ],
+    schedule: "0 1 * * 1",
+    isActive: true,
+    steps: 3,
+  },
+  {
+    id: "sys-ca-reminder",
+    name: "CAリマインド",
+    description: "毎朝、キャリアアドバイザーに担当顧客のフォローアップリマインドをDM送信",
+    category: "cron",
+    trigger: { icon: "clock", label: "毎日 0:00 (UTC)" },
+    actions: [
+      { icon: "slack_dm", label: "CA DM" },
+      { icon: "slack", label: "サマリー通知" },
+    ],
+    schedule: "0 0 * * *",
+    isActive: true,
+    steps: 3,
+  },
+  {
+    id: "sys-payment-confirm",
+    name: "報酬支払い確認",
+    description: "毎月1日に全スタッフへSlack DMで報酬支払い確認を送付",
+    category: "cron",
+    trigger: { icon: "clock", label: "毎月1日 0:00 (UTC)" },
+    actions: [
+      { icon: "slack_dm", label: "全員DM" },
+      { icon: "slack", label: "経営report" },
+    ],
+    schedule: "0 0 1 * *",
+    isActive: true,
+    steps: 3,
+  },
+  {
+    id: "sys-work-status-report",
+    name: "勤務状況レポート",
+    description: "毎週日曜に勤怠DBスプレッドシートから稼働時間を集計し、先週比・月平均比付きでSlack配信",
+    category: "cron",
+    trigger: { icon: "clock", label: "毎週日曜 0:15 (UTC)" },
+    actions: [
+      { icon: "database", label: "勤怠DB取得" },
+      { icon: "slack", label: "レポート配信" },
+    ],
+    schedule: "15 0 * * 0",
+    isActive: true,
+    steps: 3,
+  },
+  {
+    id: "sys-assessment-booking",
+    name: "ビヘイビア/アセスメント予約通知",
+    description: "Jicoo予約時にビヘイビア・アセスメントを検出し、専用チャンネルに通知",
+    category: "webhook",
+    trigger: { icon: "jicoo", label: "予約イベント" },
+    actions: [
+      { icon: "slack", label: "専用ch通知" },
+    ],
+    isActive: true,
+    steps: 2,
+  },
 ];
 
 // ================================================================
@@ -449,6 +517,10 @@ export function AutomationsClient({
   const [loadingChannels, setLoadingChannels] = useState(false);
   const [activeTab, setActiveTab] = useState<"all" | "cron" | "webhook" | "user" | "logs" | "reminders">("all");
 
+  // システム自動化 ON/OFF 状態
+  const [systemStates, setSystemStates] = useState<Record<string, boolean>>({});
+  const [systemStatesLoading, setSystemStatesLoading] = useState(false);
+
   // 通知ログ
   const [notificationLogs, setNotificationLogs] = useState<NotificationLog[]>([]);
   const [notifLogsLoading, setNotifLogsLoading] = useState(false);
@@ -469,6 +541,31 @@ export function AutomationsClient({
         .catch(() => {});
     }
   }, [initialAutomations.length]);
+
+  // システム自動化の状態を取得
+  useEffect(() => {
+    setSystemStatesLoading(true);
+    fetch("/api/system-automations")
+      .then(r => r.json())
+      .then(data => setSystemStates(data))
+      .catch(() => {})
+      .finally(() => setSystemStatesLoading(false));
+  }, []);
+
+  // システム自動化トグル
+  const toggleSystemAutomation = useCallback(async (id: string) => {
+    const currentlyEnabled = systemStates[id] !== false; // default ON
+    try {
+      const res = await fetch("/api/system-automations", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, enabled: !currentlyEnabled }),
+      });
+      if (res.ok) {
+        setSystemStates(prev => ({ ...prev, [id]: !currentlyEnabled }));
+      }
+    } catch {}
+  }, [systemStates]);
 
   const loadChannels = useCallback(async () => {
     if (channels.length > 0) return;
@@ -582,7 +679,7 @@ export function AutomationsClient({
   }, [activeTab, notificationLogs.length, salesReminders.length, mentorReminders.length, loadNotificationLogs, loadReminders]);
 
   const userActiveCount = automations.filter((a) => a.is_active).length;
-  const systemActiveCount = SYSTEM_AUTOMATIONS.filter((a) => a.isActive).length;
+  const systemActiveCount = SYSTEM_AUTOMATIONS.filter((a) => systemStates[a.id] !== false).length;
   const totalCount = SYSTEM_AUTOMATIONS.length + automations.length;
   const totalActive = systemActiveCount + userActiveCount;
 
@@ -668,7 +765,12 @@ export function AutomationsClient({
           <div className="space-y-3">
             {/* システム自動化 */}
             {filteredSystem.map((sa) => (
-              <SystemAutomationCard key={sa.id} automation={sa} />
+              <SystemAutomationCard
+                key={sa.id}
+                automation={sa}
+                isEnabled={systemStates[sa.id] !== false}
+                onToggle={() => toggleSystemAutomation(sa.id)}
+              />
             ))}
 
             {/* ユーザー定義自動化 */}
@@ -739,23 +841,29 @@ export function AutomationsClient({
 // SystemAutomationCard（システム自動化カード）
 // ================================================================
 
-function SystemAutomationCard({ automation }: { automation: SystemAutomation }) {
+function SystemAutomationCard({ automation, isEnabled, onToggle }: { automation: SystemAutomation; isEnabled: boolean; onToggle: () => void }) {
   return (
-    <div className="bg-surface-raised border border-white/10 rounded-lg overflow-hidden">
+    <div className={`bg-surface-raised border rounded-lg overflow-hidden transition-colors ${
+      isEnabled ? "border-white/10" : "border-white/5 opacity-60"
+    }`}>
       <div className="px-5 py-4">
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-3 mb-2">
               <span className="text-white font-medium">{automation.name}</span>
               <CategoryBadge category={automation.category} />
-              <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] rounded-full ${
-                automation.isActive
-                  ? "bg-green-900/40 text-green-300"
-                  : "bg-gray-700/40 text-gray-400"
-              }`}>
-                <span className={`w-1.5 h-1.5 rounded-full ${automation.isActive ? "bg-green-400" : "bg-gray-500"}`} />
-                {automation.isActive ? "ON" : "OFF"}
-              </span>
+              <button
+                onClick={onToggle}
+                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                  isEnabled ? "bg-green-600" : "bg-gray-600"
+                }`}
+              >
+                <span
+                  className={`inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform ${
+                    isEnabled ? "translate-x-4" : "translate-x-1"
+                  }`}
+                />
+              </button>
             </div>
 
             <SystemAutomationFlow automation={automation} />

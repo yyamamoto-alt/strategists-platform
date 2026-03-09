@@ -293,7 +293,7 @@ export function OrdersClient({ orders: initialOrders, reconciliation }: OrdersCl
       },
       {
         key: "contract_confirmed",
-        label: "契約確定額",
+        label: "確定売上",
         width: 130,
         align: "right" as const,
         render: (r) => formatCurrency(r.contract_confirmed),
@@ -301,7 +301,7 @@ export function OrdersClient({ orders: initialOrders, reconciliation }: OrdersCl
       },
       {
         key: "orders_total",
-        label: "注文合計",
+        label: "入金済み",
         width: 130,
         align: "right" as const,
         render: (r) => formatCurrency(r.orders_total),

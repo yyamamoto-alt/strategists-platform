@@ -115,7 +115,7 @@ export async function upsertOrder(
 }
 
 // ================================================================
-// 突合レポート: contracts.confirmed_amount vs SUM(orders.amount)
+// 突合レポート: 確定売上(orders paid+partial+scheduled) vs 入金済(orders paid)
 // ================================================================
 
 export interface ReconciliationItem {
@@ -134,15 +134,10 @@ export async function fetchReconciliationReport(): Promise<
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as any;
 
-  // 契約情報の取得
-  const { data: contracts } = await db
-    .from("contracts")
-    .select("customer_id, confirmed_amount");
-
-  // 注文の顧客別合計
+  // 全注文（顧客紐付け済み）を取得
   const { data: orders } = await db
     .from("orders")
-    .select("customer_id, amount")
+    .select("customer_id, amount, status")
     .not("customer_id", "is", null);
 
   // 顧客名・申込日の取得
@@ -150,47 +145,36 @@ export async function fetchReconciliationReport(): Promise<
     .from("customers")
     .select("id, name, application_date");
 
-  if (!contracts || !orders || !customers) return [];
+  if (!orders || !customers) return [];
 
   const customerMap = new Map<string, { name: string; application_date: string | null }>();
   for (const c of customers) {
     customerMap.set(c.id, { name: c.name || "不明", application_date: c.application_date || null });
   }
 
-  // 契約の confirmed_amount をマップ
-  const contractMap = new Map<string, number>();
-  for (const c of contracts) {
-    if (c.customer_id && c.confirmed_amount) {
-      contractMap.set(
-        c.customer_id,
-        (contractMap.get(c.customer_id) || 0) + c.confirmed_amount
-      );
-    }
-  }
+  // 確定売上（paid + partial + scheduled）をマップ
+  const confirmedMap = new Map<string, number>();
+  // 入金済み合計（paid のみ）をマップ
+  const paidMap = new Map<string, number>();
 
-  // 注文の合計をマップ
-  const orderMap = new Map<string, number>();
   for (const o of orders) {
-    if (o.customer_id) {
-      orderMap.set(
-        o.customer_id,
-        (orderMap.get(o.customer_id) || 0) + (o.amount || 0)
-      );
+    if (!o.customer_id) continue;
+    const amt = o.amount || 0;
+    if (o.status === "paid" || o.status === "partial" || o.status === "scheduled") {
+      confirmedMap.set(o.customer_id, (confirmedMap.get(o.customer_id) || 0) + amt);
+    }
+    if (o.status === "paid") {
+      paidMap.set(o.customer_id, (paidMap.get(o.customer_id) || 0) + amt);
     }
   }
 
-  // 全顧客IDを統合
-  const allIdsArr = Array.from(contractMap.keys()).concat(Array.from(orderMap.keys()));
-  const seen = new Set<string>();
   const results: ReconciliationItem[] = [];
 
-  for (let i = 0; i < allIdsArr.length; i++) {
-    const id = allIdsArr[i];
-    if (seen.has(id)) continue;
-    seen.add(id);
-    const contractTotal = contractMap.get(id) || 0;
-    const ordersTotal = orderMap.get(id) || 0;
-    const diff = contractTotal - ordersTotal;
+  for (const entry of Array.from(confirmedMap.entries()) as [string, number][]) {
+    const id = entry[0];
+    const confirmed = entry[1];
+    const paid = paidMap.get(id) || 0;
+    const diff = confirmed - paid;
 
     if (diff !== 0) {
       const cust = customerMap.get(id);
@@ -198,8 +182,8 @@ export async function fetchReconciliationReport(): Promise<
         customer_id: id,
         customer_name: cust?.name || "不明",
         application_date: cust?.application_date || null,
-        contract_confirmed: contractTotal,
-        orders_total: ordersTotal,
+        contract_confirmed: confirmed,
+        orders_total: paid,
         difference: diff,
       });
     }

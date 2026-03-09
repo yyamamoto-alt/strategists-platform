@@ -1,5 +1,5 @@
 import { createServiceClient } from "@/lib/supabase/server";
-import { sendSlackDM, logNotification } from "@/lib/slack";
+import { sendSlackDM, logNotification, isSystemAutomationEnabled } from "@/lib/slack";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -15,6 +15,10 @@ export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (!(await isSystemAutomationEnabled("mentor-reminder"))) {
+    return NextResponse.json({ ok: true, skipped: true, reason: "disabled" });
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

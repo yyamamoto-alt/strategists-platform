@@ -1,6 +1,6 @@
 import { createServiceClient } from "@/lib/supabase/server";
 import { matchCustomer } from "@/lib/customer-matching";
-import { notifyJicooBooking } from "@/lib/slack";
+import { notifyJicooBooking, notifyAssessmentBooking, notifyBehaviorBooking } from "@/lib/slack";
 import { computeAttributionForCustomer } from "@/lib/compute-attribution-for-customer";
 import { NextResponse } from "next/server";
 import crypto from "crypto";
@@ -89,6 +89,52 @@ async function fetchJicooBookingDetails(
 }
 
 /**
+ * ビヘイビア/アセスメント予約を検出し、専用Slackチャンネルに通知
+ */
+async function sendTargetedEventNotification(
+  event: string,
+  obj: Record<string, unknown>,
+  jicooDetails: JicooBookingDetails,
+  name: string | null,
+  startedAt: string | null,
+) {
+  // イベント名からタイプを判定
+  const eventName = jicooDetails.eventName || (obj.name as string | undefined) || "";
+  const eventTypeId = (obj.eventTypeId as string | undefined) || "";
+
+  const isBehavior = eventName.includes("ビヘイビア") || eventTypeId.includes("wOVzHsvJ9T4v");
+  const isAssessment = eventName.includes("アセスメント") || eventTypeId.includes("o1Y-tOsp");
+
+  if (!isBehavior && !isAssessment) return;
+
+  const isCancelled = event.includes("cancel");
+  const contact = obj.contact as { name?: string } | undefined;
+  // answers配列から属性を取得（Jicooの質問回答）
+  const answers = obj.answers as { value?: string }[] | undefined;
+  const attribute = answers?.find((a) => a.value && (a.value.includes("既卒") || a.value.includes("新卒")))?.value || "";
+  const displayName = name || contact?.name || "不明";
+  const nameWithAttr = attribute ? `${displayName}(${attribute})` : displayName;
+  const hostName = jicooDetails.hostName || "未定";
+  const dateStr = startedAt
+    ? new Date(startedAt).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" })
+    : "未定";
+
+  if (isBehavior) {
+    const text = isCancelled
+      ? `ビヘイビア予約がキャンセルされました。\n*名前：* ${nameWithAttr}\n*担当者：* ${hostName}\n*時間：* ${dateStr}`
+      : `ビヘイビア予約が入りました。\n*名前：* ${nameWithAttr}\n*担当者：* ${hostName}\n*時間：* ${dateStr}`;
+    await notifyBehaviorBooking(text);
+  }
+
+  if (isAssessment) {
+    const text = isCancelled
+      ? `アセスメント予約がキャンセルされました。\n*名前：* ${nameWithAttr}\n*担当者：* ${hostName}\n*時間：* ${dateStr}`
+      : `アセスメント予約が入りました。\n*名前：* ${nameWithAttr}\n*担当者：* ${hostName}\n*時間：* ${dateStr}`;
+    await notifyAssessmentBooking(text);
+  }
+}
+
+/**
  * POST /api/webhooks/jicoo
  * Jicoo Webhook: 予約作成/変更/キャンセル時に呼ばれる
  *
@@ -148,6 +194,9 @@ export async function POST(request: Request) {
   const match = await matchCustomer(email, phone, null, name);
 
   if (match) {
+    // Jicoo REST APIで担当者・会議URL・イベント名を取得（全イベントで使用）
+    const jicooDetails = await fetchJicooBookingDetails(obj);
+
     // 予約作成 → 面談日程をsales_pipelineに記録
     if (event === "guest_booked" || event === "guest_rescheduled" || event === "host_rescheduled") {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -162,8 +211,6 @@ export async function POST(request: Request) {
         pipelineUpdate.stage = "未実施";
       }
 
-      // Jicoo REST APIで担当者・会議URL・イベント名を取得
-      const jicooDetails = await fetchJicooBookingDetails(obj);
       if (jicooDetails.hostName) {
         pipelineUpdate.sales_person = jicooDetails.hostName;
       }
@@ -227,6 +274,9 @@ export async function POST(request: Request) {
       matched: true,
       customerUrl: `https://strategists-crm.vercel.app/customers/${match.customer_id}`,
     });
+
+    // ビヘイビア/アセスメント専用チャンネル通知
+    await sendTargetedEventNotification(event, obj, jicooDetails, name, startedAt);
 
     return NextResponse.json({
       success: true,
@@ -297,6 +347,10 @@ export async function POST(request: Request) {
         matched: false,
         customerUrl: `https://strategists-crm.vercel.app/customers/${newCustomer.id}`,
       });
+
+      // ビヘイビア/アセスメント専用チャンネル通知
+      const jicooDetailsForNew = await fetchJicooBookingDetails(obj);
+      await sendTargetedEventNotification(event, obj, jicooDetailsForNew, name, startedAt);
 
       return NextResponse.json({
         success: true,

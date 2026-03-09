@@ -110,6 +110,20 @@ export async function notifyJicooBooking(data: {
   await sendSlackMessage(channel, lines.join("\n"));
 }
 
+/** アセスメント予約通知 */
+export async function notifyAssessmentBooking(text: string) {
+  const channel = await getNotifyConfig("assessment_booking", "C09GWR7RC8G");
+  if (!channel) return;
+  await sendSlackMessage(channel, text);
+}
+
+/** ビヘイビア予約通知 */
+export async function notifyBehaviorBooking(text: string) {
+  const channel = await getNotifyConfig("behavior_booking", "C093LD0Q9AL");
+  if (!channel) return;
+  await sendSlackMessage(channel, text);
+}
+
 /** 決済成功通知（Apps/Stripe共通） */
 export async function notifyPaymentSuccess(data: {
   source: "Apps" | "Stripe";
