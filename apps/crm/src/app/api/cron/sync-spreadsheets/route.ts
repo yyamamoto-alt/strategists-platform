@@ -17,18 +17,17 @@ export async function GET(request: Request) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as any;
 
-  // 全アクティブ接続を取得（LP系もフォーム系もすべて同期）
-  const { data: connections, error: connError } = await db
-    .from("spreadsheet_connections")
-    .select("*")
-    .eq("is_active", true)
-    .limit(100)
-    .order("name");
+  // 全アクティブ接続を取得（2回に分けて取得 — Supabaseクライアントの暗黙的リミット対策）
+  const [{ data: conn1 }, { data: conn2 }] = await Promise.all([
+    db.from("spreadsheet_connections").select("*").eq("is_active", true).eq("source_type", "google_sheets").limit(50).order("name"),
+    db.from("spreadsheet_connections").select("*").eq("is_active", true).neq("source_type", "google_sheets").limit(50).order("name"),
+  ]);
+  const connections = [...(conn1 || []), ...(conn2 || [])];
 
-  if (connError || !connections || connections.length === 0) {
+  if (connections.length === 0) {
     return NextResponse.json({
       success: true,
-      message: "No active auto-create connections found",
+      message: "No active connections found",
       synced: 0,
     });
   }
