@@ -80,6 +80,12 @@ function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
           radius={[0, 0, 0, 0]}
         />
         <Bar
+          dataKey="confirmed_subsidy"
+          name="補助金"
+          fill="#f87171"
+          stackId="revenue"
+        />
+        <Bar
           dataKey="confirmed_school_shinsotsu"
           name="新卒スクール"
           fill="#1e3a5f"
@@ -89,12 +95,6 @@ function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
           dataKey="confirmed_agent"
           name="人材確定"
           fill="#c2410c"
-          stackId="revenue"
-        />
-        <Bar
-          dataKey="confirmed_subsidy"
-          name="補助金"
-          fill="#f87171"
           stackId="revenue"
         />
 
