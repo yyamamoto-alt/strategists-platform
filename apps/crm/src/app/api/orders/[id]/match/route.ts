@@ -107,8 +107,7 @@ export async function PATCH(request: Request, { params }: Props) {
     // sales_pipeline を作成
     await db.from("sales_pipeline").insert({
       customer_id: newCustomer.id,
-      stage: "問い合わせ",
-      deal_status: "未対応",
+      stage: "日程未確",
     });
 
     // orders を更新

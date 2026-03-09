@@ -81,8 +81,7 @@ export async function PATCH(request: Request, { params }: Props) {
       const obj = record.raw_data?.object;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const pipelineUpdate: Record<string, any> = {
-        stage: "日程確定",
-        deal_status: "対応中",
+        stage: "未実施",
         updated_at: new Date().toISOString(),
       };
       if (obj?.startedAt) {
@@ -164,8 +163,7 @@ export async function PATCH(request: Request, { params }: Props) {
     // sales_pipeline を作成
     await db.from("sales_pipeline").insert({
       customer_id: newCustomer.id,
-      stage: "問い合わせ",
-      deal_status: "未対応",
+      stage: "日程未確",
     });
 
     // application_history に追加

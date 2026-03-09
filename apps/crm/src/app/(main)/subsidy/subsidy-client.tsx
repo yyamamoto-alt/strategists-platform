@@ -51,8 +51,8 @@ function isSubsidyTarget(c: CustomerWithRelations): boolean {
   if (appDate > SUBSIDY_START) return true;
   // 申込日が2/10以前 → 営業日が2/10より後 かつ 未実施/noshowは除外
   if (salesDate > SUBSIDY_START) {
-    const status = c.pipeline?.deal_status;
-    if (status === "未実施" || status === "noshow" || status === "no-show") return false;
+    const stage = c.pipeline?.stage;
+    if (stage === "未実施" || stage === "日程未確" || stage === "NoShow") return false;
     return true;
   }
   return false;
@@ -66,7 +66,10 @@ function getSubsidyDate(c: CustomerWithRelations): string {
 }
 
 function isSupportStarted(c: CustomerWithRelations): boolean {
-  return c.pipeline?.deal_status === "実施";
+  const stage = c.pipeline?.stage;
+  if (!stage) return false;
+  // 日程未確・未実施以外なら面談実施済み
+  return stage !== "日程未確" && stage !== "未実施";
 }
 
 function isCourseStarted(c: CustomerWithRelations): boolean {

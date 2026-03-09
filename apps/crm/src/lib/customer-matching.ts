@@ -249,7 +249,6 @@ async function syncFormFieldsToRelatedTables(
       .from("sales_pipeline")
       .update({
         stage: "成約",
-        deal_status: "成約",
         updated_at: new Date().toISOString(),
       })
       .eq("customer_id", customerId);
@@ -514,7 +513,6 @@ export async function upsertFromSpreadsheet(
     await db.from("sales_pipeline").insert({
       customer_id: newCustomer.id,
       stage: "日程未確",
-      deal_status: "進行中",
     });
 
     // application_history に履歴追加（新規作成なので重複なし）

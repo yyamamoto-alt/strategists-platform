@@ -267,10 +267,10 @@ export function SalesClient({ customers }: SalesClientProps) {
         columns={columns}
         data={customers}
         getRowKey={(c) => c.id}
-        searchPlaceholder="名前・商談状況・営業担当で検索..."
+        searchPlaceholder="名前・ステージ・営業担当で検索..."
         searchFilter={(c, q) =>
           c.name.toLowerCase().includes(q) ||
-          (c.pipeline?.deal_status?.toLowerCase().includes(q) ?? false) ||
+          (c.pipeline?.stage?.toLowerCase().includes(q) ?? false) ||
           (c.pipeline?.sales_person?.toLowerCase().includes(q) ?? false) ||
           (c.pipeline?.sales_content?.toLowerCase().includes(q) ?? false)
         }

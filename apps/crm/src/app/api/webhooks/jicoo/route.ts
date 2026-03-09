@@ -74,8 +74,7 @@ export async function POST(request: Request) {
         pipelineUpdate.meeting_scheduled_date = startedAt;
       }
       if (status === "open") {
-        pipelineUpdate.stage = "日程確定";
-        pipelineUpdate.deal_status = "対応中";
+        pipelineUpdate.stage = "未実施";
       }
 
       // Jicoo tracking → UTMを記録
@@ -96,7 +95,7 @@ export async function POST(request: Request) {
         .from("sales_pipeline")
         .update({
           meeting_scheduled_date: null,
-          deal_status: "保留",
+          stage: "日程未確",
           updated_at: new Date().toISOString(),
         })
         .eq("customer_id", match.customer_id);
@@ -144,11 +143,10 @@ export async function POST(request: Request) {
         );
       }
 
-      // sales_pipeline を作成（Jicoo予約 → 日程確定）
+      // sales_pipeline を作成（Jicoo予約 → 未実施）
       await db.from("sales_pipeline").insert({
         customer_id: newCustomer.id,
-        stage: "日程確定",
-        deal_status: "対応中",
+        stage: "未実施",
         meeting_scheduled_date: startedAt || null,
       });
 

@@ -55,7 +55,6 @@ const CRM_FIELDS = [
   { key: "priority", label: "優先度", table: "customers" },
   // pipeline
   { key: "stage", label: "ステージ", table: "sales_pipeline" },
-  { key: "deal_status", label: "実施状況", table: "sales_pipeline" },
   { key: "probability", label: "営業角度", table: "sales_pipeline" },
   { key: "sales_date", label: "営業日①", table: "sales_pipeline" },
   { key: "sales_date_2", label: "営業日②", table: "sales_pipeline" },
