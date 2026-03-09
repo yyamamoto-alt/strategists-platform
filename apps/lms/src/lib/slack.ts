@@ -48,10 +48,9 @@ const COURSE_OPTIONS = [
 export interface MentorRecord {
   id: string;
   name: string;
-  email: string | null;
-  phone: string | null;
   slack_user_id: string | null;
   booking_url: string | null;
+  line_url: string | null;
   profile_text: string | null;
   is_active: boolean;
 }

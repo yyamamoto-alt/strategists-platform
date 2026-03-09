@@ -146,7 +146,7 @@ const VIEW_COLUMNS: Record<ViewTab, string[] | null> = {
 const CLOSED_STAGES = new Set(["成約", "成約(追加指導経由)", "途中解約(成約)"]);
 
 const STAGE_OPTIONS = [
-  { group: "未実施", options: ["日程未確", "未実施"] },
+  { group: "未実施", options: ["日程未確", "未実施", "実施不可"] },
   { group: "アクティブ", options: ["検討中", "長期検討"] },
   { group: "成約", options: ["成約", "成約(追加指導経由)", "成約見込(未入金)", "途中解約(成約)"] },
   { group: "購入・追加", options: ["その他購入", "動画講座購入", "追加指導", "追加指導(NoShow)", "追加指導(CL)"] },
@@ -658,6 +658,7 @@ export function CustomersClient({ customers, attributionMap, firstPaidMap }: Cus
           <optgroup label="未実施">
             <option value="日程未確">日程未確</option>
             <option value="未実施">未実施</option>
+            <option value="実施不可">実施不可</option>
           </optgroup>
           <optgroup label="アクティブ">
             <option value="検討中">検討中</option>

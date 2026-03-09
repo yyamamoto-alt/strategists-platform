@@ -28,6 +28,7 @@ import {
   isAgentCustomer,
   isCurrentlyEnrolled,
   isAgentConfirmed,
+  type RecentClosingRates,
   getSubsidyAmount,
   getSchoolRevenue,
   calcAgentProjectedRevenue,
@@ -92,7 +93,7 @@ export function computeFunnelMetrics(
   const today = new Date().toISOString().slice(0, 10);
   const byMonth = new Map<
     string,
-    { applications: number; scheduled: number; scheduled_actionable: number; conducted: number; closed: number; additional_coaching: number }
+    { applications: number; scheduled: number; pending_future: number; conducted: number; closed: number; additional_coaching: number }
   >();
 
   for (const c of filtered) {
@@ -101,7 +102,7 @@ export function computeFunnelMetrics(
     const period = date.slice(0, 7).replace("-", "/");
 
     if (!byMonth.has(period)) {
-      byMonth.set(period, { applications: 0, scheduled: 0, scheduled_actionable: 0, conducted: 0, closed: 0, additional_coaching: 0 });
+      byMonth.set(period, { applications: 0, scheduled: 0, pending_future: 0, conducted: 0, closed: 0, additional_coaching: 0 });
     }
     const m = byMonth.get(period)!;
     m.applications++;
@@ -111,11 +112,12 @@ export function computeFunnelMetrics(
       // 日程確定以降（日程未確以外すべて）
       if (s !== "日程未確") {
         m.scheduled++;
-        // scheduled_actionable: 面談日が到来済み or 日付未設定 or 既に実施済みの場合のみカウント
+      }
+      // 未実施かつ営業予定日が未来 → 実施率の分母から除外（時間の問題で実施される可能性が高い）
+      if (s === "未実施") {
         const meetingDate = c.pipeline.meeting_scheduled_date;
-        const alreadyConducted = isConducted(s);
-        if (alreadyConducted || !meetingDate || meetingDate <= today) {
-          m.scheduled_actionable++;
+        if (meetingDate && meetingDate > today) {
+          m.pending_future++;
         }
       }
       // 面談実施: stageが日程未確・未実施以外
@@ -136,13 +138,15 @@ export function computeFunnelMetrics(
   return Array.from(byMonth.entries())
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([period, m]) => {
+      // 実施率 = 実施数 / (申込数 - 未実施かつ営業予定日が未来の件数)
+      const conductDenom = m.applications - m.pending_future;
       // 成約率分母: 実施 - 追加指導（結果未確定のため除外）
       const closingDenom = m.conducted - m.additional_coaching;
       return {
         period,
         ...m,
         scheduling_rate: m.applications > 0 ? m.scheduled / m.applications : 0,
-        conduct_rate: m.scheduled_actionable > 0 ? m.conducted / m.scheduled_actionable : 0,
+        conduct_rate: conductDenom > 0 ? m.conducted / conductDenom : 0,
         closing_rate: closingDenom > 0 ? m.closed / closingDenom : 0,
       };
     });
@@ -222,26 +226,46 @@ function computeRecentClosingRate(
   customers: CustomerWithRelations[],
   recentMonths: number = 3
 ): number {
-  const byMonth = new Map<string, { conducted: number; closed: number; additional_coaching: number }>();
+  const rates = computeRecentClosingRateByAttribute(customers, recentMonths);
+  // 全体平均: 既卒と新卒の加重平均的な値
+  const allConducted = rates._totalConducted;
+  const allClosed = rates._totalClosed;
+  return allConducted > 0 ? allClosed / allConducted : 0;
+}
+
+/** 直近N月の既卒/新卒別成約率を計算 */
+function computeRecentClosingRateByAttribute(
+  customers: CustomerWithRelations[],
+  recentMonths: number = 3
+): RecentClosingRates & { _totalConducted: number; _totalClosed: number } {
+  const byMonth = new Map<string, {
+    kisotsu_conducted: number; kisotsu_closed: number; kisotsu_ac: number;
+    shinsotsu_conducted: number; shinsotsu_closed: number; shinsotsu_ac: number;
+  }>();
 
   for (const c of customers) {
     const date = c.application_date;
     if (!date) continue;
     const period = date.slice(0, 7).replace("-", "/");
     if (!byMonth.has(period)) {
-      byMonth.set(period, { conducted: 0, closed: 0, additional_coaching: 0 });
+      byMonth.set(period, {
+        kisotsu_conducted: 0, kisotsu_closed: 0, kisotsu_ac: 0,
+        shinsotsu_conducted: 0, shinsotsu_closed: 0, shinsotsu_ac: 0,
+      });
     }
     const m = byMonth.get(period)!;
     if (!c.pipeline) continue;
     const s = c.pipeline.stage;
+    const shin = isShinsotsu(c.attribute);
+
     if (isConducted(s)) {
-      m.conducted++;
+      if (shin) m.shinsotsu_conducted++; else m.kisotsu_conducted++;
     }
     if (isAdditionalCoaching(s)) {
-      m.additional_coaching++;
+      if (shin) m.shinsotsu_ac++; else m.kisotsu_ac++;
     }
     if (isStageClosed(s)) {
-      m.closed++;
+      if (shin) m.shinsotsu_closed++; else m.kisotsu_closed++;
     }
   }
 
@@ -252,26 +276,33 @@ function computeRecentClosingRate(
     .sort((a, b) => b.localeCompare(a))
     .slice(0, recentMonths);
 
-  let totalConducted = 0;
-  let totalClosed = 0;
-  let totalAC = 0;
+  let kConducted = 0, kClosed = 0, kAC = 0;
+  let sConducted = 0, sClosed = 0, sAC = 0;
   for (const p of sortedPeriods) {
     const m = byMonth.get(p)!;
-    totalConducted += m.conducted;
-    totalClosed += m.closed;
-    totalAC += m.additional_coaching;
+    kConducted += m.kisotsu_conducted; kClosed += m.kisotsu_closed; kAC += m.kisotsu_ac;
+    sConducted += m.shinsotsu_conducted; sClosed += m.shinsotsu_closed; sAC += m.shinsotsu_ac;
   }
 
-  const denom = totalConducted - totalAC;
-  if (denom <= 0) {
-    const allConducted = Array.from(byMonth.values()).reduce((s, m) => s + m.conducted, 0);
-    const allClosed = Array.from(byMonth.values()).reduce((s, m) => s + m.closed, 0);
-    const allAC = Array.from(byMonth.values()).reduce((s, m) => s + m.additional_coaching, 0);
-    const allDenom = allConducted - allAC;
-    return allDenom > 0 ? allClosed / allDenom : 0;
+  // 直近データが不足する場合は全期間にフォールバック
+  if ((kConducted - kAC) <= 0 && (sConducted - sAC) <= 0) {
+    for (const m of Array.from(byMonth.values())) {
+      kConducted += m.kisotsu_conducted; kClosed += m.kisotsu_closed; kAC += m.kisotsu_ac;
+      sConducted += m.shinsotsu_conducted; sClosed += m.shinsotsu_closed; sAC += m.shinsotsu_ac;
+    }
   }
 
-  return totalClosed / denom;
+  const kDenom = kConducted - kAC;
+  const sDenom = sConducted - sAC;
+  const kisotsuRate = kDenom > 0 ? kClosed / kDenom : 0.30; // フォールバック30%
+  const shinsotsuRate = sDenom > 0 ? sClosed / sDenom : 0.15; // フォールバック15%
+
+  return {
+    kisotsu: kisotsuRate,
+    shinsotsu: shinsotsuRate,
+    _totalConducted: (kConducted - kAC) + (sConducted - sAC),
+    _totalClosed: kClosed + sClosed,
+  };
 }
 
 /** 当月の日数進捗補正係数を計算 */
@@ -292,6 +323,9 @@ export function computeThreeTierRevenue(
   customers: CustomerWithRelations[]
 ): ThreeTierRevenue[] {
   customers = filterByAnalyticsPeriod(customers);
+
+  // 直近3ヶ月の既卒/新卒別成約率を算出（未実施/日程未確のLTV計算に使用）
+  const recentRates = computeRecentClosingRateByAttribute(customers, 3);
   const byMonth = new Map<
     string,
     {
@@ -334,7 +368,7 @@ export function computeThreeTierRevenue(
     const hasPaid = amount > 0; // 支払い実績があれば確定売上（ステージ不問）
 
     // MAXライン: 全顧客の見込みLTV合計（成約済みも未成約も含む）
-    m.expected_ltv += calcExpectedLTV(c);
+    m.expected_ltv += calcExpectedLTV(c, undefined, recentRates);
 
     // --- Tier 1: 確定売上（支払い実績ベース — ステージ不問） ---
     if (hasPaid) {
@@ -370,7 +404,7 @@ export function computeThreeTierRevenue(
     // --- Tier 3: ステージ別成約確率ベースの予測 ---
     // 支払い済みは確定に計上済みなので、未払い顧客のみ予測
     if (!hasPaid && !closed) {
-      const prob = calcClosingProbability(c);
+      const prob = calcClosingProbability(c, recentRates);
       if (prob > 0) {
         // スクール売上期待値
         const potentialSchool =

@@ -14,7 +14,7 @@ export async function PATCH(
   const { id } = await params;
   const body = await request.json();
 
-  const allowed = ["name", "email", "phone", "slack_user_id", "booking_url", "profile_text", "is_active"];
+  const allowed = ["name", "slack_user_id", "booking_url", "line_url", "profile_text", "is_active"];
   const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
   for (const key of allowed) {
     if (key in body) updates[key] = body[key];

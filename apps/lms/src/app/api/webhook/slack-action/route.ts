@@ -191,16 +191,14 @@ export async function POST(request: Request) {
       }
 
       // メンター詳細情報をDBから取得
-      let mentorEmail: string | undefined;
-      let mentorPhone: string | undefined;
+      let mentorLineUrl: string | undefined;
       let mentorBookingUrl: string | undefined;
       let mentorProfileText: string | undefined;
       if (selectedMentor) {
         const mentorList = await fetchMentors();
         const mentorRecord = mentorList.find(m => m.name === selectedMentor);
         if (mentorRecord) {
-          mentorEmail = mentorRecord.email || undefined;
-          mentorPhone = mentorRecord.phone || undefined;
+          mentorLineUrl = mentorRecord.line_url || undefined;
           mentorBookingUrl = mentorRecord.booking_url || undefined;
           mentorProfileText = mentorRecord.profile_text || undefined;
         }
@@ -219,8 +217,7 @@ export async function POST(request: Request) {
           inviteUrl,
           appName: "LMS",
           mentorName: selectedMentor || undefined,
-          mentorEmail,
-          mentorPhone,
+          mentorLineUrl,
           mentorBookingUrl,
           mentorProfileText,
         });

@@ -5,10 +5,9 @@ import { useEffect, useState } from "react";
 interface Mentor {
   id: string;
   name: string;
-  email: string | null;
-  phone: string | null;
   slack_user_id: string | null;
   booking_url: string | null;
+  line_url: string | null;
   profile_text: string | null;
   is_active: boolean;
 }
@@ -80,29 +79,11 @@ export default function MentorsAdminPage() {
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs text-gray-400 block mb-1">名前</label>
+                    <label className="text-xs text-gray-400 block mb-1">ニックネーム</label>
                     <input
                       className="w-full bg-white/5 border border-white/10 rounded px-3 py-2 text-sm text-white"
                       value={form.name || ""}
                       onChange={(e) => setForm({ ...form, name: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs text-gray-400 block mb-1">メールアドレス</label>
-                    <input
-                      className="w-full bg-white/5 border border-white/10 rounded px-3 py-2 text-sm text-white"
-                      value={form.email || ""}
-                      onChange={(e) => setForm({ ...form, email: e.target.value })}
-                      placeholder="mentor@example.com"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs text-gray-400 block mb-1">電話番号</label>
-                    <input
-                      className="w-full bg-white/5 border border-white/10 rounded px-3 py-2 text-sm text-white"
-                      value={form.phone || ""}
-                      onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                      placeholder="090-XXXX-XXXX"
                     />
                   </div>
                   <div>
@@ -112,6 +93,15 @@ export default function MentorsAdminPage() {
                       value={form.slack_user_id || ""}
                       onChange={(e) => setForm({ ...form, slack_user_id: e.target.value })}
                       placeholder="U01XXXXXXXX"
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="text-xs text-gray-400 block mb-1">LINE友達追加URL</label>
+                    <input
+                      className="w-full bg-white/5 border border-white/10 rounded px-3 py-2 text-sm text-white"
+                      value={form.line_url || ""}
+                      onChange={(e) => setForm({ ...form, line_url: e.target.value })}
+                      placeholder="https://line.me/ti/p/..."
                     />
                   </div>
                   <div className="col-span-2">
@@ -171,9 +161,12 @@ export default function MentorsAdminPage() {
                     )}
                   </div>
                   <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-400">
-                    {m.email && <span>mail: {m.email}</span>}
-                    {m.phone && <span>tel: {m.phone}</span>}
                     {m.slack_user_id && <span>Slack: {m.slack_user_id}</span>}
+                    {m.line_url && (
+                      <a href={m.line_url} target="_blank" rel="noopener noreferrer" className="text-green-400 hover:underline">
+                        LINE
+                      </a>
+                    )}
                     {m.booking_url && (
                       <a href={m.booking_url} target="_blank" rel="noopener noreferrer" className="text-red-400 hover:underline">
                         予約URL
@@ -183,7 +176,7 @@ export default function MentorsAdminPage() {
                   {m.profile_text && (
                     <p className="text-xs text-gray-500 mt-1">{m.profile_text}</p>
                   )}
-                  {!m.email && !m.phone && !m.booking_url && (
+                  {!m.line_url && !m.booking_url && (
                     <p className="text-xs text-yellow-500/70">未設定 - 編集して連絡先を追加してください</p>
                   )}
                 </div>

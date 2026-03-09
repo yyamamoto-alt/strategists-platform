@@ -542,13 +542,14 @@ export interface FunnelMetrics {
   period: string;
   applications: number;
   scheduled: number;
-  /** 日程確定のうち面談日が到来済み（conduct_rate分母） */
-  scheduled_actionable: number;
+  /** 未実施かつ営業予定日が未来（conduct_rate分母から除外） */
+  pending_future: number;
   conducted: number;
   closed: number;
   /** 追加指導数（成約率分母から除外） */
   additional_coaching: number;
   scheduling_rate: number;
+  /** 実施率: conducted / (applications - pending_future) */
   conduct_rate: number;
   /** 成約率: closed / (conducted - additional_coaching) */
   closing_rate: number;

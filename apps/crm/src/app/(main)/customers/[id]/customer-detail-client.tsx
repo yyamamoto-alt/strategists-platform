@@ -595,7 +595,7 @@ function buildPipelineFields(c: CustomerWithRelations): FieldDef[] {
   const p = c.pipeline as any;
   return [
     { key: "stage", label: "ステージ", source: "manual", type: "select", options: [
-      "日程未確", "未実施",
+      "日程未確", "未実施", "実施不可",
       "検討中", "長期検討",
       "成約", "成約(追加指導経由)", "成約見込(未入金)", "途中解約(成約)",
       "その他購入", "動画講座購入", "追加指導", "追加指導(NoShow)", "追加指導(CL)",
