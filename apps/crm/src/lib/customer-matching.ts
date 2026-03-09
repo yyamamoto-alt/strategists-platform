@@ -295,7 +295,16 @@ async function syncFormFieldsToRelatedTables(
     if (rawData["フィードバック内容(簡単にでok)"]) pipelineUpdate.sales_content = rawData["フィードバック内容(簡単にでok)"];
     if (rawData["ネックになりそうな要素（複数選択可）"]) pipelineUpdate.marketing_memo = rawData["ネックになりそうな要素（複数選択可）"];
     if (rawData["実施日"]) pipelineUpdate.sales_date = normalizeDateStr(rawData["実施日"]);
-    if (rawData["次回実施日 or 検討結果連絡日"]) pipelineUpdate.meeting_scheduled_date = normalizeDateStr(rawData["次回実施日 or 検討結果連絡日"]);
+    // 「次回実施日 or 検討結果連絡日」を結果に応じて振り分け
+    if (rawData["次回実施日 or 検討結果連絡日"]) {
+      const nextDate = normalizeDateStr(rawData["次回実施日 or 検討結果連絡日"]);
+      const result = rawData["結果"] || "";
+      if (result.includes("追加指導") || result === "枠確保") {
+        pipelineUpdate.meeting_scheduled_date = nextDate;
+      } else {
+        pipelineUpdate.response_deadline = nextDate;
+      }
+    }
     if (rawData["営業内容・手応え"]) pipelineUpdate.sales_content = rawData["営業内容・手応え"];
     if (rawData["比較サービス"]) pipelineUpdate.comparison_services = rawData["比較サービス"];
 

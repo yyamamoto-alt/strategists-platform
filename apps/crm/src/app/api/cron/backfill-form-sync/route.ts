@@ -111,7 +111,16 @@ export async function GET(request: Request) {
         if (rd["フィードバック内容(簡単にでok)"]) upd.sales_content = rd["フィードバック内容(簡単にでok)"];
         if (rd["ネックになりそうな要素（複数選択可）"]) upd.marketing_memo = rd["ネックになりそうな要素（複数選択可）"];
         if (rd["実施日"]) upd.sales_date = normalizeDateStr(rd["実施日"]);
-        if (rd["次回実施日 or 検討結果連絡日"]) upd.meeting_scheduled_date = normalizeDateStr(rd["次回実施日 or 検討結果連絡日"]);
+        // 結果に応じて追加指導日 or 返答期限に振り分け
+        if (rd["次回実施日 or 検討結果連絡日"]) {
+          const nextDate = normalizeDateStr(rd["次回実施日 or 検討結果連絡日"]);
+          const result = rd["結果"] || "";
+          if (result.includes("追加指導") || result === "枠確保") {
+            upd.meeting_scheduled_date = nextDate;
+          } else {
+            upd.response_deadline = nextDate;
+          }
+        }
         if (rd["営業内容・手応え"]) upd.sales_content = rd["営業内容・手応え"];
         if (rd["比較サービス"]) upd.comparison_services = rd["比較サービス"];
 

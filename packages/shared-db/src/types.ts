@@ -138,6 +138,7 @@ export interface SalesPipeline {
   projected_amount?: number | null;
   probability?: number | null;
   response_date?: string | null;
+  response_deadline?: string | null;
   sales_date_2?: string | null;
   sales_date_3?: string | null;
   response_date_2?: string | null;
