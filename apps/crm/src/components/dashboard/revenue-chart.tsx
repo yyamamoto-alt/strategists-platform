@@ -136,6 +136,16 @@ function DiagonalStripePattern({ id, color }: { id: string; color: string }) {
   );
 }
 
+/** 人材見込用: 薄い透明パターン（ドット） */
+function ProjectedDotPattern({ id, color }: { id: string; color: string }) {
+  return (
+    <pattern id={id} patternUnits="userSpaceOnUse" width="6" height="6">
+      <rect width="6" height="6" fill={color} fillOpacity="0.12" />
+      <circle cx="3" cy="3" r="0.8" fill={color} fillOpacity="0.45" />
+    </pattern>
+  );
+}
+
 // コスト表示ON/OFF
 
 export function RevenueChart({ data, threeTierData }: RevenueChartProps) {
@@ -372,6 +382,7 @@ function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
         <ComposedChart data={chartData} margin={{ top: 30, right: 10, left: 10, bottom: 5 }}>
           <defs>
             <DiagonalStripePattern id="stripe-ltv" color={colors.ltv} />
+            <ProjectedDotPattern id="dot-projected" color={colors.projected} />
             <pattern id="stripe-cost" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(-45)">
               <rect width="6" height="6" fill="#ef4444" fillOpacity="0.08" />
               <line x1="0" y1="0" x2="0" y2="6" stroke="#ef4444" strokeWidth="2" strokeOpacity="0.3" />
@@ -425,7 +436,17 @@ function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
           <Bar yAxisId="left" dataKey="content_revenue" name="note売上" fill={colors.note} stackId="revenue" />
           <Bar yAxisId="left" dataKey="myvision_revenue" name="MyVision受託" fill={colors.myvision} stackId="revenue" />
           <Bar yAxisId="left" dataKey="other_misc_revenue" name="その他" fill={colors.other} stackId="revenue" />
-          <Bar yAxisId="left" dataKey="projected_agent" name="人材見込" fill={colors.projected} fillOpacity={0.55} stackId="revenue" />
+          <Bar
+            yAxisId="left"
+            dataKey="projected_agent"
+            name="人材見込"
+            fill="url(#dot-projected)"
+            stroke={colors.projected}
+            strokeWidth={1}
+            strokeOpacity={0.5}
+            strokeDasharray="3 2"
+            stackId="revenue"
+          />
           <Bar
             yAxisId="left"
             dataKey="ltv_gap"
