@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   XAxis,
   YAxis,
@@ -40,7 +40,7 @@ const SERIES_KEYS = [
   { key: "myvision", label: "MyVision受託" },
   { key: "other", label: "その他" },
   { key: "projected", label: "人材見込" },
-  { key: "ltv", label: "見込みLTV" },
+  { key: "ltv", label: "MAXポテンシャル（伸び代）" },
 ] as const;
 
 type ColorKey = (typeof SERIES_KEYS)[number]["key"];
@@ -105,6 +105,16 @@ function ColorPicker({ colors, onChange, onClose }: {
   );
 }
 
+/** SVG斜線パターン定義 */
+function DiagonalStripePattern({ id, color }: { id: string; color: string }) {
+  return (
+    <pattern id={id} patternUnits="userSpaceOnUse" width="8" height="8" patternTransform="rotate(45)">
+      <rect width="8" height="8" fill={color} fillOpacity="0.18" />
+      <line x1="0" y1="0" x2="0" y2="8" stroke={color} strokeWidth="3" strokeOpacity="0.5" />
+    </pattern>
+  );
+}
+
 export function RevenueChart({ data, threeTierData }: RevenueChartProps) {
   if (threeTierData && threeTierData.length > 0) {
     return <UnifiedChart data={threeTierData} />;
@@ -112,7 +122,7 @@ export function RevenueChart({ data, threeTierData }: RevenueChartProps) {
   return <FallbackChart data={data} />;
 }
 
-/** 統合チャート: 確定売上（棒）+ 見込みLTVポテンシャル（ドットのみ） */
+/** 統合チャート: 確定売上（棒）+ MAXポテンシャル伸び代（縞々棒） */
 function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
   const [colors, setColors] = useState<Record<ColorKey, string>>(DEFAULT_COLORS);
   const [showPicker, setShowPicker] = useState(false);
@@ -126,6 +136,23 @@ function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
       return next;
     });
   }, []);
+
+  // 伸び代（MAXポテンシャル - 棒グラフ合計）を計算
+  const chartData = useMemo(() => {
+    return data.map((d) => {
+      const barTotal =
+        (d.confirmed_school_kisotsu || 0) +
+        (d.confirmed_subsidy || 0) +
+        (d.confirmed_school_shinsotsu || 0) +
+        (d.confirmed_agent || 0) +
+        (d.content_revenue || 0) +
+        (d.myvision_revenue || 0) +
+        (d.other_misc_revenue || 0) +
+        (d.projected_agent || 0);
+      const gap = Math.max(0, (d.expected_ltv_total || 0) - barTotal);
+      return { ...d, ltv_gap: gap };
+    });
+  }, [data]);
 
   return (
     <div className="relative">
@@ -142,7 +169,10 @@ function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
         <ColorPicker colors={colors} onChange={handleColorChange} onClose={() => setShowPicker(false)} />
       )}
       <ResponsiveContainer width="100%" height={600}>
-        <ComposedChart data={data} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
+        <ComposedChart data={chartData} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
+          <defs>
+            <DiagonalStripePattern id="stripe-ltv" color={colors.ltv} />
+          </defs>
           <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
           <XAxis
             dataKey="period"
@@ -162,7 +192,7 @@ function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
             ticks={[0, 1000000, 2000000, 3000000, 4000000, 5000000, 6000000, 7000000, 8000000, 9000000, 10000000]}
           />
           <Tooltip
-            formatter={(value) => `¥${Number(value).toLocaleString()}`}
+            formatter={(value, name) => [`¥${Number(value).toLocaleString()}`, name]}
             contentStyle={{
               backgroundColor: "#1A1A1A",
               border: "1px solid rgba(255,255,255,0.1)",
@@ -180,17 +210,16 @@ function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
           <Bar dataKey="content_revenue" name="note売上" fill={colors.note} stackId="revenue" />
           <Bar dataKey="myvision_revenue" name="MyVision受託" fill={colors.myvision} stackId="revenue" />
           <Bar dataKey="other_misc_revenue" name="その他" fill={colors.other} stackId="revenue" />
-          <Bar dataKey="projected_agent" name="人材見込" fill={colors.projected} fillOpacity={0.55} stackId="revenue" radius={[4, 4, 0, 0]} />
-
-          <Line
-            type="monotone"
-            dataKey="expected_ltv_total"
-            name="見込みLTV（MAXポテンシャル）"
-            stroke="transparent"
-            strokeWidth={0}
-            dot={{ r: 5, fill: colors.ltv, stroke: "#fff", strokeWidth: 1.5 }}
-            activeDot={{ r: 7, fill: colors.ltv, stroke: "#fff", strokeWidth: 2 }}
-            connectNulls={false}
+          <Bar dataKey="projected_agent" name="人材見込" fill={colors.projected} fillOpacity={0.55} stackId="revenue" />
+          <Bar
+            dataKey="ltv_gap"
+            name="MAXポテンシャル（伸び代）"
+            fill="url(#stripe-ltv)"
+            stroke={colors.ltv}
+            strokeWidth={0.5}
+            strokeOpacity={0.4}
+            stackId="revenue"
+            radius={[4, 4, 0, 0]}
           />
         </ComposedChart>
       </ResponsiveContainer>
