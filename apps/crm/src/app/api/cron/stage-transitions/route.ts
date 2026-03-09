@@ -41,22 +41,35 @@ export async function GET(request: Request) {
 
   const results: Record<string, number> = {};
 
+  // ★ 支払い済み顧客のIDセットを取得（自動遷移から除外するため）
+  const { data: paidCustomers } = await supabase
+    .from("contracts")
+    .select("customer_id")
+    .gte("confirmed_amount", 50000);
+  const paidCustomerIds = new Set(
+    (paidCustomers || []).map((r: { customer_id: string }) => r.customer_id)
+  );
+
   // 0a. 追加指導 → 失注見込み（追加指導日から3日経過）
   {
     const { data: coachingTargets, error } = await supabase
       .from("sales_pipeline")
-      .select("id")
+      .select("id, customer_id")
       .eq("stage", "追加指導")
       .not("additional_coaching_date", "is", null)
       .lt("additional_coaching_date", cutoff3d);
 
     if (!error && coachingTargets && coachingTargets.length > 0) {
-      const ids = coachingTargets.map((r: { id: string }) => r.id);
-      const { count } = await supabase
-        .from("sales_pipeline")
-        .update({ stage: "失注見込み" })
-        .in("id", ids);
-      results["追加指導→失注見込み(3日超過)"] = count || ids.length;
+      const ids = coachingTargets
+        .filter((r: { customer_id: string }) => !paidCustomerIds.has(r.customer_id))
+        .map((r: { id: string }) => r.id);
+      if (ids.length > 0) {
+        const { count } = await supabase
+          .from("sales_pipeline")
+          .update({ stage: "失注見込み" })
+          .in("id", ids);
+        results["追加指導→失注見込み(3日超過)"] = count || ids.length;
+      }
     }
   }
 
@@ -64,18 +77,22 @@ export async function GET(request: Request) {
   {
     const { data: deadlineTargets, error } = await supabase
       .from("sales_pipeline")
-      .select("id")
+      .select("id, customer_id")
       .eq("stage", "検討中")
       .not("response_deadline", "is", null)
       .lt("response_deadline", cutoff3d);
 
     if (!error && deadlineTargets && deadlineTargets.length > 0) {
-      const ids = deadlineTargets.map((r: { id: string }) => r.id);
-      const { count } = await supabase
-        .from("sales_pipeline")
-        .update({ stage: "失注見込み" })
-        .in("id", ids);
-      results["検討中→失注見込み(返答期限3日超過)"] = count || ids.length;
+      const ids = deadlineTargets
+        .filter((r: { customer_id: string }) => !paidCustomerIds.has(r.customer_id))
+        .map((r: { id: string }) => r.id);
+      if (ids.length > 0) {
+        const { count } = await supabase
+          .from("sales_pipeline")
+          .update({ stage: "失注見込み" })
+          .in("id", ids);
+        results["検討中→失注見込み(返答期限3日超過)"] = count || ids.length;
+      }
     }
   }
 
@@ -89,6 +106,7 @@ export async function GET(request: Request) {
   if (!e1 && appDateTargets && appDateTargets.length > 0) {
     const idsToTransition1: string[] = [];
     for (const r of appDateTargets) {
+      if (paidCustomerIds.has(r.customer_id)) continue; // 支払い済みスキップ
       const refDate = r.sales_date || r.meeting_scheduled_date || (r.customers as any)?.application_date;
       if (refDate && refDate < cutoff) {
         idsToTransition1.push(r.id);
@@ -108,12 +126,13 @@ export async function GET(request: Request) {
   //    営業日がない場合は面談実施日、それもなければ面談予定日をフォールバック
   const { data: salesDateTargets, error: e2 } = await supabase
     .from("sales_pipeline")
-    .select("id, stage, sales_date, meeting_scheduled_date, response_deadline")
+    .select("id, customer_id, stage, sales_date, meeting_scheduled_date, response_deadline")
     .in("stage", ["検討中", "長期検討", "失注見込"]);
 
   if (!e2 && salesDateTargets) {
     const idsToTransition: string[] = [];
     for (const r of salesDateTargets) {
+      if (paidCustomerIds.has(r.customer_id)) continue; // 支払い済みスキップ
       // 検討中で返答期限ありは0bで処理済み → スキップ
       if (r.stage === "検討中" && r.response_deadline) continue;
       const refDate = r.sales_date || r.meeting_scheduled_date;
