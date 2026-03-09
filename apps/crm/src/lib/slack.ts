@@ -258,3 +258,21 @@ export async function notifySalesReminder(text: string) {
   if (!channel) return;
   await sendSlackMessage(channel, text);
 }
+
+/** Jicoo空き枠レポート通知 */
+export async function notifyJicooAvailability(text: string) {
+  const channel = await getNotifyConfig("jicoo_availability", DEFAULT_CHANNELS.payment_success);
+  if (!channel) return;
+  await sendSlackMessage(channel, text);
+}
+
+// ================================================================
+// システム自動化 ON/OFF チェック
+// ================================================================
+
+/** システム自動化が有効かチェック（デフォルトON） */
+export async function isSystemAutomationEnabled(automationId: string): Promise<boolean> {
+  const value = await getSetting(`sys_automation_${automationId}`);
+  // 明示的に "false" でない限りON
+  return value !== "false";
+}

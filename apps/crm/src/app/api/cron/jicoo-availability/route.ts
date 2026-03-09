@@ -1,41 +1,92 @@
 import { NextResponse } from "next/server";
-import { notifySalesReminder } from "@/lib/slack";
+import { createServiceClient } from "@/lib/supabase/server";
+import { notifyJicooAvailability } from "@/lib/slack";
 
 export const dynamic = "force-dynamic";
 
 const JICOO_API_KEY = process.env.JICOO_API_KEY;
 const JICOO_API_BASE = "https://api.jicoo.com/v1";
 
-/**
- * 対象イベントタイプ名のリスト（部分一致）
- * 空配列 = 全イベントタイプが対象
- * 例: ["初回", "面談"] → 名前に「初回」または「面談」を含むイベントのみ
- */
-const TARGET_EVENT_NAMES: string[] = [];
-
-const TOTAL_DAYS = 15;
+// デフォルト値（app_settingsに未設定の場合）
+const DEFAULTS = {
+  total_days: 15,
+  near_threshold: 4,
+  total_threshold: 15,
+  mid_threshold: 3,
+  far_threshold: 3,
+  evening_threshold: 6,
+  target_events: "",
+};
 
 interface Slot {
   startedAt: string;
   remainingCapacity: number;
 }
 
-function analyzeAllSlots(allSlots: Slot[], now: Date) {
+interface Thresholds {
+  nearThreshold: number;
+  totalThreshold: number;
+  midThreshold: number;
+  farThreshold: number;
+  eveningThreshold: number;
+}
+
+async function loadSettings() {
+  const supabase = createServiceClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db = supabase as any;
+  const { data } = await db
+    .from("app_settings")
+    .select("key, value")
+    .like("key", "jicoo_availability_%");
+
+  const map: Record<string, string> = {};
+  if (data) {
+    for (const row of data as { key: string; value: unknown }[]) {
+      const v = row.value;
+      map[row.key] = typeof v === "string" ? v.replace(/"/g, "") : String(v ?? "");
+    }
+  }
+
+  const num = (key: string, def: number) => {
+    const v = map[`jicoo_availability_${key}`];
+    if (!v) return def;
+    const n = Number(v);
+    return isNaN(n) ? def : n;
+  };
+
+  return {
+    totalDays: num("total_days", DEFAULTS.total_days),
+    thresholds: {
+      nearThreshold: num("near_threshold", DEFAULTS.near_threshold),
+      totalThreshold: num("total_threshold", DEFAULTS.total_threshold),
+      midThreshold: num("mid_threshold", DEFAULTS.mid_threshold),
+      farThreshold: num("far_threshold", DEFAULTS.far_threshold),
+      eveningThreshold: num("evening_threshold", DEFAULTS.evening_threshold),
+    } as Thresholds,
+    targetEvents: (map["jicoo_availability_target_events"] || DEFAULTS.target_events)
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean),
+  };
+}
+
+function analyzeAllSlots(allSlots: Slot[], now: Date, totalDays: number, t: Thresholds) {
   const alerts: string[] = [];
   const dayNames = ["日", "月", "火", "水", "木", "金", "土"];
 
-  // 日別初期化（15日分）
+  // 日別初期化
   const dailyMap = new Map<string, number>();
-  for (let d = 0; d < TOTAL_DAYS; d++) {
+  for (let d = 0; d < totalDays; d++) {
     const date = new Date(now.getTime() + d * 24 * 60 * 60 * 1000);
     const key = date.toLocaleDateString("ja-JP", { month: "numeric", day: "numeric", timeZone: "Asia/Tokyo" });
     dailyMap.set(key, 0);
   }
 
-  let nearSlots = 0;   // 0-4日目（今後5日間）
-  let midSlots = 0;     // 3-9日目（4-10日目）
-  let farSlots = 0;     // 9日目以降（10日目以降）
-  let eveningWeekendSlots = 0; // 平日19-25時 + 土日
+  let nearSlots = 0;
+  let midSlots = 0;
+  let farSlots = 0;
+  let eveningWeekendSlots = 0;
 
   for (const slot of allSlots) {
     const slotDate = new Date(slot.startedAt);
@@ -43,14 +94,8 @@ function analyzeAllSlots(allSlots: Slot[], now: Date) {
       slotDate.toLocaleString("en-US", { hour: "numeric", hour12: false, timeZone: "Asia/Tokyo" }),
     );
     const dateKey = slotDate.toLocaleDateString("ja-JP", { month: "numeric", day: "numeric", timeZone: "Asia/Tokyo" });
-    const jstDay = parseInt(
-      slotDate.toLocaleString("en-US", { weekday: "narrow", timeZone: "Asia/Tokyo" }).length > 0
-        ? String(new Date(slotDate.toLocaleString("en-US", { timeZone: "Asia/Tokyo" })).getDay())
-        : "0",
-    );
-    // 正確なJST曜日
     const jstDate = new Date(slotDate.toLocaleString("en-US", { timeZone: "Asia/Tokyo" }));
-    const dow = jstDate.getDay(); // 0=日, 6=土
+    const dow = jstDate.getDay();
 
     dailyMap.set(dateKey, (dailyMap.get(dateKey) || 0) + slot.remainingCapacity);
 
@@ -59,7 +104,6 @@ function analyzeAllSlots(allSlots: Slot[], now: Date) {
     if (daysFromNow >= 3 && daysFromNow < 10) midSlots += slot.remainingCapacity;
     if (daysFromNow >= 9) farSlots += slot.remainingCapacity;
 
-    // 平日19時以降 or 土日
     const isWeekend = dow === 0 || dow === 6;
     const isEveningWeekday = dow >= 1 && dow <= 5 && jstHour >= 19;
     if (isWeekend || isEveningWeekday) {
@@ -69,7 +113,6 @@ function analyzeAllSlots(allSlots: Slot[], now: Date) {
 
   const totalSlots = allSlots.reduce((sum, s) => sum + s.remainingCapacity, 0);
 
-  // 日別配列
   const dailyBreakdown: { dayLabel: string; slots: number }[] = [];
   let dayIdx = 0;
   dailyMap.forEach((count, date) => {
@@ -80,25 +123,20 @@ function analyzeAllSlots(allSlots: Slot[], now: Date) {
   });
 
   // --- アラート判定 ---
-
-  if (totalSlots <= 15) {
-    alerts.push(`🔴 全体の空き枠が${totalSlots}枠（15枠以下）→ 全体的に枠が不足しています`);
+  if (totalSlots <= t.totalThreshold) {
+    alerts.push(`🔴 全体の空き枠が${totalSlots}枠（${t.totalThreshold}枠以下）→ 全体的に枠が不足しています`);
   }
-
-  if (nearSlots <= 4) {
-    alerts.push(`🟠 今後5日間の空き枠が${nearSlots}枠（4枠以下）→ 直近の予約を受けられません`);
+  if (nearSlots <= t.nearThreshold) {
+    alerts.push(`🟠 今後5日間の空き枠が${nearSlots}枠（${t.nearThreshold}枠以下）→ 直近の予約を受けられません`);
   }
-
-  if (midSlots < 3) {
-    alerts.push(`🟡 4〜10日目の空き枠が${midSlots}枠（3枠未満）→ 中期の枠確保が必要です`);
+  if (midSlots < t.midThreshold) {
+    alerts.push(`🟡 4〜10日目の空き枠が${midSlots}枠（${t.midThreshold}枠未満）→ 中期の枠確保が必要です`);
   }
-
-  if (farSlots < 3) {
-    alerts.push(`🟡 10日目以降の空き枠が${farSlots}枠（3枠未満）→ 先の日程の枠を追加してください`);
+  if (farSlots < t.farThreshold) {
+    alerts.push(`🟡 10日目以降の空き枠が${farSlots}枠（${t.farThreshold}枠未満）→ 先の日程の枠を追加してください`);
   }
-
-  if (eveningWeekendSlots <= 6) {
-    alerts.push(`🟡 平日夜(19時〜)+土日の空き枠が${eveningWeekendSlots}枠（6枠以下）→ 社会人が予約しづらい状況です`);
+  if (eveningWeekendSlots <= t.eveningThreshold) {
+    alerts.push(`🟡 平日夜(19時〜)+土日の空き枠が${eveningWeekendSlots}枠（${t.eveningThreshold}枠以下）→ 社会人が予約しづらい状況です`);
   }
 
   return { totalSlots, nearSlots, midSlots, farSlots, eveningWeekendSlots, dailyBreakdown, alerts };
@@ -123,7 +161,6 @@ function formatReport(analysis: ReturnType<typeof analyzeAllSlots>, eventTypeNam
     "",
   ];
 
-  // 日別（5日ずつ区切って表示）
   lines.push("📅 *日別内訳*");
   for (let i = 0; i < dailyBreakdown.length; i += 5) {
     const chunk = dailyBreakdown.slice(i, i + 5);
@@ -157,6 +194,8 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "JICOO_API_KEY not set" }, { status: 500 });
   }
 
+  // app_settingsから設定を読み込み
+  const config = await loadSettings();
   const headers = { Authorization: `Bearer ${JICOO_API_KEY}` };
 
   try {
@@ -171,9 +210,9 @@ export async function GET(request: Request) {
     }[]).filter((et) => et.status === "enable");
 
     // 対象イベントタイプをフィルタ
-    if (TARGET_EVENT_NAMES.length > 0) {
+    if (config.targetEvents.length > 0) {
       eventTypes = eventTypes.filter((et) =>
-        TARGET_EVENT_NAMES.some((target) => et.name.includes(target)),
+        config.targetEvents.some((target) => et.name.includes(target)),
       );
     }
 
@@ -181,19 +220,20 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: true, message: "No matching event types" });
     }
 
-    // 2. 空き枠を合算取得（7日制限があるので2回に分けて取得）
+    // 2. 空き枠を合算取得（7日制限があるので分割）
     const now = new Date();
     const allSlots: Slot[] = [];
+    const periods: [string, string][] = [];
 
-    // 0-7日目
-    const p1Start = now.toISOString();
-    const p1End = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString();
-    // 7-15日目
-    const p2Start = p1End;
-    const p2End = new Date(now.getTime() + TOTAL_DAYS * 24 * 60 * 60 * 1000).toISOString();
+    for (let d = 0; d < config.totalDays; d += 7) {
+      const start = new Date(now.getTime() + d * 24 * 60 * 60 * 1000).toISOString();
+      const endDay = Math.min(d + 7, config.totalDays);
+      const end = new Date(now.getTime() + endDay * 24 * 60 * 60 * 1000).toISOString();
+      periods.push([start, end]);
+    }
 
     for (const et of eventTypes) {
-      for (const [pStart, pEnd] of [[p1Start, p1End], [p2Start, p2End]]) {
+      for (const [pStart, pEnd] of periods) {
         try {
           const res = await fetch(
             `${JICOO_API_BASE}/event_types/${et.uid}/available_schedules?periodStart=${encodeURIComponent(pStart)}&periodEnd=${encodeURIComponent(pEnd)}`,
@@ -209,12 +249,12 @@ export async function GET(request: Request) {
     }
 
     // 3. 分析
-    const analysis = analyzeAllSlots(allSlots, now);
+    const analysis = analyzeAllSlots(allSlots, now, config.totalDays, config.thresholds);
 
-    // 4. Slack salesチャンネルに送信
+    // 4. Slack通知
     const eventTypeNames = eventTypes.map((et) => et.name);
     const report = formatReport(analysis, eventTypeNames);
-    await notifySalesReminder(report);
+    await notifyJicooAvailability(report);
 
     return NextResponse.json({
       success: true,
