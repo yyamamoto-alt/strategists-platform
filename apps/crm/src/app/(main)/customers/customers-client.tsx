@@ -298,12 +298,12 @@ export function CustomersClient({ customers, attributionMap, firstPaidMap }: Cus
         ) },
 
       // ─── 申込日 ───
-      { key: "application_date", label: "申込日", width: 78, stickyLeft: 32,
+      { key: "application_date", label: "申込日", width: 78,
         render: (c) => <span className="text-gray-400 text-xs">{fmtDate(c.application_date)}</span>,
         sortValue: (c) => c.application_date || "" },
 
       // ─── 名前 [sticky] ───
-      { key: "name", label: "名前", width: 120, stickyLeft: 110,
+      { key: "name", label: "名前", width: 120, stickyLeft: 32,
         render: (c) => (
           <Link href={`/customers/${c.id}`} className="text-brand hover:underline text-sm">{c.name}</Link>
         ), sortValue: (c) => c.name },
