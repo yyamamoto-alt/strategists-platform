@@ -12,6 +12,7 @@ import {
   getPlanColor,
   getSalesPersonColor,
   getProbabilityColor,
+  getReferralCategoryColor,
 } from "@/lib/utils";
 import type { CustomerWithRelations } from "@strategy-school/shared-db";
 import type { ChannelAttribution } from "@/lib/data/marketing-settings";
@@ -89,11 +90,8 @@ const VIEW_COLUMNS: Record<ViewTab, string[] | null> = {
     "sales_route",
     // 営業: 営業予定日, 営業日, 追加指導日, 角度, 返答期限, 営業担当
     "meeting_scheduled", "sales_date", "additional_coaching_date", "probability", "response_deadline", "sales_person",
-    // 人材紹介
+    // 人材紹介（紹介ステータスまで）
     "referral_category", "referral_status", "external_agents",
-    "offer_rank", "offer_salary", "referral_fee_rate", "margin",
-    "placement_date",
-    "agent_staff", "agent_memo", "loss_reason",
   ],
   all: null, // 全カラム表示
   marketing: [
@@ -327,25 +325,25 @@ export function CustomersClient() {
         ) },
 
       // ─── 申込日 ───
-      { key: "application_date", label: "申込日", width: 78,
+      { key: "application_date", label: "申込日", width: 78, stickyLeft: 32,
         render: (c) => <span className="text-gray-400 text-xs">{fmtDate(c.application_date)}</span>,
         sortValue: (c) => c.application_date || "" },
 
       // ─── 名前 [sticky] ───
-      { key: "name", label: "名前", width: 120, stickyLeft: 32,
+      { key: "name", label: "名前", width: 120, stickyLeft: 110,
         render: (c) => (
           <Link href={`/customers/${c.id}`} className="text-brand hover:underline text-sm">{c.name}</Link>
         ), sortValue: (c) => c.name },
 
       // ─── 属性 ───
-      { key: "attribute", label: "属性", width: 52, category: "base",
+      { key: "attribute", label: "属性", width: 52, stickyLeft: 230, category: "base",
         render: (c) => (
           <span className={`inline-block px-1.5 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap ${getAttributeColor(c.attribute)}`}>{c.attribute.includes("既卒") ? "既卒" : "新卒"}</span>
         ), sortValue: (c) => c.attribute,
         filterValue: (c) => c.attribute?.includes("既卒") ? "既卒" : "新卒" },
 
       // ─── 検討状況（属性の右） ───
-      { key: "stage", label: "検討状況", width: 120, category: "sales",
+      { key: "stage", label: "検討状況", width: 120, stickyLeft: 282, category: "sales",
         render: (c) => {
           const stage = stageOverrides[c.id] || c.pipeline?.stage;
           return stage ? (
@@ -503,7 +501,10 @@ export function CustomersClient() {
 
       // ═══ 人材紹介（紫） ═══
       { key: "referral_category", label: "人材紹介区分", width: 100, category: "agent",
-        render: (c) => <span className="text-xs">{c.contract?.referral_category || "-"}</span> },
+        render: (c) => {
+          const rc = c.contract?.referral_category;
+          return rc ? <span className={`inline-block px-1.5 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap ${getReferralCategoryColor(rc)}`}>{rc}</span> : <span className="text-gray-600 text-xs">-</span>;
+        } },
       { key: "referral_status", label: "紹介ステータス", width: 100, category: "agent",
         render: (c) => <span className="text-xs">{c.contract?.referral_status || "-"}</span> },
 

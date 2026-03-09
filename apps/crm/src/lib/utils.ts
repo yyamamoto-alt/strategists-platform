@@ -166,6 +166,22 @@ export function getProbabilityColor(prob: number): string {
   return "bg-gray-500 text-white";
 }
 
+export function getReferralCategoryColor(category: string): string {
+  const colors: Record<string, string> = {
+    "フル利用": "bg-violet-600 text-white",
+    "一部利用": "bg-indigo-500 text-white",
+    "スクールのみ": "bg-slate-500 text-white",
+    "自社": "bg-emerald-600 text-white",
+    "該当": "bg-amber-600 text-white",
+    "なし": "bg-gray-500 text-white",
+  };
+  if (colors[category]) return colors[category];
+  for (const [key, val] of Object.entries(colors)) {
+    if (category.includes(key) || key.includes(category)) return val;
+  }
+  return "bg-gray-500 text-white";
+}
+
 export function getDealStatusColor(status: string): string {
   const colors: Record<string, string> = {
     未対応: "bg-gray-500/20 text-gray-400",
