@@ -13,6 +13,7 @@ interface InviteEmailParams {
   role: string;
   inviteUrl: string;
   appName: string;
+  mentorName?: string;
 }
 
 function roleLabel(role: string): string {
@@ -24,12 +25,22 @@ function roleLabel(role: string): string {
   }
 }
 
-export async function sendInviteEmail({ to, displayName, role, inviteUrl, appName }: InviteEmailParams) {
+export async function sendInviteEmail({ to, displayName, role, inviteUrl, appName, mentorName }: InviteEmailParams) {
   if (!resend) {
     throw new Error("RESEND_API_KEY が設定されていません");
   }
 
   const greeting = displayName ? `${displayName} 様` : "ご担当者 様";
+
+  const mentorSection = mentorName ? `
+        <div style="background-color: #f8f8f8; border-left: 4px solid #C13028; padding: 16px 20px; margin: 24px 0; border-radius: 0 8px 8px 0;">
+          <p style="font-size: 14px; font-weight: bold; color: #333; margin: 0 0 8px 0;">担当メンターのご紹介</p>
+          <p style="font-size: 15px; color: #333; margin: 0;">担当メンター: <strong>${mentorName}</strong></p>
+          <p style="font-size: 13px; color: #666; margin: 8px 0 0 0;">
+            指導に関するご質問は、LMSログイン後またはメール（support@akagiconsulting.com）までお気軽にお問い合わせください。
+          </p>
+        </div>
+  ` : "";
 
   const { error } = await resend.emails.send({
     from: FROM_ADDRESS,
@@ -50,6 +61,7 @@ export async function sendInviteEmail({ to, displayName, role, inviteUrl, appNam
             アカウントを作成する
           </a>
         </div>
+        ${mentorSection}
         <p style="font-size: 13px; color: #888; line-height: 1.6;">
           このリンクの有効期限は発行から30日間です。<br>
           もしリンクが機能しない場合は、以下のURLをブラウザに直接貼り付けてください：

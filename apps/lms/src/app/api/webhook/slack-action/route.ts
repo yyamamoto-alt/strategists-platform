@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { sendInviteEmail } from "@/lib/email";
-import { mapPlanToCourseIds } from "@/lib/slack";
+import { mapPlanToCourseIds, sendMentorAssignmentDM } from "@/lib/slack";
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 
@@ -55,8 +55,8 @@ export async function POST(request: Request) {
 
   const actionId = action.action_id;
 
-  // コース選択のドロップダウン変更 → 何もしない（承認ボタン押下時に state から取得）
-  if (actionId === "select_course") {
+  // ドロップダウン変更 → 何もしない（承認ボタン押下時に state から取得）
+  if (actionId === "select_course" || actionId === "select_mentor") {
     return new Response("", { status: 200 });
   }
 
@@ -101,14 +101,20 @@ export async function POST(request: Request) {
   if (actionId === "approve_invite") {
     try {
       // Slackメッセージ内のドロップダウンの選択値を取得
-      // payload.state.values にブロックIDごとの選択状態が入る
       let selectedCourseId: string | null = null;
+      let selectedMentor: string | null = null;
       const stateValues = payload.state?.values || {};
       for (const blockId of Object.keys(stateValues)) {
         if (blockId.startsWith("course_select_")) {
           const selectAction = stateValues[blockId]?.select_course;
           if (selectAction?.selected_option?.value) {
             selectedCourseId = selectAction.selected_option.value;
+          }
+        }
+        if (blockId.startsWith("mentor_select_")) {
+          const selectAction = stateValues[blockId]?.select_mentor;
+          if (selectAction?.selected_option?.value) {
+            selectedMentor = selectAction.selected_option.value;
           }
         }
       }
@@ -126,8 +132,15 @@ export async function POST(request: Request) {
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + 30);
 
-      // 顧客DBから紐づけ
+      // 顧客DBから紐づけ + 指導情報取得
       let customerId: string | null = null;
+      let progressSheetUrl: string | null = null;
+      let totalSessions: number | undefined;
+      let contractMonths: number | undefined;
+      let coachingStartDate: string | undefined;
+      let coachingEndDate: string | undefined;
+      let contractPlanName: string | undefined;
+
       const { data: customer } = await supabase
         .from("customers")
         .select("id, name")
@@ -136,6 +149,30 @@ export async function POST(request: Request) {
 
       if (customer) {
         customerId = customer.id;
+
+        // 契約情報（プログレスシートURL含む）
+        const { data: contract } = await supabase
+          .from("contracts")
+          .select("plan_name, progress_sheet_url")
+          .eq("customer_id", customer.id)
+          .single();
+        if (contract) {
+          progressSheetUrl = contract.progress_sheet_url;
+          contractPlanName = contract.plan_name;
+        }
+
+        // 指導情報
+        const { data: learning } = await supabase
+          .from("learning_records")
+          .select("total_sessions, contract_months, coaching_start_date, coaching_end_date")
+          .eq("customer_id", customer.id)
+          .single();
+        if (learning) {
+          totalSessions = learning.total_sessions;
+          contractMonths = learning.contract_months;
+          coachingStartDate = learning.coaching_start_date;
+          coachingEndDate = learning.coaching_end_date;
+        }
       }
 
       const { error: invErr } = await supabase.from("invitations").insert({
@@ -153,8 +190,8 @@ export async function POST(request: Request) {
         return respondToSlack(payload, `❌ 招待作成エラー: ${invErr.message}`);
       }
 
-      // 招待メール送信
-      const lmsUrl = process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "https://strategists-lms.vercel.app");
+      // 招待メール送信（メンター情報付き）
+      const lmsUrl = process.env.NEXT_PUBLIC_APP_URL || "https://strategists-lms.vercel.app";
       const inviteUrl = `${lmsUrl}/invite/${token}`;
 
       let emailSent = false;
@@ -165,10 +202,31 @@ export async function POST(request: Request) {
           role: "student",
           inviteUrl,
           appName: "LMS",
+          mentorName: selectedMentor || undefined,
         });
         emailSent = true;
       } catch (e) {
         console.error("Email send error:", e);
+      }
+
+      // メンターにDM送信
+      let mentorDmSent = false;
+      if (selectedMentor) {
+        try {
+          await sendMentorAssignmentDM(selectedMentor, {
+            name: application.name,
+            email: application.email,
+            planName: contractPlanName || application.plan_name,
+            totalSessions,
+            contractMonths,
+            coachingStartDate,
+            coachingEndDate,
+            progressSheetUrl: progressSheetUrl || undefined,
+          });
+          mentorDmSent = true;
+        } catch (e) {
+          console.error("Mentor DM error:", e);
+        }
       }
 
       // ステータス更新
@@ -181,11 +239,13 @@ export async function POST(request: Request) {
         })
         .eq("id", applicationId);
 
-      const emailStatus = emailSent ? "✅ メール送信済み" : "⚠️ メール送信失敗（URLは生成済み）";
-      const courseLabel = courseIds.length > 0 ? `コース: ${courseIds.join(", ")}` : "コース: 未指定";
+      const emailStatus = emailSent ? "メール送信済み" : "メール送信失敗（URLは生成済み）";
+      const mentorStatus = selectedMentor
+        ? (mentorDmSent ? `メンター: ${selectedMentor} (DM送信済み)` : `メンター: ${selectedMentor} (DM送信失敗)`)
+        : "メンター: 未選択";
       return respondToSlack(
         payload,
-        `✅ 承認されました (by ${userName})\n*${application.name}* (${application.email})\n${courseLabel}\n招待URL: ${inviteUrl}\n${emailStatus}`
+        `✅ 承認されました (by ${userName})\n*${application.name}* (${application.email})\n${mentorStatus}\n招待URL: ${inviteUrl}\n${emailSent ? "✅" : "⚠️"} ${emailStatus}`
       );
     } catch (e) {
       console.error("Approve error:", e);

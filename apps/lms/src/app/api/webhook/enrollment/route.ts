@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { sendInviteApprovalRequest, mapPlanToCourseIds } from "@/lib/slack";
+import type { PaymentInfo, LearningInfo } from "@/lib/slack";
 import { NextResponse } from "next/server";
 
 /**
@@ -81,15 +82,9 @@ export async function POST(request: Request) {
     );
   }
 
-  // 顧客の決済・契約情報を取得
-  let paymentInfo: {
-    contractPlan?: string;
-    confirmedAmount?: number;
-    billingStatus?: string;
-    subsidyAmount?: number;
-    payments: { date: string; amount: number; method: string }[];
-    totalPaid: number;
-  } = { payments: [], totalPaid: 0 };
+  // 顧客の決済・契約・指導情報を取得
+  const paymentInfo: PaymentInfo = { payments: [], totalPaid: 0 };
+  const learningInfo: LearningInfo = {};
 
   try {
     // メールアドレスで顧客を検索
@@ -103,7 +98,7 @@ export async function POST(request: Request) {
       // 契約情報
       const { data: contract } = await supabase
         .from("contracts")
-        .select("plan_name, confirmed_amount, billing_status, subsidy_eligible, subsidy_amount, contract_amount, discount")
+        .select("plan_name, confirmed_amount, billing_status, subsidy_eligible, subsidy_amount, contract_amount, discount, progress_sheet_url")
         .eq("customer_id", customer.id)
         .single();
 
@@ -112,6 +107,23 @@ export async function POST(request: Request) {
         paymentInfo.confirmedAmount = contract.confirmed_amount;
         paymentInfo.billingStatus = contract.billing_status;
         paymentInfo.subsidyAmount = contract.subsidy_eligible ? contract.subsidy_amount : 0;
+        learningInfo.progressSheetUrl = contract.progress_sheet_url;
+      }
+
+      // 指導情報
+      const { data: learning } = await supabase
+        .from("learning_records")
+        .select("total_sessions, completed_sessions, contract_months, coaching_start_date, coaching_end_date, mentor_name")
+        .eq("customer_id", customer.id)
+        .single();
+
+      if (learning) {
+        learningInfo.totalSessions = learning.total_sessions;
+        learningInfo.completedSessions = learning.completed_sessions;
+        learningInfo.contractMonths = learning.contract_months;
+        learningInfo.coachingStartDate = learning.coaching_start_date;
+        learningInfo.coachingEndDate = learning.coaching_end_date;
+        learningInfo.currentMentor = learning.mentor_name;
       }
 
       // ordersテーブルから決済履歴を取得
@@ -134,7 +146,7 @@ export async function POST(request: Request) {
       }
     }
   } catch (e) {
-    console.error("Payment info fetch error:", e);
+    console.error("Payment/learning info fetch error:", e);
   }
 
   // 自動招待が有効か確認
@@ -154,13 +166,14 @@ export async function POST(request: Request) {
     const slackChannel = settingsMap.auto_invite_slack_channel?.replace(/"/g, "");
 
     if (autoEnabled && slackChannel) {
-      // Slack承認リクエスト送信（決済情報付き）
+      // Slack承認リクエスト送信（決済・指導情報付き）
       await sendInviteApprovalRequest(slackChannel, {
         id: data.id,
         name,
         email,
         planName: plan_name,
         paymentInfo,
+        learningInfo,
       });
 
       // ステータスを更新
