@@ -1,5 +1,6 @@
 import { createServiceClient } from "@/lib/supabase/server";
 import { computeAttributionForCustomer } from "@/lib/compute-attribution-for-customer";
+import { logStageChange } from "@/lib/stage-audit";
 import { NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 
@@ -63,6 +64,23 @@ export async function PATCH(request: Request, { params }: Props) {
 
   // sales_pipeline テーブル更新
   if (body.pipeline && Object.keys(body.pipeline).length > 0) {
+    // ステージ変更がある場合、変更前のステージを取得してaudit log記録
+    if (body.pipeline.stage) {
+      const { data: currentPipeline } = await db
+        .from("sales_pipeline")
+        .select("stage")
+        .eq("customer_id", id)
+        .maybeSingle();
+      const oldStage = currentPipeline?.stage || null;
+      if (oldStage !== body.pipeline.stage) {
+        logStageChange({
+          customer_id: id,
+          old_stage: oldStage,
+          new_stage: body.pipeline.stage,
+          changed_by: "manual",
+        }).catch(() => {});
+      }
+    }
     const { error } = await db
       .from("sales_pipeline")
       .update(body.pipeline)

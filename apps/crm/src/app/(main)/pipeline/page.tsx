@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { fetchCustomersWithRelations } from "@/lib/data/customers";
+import { logStageChangeBatch } from "@/lib/stage-audit";
 import { createServiceClient } from "@/lib/supabase/server";
 import { PipelineClient } from "./pipeline-client";
 
@@ -22,10 +23,10 @@ async function applyAutoStageChanges() {
   // ルール1: 予定日から2週間経過 → 失注見込(自動)
   const { data: overdueRecords } = await db
     .from("sales_pipeline")
-    .select("id, stage, meeting_scheduled_date")
+    .select("id, customer_id, stage, meeting_scheduled_date")
     .in("stage", ["未実施", "日程確定", "問い合わせ"])
     .not("meeting_scheduled_date", "is", null)
-    .lt("meeting_scheduled_date", twoWeeksAgoStr) as { data: { id: string }[] | null };
+    .lt("meeting_scheduled_date", twoWeeksAgoStr) as { data: { id: string; stage: string; customer_id: string }[] | null };
 
   if (overdueRecords && overdueRecords.length > 0) {
     const ids = overdueRecords.map((r: { id: string }) => r.id);
@@ -33,6 +34,14 @@ async function applyAutoStageChanges() {
       .from("sales_pipeline")
       .update({ stage: "失注見込(自動)" })
       .in("id", ids);
+    logStageChangeBatch(
+      overdueRecords.map((r: { id: string; stage: string; customer_id: string }) => ({
+        customer_id: r.customer_id,
+        old_stage: r.stage,
+        new_stage: "失注見込(自動)",
+        changed_by: "pipeline-auto",
+      }))
+    ).catch(() => {});
   }
 
   // ルール2: 日程未設定 + 申込から1ヶ月経過 → 失注見込(自動)
@@ -42,7 +51,7 @@ async function applyAutoStageChanges() {
     .select("id, customer_id, stage, meeting_scheduled_date, customers!inner(application_date)")
     .in("stage", ["未実施", "日程未確", "問い合わせ"])
     .is("meeting_scheduled_date", null)
-    .lt("customers.application_date", oneMonthAgoStr) as { data: { id: string }[] | null };
+    .lt("customers.application_date", oneMonthAgoStr) as { data: { id: string; stage: string; customer_id: string }[] | null };
 
   if (staleRecords && staleRecords.length > 0) {
     const ids = staleRecords.map((r: { id: string }) => r.id);
@@ -50,6 +59,14 @@ async function applyAutoStageChanges() {
       .from("sales_pipeline")
       .update({ stage: "失注見込(自動)" })
       .in("id", ids);
+    logStageChangeBatch(
+      staleRecords.map((r: { id: string; stage: string; customer_id: string }) => ({
+        customer_id: r.customer_id,
+        old_stage: r.stage,
+        new_stage: "失注見込(自動)",
+        changed_by: "pipeline-auto",
+      }))
+    ).catch(() => {});
   }
 }
 

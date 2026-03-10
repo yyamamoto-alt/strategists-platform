@@ -1,5 +1,6 @@
 import { createServiceClient } from "@/lib/supabase/server";
 import { notifyStageTransition, isSystemAutomationEnabled } from "@/lib/slack";
+import { logStageChangeBatch } from "@/lib/stage-audit";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -69,6 +70,16 @@ export async function GET(request: Request) {
           .update({ stage: "失注見込(自動)" })
           .in("id", ids);
         results["追加指導→失注見込(自動)(3日超過)"] = count || ids.length;
+        logStageChangeBatch(
+          coachingTargets
+            .filter((r: { customer_id: string }) => !paidCustomerIds.has(r.customer_id))
+            .map((r: { id: string; customer_id: string }) => ({
+              customer_id: r.customer_id,
+              old_stage: "追加指導",
+              new_stage: "失注見込(自動)",
+              changed_by: "cron-stage-transitions",
+            }))
+        ).catch(() => {});
       }
     }
   }
@@ -92,6 +103,16 @@ export async function GET(request: Request) {
           .update({ stage: "失注見込(自動)" })
           .in("id", ids);
         results["検討中→失注見込(自動)(返答期限3日超過)"] = count || ids.length;
+        logStageChangeBatch(
+          deadlineTargets
+            .filter((r: { customer_id: string }) => !paidCustomerIds.has(r.customer_id))
+            .map((r: { id: string; customer_id: string }) => ({
+              customer_id: r.customer_id,
+              old_stage: "検討中",
+              new_stage: "失注見込(自動)",
+              changed_by: "cron-stage-transitions",
+            }))
+        ).catch(() => {});
       }
     }
   }
@@ -118,6 +139,15 @@ export async function GET(request: Request) {
         .update({ stage: "失注見込(自動)" })
         .in("id", idsToTransition1);
       results["未実施/日程未確→失注見込(自動)"] = count || idsToTransition1.length;
+      const transitioned1 = appDateTargets.filter((r: { id: string }) => idsToTransition1.includes(r.id));
+      logStageChangeBatch(
+        transitioned1.map((r: { id: string; customer_id: string; stage: string }) => ({
+          customer_id: r.customer_id,
+          old_stage: r.stage,
+          new_stage: "失注見込(自動)",
+          changed_by: "cron-stage-transitions",
+        }))
+      ).catch(() => {});
     }
   }
 
@@ -147,6 +177,15 @@ export async function GET(request: Request) {
         .update({ stage: "失注見込(自動)" })
         .in("id", idsToTransition);
       results["検討中等→失注見込(自動)"] = count || idsToTransition.length;
+      const transitioned2 = salesDateTargets.filter((r: { id: string }) => idsToTransition.includes(r.id));
+      logStageChangeBatch(
+        transitioned2.map((r: { id: string; customer_id: string; stage: string }) => ({
+          customer_id: r.customer_id,
+          old_stage: r.stage,
+          new_stage: "失注見込(自動)",
+          changed_by: "cron-stage-transitions",
+        }))
+      ).catch(() => {});
     }
   }
 
@@ -180,6 +219,17 @@ export async function GET(request: Request) {
             .update({ stage: "受講中", updated_at: new Date().toISOString() })
             .in("id", pipelineIdsToUpdate);
           results["成約→受講中(初回指導完了)"] = count || pipelineIdsToUpdate.length;
+          const transitionedCustomerIds = seiyakuTargets
+            .filter((r: { id: string }) => pipelineIdsToUpdate.includes(r.id))
+            .map((r: { customer_id: string }) => r.customer_id);
+          logStageChangeBatch(
+            transitionedCustomerIds.map((cid: string) => ({
+              customer_id: cid,
+              old_stage: "成約",
+              new_stage: "受講中",
+              changed_by: "cron-stage-transitions",
+            }))
+          ).catch(() => {});
         }
       }
     }

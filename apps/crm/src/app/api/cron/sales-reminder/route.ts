@@ -7,6 +7,7 @@ import {
   logNotification,
   isSystemAutomationEnabled,
 } from "@/lib/slack";
+import { logStageChangeBatch } from "@/lib/stage-audit";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -163,6 +164,16 @@ export async function GET(request: Request) {
       .from("sales_pipeline")
       .update({ stage: "失注見込(自動)", updated_at: new Date().toISOString() })
       .in("id", autoLostIds);
+
+    // Audit log
+    logStageChangeBatch(
+      fourteenDayTargets.map((r: any) => ({
+        customer_id: r.customer_id,
+        old_stage: r.stage,
+        new_stage: "失注見込(自動)",
+        changed_by: "cron-sales-reminder",
+      }))
+    ).catch(() => {});
 
     const lostLines: string[] = [
       `🚨 *14日未対応 → 自動失注見込*`,

@@ -5,6 +5,7 @@ import { matchCustomer } from "@/lib/customer-matching";
 import { upsertOrder } from "@/lib/data/orders";
 import { normalizeAppsPayment } from "@/lib/order-normalizers";
 import { notifyPaymentError, notifyPaymentSuccess } from "@/lib/slack";
+import { logStageChange } from "@/lib/stage-audit";
 import type { Order } from "@strategy-school/shared-db";
 import crypto from "crypto";
 
@@ -106,6 +107,12 @@ export async function POST(request: Request) {
           .from("sales_pipeline")
           .update({ stage: "成約", updated_at: new Date().toISOString() })
           .eq("id", existingPipeline.id);
+        logStageChange({
+          customer_id: match.customer_id,
+          old_stage: existingPipeline.stage,
+          new_stage: "成約",
+          changed_by: "webhook-apps",
+        }).catch(() => {});
       }
     } else {
       await db
@@ -116,6 +123,12 @@ export async function POST(request: Request) {
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         });
+      logStageChange({
+        customer_id: match.customer_id,
+        old_stage: null,
+        new_stage: "成約",
+        changed_by: "webhook-apps",
+      }).catch(() => {});
     }
 
     // 受講ステータスを「受講中」に更新（Zapier COL$AN準拠 → contractsテーブル）
