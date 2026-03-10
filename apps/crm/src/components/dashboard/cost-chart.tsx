@@ -180,6 +180,7 @@ export function CostChart() {
             tick={{ fontSize: 10, fill: "#9ca3af" }}
             stroke="rgba(255,255,255,0.1)"
             domain={[0, yMax]}
+            ticks={Array.from({ length: Math.ceil(yMax / 1000000) + 1 }, (_, i) => i * 1000000)}
           />
           <Tooltip
             formatter={(value: number, name: string) => [
