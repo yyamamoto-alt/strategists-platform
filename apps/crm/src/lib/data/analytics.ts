@@ -228,3 +228,65 @@ export async function fetchHourlyData(days: number = 90): Promise<HourlyRow[]> {
   }
   return data || [];
 }
+
+/* ───── Google Ads ファネル分析（CRM自社データ） ───── */
+
+export interface AdsFunnelCustomer {
+  id: string;
+  name: string;
+  application_date: string | null;
+  attribute: string | null;
+  utm_source: string | null;
+  utm_medium: string | null;
+  utm_campaign: string | null;
+  stage: string | null;
+  confirmed_amount: number;
+}
+
+const NOT_CONDUCTED_STAGES = new Set([
+  "日程未確", "未実施", "実施不可", "キャンセル", "NoShow",
+]);
+
+function adsFunnelIsClosed(stage: string | null | undefined): boolean {
+  if (!stage) return false;
+  return stage === "成約" || stage.startsWith("追加指導") || stage === "受講終了" || stage === "卒業";
+}
+
+function adsFunnelIsConducted(stage: string | null | undefined): boolean {
+  if (!stage) return false;
+  return !NOT_CONDUCTED_STAGES.has(stage);
+}
+
+function adsFunnelIsScheduled(stage: string | null | undefined): boolean {
+  if (!stage) return false;
+  return stage !== "日程未確";
+}
+
+/** Google Ads UTM経由の顧客ファネルデータ */
+export async function fetchAdsFunnelData(): Promise<AdsFunnelCustomer[]> {
+  const { data, error } = await supabase()
+    .from("customers")
+    .select("id,name,application_date,attribute,utm_source,utm_medium,utm_campaign,sales_pipeline(stage),contracts(confirmed_amount)")
+    .eq("utm_source", "googleads")
+    .order("application_date", { ascending: false });
+
+  if (error) {
+    console.error("Ads funnel fetch error:", error.message);
+    return [];
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (data || []).map((row: any) => ({
+    id: row.id,
+    name: row.name,
+    application_date: row.application_date,
+    attribute: row.attribute,
+    utm_source: row.utm_source,
+    utm_medium: row.utm_medium,
+    utm_campaign: row.utm_campaign,
+    stage: row.sales_pipeline?.stage ?? null,
+    confirmed_amount: row.contracts?.confirmed_amount ?? 0,
+  }));
+}
+
+export { adsFunnelIsClosed, adsFunnelIsConducted, adsFunnelIsScheduled };

@@ -12,6 +12,7 @@ import type {
   HourlyRow,
   AdsCampaignDaily,
   AdsKeywordDaily,
+  AdsFunnelCustomer,
 } from "@/lib/data/analytics";
 
 /* ───────── Types ───────── */
@@ -42,6 +43,7 @@ interface Props {
   hourlyRows: HourlyRow[];
   adsCampaigns: AdsCampaignDaily[];
   adsKeywords: AdsKeywordDaily[];
+  adsFunnel: AdsFunnelCustomer[];
 }
 
 function classifyLabel(segment: string): string {
@@ -827,9 +829,9 @@ function TrafficTabContent({ traffic, landingPage }: { traffic: TrafficDaily[]; 
    GOOGLE ADS TAB
    ═══════════════════════════════════════════ */
 type AdsGranularity = "daily" | "weekly" | "monthly";
-type AdsSub = "overview" | "campaigns" | "keywords";
+type AdsSub = "overview" | "campaigns" | "keywords" | "funnel";
 
-function AdsTab({ adsCampaigns, adsKeywords }: { adsCampaigns: AdsCampaignDaily[]; adsKeywords: AdsKeywordDaily[] }) {
+function AdsTab({ adsCampaigns, adsKeywords, adsFunnel }: { adsCampaigns: AdsCampaignDaily[]; adsKeywords: AdsKeywordDaily[]; adsFunnel: AdsFunnelCustomer[] }) {
   const [granularity, setGranularity] = useState<AdsGranularity>("daily");
   const [adsSub, setAdsSub] = useState<AdsSub>("overview");
 
@@ -847,10 +849,12 @@ function AdsTab({ adsCampaigns, adsKeywords }: { adsCampaigns: AdsCampaignDaily[
         <SubTab label="サマリー" active={adsSub === "overview"} onClick={() => setAdsSub("overview")} />
         <SubTab label="キャンペーン別" active={adsSub === "campaigns"} onClick={() => setAdsSub("campaigns")} />
         <SubTab label="キーワード別" active={adsSub === "keywords"} onClick={() => setAdsSub("keywords")} />
+        <SubTab label="ファネル分析" active={adsSub === "funnel"} onClick={() => setAdsSub("funnel")} />
       </div>
       {adsSub === "overview" && <AdsOverview adsCampaigns={adsCampaigns} />}
       {adsSub === "campaigns" && <AdsCampaignTable adsCampaigns={adsCampaigns} granularity={granularity} setGranularity={setGranularity} />}
       {adsSub === "keywords" && <AdsKeywordTable adsKeywords={adsKeywords} granularity={granularity} setGranularity={setGranularity} />}
+      {adsSub === "funnel" && <AdsFunnelTab adsFunnel={adsFunnel} />}
     </div>
   );
 }
@@ -1319,6 +1323,247 @@ function GranularitySelector({ granularity, setGranularity }: { granularity: Ads
 }
 
 /* ═══════════════════════════════════════════
+   GOOGLE ADS FUNNEL ANALYSIS (CRM自社データ)
+   ═══════════════════════════════════════════ */
+
+const FUNNEL_NOT_CONDUCTED = new Set(["日程未確", "未実施", "実施不可", "キャンセル", "NoShow"]);
+function funnelIsClosed(stage: string | null): boolean {
+  if (!stage) return false;
+  return stage === "成約" || stage.startsWith("追加指導") || stage === "受講終了" || stage === "卒業";
+}
+function funnelIsConducted(stage: string | null): boolean {
+  if (!stage) return false;
+  return !FUNNEL_NOT_CONDUCTED.has(stage);
+}
+function funnelIsScheduled(stage: string | null): boolean {
+  if (!stage) return false;
+  return stage !== "日程未確";
+}
+
+function AdsFunnelTab({ adsFunnel }: { adsFunnel: AdsFunnelCustomer[] }) {
+  const funnel = useMemo(() => {
+    const total = adsFunnel.length;
+    const scheduled = adsFunnel.filter(c => funnelIsScheduled(c.stage)).length;
+    const conducted = adsFunnel.filter(c => funnelIsConducted(c.stage)).length;
+    const closed = adsFunnel.filter(c => funnelIsClosed(c.stage)).length;
+    const totalRevenue = adsFunnel.filter(c => funnelIsClosed(c.stage)).reduce((s, c) => s + c.confirmed_amount, 0);
+
+    return { total, scheduled, conducted, closed, totalRevenue };
+  }, [adsFunnel]);
+
+  // Monthly breakdown
+  const monthlyData = useMemo(() => {
+    const map = new Map<string, { month: string; applications: number; scheduled: number; conducted: number; closed: number; revenue: number }>();
+
+    for (const c of adsFunnel) {
+      const month = c.application_date?.slice(0, 7) || "不明";
+      const ex = map.get(month) || { month, applications: 0, scheduled: 0, conducted: 0, closed: 0, revenue: 0 };
+      ex.applications++;
+      if (funnelIsScheduled(c.stage)) ex.scheduled++;
+      if (funnelIsConducted(c.stage)) ex.conducted++;
+      if (funnelIsClosed(c.stage)) { ex.closed++; ex.revenue += c.confirmed_amount; }
+      map.set(month, ex);
+    }
+
+    return Array.from(map.values()).sort((a, b) => a.month.localeCompare(b.month)).filter(m => m.month !== "不明");
+  }, [adsFunnel]);
+
+  // Ad group / keyword breakdown (utm_medium contains adgroup+keyword info)
+  const adGroupFunnel = useMemo(() => {
+    const map = new Map<string, { label: string; applications: number; scheduled: number; conducted: number; closed: number; revenue: number }>();
+
+    for (const c of adsFunnel) {
+      // utm_medium has "{adgroupname}_keyword" format, or raw values like "303"
+      const label = c.utm_medium || c.utm_campaign || "(不明)";
+      const ex = map.get(label) || { label, applications: 0, scheduled: 0, conducted: 0, closed: 0, revenue: 0 };
+      ex.applications++;
+      if (funnelIsScheduled(c.stage)) ex.scheduled++;
+      if (funnelIsConducted(c.stage)) ex.conducted++;
+      if (funnelIsClosed(c.stage)) { ex.closed++; ex.revenue += c.confirmed_amount; }
+      map.set(label, ex);
+    }
+
+    return Array.from(map.values()).sort((a, b) => b.applications - a.applications);
+  }, [adsFunnel]);
+
+  // Recent closed customers from ads
+  const recentClosed = useMemo(() => {
+    return adsFunnel
+      .filter(c => funnelIsClosed(c.stage))
+      .sort((a, b) => (b.application_date || "").localeCompare(a.application_date || ""))
+      .slice(0, 20);
+  }, [adsFunnel]);
+
+  if (adsFunnel.length === 0) {
+    return (
+      <div className="bg-surface-raised border border-white/10 rounded-xl p-8 text-center">
+        <p className="text-gray-500 text-sm">Google Ads経由の顧客データがありません（utm_source = &quot;googleads&quot;）</p>
+      </div>
+    );
+  }
+
+  const stages = [
+    { label: "申し込み", count: funnel.total, color: "bg-blue-500" },
+    { label: "日程確定", count: funnel.scheduled, color: "bg-cyan-500" },
+    { label: "面談実施", count: funnel.conducted, color: "bg-amber-500" },
+    { label: "成約", count: funnel.closed, color: "bg-green-500" },
+  ];
+
+  return (
+    <div className="space-y-6">
+      {/* Funnel Summary KPI */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <KpiCard title="広告経由 申し込み" value={String(funnel.total)} sub={<span className="text-gray-500 text-[10px]">utm_source=googleads</span>} />
+        <KpiCard title="日程確定" value={String(funnel.scheduled)} sub={<span className="text-[10px] text-gray-400">{funnel.total > 0 ? `${((funnel.scheduled / funnel.total) * 100).toFixed(0)}%` : "—"}</span>} />
+        <KpiCard title="面談実施" value={String(funnel.conducted)} sub={<span className="text-[10px] text-gray-400">{funnel.scheduled > 0 ? `${((funnel.conducted / funnel.scheduled) * 100).toFixed(0)}% of 日程確定` : "—"}</span>} />
+        <KpiCard title="成約" value={String(funnel.closed)} sub={<span className="text-[10px] text-gray-400">{funnel.conducted > 0 ? `${((funnel.closed / funnel.conducted) * 100).toFixed(0)}% of 面談実施` : "—"}</span>} />
+        <KpiCard title="成約売上合計" value={`¥${Math.round(funnel.totalRevenue).toLocaleString()}`} sub={<span className="text-[10px] text-gray-400">{funnel.closed > 0 ? `CPA: ¥${Math.round(funnel.totalRevenue / funnel.closed).toLocaleString()}/件` : "—"}</span>} />
+      </div>
+
+      {/* Visual Funnel Bar */}
+      <div className="bg-surface-raised border border-white/10 rounded-xl p-5">
+        <h3 className="text-sm font-medium text-gray-300 mb-4">ファネル（全期間）</h3>
+        <div className="space-y-3">
+          {stages.map((s, i) => {
+            const width = funnel.total > 0 ? (s.count / funnel.total) * 100 : 0;
+            const prevCount = i > 0 ? stages[i - 1].count : s.count;
+            const stepRate = prevCount > 0 ? ((s.count / prevCount) * 100).toFixed(0) : "—";
+            return (
+              <div key={s.label} className="flex items-center gap-3">
+                <span className="text-xs text-gray-400 w-16 text-right">{s.label}</span>
+                <div className="flex-1 h-8 bg-white/5 rounded-lg overflow-hidden relative">
+                  <div className={`h-full ${s.color} rounded-lg transition-all`} style={{ width: `${Math.max(width, 2)}%` }} />
+                  <span className="absolute inset-0 flex items-center px-3 text-xs text-white font-medium">
+                    {s.count}名 {i > 0 && <span className="ml-2 text-white/60">({stepRate}%)</span>}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <div className="mt-3 text-right">
+          <span className="text-xs text-gray-500">
+            全体成約率: {funnel.total > 0 ? `${((funnel.closed / funnel.total) * 100).toFixed(1)}%` : "—"}
+          </span>
+        </div>
+      </div>
+
+      {/* Monthly Funnel Trend */}
+      {monthlyData.length > 1 && (
+        <div className="bg-surface-raised border border-white/10 rounded-xl p-5">
+          <h3 className="text-sm font-medium text-gray-300 mb-4">月別ファネル推移</h3>
+          <ResponsiveContainer width="100%" height={280}>
+            <LineChart data={monthlyData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+              <XAxis dataKey="month" tick={{ fontSize: 10, fill: "#6b7280" }} />
+              <YAxis tick={{ fontSize: 10, fill: "#6b7280" }} />
+              <Tooltip
+                contentStyle={{ backgroundColor: "#1f2937", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 12 }}
+                labelStyle={{ color: "#9ca3af" }}
+              />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <Line type="monotone" dataKey="applications" name="申し込み" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} />
+              <Line type="monotone" dataKey="scheduled" name="日程確定" stroke="#06b6d4" strokeWidth={2} dot={{ r: 3 }} />
+              <Line type="monotone" dataKey="conducted" name="面談実施" stroke="#f59e0b" strokeWidth={2} dot={{ r: 3 }} />
+              <Line type="monotone" dataKey="closed" name="成約" stroke="#10b981" strokeWidth={2} dot={{ r: 3 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+
+      {/* Ad Group / Keyword Funnel Breakdown */}
+      <div className="bg-surface-raised border border-white/10 rounded-xl overflow-hidden">
+        <div className="px-5 py-3 border-b border-white/10">
+          <h3 className="text-sm font-medium text-gray-300">広告グループ・キーワード別ファネル</h3>
+          <p className="text-[10px] text-gray-500 mt-0.5">utm_medium ベース</p>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-white/10 text-gray-400">
+                <th className="text-left py-2.5 px-4">広告グループ / キーワード</th>
+                <th className="text-right py-2.5 px-3">申し込み</th>
+                <th className="text-right py-2.5 px-3">日程確定</th>
+                <th className="text-right py-2.5 px-3">面談実施</th>
+                <th className="text-right py-2.5 px-3">成約</th>
+                <th className="text-right py-2.5 px-3">成約率</th>
+                <th className="text-right py-2.5 px-3">成約売上</th>
+              </tr>
+            </thead>
+            <tbody>
+              {adGroupFunnel.map(c => {
+                const rate = c.applications > 0 ? ((c.closed / c.applications) * 100).toFixed(1) : "—";
+                return (
+                  <tr key={c.label} className="border-b border-white/5 hover:bg-white/5">
+                    <td className="py-2.5 px-4 text-white font-medium truncate max-w-[300px]">{c.label}</td>
+                    <td className="text-right py-2.5 px-3 text-blue-400">{c.applications}</td>
+                    <td className="text-right py-2.5 px-3 text-cyan-400">{c.scheduled}</td>
+                    <td className="text-right py-2.5 px-3 text-amber-400">{c.conducted}</td>
+                    <td className="text-right py-2.5 px-3">
+                      <span className={c.closed > 0 ? "text-green-400 font-medium" : "text-gray-600"}>{c.closed}</span>
+                    </td>
+                    <td className="text-right py-2.5 px-3">
+                      <span className={c.closed > 0 ? "text-green-400" : "text-gray-600"}>{rate}{rate !== "—" ? "%" : ""}</span>
+                    </td>
+                    <td className="text-right py-2.5 px-3 text-white">{c.revenue > 0 ? `¥${Math.round(c.revenue).toLocaleString()}` : "—"}</td>
+                  </tr>
+                );
+              })}
+              {adGroupFunnel.length === 0 && (
+                <tr><td colSpan={7} className="py-8 text-center text-gray-500">データなし</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Recent Closed Customers from Ads */}
+      {recentClosed.length > 0 && (
+        <div className="bg-surface-raised border border-white/10 rounded-xl overflow-hidden">
+          <div className="px-5 py-3 border-b border-white/10">
+            <h3 className="text-sm font-medium text-gray-300">広告経由の成約顧客（直近）</h3>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-white/10 text-gray-400">
+                  <th className="text-left py-2.5 px-4">顧客名</th>
+                  <th className="text-left py-2.5 px-3">申込日</th>
+                  <th className="text-left py-2.5 px-3">属性</th>
+                  <th className="text-left py-2.5 px-3">ステージ</th>
+                  <th className="text-left py-2.5 px-3">キャンペーン</th>
+                  <th className="text-left py-2.5 px-3">メディア</th>
+                  <th className="text-right py-2.5 px-3">確定売上</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recentClosed.map(c => (
+                  <tr key={c.id} className="border-b border-white/5 hover:bg-white/5">
+                    <td className="py-2.5 px-4 text-white font-medium">{c.name}</td>
+                    <td className="py-2.5 px-3 text-gray-400">{c.application_date || "—"}</td>
+                    <td className="py-2.5 px-3">
+                      <span className={`px-1.5 py-0.5 rounded text-[10px] ${c.attribute === "既卒" ? "bg-blue-500/20 text-blue-300" : "bg-purple-500/20 text-purple-300"}`}>
+                        {c.attribute || "—"}
+                      </span>
+                    </td>
+                    <td className="py-2.5 px-3">
+                      <span className="px-1.5 py-0.5 rounded text-[10px] bg-green-500/20 text-green-300">{c.stage}</span>
+                    </td>
+                    <td className="py-2.5 px-3 text-gray-400 truncate max-w-[150px]">{c.utm_campaign || "—"}</td>
+                    <td className="py-2.5 px-3 text-gray-400 truncate max-w-[150px]">{c.utm_medium || "—"}</td>
+                    <td className="text-right py-2.5 px-3 text-white">{c.confirmed_amount > 0 ? `¥${Math.round(c.confirmed_amount).toLocaleString()}` : "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════
    MAIN EXPORT
    ═══════════════════════════════════════════ */
 const SEO_SUBS: { key: SeoSub; label: string }[] = [
@@ -1330,7 +1575,7 @@ const SEO_SUBS: { key: SeoSub; label: string }[] = [
   { key: "hourly", label: "時間帯分析" },
 ];
 
-export function AnalyticsClient({ pageDailyRows, traffic, searchQueries, searchDailyRows, hourlyRows, adsCampaigns, adsKeywords }: Props) {
+export function AnalyticsClient({ pageDailyRows, traffic, searchQueries, searchDailyRows, hourlyRows, adsCampaigns, adsKeywords, adsFunnel }: Props) {
   const [mainTab, setMainTab] = useState<MainTab>("seo");
   const [seoSub, setSeoSub] = useState<SeoSub>("pages");
   const [lpTab, setLpTab] = useState<"main" | "lp3">("main");
@@ -1376,7 +1621,7 @@ export function AnalyticsClient({ pageDailyRows, traffic, searchQueries, searchD
       )}
 
       {mainTab === "ads" && (
-        <AdsTab adsCampaigns={adsCampaigns} adsKeywords={adsKeywords} />
+        <AdsTab adsCampaigns={adsCampaigns} adsKeywords={adsKeywords} adsFunnel={adsFunnel} />
       )}
     </div>
   );
