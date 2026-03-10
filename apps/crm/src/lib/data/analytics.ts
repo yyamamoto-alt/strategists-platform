@@ -143,6 +143,69 @@ export async function fetchSearchDailyRows(days: number = 90): Promise<SearchDai
   return data || [];
 }
 
+/* ───── Google Ads データ ───── */
+
+export interface AdsCampaignDaily {
+  date: string;
+  campaign_name: string;
+  campaign_status: string;
+  impressions: number;
+  clicks: number;
+  ctr: number;
+  avg_cpc: number;
+  cost: number;
+  conversions: number;
+  cost_per_conversion: number;
+}
+
+export interface AdsKeywordDaily {
+  date: string;
+  campaign_name: string;
+  keyword: string;
+  match_type: string;
+  impressions: number;
+  clicks: number;
+  ctr: number;
+  cost: number;
+  conversions: number;
+}
+
+/** Google Ads キャンペーン別日次データ（90日） */
+export async function fetchAdsCampaignDaily(days: number = 90): Promise<AdsCampaignDaily[]> {
+  const { from, to } = dateRange(days);
+
+  const { data, error } = await supabase()
+    .from("analytics_ads_campaign_daily")
+    .select("*")
+    .gte("date", from)
+    .lte("date", to)
+    .order("date", { ascending: true });
+
+  if (error) {
+    console.error("Ads campaign fetch error:", error.message);
+    return [];
+  }
+  return data || [];
+}
+
+/** Google Ads キーワード別日次データ（90日） */
+export async function fetchAdsKeywordDaily(days: number = 90): Promise<AdsKeywordDaily[]> {
+  const { from, to } = dateRange(days);
+
+  const { data, error } = await supabase()
+    .from("analytics_ads_keyword_daily")
+    .select("*")
+    .gte("date", from)
+    .lte("date", to)
+    .order("date", { ascending: true });
+
+  if (error) {
+    console.error("Ads keyword fetch error:", error.message);
+    return [];
+  }
+  return data || [];
+}
+
 /** 時間帯別データ（90日） */
 export async function fetchHourlyData(days: number = 90): Promise<HourlyRow[]> {
   const { from, to } = dateRange(days);

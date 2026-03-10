@@ -1,16 +1,21 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import {
+  LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend,
+} from "recharts";
 import type {
   PageDailyRow,
   TrafficDaily,
   SearchQueryRow,
   SearchDailyRow,
   HourlyRow,
+  AdsCampaignDaily,
+  AdsKeywordDaily,
 } from "@/lib/data/analytics";
 
 /* ───────── Types ───────── */
-type MainTab = "seo" | "lp";
+type MainTab = "seo" | "lp" | "ads";
 type SeoSub = "pages" | "ctr" | "cannibalization" | "decay" | "keywords" | "hourly";
 type Period = "week" | "month";
 type Metric = "pageviews" | "sessions" | "users";
@@ -35,6 +40,8 @@ interface Props {
   searchQueries: SearchQueryRow[];
   searchDailyRows: SearchDailyRow[];
   hourlyRows: HourlyRow[];
+  adsCampaigns: AdsCampaignDaily[];
+  adsKeywords: AdsKeywordDaily[];
 }
 
 function classifyLabel(segment: string): string {
@@ -817,6 +824,498 @@ function TrafficTabContent({ traffic, landingPage }: { traffic: TrafficDaily[]; 
 }
 
 /* ═══════════════════════════════════════════
+   GOOGLE ADS TAB
+   ═══════════════════════════════════════════ */
+type AdsGranularity = "daily" | "weekly" | "monthly";
+type AdsSub = "overview" | "campaigns" | "keywords";
+
+function AdsTab({ adsCampaigns, adsKeywords }: { adsCampaigns: AdsCampaignDaily[]; adsKeywords: AdsKeywordDaily[] }) {
+  const [granularity, setGranularity] = useState<AdsGranularity>("daily");
+  const [adsSub, setAdsSub] = useState<AdsSub>("overview");
+
+  if (adsCampaigns.length === 0) {
+    return (
+      <div className="bg-surface-raised border border-white/10 rounded-xl p-8 text-center">
+        <p className="text-gray-500 text-sm">Google Ads データはまだ収集中です。バックフィル完了後に表示されます。</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex gap-2 flex-wrap">
+        <SubTab label="サマリー" active={adsSub === "overview"} onClick={() => setAdsSub("overview")} />
+        <SubTab label="キャンペーン別" active={adsSub === "campaigns"} onClick={() => setAdsSub("campaigns")} />
+        <SubTab label="キーワード別" active={adsSub === "keywords"} onClick={() => setAdsSub("keywords")} />
+      </div>
+      {adsSub === "overview" && <AdsOverview adsCampaigns={adsCampaigns} />}
+      {adsSub === "campaigns" && <AdsCampaignTable adsCampaigns={adsCampaigns} granularity={granularity} setGranularity={setGranularity} />}
+      {adsSub === "keywords" && <AdsKeywordTable adsKeywords={adsKeywords} granularity={granularity} setGranularity={setGranularity} />}
+    </div>
+  );
+}
+
+/* ─── Ads KPI Cards + Charts (Overview) ─── */
+function AdsOverview({ adsCampaigns }: { adsCampaigns: AdsCampaignDaily[] }) {
+  // KPI calculations: current month vs previous month
+  const kpis = useMemo(() => {
+    const now = new Date();
+    const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const prevMonth = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, "0")}`;
+    // Current month day count for comparison
+    const dayOfMonth = now.getDate();
+
+    let curCost = 0, curClicks = 0, curImpressions = 0, curConversions = 0;
+    let prevCost = 0, prevClicks = 0, prevImpressions = 0, prevConversions = 0;
+
+    for (const r of adsCampaigns) {
+      const m = r.date.slice(0, 7);
+      if (m === thisMonth) {
+        curCost += r.cost; curClicks += r.clicks; curImpressions += r.impressions; curConversions += r.conversions;
+      } else if (m === prevMonth) {
+        // Only count up to same day of month for fair comparison
+        const day = parseInt(r.date.slice(8, 10));
+        if (day <= dayOfMonth) {
+          prevCost += r.cost; prevClicks += r.clicks; prevImpressions += r.impressions; prevConversions += r.conversions;
+        }
+      }
+    }
+
+    const curCTR = curImpressions > 0 ? (curClicks / curImpressions) * 100 : 0;
+    const prevCTR = prevImpressions > 0 ? (prevClicks / prevImpressions) * 100 : 0;
+    const curCPA = curConversions > 0 ? curCost / curConversions : 0;
+    const prevCPA = prevConversions > 0 ? prevCost / prevConversions : 0;
+
+    return {
+      cost: { current: curCost, prev: prevCost },
+      conversions: { current: curConversions, prev: prevConversions },
+      cpa: { current: curCPA, prev: prevCPA },
+      ctr: { current: curCTR, prev: prevCTR },
+      clicks: { current: curClicks, prev: prevClicks },
+      impressions: { current: curImpressions, prev: prevImpressions },
+    };
+  }, [adsCampaigns]);
+
+  // Chart data: daily aggregate for last 90 days
+  const chartData = useMemo(() => {
+    const dailyMap = new Map<string, { date: string; cost: number; clicks: number; conversions: number; impressions: number }>();
+    for (const r of adsCampaigns) {
+      const ex = dailyMap.get(r.date);
+      if (ex) {
+        ex.cost += r.cost; ex.clicks += r.clicks; ex.conversions += r.conversions; ex.impressions += r.impressions;
+      } else {
+        dailyMap.set(r.date, { date: r.date, cost: r.cost, clicks: r.clicks, conversions: r.conversions, impressions: r.impressions });
+      }
+    }
+    return Array.from(dailyMap.values()).sort((a, b) => a.date.localeCompare(b.date));
+  }, [adsCampaigns]);
+
+  // Campaign breakdown for current month
+  const campaignBreakdown = useMemo(() => {
+    const now = new Date();
+    const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    const map = new Map<string, { name: string; cost: number; clicks: number; impressions: number; conversions: number }>();
+    for (const r of adsCampaigns) {
+      if (r.date.slice(0, 7) !== thisMonth) continue;
+      const ex = map.get(r.campaign_name);
+      if (ex) {
+        ex.cost += r.cost; ex.clicks += r.clicks; ex.impressions += r.impressions; ex.conversions += r.conversions;
+      } else {
+        map.set(r.campaign_name, { name: r.campaign_name, cost: r.cost, clicks: r.clicks, impressions: r.impressions, conversions: r.conversions });
+      }
+    }
+    return Array.from(map.values()).sort((a, b) => b.cost - a.cost);
+  }, [adsCampaigns]);
+
+  function kpiChange(current: number, prev: number, invert?: boolean) {
+    if (prev === 0 && current === 0) return <span className="text-gray-600 text-[10px]">—</span>;
+    if (prev === 0) return <span className="text-green-400 text-[10px]">NEW</span>;
+    const pct = ((current - prev) / prev) * 100;
+    const isGood = invert ? pct < 0 : pct > 0;
+    return (
+      <span className={`text-[10px] ${isGood ? "text-green-400" : "text-red-400"}`}>
+        {pct > 0 ? "+" : ""}{pct.toFixed(0)}% vs 前月同期
+      </span>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        <KpiCard title="広告費" value={`¥${Math.round(kpis.cost.current).toLocaleString()}`} sub={kpiChange(kpis.cost.current, kpis.cost.prev, true)} />
+        <KpiCard title="CV数" value={kpis.conversions.current.toFixed(1)} sub={kpiChange(kpis.conversions.current, kpis.conversions.prev)} />
+        <KpiCard title="CPA" value={kpis.cpa.current > 0 ? `¥${Math.round(kpis.cpa.current).toLocaleString()}` : "—"} sub={kpiChange(kpis.cpa.current, kpis.cpa.prev, true)} />
+        <KpiCard title="CTR" value={`${kpis.ctr.current.toFixed(2)}%`} sub={kpiChange(kpis.ctr.current, kpis.ctr.prev)} />
+        <KpiCard title="クリック" value={kpis.clicks.current.toLocaleString()} sub={kpiChange(kpis.clicks.current, kpis.clicks.prev)} />
+        <KpiCard title="表示回数" value={kpis.impressions.current.toLocaleString()} sub={kpiChange(kpis.impressions.current, kpis.impressions.prev)} />
+      </div>
+
+      {/* Charts: Cost + CV trend */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="bg-surface-raised border border-white/10 rounded-xl p-5">
+          <h3 className="text-sm font-medium text-gray-300 mb-4">広告費推移（日別）</h3>
+          <ResponsiveContainer width="100%" height={250}>
+            <LineChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+              <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#6b7280" }}
+                tickFormatter={(v: string) => v.slice(5)} interval={6} />
+              <YAxis tick={{ fontSize: 10, fill: "#6b7280" }}
+                tickFormatter={(v: number) => v >= 1000 ? `${(v/1000).toFixed(0)}k` : String(v)} />
+              <Tooltip
+                contentStyle={{ backgroundColor: "#1f2937", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 12 }}
+                labelStyle={{ color: "#9ca3af" }}
+                formatter={(value) => [`¥${Math.round(Number(value)).toLocaleString()}`, "広告費"]}
+              />
+              <Line type="monotone" dataKey="cost" stroke="#f59e0b" strokeWidth={2} dot={false} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+        <div className="bg-surface-raised border border-white/10 rounded-xl p-5">
+          <h3 className="text-sm font-medium text-gray-300 mb-4">CV数・クリック数推移（日別）</h3>
+          <ResponsiveContainer width="100%" height={250}>
+            <LineChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+              <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#6b7280" }}
+                tickFormatter={(v: string) => v.slice(5)} interval={6} />
+              <YAxis yAxisId="left" tick={{ fontSize: 10, fill: "#6b7280" }} />
+              <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10, fill: "#6b7280" }} />
+              <Tooltip
+                contentStyle={{ backgroundColor: "#1f2937", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 12 }}
+                labelStyle={{ color: "#9ca3af" }}
+              />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <Line yAxisId="right" type="monotone" dataKey="clicks" name="クリック" stroke="#3b82f6" strokeWidth={2} dot={false} />
+              <Line yAxisId="left" type="monotone" dataKey="conversions" name="CV" stroke="#10b981" strokeWidth={2} dot={false} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Campaign cost breakdown (current month) */}
+      <div className="bg-surface-raised border border-white/10 rounded-xl overflow-hidden">
+        <div className="px-5 py-3 border-b border-white/10">
+          <h3 className="text-sm font-medium text-gray-300">今月のキャンペーン別コスト内訳</h3>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-white/10 text-gray-400">
+                <th className="text-left py-2.5 px-4">キャンペーン</th>
+                <th className="text-right py-2.5 px-3">費用</th>
+                <th className="text-right py-2.5 px-3">構成比</th>
+                <th className="text-right py-2.5 px-3">クリック</th>
+                <th className="text-right py-2.5 px-3">CV</th>
+                <th className="text-right py-2.5 px-3">CPA</th>
+              </tr>
+            </thead>
+            <tbody>
+              {campaignBreakdown.map(c => {
+                const totalCost = campaignBreakdown.reduce((s, x) => s + x.cost, 0);
+                const share = totalCost > 0 ? (c.cost / totalCost) * 100 : 0;
+                const cpa = c.conversions > 0 ? c.cost / c.conversions : 0;
+                return (
+                  <tr key={c.name} className="border-b border-white/5 hover:bg-white/5">
+                    <td className="py-2.5 px-4 text-white font-medium">{c.name}</td>
+                    <td className="text-right py-2.5 px-3 text-white">¥{Math.round(c.cost).toLocaleString()}</td>
+                    <td className="text-right py-2.5 px-3">
+                      <div className="flex items-center justify-end gap-2">
+                        <div className="w-16 h-1.5 bg-white/10 rounded-full overflow-hidden">
+                          <div className="h-full bg-amber-500 rounded-full" style={{ width: `${Math.min(share, 100)}%` }} />
+                        </div>
+                        <span className="text-gray-400 w-10 text-right">{share.toFixed(0)}%</span>
+                      </div>
+                    </td>
+                    <td className="text-right py-2.5 px-3 text-gray-300">{c.clicks.toLocaleString()}</td>
+                    <td className="text-right py-2.5 px-3">
+                      <span className={c.conversions > 0 ? "text-green-400 font-medium" : "text-gray-600"}>{c.conversions.toFixed(1)}</span>
+                    </td>
+                    <td className="text-right py-2.5 px-3 text-gray-300">{cpa > 0 ? `¥${Math.round(cpa).toLocaleString()}` : "—"}</td>
+                  </tr>
+                );
+              })}
+              {campaignBreakdown.length === 0 && (
+                <tr><td colSpan={6} className="py-8 text-center text-gray-500">今月のデータなし</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function KpiCard({ title, value, sub }: { title: string; value: string; sub: React.ReactNode }) {
+  return (
+    <div className="bg-surface-raised border border-white/10 rounded-xl p-4">
+      <p className="text-[10px] text-gray-500 uppercase tracking-wider">{title}</p>
+      <p className="text-xl font-bold text-white mt-1">{value}</p>
+      <div className="mt-1">{sub}</div>
+    </div>
+  );
+}
+
+/* ─── Campaign Table (with granularity) ─── */
+function AdsCampaignTable({ adsCampaigns, granularity, setGranularity }: {
+  adsCampaigns: AdsCampaignDaily[];
+  granularity: AdsGranularity;
+  setGranularity: (g: AdsGranularity) => void;
+}) {
+  const { rows, periodKeys } = useMemo(() => {
+    const getPK = granularity === "daily" ? (d: string) => d
+      : granularity === "weekly" ? getWeekKey : getMonthKey;
+
+    // Group by campaign × period
+    const campMap = new Map<string, {
+      name: string;
+      totals: { cost: number; clicks: number; impressions: number; conversions: number };
+      periods: Map<string, { cost: number; clicks: number; impressions: number; conversions: number }>;
+    }>();
+    const allPKs = new Set<string>();
+    const zero = () => ({ cost: 0, clicks: 0, impressions: 0, conversions: 0 });
+
+    for (const r of adsCampaigns) {
+      const pk = getPK(r.date);
+      allPKs.add(pk);
+      const ex = campMap.get(r.campaign_name);
+      if (ex) {
+        ex.totals.cost += r.cost; ex.totals.clicks += r.clicks;
+        ex.totals.impressions += r.impressions; ex.totals.conversions += r.conversions;
+        const p = ex.periods.get(pk) || zero();
+        p.cost += r.cost; p.clicks += r.clicks; p.impressions += r.impressions; p.conversions += r.conversions;
+        ex.periods.set(pk, p);
+      } else {
+        const t = zero();
+        t.cost = r.cost; t.clicks = r.clicks; t.impressions = r.impressions; t.conversions = r.conversions;
+        const p = new Map([[pk, { ...t }]]);
+        campMap.set(r.campaign_name, { name: r.campaign_name, totals: t, periods: p });
+      }
+    }
+
+    return {
+      rows: Array.from(campMap.values()).sort((a, b) => b.totals.cost - a.totals.cost),
+      periodKeys: Array.from(allPKs).sort(),
+    };
+  }, [adsCampaigns, granularity]);
+
+  const formatPK = (pk: string) => {
+    if (granularity === "daily") return pk.slice(5); // MM-DD
+    if (granularity === "weekly") return pk.slice(5); // MM-DD (week start)
+    return pk; // YYYY-MM
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-gray-500">{rows.length} キャンペーン / 過去90日</p>
+        <GranularitySelector granularity={granularity} setGranularity={setGranularity} />
+      </div>
+      <div className="bg-surface-raised border border-white/10 rounded-xl overflow-hidden">
+        <div className="overflow-x-auto max-h-[700px] overflow-y-auto">
+          <table className="w-full text-xs">
+            <thead className="sticky top-0 bg-surface-raised z-10">
+              <tr className="border-b border-white/10 text-gray-400">
+                <th className="text-left py-2.5 px-3 min-w-[200px]">キャンペーン</th>
+                <th className="text-right py-2.5 px-2 w-20">合計費用</th>
+                <th className="text-right py-2.5 px-2 w-16">合計CV</th>
+                <th className="text-right py-2.5 px-2 w-16">CPA</th>
+                <th className="text-right py-2.5 px-2 w-16">CTR</th>
+                {periodKeys.map(pk => (
+                  <th key={pk} className="text-center py-2.5 px-1 w-20 whitespace-nowrap text-[10px]">{formatPK(pk)}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map(r => {
+                const cpa = r.totals.conversions > 0 ? r.totals.cost / r.totals.conversions : 0;
+                const ctr = r.totals.impressions > 0 ? (r.totals.clicks / r.totals.impressions) * 100 : 0;
+                const maxCost = Math.max(...rows.map(x => x.totals.cost));
+                return (
+                  <tr key={r.name} className="border-b border-white/5 hover:bg-white/5">
+                    <td className="py-2.5 px-3 text-white font-medium truncate max-w-[200px]">{r.name}</td>
+                    <td className="text-right py-2.5 px-2 text-white">¥{Math.round(r.totals.cost).toLocaleString()}</td>
+                    <td className="text-right py-2.5 px-2">
+                      <span className={r.totals.conversions > 0 ? "text-green-400" : "text-gray-600"}>{r.totals.conversions.toFixed(1)}</span>
+                    </td>
+                    <td className="text-right py-2.5 px-2 text-gray-300">{cpa > 0 ? `¥${Math.round(cpa).toLocaleString()}` : "—"}</td>
+                    <td className="text-right py-2.5 px-2 text-gray-300">{ctr.toFixed(2)}%</td>
+                    {periodKeys.map(pk => {
+                      const p = r.periods.get(pk);
+                      if (!p) return <td key={pk} className="text-center py-2.5 px-1 text-gray-700">—</td>;
+                      const intensity = maxCost > 0 ? p.cost / maxCost : 0;
+                      const bg = intensity > 0.6 ? "bg-amber-500/30" : intensity > 0.3 ? "bg-amber-500/15" : intensity > 0 ? "bg-amber-500/5" : "";
+                      return (
+                        <td key={pk} className={`text-center py-2.5 px-1 ${bg}`} title={`費用: ¥${Math.round(p.cost).toLocaleString()} / CV: ${p.conversions.toFixed(1)}`}>
+                          <span className="text-white/80 text-[10px]">¥{p.cost >= 1000 ? `${(p.cost/1000).toFixed(0)}k` : Math.round(p.cost)}</span>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
+              {rows.length === 0 && <tr><td colSpan={5 + periodKeys.length} className="py-8 text-center text-gray-500">データなし</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Keyword Table (with granularity) ─── */
+function AdsKeywordTable({ adsKeywords, granularity, setGranularity }: {
+  adsKeywords: AdsKeywordDaily[];
+  granularity: AdsGranularity;
+  setGranularity: (g: AdsGranularity) => void;
+}) {
+  const [sortBy, setSortBy] = useState<"cost" | "clicks" | "conversions" | "impressions">("cost");
+
+  const keywords = useMemo(() => {
+    const map = new Map<string, {
+      keyword: string; campaign: string; matchType: string;
+      cost: number; clicks: number; impressions: number; conversions: number;
+    }>();
+
+    for (const r of adsKeywords) {
+      const key = `${r.keyword}|${r.match_type}|${r.campaign_name}`;
+      const ex = map.get(key);
+      if (ex) {
+        ex.cost += r.cost; ex.clicks += r.clicks; ex.impressions += r.impressions; ex.conversions += r.conversions;
+      } else {
+        map.set(key, {
+          keyword: r.keyword, campaign: r.campaign_name, matchType: r.match_type,
+          cost: r.cost, clicks: r.clicks, impressions: r.impressions, conversions: r.conversions,
+        });
+      }
+    }
+
+    return Array.from(map.values()).sort((a, b) => b[sortBy] - a[sortBy]);
+  }, [adsKeywords, sortBy]);
+
+  // Period-level data for the table
+  const { periodData, periodKeys } = useMemo(() => {
+    const getPK = granularity === "daily" ? (d: string) => d
+      : granularity === "weekly" ? getWeekKey : getMonthKey;
+
+    const allPKs = new Set<string>();
+    const data = new Map<string, Map<string, { cost: number; clicks: number; conversions: number }>>();
+
+    for (const r of adsKeywords) {
+      const pk = getPK(r.date);
+      allPKs.add(pk);
+      const kwKey = `${r.keyword}|${r.match_type}|${r.campaign_name}`;
+      if (!data.has(kwKey)) data.set(kwKey, new Map());
+      const periods = data.get(kwKey)!;
+      const ex = periods.get(pk) || { cost: 0, clicks: 0, conversions: 0 };
+      ex.cost += r.cost; ex.clicks += r.clicks; ex.conversions += r.conversions;
+      periods.set(pk, ex);
+    }
+
+    return { periodData: data, periodKeys: Array.from(allPKs).sort() };
+  }, [adsKeywords, granularity]);
+
+  const formatPK = (pk: string) => {
+    if (granularity === "daily") return pk.slice(5);
+    if (granularity === "weekly") return pk.slice(5);
+    return pk;
+  };
+
+  const matchBadge = (mt: string) => {
+    const c: Record<string, string> = {
+      EXACT: "bg-blue-500/20 text-blue-300",
+      PHRASE: "bg-purple-500/20 text-purple-300",
+      BROAD: "bg-gray-500/20 text-gray-400",
+    };
+    return <span className={`px-1.5 py-0.5 rounded text-[10px] ${c[mt] || c.BROAD}`}>{mt}</span>;
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-gray-500">{keywords.length} キーワード / 過去90日</p>
+        <div className="flex items-center gap-3">
+          <div className="flex gap-1 bg-white/5 rounded-lg p-0.5">
+            {(["cost", "clicks", "conversions", "impressions"] as const).map(s => (
+              <button key={s} onClick={() => setSortBy(s)}
+                className={`px-2 py-1 text-[10px] rounded-md transition-colors ${sortBy === s ? "bg-brand text-white" : "text-gray-400 hover:text-white"}`}>
+                {s === "cost" ? "費用順" : s === "clicks" ? "クリック順" : s === "conversions" ? "CV順" : "表示順"}
+              </button>
+            ))}
+          </div>
+          <GranularitySelector granularity={granularity} setGranularity={setGranularity} />
+        </div>
+      </div>
+      <div className="bg-surface-raised border border-white/10 rounded-xl overflow-hidden">
+        <div className="overflow-x-auto max-h-[700px] overflow-y-auto">
+          <table className="w-full text-xs">
+            <thead className="sticky top-0 bg-surface-raised z-10">
+              <tr className="border-b border-white/10 text-gray-400">
+                <th className="text-left py-2.5 px-3">マッチ</th>
+                <th className="text-left py-2.5 px-3 min-w-[180px]">キーワード</th>
+                <th className="text-left py-2.5 px-3 max-w-[150px]">キャンペーン</th>
+                <th className="text-right py-2.5 px-2 w-16">費用</th>
+                <th className="text-right py-2.5 px-2 w-14">Click</th>
+                <th className="text-right py-2.5 px-2 w-14">表示</th>
+                <th className="text-right py-2.5 px-2 w-12">CTR</th>
+                <th className="text-right py-2.5 px-2 w-10">CV</th>
+                {periodKeys.slice(-12).map(pk => (
+                  <th key={pk} className="text-center py-2.5 px-1 w-14 whitespace-nowrap text-[10px]">{formatPK(pk)}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {keywords.slice(0, 100).map((k) => {
+                const ctr = k.impressions > 0 ? (k.clicks / k.impressions) * 100 : 0;
+                const kwKey = `${k.keyword}|${k.matchType}|${k.campaign}`;
+                const kwPeriods = periodData.get(kwKey);
+                return (
+                  <tr key={kwKey} className="border-b border-white/5 hover:bg-white/5">
+                    <td className="py-2 px-3">{matchBadge(k.matchType)}</td>
+                    <td className="py-2 px-3 text-white font-medium">{k.keyword}</td>
+                    <td className="py-2 px-3 text-gray-400 truncate max-w-[150px]">{k.campaign}</td>
+                    <td className="text-right py-2 px-2 text-white">¥{Math.round(k.cost).toLocaleString()}</td>
+                    <td className="text-right py-2 px-2 text-gray-300">{k.clicks.toLocaleString()}</td>
+                    <td className="text-right py-2 px-2 text-gray-400">{k.impressions.toLocaleString()}</td>
+                    <td className="text-right py-2 px-2 text-gray-400">{ctr.toFixed(1)}%</td>
+                    <td className="text-right py-2 px-2">
+                      <span className={k.conversions > 0 ? "text-green-400 font-medium" : "text-gray-600"}>{k.conversions.toFixed(1)}</span>
+                    </td>
+                    {periodKeys.slice(-12).map(pk => {
+                      const p = kwPeriods?.get(pk);
+                      if (!p) return <td key={pk} className="text-center py-2 px-1 text-gray-700">—</td>;
+                      return (
+                        <td key={pk} className="text-center py-2 px-1" title={`費用: ¥${Math.round(p.cost).toLocaleString()}`}>
+                          <span className={p.conversions > 0 ? "text-green-400 text-[10px]" : "text-white/60 text-[10px]"}>
+                            {p.clicks > 0 ? p.clicks : "—"}
+                          </span>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
+              {keywords.length === 0 && <tr><td colSpan={8 + Math.min(periodKeys.length, 12)} className="py-8 text-center text-gray-500">データなし</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function GranularitySelector({ granularity, setGranularity }: { granularity: AdsGranularity; setGranularity: (g: AdsGranularity) => void }) {
+  return (
+    <div className="flex gap-1 bg-white/5 rounded-lg p-0.5">
+      {([["daily", "日別"], ["weekly", "週別"], ["monthly", "月別"]] as const).map(([v, label]) => (
+        <button key={v} onClick={() => setGranularity(v)}
+          className={`px-3 py-1 text-xs rounded-md transition-colors ${granularity === v ? "bg-brand text-white" : "text-gray-400 hover:text-white"}`}>{label}</button>
+      ))}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════
    MAIN EXPORT
    ═══════════════════════════════════════════ */
 const SEO_SUBS: { key: SeoSub; label: string }[] = [
@@ -828,7 +1327,7 @@ const SEO_SUBS: { key: SeoSub; label: string }[] = [
   { key: "hourly", label: "時間帯分析" },
 ];
 
-export function AnalyticsClient({ pageDailyRows, traffic, searchQueries, searchDailyRows, hourlyRows }: Props) {
+export function AnalyticsClient({ pageDailyRows, traffic, searchQueries, searchDailyRows, hourlyRows, adsCampaigns, adsKeywords }: Props) {
   const [mainTab, setMainTab] = useState<MainTab>("seo");
   const [seoSub, setSeoSub] = useState<SeoSub>("pages");
   const [lpTab, setLpTab] = useState<"main" | "lp3">("main");
@@ -837,12 +1336,13 @@ export function AnalyticsClient({ pageDailyRows, traffic, searchQueries, searchD
     <div className="p-6 space-y-4">
       <div>
         <h1 className="text-2xl font-bold text-white">マーケティング分析</h1>
-        <p className="text-sm text-gray-500 mt-1">GA4 + Search Console</p>
+        <p className="text-sm text-gray-500 mt-1">GA4 + Search Console + Google Ads</p>
       </div>
 
       <div className="flex gap-1 border-b border-white/10">
         <TabButton label="SEO分析" active={mainTab === "seo"} onClick={() => setMainTab("seo")} />
         <TabButton label="LP分析" active={mainTab === "lp"} onClick={() => setMainTab("lp")} />
+        <TabButton label="広告分析" active={mainTab === "ads"} onClick={() => setMainTab("ads")} />
       </div>
 
       {mainTab === "seo" && (
@@ -870,6 +1370,10 @@ export function AnalyticsClient({ pageDailyRows, traffic, searchQueries, searchD
           {lpTab === "main" && <TrafficTabContent traffic={traffic} landingPage="/" />}
           {lpTab === "lp3" && <TrafficTabContent traffic={traffic} landingPage="/lp3/" />}
         </div>
+      )}
+
+      {mainTab === "ads" && (
+        <AdsTab adsCampaigns={adsCampaigns} adsKeywords={adsKeywords} />
       )}
     </div>
   );

@@ -6,6 +6,8 @@ export const maxDuration = 60;
 
 const GA4_PROPERTY_ID = "341645724";
 const SC_SITE_URL = "sc-domain:akagiconsulting.com";
+const GOOGLE_ADS_CUSTOMER_ID = process.env.GOOGLE_ADS_CUSTOMER_ID || "9777096652";
+const GOOGLE_ADS_DEVELOPER_TOKEN = process.env.GOOGLE_ADS_DEVELOPER_TOKEN || "";
 
 // OAuth tokens from environment
 function getOAuthHeaders(accessToken: string) {
@@ -294,6 +296,142 @@ export async function GET(request: Request) {
       if (error) throw new Error(`Hourly upsert error: ${error.message}`);
     }
     results.hourly = hourlyRows.length;
+
+    // ========================================
+    // 5. Google Ads: キャンペーン別 + キーワード別 (日次)
+    // ========================================
+    if (GOOGLE_ADS_DEVELOPER_TOKEN) {
+      try {
+        const adsHeaders = {
+          Authorization: `Bearer ${accessToken}`,
+          "developer-token": GOOGLE_ADS_DEVELOPER_TOKEN,
+          "Content-Type": "application/json",
+        };
+
+        // 5a. Campaign daily
+        const campaignQuery = `
+          SELECT
+            segments.date,
+            campaign.name,
+            campaign.status,
+            metrics.impressions,
+            metrics.clicks,
+            metrics.ctr,
+            metrics.average_cpc,
+            metrics.cost_micros,
+            metrics.conversions,
+            metrics.cost_per_conversion
+          FROM campaign
+          WHERE segments.date = '${dateStr}'
+            AND campaign.status != 'REMOVED'
+          ORDER BY metrics.cost_micros DESC
+        `;
+
+        const adsRes = await fetch(
+          `https://googleads.googleapis.com/v18/customers/${GOOGLE_ADS_CUSTOMER_ID}/googleAds:searchStream`,
+          { method: "POST", headers: adsHeaders, body: JSON.stringify({ query: campaignQuery }) }
+        );
+
+        if (adsRes.ok) {
+          const adsData = await adsRes.json();
+          const campaignRows: Record<string, unknown>[] = [];
+
+          for (const batch of adsData || []) {
+            for (const result of batch.results || []) {
+              const m = result.metrics;
+              const costMicros = parseInt(m?.costMicros || "0");
+              const avgCpcMicros = parseInt(m?.averageCpc || "0");
+              const costPerConvMicros = parseInt(m?.costPerConversion || "0");
+              campaignRows.push({
+                date: dateStr,
+                campaign_name: result.campaign?.name || "Unknown",
+                campaign_status: result.campaign?.status || "ENABLED",
+                impressions: parseInt(m?.impressions || "0"),
+                clicks: parseInt(m?.clicks || "0"),
+                ctr: parseFloat(m?.ctr || "0") * 100,
+                avg_cpc: avgCpcMicros / 1_000_000,
+                cost: costMicros / 1_000_000,
+                conversions: parseFloat(m?.conversions || "0"),
+                cost_per_conversion: costPerConvMicros / 1_000_000,
+              });
+            }
+          }
+
+          if (campaignRows.length > 0) {
+            const { error } = await supabase
+              .from("analytics_ads_campaign_daily")
+              .upsert(campaignRows, { onConflict: "date,campaign_name" });
+            if (error) console.error("Ads campaign upsert error:", error.message);
+          }
+          results.ads_campaigns = campaignRows.length;
+        } else {
+          console.error("Google Ads campaign API error:", adsRes.status, await adsRes.text().catch(() => ""));
+        }
+
+        // 5b. Keyword daily
+        const keywordQuery = `
+          SELECT
+            segments.date,
+            campaign.name,
+            ad_group_criterion.keyword.text,
+            ad_group_criterion.keyword.match_type,
+            metrics.impressions,
+            metrics.clicks,
+            metrics.ctr,
+            metrics.cost_micros,
+            metrics.conversions
+          FROM keyword_view
+          WHERE segments.date = '${dateStr}'
+            AND campaign.status != 'REMOVED'
+            AND ad_group.status != 'REMOVED'
+            AND metrics.impressions > 0
+          ORDER BY metrics.impressions DESC
+          LIMIT 100
+        `;
+
+        const kwRes = await fetch(
+          `https://googleads.googleapis.com/v18/customers/${GOOGLE_ADS_CUSTOMER_ID}/googleAds:searchStream`,
+          { method: "POST", headers: adsHeaders, body: JSON.stringify({ query: keywordQuery }) }
+        );
+
+        if (kwRes.ok) {
+          const kwData = await kwRes.json();
+          const keywordRows: Record<string, unknown>[] = [];
+
+          for (const batch of kwData || []) {
+            for (const result of batch.results || []) {
+              const m = result.metrics;
+              const costMicros = parseInt(m?.costMicros || "0");
+              const matchType = result.adGroupCriterion?.keyword?.matchType || "BROAD";
+              keywordRows.push({
+                date: dateStr,
+                campaign_name: result.campaign?.name || "Unknown",
+                keyword: result.adGroupCriterion?.keyword?.text || "Unknown",
+                match_type: matchType,
+                impressions: parseInt(m?.impressions || "0"),
+                clicks: parseInt(m?.clicks || "0"),
+                ctr: parseFloat(m?.ctr || "0") * 100,
+                cost: costMicros / 1_000_000,
+                conversions: parseFloat(m?.conversions || "0"),
+              });
+            }
+          }
+
+          if (keywordRows.length > 0) {
+            const { error } = await supabase
+              .from("analytics_ads_keyword_daily")
+              .upsert(keywordRows, { onConflict: "date,campaign_name,keyword,match_type" });
+            if (error) console.error("Ads keyword upsert error:", error.message);
+          }
+          results.ads_keywords = keywordRows.length;
+        } else {
+          console.error("Google Ads keyword API error:", kwRes.status, await kwRes.text().catch(() => ""));
+        }
+      } catch (adsError) {
+        console.error("Google Ads sync error:", adsError);
+        results.ads_error = adsError instanceof Error ? adsError.message : "Unknown";
+      }
+    }
 
     return NextResponse.json({
       success: true,
