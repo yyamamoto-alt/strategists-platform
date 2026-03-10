@@ -18,10 +18,10 @@ async function getSetting(key: string): Promise<string> {
   return typeof v === "string" ? v.replace(/"/g, "") : String(v ?? "");
 }
 
-export async function sendSlackMessage(channel: string, text: string, options?: { username?: string }) {
+export async function sendSlackMessage(channel: string, text: string, options?: { username?: string }): Promise<boolean> {
   if (!SLACK_BOT_TOKEN) {
-    console.warn("SLACK_BOT_TOKEN not set, skipping Slack notification");
-    return;
+    console.error("[sendSlackMessage] SLACK_BOT_TOKEN not set — notification NOT sent");
+    return false;
   }
 
   try {
@@ -41,10 +41,13 @@ export async function sendSlackMessage(channel: string, text: string, options?: 
 
     const data = await res.json();
     if (!data.ok) {
-      console.error("Slack API error:", data.error);
+      console.error(`[sendSlackMessage] Slack API error (channel=${channel}):`, data.error);
+      return false;
     }
+    return true;
   } catch (e) {
-    console.error("Slack notification failed:", e);
+    console.error(`[sendSlackMessage] Failed (channel=${channel}):`, e);
+    return false;
   }
 }
 

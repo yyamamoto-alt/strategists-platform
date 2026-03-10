@@ -99,12 +99,13 @@ async function sendExtraTargets(
     try {
       if (target.type === "dm") {
         await sendSlackDM(target.id, message);
+        sent++;
       } else {
-        await sendSlackMessage(target.id, message, {
+        const ok = await sendSlackMessage(target.id, message, {
           username: target.bot_username,
         });
+        if (ok) sent++;
       }
-      sent++;
       // レートリミット対策
       await new Promise((resolve) => setTimeout(resolve, 1100));
     } catch (err) {
@@ -171,7 +172,7 @@ export async function GET(request: Request) {
         const currentRowCount = allRows.length > 0 ? allRows.length - 1 : 0;
         const headers = allRows.length > 0 ? allRows[0] : [];
 
-        await db
+        const { error: initUpdateError } = await db
           .from("automations")
           .update({
             last_synced_row: currentRowCount + 1,
@@ -180,13 +181,27 @@ export async function GET(request: Request) {
           })
           .eq("id", automation.id);
 
-        await db.from("automation_logs").insert({
+        if (initUpdateError) {
+          console.error(
+            `[sync-automations] ${automation.name}: 初回last_synced_row更新失敗:`,
+            initUpdateError
+          );
+        }
+
+        const { error: initLogError } = await db.from("automation_logs").insert({
           automation_id: automation.id,
           status: "initialized",
           new_rows_count: 0,
           notifications_sent: 0,
           details: { skipped_existing: currentRowCount, reason: "first_run_skip" },
         });
+
+        if (initLogError) {
+          console.error(
+            `[sync-automations] ${automation.name}: 初回ログ記録失敗:`,
+            initLogError
+          );
+        }
 
         results.push({
           name: automation.name,
@@ -269,6 +284,7 @@ export async function GET(request: Request) {
       }
 
       let notificationsSent = 0;
+      let notificationsFailed = 0;
       let newRowsCount = 0;
       const extraTargets: ExtraTarget[] = automation.extra_targets || [];
       const botUsername: string | undefined = automation.bot_username || undefined;
@@ -290,10 +306,17 @@ export async function GET(request: Request) {
           automation.message_template
         );
         if (message) {
-          await sendSlackMessage(automation.slack_channel_id, message, {
+          const sent = await sendSlackMessage(automation.slack_channel_id, message, {
             username: botUsername,
           });
-          notificationsSent++;
+          if (sent) {
+            notificationsSent++;
+          } else {
+            notificationsFailed++;
+            console.error(
+              `[sync-automations] ${automation.name}: メイン通知送信失敗 (channel=${automation.slack_channel_id})`
+            );
+          }
         }
 
         // ② Extra targets（複数チャンネル・DM・条件分岐）
@@ -309,7 +332,7 @@ export async function GET(request: Request) {
       // last_synced_row更新
       const totalRow = automation.last_synced_row + dataRows.length;
 
-      await db
+      const { error: updateError } = await db
         .from("automations")
         .update({
           last_synced_row: totalRow,
@@ -318,7 +341,14 @@ export async function GET(request: Request) {
         })
         .eq("id", automation.id);
 
-      await db.from("automation_logs").insert({
+      if (updateError) {
+        console.error(
+          `[sync-automations] ${automation.name}: last_synced_row更新失敗:`,
+          updateError
+        );
+      }
+
+      const { error: logError } = await db.from("automation_logs").insert({
         automation_id: automation.id,
         status: "success",
         new_rows_count: newRowsCount,
@@ -326,10 +356,18 @@ export async function GET(request: Request) {
         details: { headers, sample_row: dataRows[0] },
       });
 
+      if (logError) {
+        console.error(
+          `[sync-automations] ${automation.name}: ログ記録失敗:`,
+          logError
+        );
+      }
+
       results.push({
         name: automation.name,
         new_rows: newRowsCount,
         notifications: notificationsSent,
+        ...(notificationsFailed > 0 && { notifications_failed: notificationsFailed }),
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Sync failed";

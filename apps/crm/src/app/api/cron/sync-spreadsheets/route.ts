@@ -31,9 +31,11 @@ export async function GET(request: Request) {
   const db = supabase as any;
 
   // 全アクティブ接続を取得（2回に分けて取得 — Supabaseクライアントの暗黙的リミット対策）
+  // ★ select("*") はPostgRESTスキーマキャッシュ問題を起こすため明示的カラム指定
+  const connectionColumns = "id,name,source_type,spreadsheet_id,sheet_name,column_mapping,sync_mode,last_synced_at,last_synced_row,is_active,known_headers,auto_create_customer,created_at,updated_at";
   const [{ data: conn1 }, { data: conn2 }] = await Promise.all([
-    db.from("spreadsheet_connections").select("*").eq("is_active", true).eq("source_type", "google_sheets").limit(50).order("name"),
-    db.from("spreadsheet_connections").select("*").eq("is_active", true).neq("source_type", "google_sheets").limit(50).order("name"),
+    db.from("spreadsheet_connections").select(connectionColumns).eq("is_active", true).eq("source_type", "google_sheets").limit(50).order("name"),
+    db.from("spreadsheet_connections").select(connectionColumns).eq("is_active", true).neq("source_type", "google_sheets").limit(50).order("name"),
   ]);
   const connections = [...(conn1 || []), ...(conn2 || [])];
 
@@ -215,7 +217,9 @@ export async function GET(request: Request) {
           if (hash) knownHashes.add(hash);
         }
         for (const h of (recentUnmatched || [])) {
-          knownHashes.add(stableStringify((h as { raw_data: Record<string, unknown> }).raw_data));
+          // MD5ハッシュに変換して比較（application_historyと同じ形式に統一）
+          const rawStr = stableStringify((h as { raw_data: Record<string, unknown> }).raw_data);
+          knownHashes.add(crypto.createHash("md5").update(rawStr).digest("hex"));
         }
 
         for (const row of dataRows) {
