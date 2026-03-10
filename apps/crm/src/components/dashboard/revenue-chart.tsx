@@ -145,11 +145,64 @@ export function RevenueChart({ data, threeTierData }: RevenueChartProps) {
   return <FallbackChart data={data} />;
 }
 
-/** 統合チャート（コスト機能除去済み） */
+/** freeeコストデータ型 */
+interface FreeeCoastData {
+  period: string;
+  cost_of_sales: number;
+  sga: number;
+}
+
+/** freee費用データ取得（localStorage キャッシュ + バックグラウンド更新） */
+function useFreeeCoasts(enabled: boolean) {
+  const [costMap, setCostMap] = useState<Record<string, FreeeCoastData>>({});
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!enabled) return;
+
+    // localStorageキャッシュ
+    try {
+      const cached = localStorage.getItem("crm-cost-chart-cache");
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed.data)) {
+          const map: Record<string, FreeeCoastData> = {};
+          for (const d of parsed.data) map[d.period] = d;
+          setCostMap(map);
+        }
+      }
+    } catch {}
+
+    // バックグラウンドfetch
+    setLoading(true);
+    const now = new Date();
+    const m = now.getMonth() + 1;
+    const fy = m >= 4 ? now.getFullYear() : now.getFullYear() - 1;
+    fetch(`/api/freee/pl?startYear=${fy - 1}&endYear=${fy}`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => {
+        if (Array.isArray(d) && d.length > 0) {
+          const map: Record<string, FreeeCoastData> = {};
+          for (const item of d) map[item.period] = item;
+          setCostMap(map);
+          localStorage.setItem("crm-cost-chart-cache", JSON.stringify({ data: d, savedAt: Date.now() }));
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [enabled]);
+
+  return { costMap, loading };
+}
+
+/** 統合チャート */
 function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
   const [colors, setColors] = useState<Record<ColorKey, string>>(DEFAULT_COLORS);
   const [showPicker, setShowPicker] = useState(false);
   const [periodMode, setPeriodMode] = useState<"monthly" | "quarterly">("monthly");
+  const [showCost, setShowCost] = useState(false);
+
+  const { costMap, loading: costLoading } = useFreeeCoasts(showCost);
 
   useEffect(() => { setColors(loadColors()); }, []);
 
@@ -174,12 +227,22 @@ function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
         (d.projected_agent || 0);
       const gap = Math.max(0, (d.expected_ltv_total || 0) - barTotal);
 
+      // freeeコストデータをマージ
+      const cost = costMap[d.period];
+      const totalCost = cost ? cost.cost_of_sales + cost.sga : 0;
+      const revenue = d.confirmed_total || 0;
+      const profit = cost ? revenue - totalCost : 0;
+
       return {
         ...d,
         ltv_gap: gap,
+        cost_of_sales: cost?.cost_of_sales || 0,
+        sga: cost?.sga || 0,
+        total_cost: totalCost,
+        profit,
       };
     });
-  }, [data]);
+  }, [data, costMap]);
 
   // 四半期集計
   const quarterlyData = useMemo(() => {
@@ -208,6 +271,10 @@ function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
           projected_total: 0,
           forecast_total: 0,
           expected_ltv_total: 0,
+          cost_of_sales: 0,
+          sga: 0,
+          total_cost: 0,
+          profit: 0,
         };
       }
       const target = qMap[qKey];
@@ -222,6 +289,10 @@ function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
       target.ltv_gap += d.ltv_gap;
       target.confirmed_total += d.confirmed_total || 0;
       target.expected_ltv_total += d.expected_ltv_total || 0;
+      target.cost_of_sales += d.cost_of_sales;
+      target.sga += d.sga;
+      target.total_cost += d.total_cost;
+      target.profit += d.profit;
     }
 
     return Object.values(qMap).sort((a, b) => a.period.localeCompare(b.period));
@@ -278,6 +349,16 @@ function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
             四半期
           </button>
         </div>
+        <button
+          onClick={() => setShowCost(!showCost)}
+          className={`px-2.5 py-1 text-[10px] font-medium rounded-lg border transition-colors ${
+            showCost
+              ? "bg-red-500/20 border-red-500/40 text-red-400"
+              : "bg-surface-elevated border-white/10 text-gray-400 hover:text-white"
+          }`}
+        >
+          {costLoading ? "読込中..." : "費用表示"}
+        </button>
         <button
           onClick={() => setShowPicker(!showPicker)}
           className="p-1.5 text-gray-500 hover:text-gray-300 transition-colors"
@@ -359,6 +440,32 @@ function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
             stackId="revenue"
             radius={[4, 4, 0, 0]}
           />
+
+          {/* 費用表示ON時: コスト・利益の折れ線 */}
+          {showCost && Object.keys(costMap).length > 0 && (
+            <>
+              <Line
+                yAxisId="left"
+                type="monotone"
+                dataKey="total_cost"
+                name="総コスト（freee）"
+                stroke="#ef4444"
+                strokeWidth={2}
+                dot={{ r: 3, fill: "#ef4444", stroke: "#fff", strokeWidth: 1 }}
+                strokeDasharray="6 3"
+              />
+              <Line
+                yAxisId="left"
+                type="monotone"
+                dataKey="profit"
+                name="営業利益"
+                stroke="#22c55e"
+                strokeWidth={2.5}
+                dot={{ r: 4, fill: "#22c55e", stroke: "#fff", strokeWidth: 1.5 }}
+                activeDot={{ r: 6 }}
+              />
+            </>
+          )}
         </ComposedChart>
       </ResponsiveContainer>
     </div>

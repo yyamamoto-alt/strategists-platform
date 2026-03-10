@@ -29,11 +29,6 @@ const FunnelChart = dynamic(
   { ssr: false, loading: () => <ChartSkeleton height={300} /> }
 );
 
-const CostChart = dynamic(
-  () => import("@/components/dashboard/cost-chart").then((m) => m.CostChart),
-  { ssr: false, loading: () => <ChartSkeleton height={350} /> }
-);
-
 const CATEGORY_META: Record<string, { label: string; accent: string; icon: string }> = {
   revenue: { label: "売上", accent: "border-l-blue-500", icon: "chart-bar" },
   funnel: { label: "ファネル", accent: "border-l-emerald-500", icon: "funnel" },
@@ -145,12 +140,6 @@ export function DashboardClient({
             shinsotsuData={funnelShinsotsu}
           />
         </div>
-      </div>
-
-      {/* コスト推移（freee） */}
-      <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-6">
-        <h2 className="text-lg font-semibold text-white mb-4">コスト推移（freee）</h2>
-        <CostChart />
       </div>
 
       {/* チャネル別申込推移 */}
