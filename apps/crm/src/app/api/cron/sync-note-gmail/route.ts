@@ -1,4 +1,5 @@
 import { createServiceClient } from "@/lib/supabase/server";
+import { notifyNotePurchase } from "@/lib/slack";
 import { NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 
@@ -349,6 +350,14 @@ export async function GET(request: Request) {
         } else if (upsertResult && upsertResult.length > 0) {
           rowsCreated++;
           existingIds.add(parsed.orderId);
+
+          // Slack通知（Zapier準拠: #note購入通知）
+          await notifyNotePurchase({
+            product: parsed.productName,
+            price: parsed.amount,
+            buyer: parsed.buyerName,
+            isArticle: subject.includes("記事"),
+          });
         } else {
           // ignoreDuplicates で既存をスキップ
           skippedDuplicates.push(parsed.orderId);
