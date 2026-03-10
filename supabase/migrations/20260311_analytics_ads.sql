@@ -12,6 +12,8 @@ CREATE TABLE IF NOT EXISTS analytics_ads_campaign_daily (
   avg_cpc REAL NOT NULL DEFAULT 0,
   cost REAL NOT NULL DEFAULT 0,
   conversions REAL NOT NULL DEFAULT 0,
+  cv_application REAL NOT NULL DEFAULT 0,
+  cv_micro REAL NOT NULL DEFAULT 0,
   cost_per_conversion REAL NOT NULL DEFAULT 0,
   UNIQUE(date, campaign_name)
 );
@@ -30,6 +32,8 @@ CREATE TABLE IF NOT EXISTS analytics_ads_keyword_daily (
   ctr REAL NOT NULL DEFAULT 0,
   cost REAL NOT NULL DEFAULT 0,
   conversions REAL NOT NULL DEFAULT 0,
+  cv_application REAL NOT NULL DEFAULT 0,
+  cv_micro REAL NOT NULL DEFAULT 0,
   UNIQUE(date, campaign_name, keyword, match_type)
 );
 

@@ -866,30 +866,32 @@ function AdsOverview({ adsCampaigns }: { adsCampaigns: AdsCampaignDaily[] }) {
     // Current month day count for comparison
     const dayOfMonth = now.getDate();
 
-    let curCost = 0, curClicks = 0, curImpressions = 0, curConversions = 0;
-    let prevCost = 0, prevClicks = 0, prevImpressions = 0, prevConversions = 0;
+    let curCost = 0, curClicks = 0, curImpressions = 0, curCvApp = 0, curCvMicro = 0;
+    let prevCost = 0, prevClicks = 0, prevImpressions = 0, prevCvApp = 0, prevCvMicro = 0;
 
     for (const r of adsCampaigns) {
       const m = r.date.slice(0, 7);
       if (m === thisMonth) {
-        curCost += r.cost; curClicks += r.clicks; curImpressions += r.impressions; curConversions += r.conversions;
+        curCost += r.cost; curClicks += r.clicks; curImpressions += r.impressions;
+        curCvApp += r.cv_application; curCvMicro += r.cv_micro;
       } else if (m === prevMonth) {
-        // Only count up to same day of month for fair comparison
         const day = parseInt(r.date.slice(8, 10));
         if (day <= dayOfMonth) {
-          prevCost += r.cost; prevClicks += r.clicks; prevImpressions += r.impressions; prevConversions += r.conversions;
+          prevCost += r.cost; prevClicks += r.clicks; prevImpressions += r.impressions;
+          prevCvApp += r.cv_application; prevCvMicro += r.cv_micro;
         }
       }
     }
 
     const curCTR = curImpressions > 0 ? (curClicks / curImpressions) * 100 : 0;
     const prevCTR = prevImpressions > 0 ? (prevClicks / prevImpressions) * 100 : 0;
-    const curCPA = curConversions > 0 ? curCost / curConversions : 0;
-    const prevCPA = prevConversions > 0 ? prevCost / prevConversions : 0;
+    const curCPA = curCvApp > 0 ? curCost / curCvApp : 0;
+    const prevCPA = prevCvApp > 0 ? prevCost / prevCvApp : 0;
 
     return {
       cost: { current: curCost, prev: prevCost },
-      conversions: { current: curConversions, prev: prevConversions },
+      cvApp: { current: curCvApp, prev: prevCvApp },
+      cvMicro: { current: curCvMicro, prev: prevCvMicro },
       cpa: { current: curCPA, prev: prevCPA },
       ctr: { current: curCTR, prev: prevCTR },
       clicks: { current: curClicks, prev: prevClicks },
@@ -899,13 +901,13 @@ function AdsOverview({ adsCampaigns }: { adsCampaigns: AdsCampaignDaily[] }) {
 
   // Chart data: daily aggregate for last 90 days
   const chartData = useMemo(() => {
-    const dailyMap = new Map<string, { date: string; cost: number; clicks: number; conversions: number; impressions: number }>();
+    const dailyMap = new Map<string, { date: string; cost: number; clicks: number; cv_application: number; cv_micro: number; impressions: number }>();
     for (const r of adsCampaigns) {
       const ex = dailyMap.get(r.date);
       if (ex) {
-        ex.cost += r.cost; ex.clicks += r.clicks; ex.conversions += r.conversions; ex.impressions += r.impressions;
+        ex.cost += r.cost; ex.clicks += r.clicks; ex.cv_application += r.cv_application; ex.cv_micro += r.cv_micro; ex.impressions += r.impressions;
       } else {
-        dailyMap.set(r.date, { date: r.date, cost: r.cost, clicks: r.clicks, conversions: r.conversions, impressions: r.impressions });
+        dailyMap.set(r.date, { date: r.date, cost: r.cost, clicks: r.clicks, cv_application: r.cv_application, cv_micro: r.cv_micro, impressions: r.impressions });
       }
     }
     return Array.from(dailyMap.values()).sort((a, b) => a.date.localeCompare(b.date));
@@ -915,14 +917,15 @@ function AdsOverview({ adsCampaigns }: { adsCampaigns: AdsCampaignDaily[] }) {
   const campaignBreakdown = useMemo(() => {
     const now = new Date();
     const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-    const map = new Map<string, { name: string; cost: number; clicks: number; impressions: number; conversions: number }>();
+    const map = new Map<string, { name: string; cost: number; clicks: number; impressions: number; cv_application: number; cv_micro: number }>();
     for (const r of adsCampaigns) {
       if (r.date.slice(0, 7) !== thisMonth) continue;
       const ex = map.get(r.campaign_name);
       if (ex) {
-        ex.cost += r.cost; ex.clicks += r.clicks; ex.impressions += r.impressions; ex.conversions += r.conversions;
+        ex.cost += r.cost; ex.clicks += r.clicks; ex.impressions += r.impressions;
+        ex.cv_application += r.cv_application; ex.cv_micro += r.cv_micro;
       } else {
-        map.set(r.campaign_name, { name: r.campaign_name, cost: r.cost, clicks: r.clicks, impressions: r.impressions, conversions: r.conversions });
+        map.set(r.campaign_name, { name: r.campaign_name, cost: r.cost, clicks: r.clicks, impressions: r.impressions, cv_application: r.cv_application, cv_micro: r.cv_micro });
       }
     }
     return Array.from(map.values()).sort((a, b) => b.cost - a.cost);
@@ -945,11 +948,11 @@ function AdsOverview({ adsCampaigns }: { adsCampaigns: AdsCampaignDaily[] }) {
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         <KpiCard title="広告費" value={`¥${Math.round(kpis.cost.current).toLocaleString()}`} sub={kpiChange(kpis.cost.current, kpis.cost.prev, true)} />
-        <KpiCard title="CV数" value={kpis.conversions.current.toFixed(1)} sub={kpiChange(kpis.conversions.current, kpis.conversions.prev)} />
-        <KpiCard title="CPA" value={kpis.cpa.current > 0 ? `¥${Math.round(kpis.cpa.current).toLocaleString()}` : "—"} sub={kpiChange(kpis.cpa.current, kpis.cpa.prev, true)} />
+        <KpiCard title="申し込みCV" value={kpis.cvApp.current.toFixed(1)} sub={kpiChange(kpis.cvApp.current, kpis.cvApp.prev)} />
+        <KpiCard title="申し込みCPA" value={kpis.cpa.current > 0 ? `¥${Math.round(kpis.cpa.current).toLocaleString()}` : "—"} sub={kpiChange(kpis.cpa.current, kpis.cpa.prev, true)} />
         <KpiCard title="CTR" value={`${kpis.ctr.current.toFixed(2)}%`} sub={kpiChange(kpis.ctr.current, kpis.ctr.prev)} />
         <KpiCard title="クリック" value={kpis.clicks.current.toLocaleString()} sub={kpiChange(kpis.clicks.current, kpis.clicks.prev)} />
-        <KpiCard title="表示回数" value={kpis.impressions.current.toLocaleString()} sub={kpiChange(kpis.impressions.current, kpis.impressions.prev)} />
+        <KpiCard title="マイクロCV" value={kpis.cvMicro.current.toFixed(0)} sub={kpiChange(kpis.cvMicro.current, kpis.cvMicro.prev)} />
       </div>
 
       {/* Charts: Cost + CV trend */}
@@ -973,7 +976,7 @@ function AdsOverview({ adsCampaigns }: { adsCampaigns: AdsCampaignDaily[] }) {
           </ResponsiveContainer>
         </div>
         <div className="bg-surface-raised border border-white/10 rounded-xl p-5">
-          <h3 className="text-sm font-medium text-gray-300 mb-4">CV数・クリック数推移（日別）</h3>
+          <h3 className="text-sm font-medium text-gray-300 mb-4">申し込みCV・クリック数推移（日別）</h3>
           <ResponsiveContainer width="100%" height={250}>
             <LineChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
@@ -987,7 +990,7 @@ function AdsOverview({ adsCampaigns }: { adsCampaigns: AdsCampaignDaily[] }) {
               />
               <Legend wrapperStyle={{ fontSize: 11 }} />
               <Line yAxisId="right" type="monotone" dataKey="clicks" name="クリック" stroke="#3b82f6" strokeWidth={2} dot={false} />
-              <Line yAxisId="left" type="monotone" dataKey="conversions" name="CV" stroke="#10b981" strokeWidth={2} dot={false} />
+              <Line yAxisId="left" type="monotone" dataKey="cv_application" name="申し込みCV" stroke="#10b981" strokeWidth={2} dot={false} />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -1006,7 +1009,7 @@ function AdsOverview({ adsCampaigns }: { adsCampaigns: AdsCampaignDaily[] }) {
                 <th className="text-right py-2.5 px-3">費用</th>
                 <th className="text-right py-2.5 px-3">構成比</th>
                 <th className="text-right py-2.5 px-3">クリック</th>
-                <th className="text-right py-2.5 px-3">CV</th>
+                <th className="text-right py-2.5 px-3">申し込みCV</th>
                 <th className="text-right py-2.5 px-3">CPA</th>
               </tr>
             </thead>
@@ -1014,7 +1017,7 @@ function AdsOverview({ adsCampaigns }: { adsCampaigns: AdsCampaignDaily[] }) {
               {campaignBreakdown.map(c => {
                 const totalCost = campaignBreakdown.reduce((s, x) => s + x.cost, 0);
                 const share = totalCost > 0 ? (c.cost / totalCost) * 100 : 0;
-                const cpa = c.conversions > 0 ? c.cost / c.conversions : 0;
+                const cpa = c.cv_application > 0 ? c.cost / c.cv_application : 0;
                 return (
                   <tr key={c.name} className="border-b border-white/5 hover:bg-white/5">
                     <td className="py-2.5 px-4 text-white font-medium">{c.name}</td>
@@ -1029,7 +1032,7 @@ function AdsOverview({ adsCampaigns }: { adsCampaigns: AdsCampaignDaily[] }) {
                     </td>
                     <td className="text-right py-2.5 px-3 text-gray-300">{c.clicks.toLocaleString()}</td>
                     <td className="text-right py-2.5 px-3">
-                      <span className={c.conversions > 0 ? "text-green-400 font-medium" : "text-gray-600"}>{c.conversions.toFixed(1)}</span>
+                      <span className={c.cv_application > 0 ? "text-green-400 font-medium" : "text-gray-600"}>{c.cv_application.toFixed(1)}</span>
                     </td>
                     <td className="text-right py-2.5 px-3 text-gray-300">{cpa > 0 ? `¥${Math.round(cpa).toLocaleString()}` : "—"}</td>
                   </tr>
@@ -1069,11 +1072,11 @@ function AdsCampaignTable({ adsCampaigns, granularity, setGranularity }: {
     // Group by campaign × period
     const campMap = new Map<string, {
       name: string;
-      totals: { cost: number; clicks: number; impressions: number; conversions: number };
-      periods: Map<string, { cost: number; clicks: number; impressions: number; conversions: number }>;
+      totals: { cost: number; clicks: number; impressions: number; cv_application: number };
+      periods: Map<string, { cost: number; clicks: number; impressions: number; cv_application: number }>;
     }>();
     const allPKs = new Set<string>();
-    const zero = () => ({ cost: 0, clicks: 0, impressions: 0, conversions: 0 });
+    const zero = () => ({ cost: 0, clicks: 0, impressions: 0, cv_application: 0 });
 
     for (const r of adsCampaigns) {
       const pk = getPK(r.date);
@@ -1081,13 +1084,13 @@ function AdsCampaignTable({ adsCampaigns, granularity, setGranularity }: {
       const ex = campMap.get(r.campaign_name);
       if (ex) {
         ex.totals.cost += r.cost; ex.totals.clicks += r.clicks;
-        ex.totals.impressions += r.impressions; ex.totals.conversions += r.conversions;
+        ex.totals.impressions += r.impressions; ex.totals.cv_application += r.cv_application;
         const p = ex.periods.get(pk) || zero();
-        p.cost += r.cost; p.clicks += r.clicks; p.impressions += r.impressions; p.conversions += r.conversions;
+        p.cost += r.cost; p.clicks += r.clicks; p.impressions += r.impressions; p.cv_application += r.cv_application;
         ex.periods.set(pk, p);
       } else {
         const t = zero();
-        t.cost = r.cost; t.clicks = r.clicks; t.impressions = r.impressions; t.conversions = r.conversions;
+        t.cost = r.cost; t.clicks = r.clicks; t.impressions = r.impressions; t.cv_application = r.cv_application;
         const p = new Map([[pk, { ...t }]]);
         campMap.set(r.campaign_name, { name: r.campaign_name, totals: t, periods: p });
       }
@@ -1118,7 +1121,7 @@ function AdsCampaignTable({ adsCampaigns, granularity, setGranularity }: {
               <tr className="border-b border-white/10 text-gray-400">
                 <th className="text-left py-2.5 px-3 min-w-[200px]">キャンペーン</th>
                 <th className="text-right py-2.5 px-2 w-20">合計費用</th>
-                <th className="text-right py-2.5 px-2 w-16">合計CV</th>
+                <th className="text-right py-2.5 px-2 w-16">申込CV</th>
                 <th className="text-right py-2.5 px-2 w-16">CPA</th>
                 <th className="text-right py-2.5 px-2 w-16">CTR</th>
                 {periodKeys.map(pk => (
@@ -1128,7 +1131,7 @@ function AdsCampaignTable({ adsCampaigns, granularity, setGranularity }: {
             </thead>
             <tbody>
               {rows.map(r => {
-                const cpa = r.totals.conversions > 0 ? r.totals.cost / r.totals.conversions : 0;
+                const cpa = r.totals.cv_application > 0 ? r.totals.cost / r.totals.cv_application : 0;
                 const ctr = r.totals.impressions > 0 ? (r.totals.clicks / r.totals.impressions) * 100 : 0;
                 const maxCost = Math.max(...rows.map(x => x.totals.cost));
                 return (
@@ -1136,7 +1139,7 @@ function AdsCampaignTable({ adsCampaigns, granularity, setGranularity }: {
                     <td className="py-2.5 px-3 text-white font-medium truncate max-w-[200px]">{r.name}</td>
                     <td className="text-right py-2.5 px-2 text-white">¥{Math.round(r.totals.cost).toLocaleString()}</td>
                     <td className="text-right py-2.5 px-2">
-                      <span className={r.totals.conversions > 0 ? "text-green-400" : "text-gray-600"}>{r.totals.conversions.toFixed(1)}</span>
+                      <span className={r.totals.cv_application > 0 ? "text-green-400" : "text-gray-600"}>{r.totals.cv_application.toFixed(1)}</span>
                     </td>
                     <td className="text-right py-2.5 px-2 text-gray-300">{cpa > 0 ? `¥${Math.round(cpa).toLocaleString()}` : "—"}</td>
                     <td className="text-right py-2.5 px-2 text-gray-300">{ctr.toFixed(2)}%</td>
@@ -1146,7 +1149,7 @@ function AdsCampaignTable({ adsCampaigns, granularity, setGranularity }: {
                       const intensity = maxCost > 0 ? p.cost / maxCost : 0;
                       const bg = intensity > 0.6 ? "bg-amber-500/30" : intensity > 0.3 ? "bg-amber-500/15" : intensity > 0 ? "bg-amber-500/5" : "";
                       return (
-                        <td key={pk} className={`text-center py-2.5 px-1 ${bg}`} title={`費用: ¥${Math.round(p.cost).toLocaleString()} / CV: ${p.conversions.toFixed(1)}`}>
+                        <td key={pk} className={`text-center py-2.5 px-1 ${bg}`} title={`費用: ¥${Math.round(p.cost).toLocaleString()} / 申込CV: ${p.cv_application.toFixed(1)}`}>
                           <span className="text-white/80 text-[10px]">¥{p.cost >= 1000 ? `${(p.cost/1000).toFixed(0)}k` : Math.round(p.cost)}</span>
                         </td>
                       );
@@ -1169,23 +1172,23 @@ function AdsKeywordTable({ adsKeywords, granularity, setGranularity }: {
   granularity: AdsGranularity;
   setGranularity: (g: AdsGranularity) => void;
 }) {
-  const [sortBy, setSortBy] = useState<"cost" | "clicks" | "conversions" | "impressions">("cost");
+  const [sortBy, setSortBy] = useState<"cost" | "clicks" | "cv_application" | "impressions">("cost");
 
   const keywords = useMemo(() => {
     const map = new Map<string, {
       keyword: string; campaign: string; matchType: string;
-      cost: number; clicks: number; impressions: number; conversions: number;
+      cost: number; clicks: number; impressions: number; cv_application: number;
     }>();
 
     for (const r of adsKeywords) {
       const key = `${r.keyword}|${r.match_type}|${r.campaign_name}`;
       const ex = map.get(key);
       if (ex) {
-        ex.cost += r.cost; ex.clicks += r.clicks; ex.impressions += r.impressions; ex.conversions += r.conversions;
+        ex.cost += r.cost; ex.clicks += r.clicks; ex.impressions += r.impressions; ex.cv_application += r.cv_application;
       } else {
         map.set(key, {
           keyword: r.keyword, campaign: r.campaign_name, matchType: r.match_type,
-          cost: r.cost, clicks: r.clicks, impressions: r.impressions, conversions: r.conversions,
+          cost: r.cost, clicks: r.clicks, impressions: r.impressions, cv_application: r.cv_application,
         });
       }
     }
@@ -1199,7 +1202,7 @@ function AdsKeywordTable({ adsKeywords, granularity, setGranularity }: {
       : granularity === "weekly" ? getWeekKey : getMonthKey;
 
     const allPKs = new Set<string>();
-    const data = new Map<string, Map<string, { cost: number; clicks: number; conversions: number }>>();
+    const data = new Map<string, Map<string, { cost: number; clicks: number; cv_application: number }>>();
 
     for (const r of adsKeywords) {
       const pk = getPK(r.date);
@@ -1207,8 +1210,8 @@ function AdsKeywordTable({ adsKeywords, granularity, setGranularity }: {
       const kwKey = `${r.keyword}|${r.match_type}|${r.campaign_name}`;
       if (!data.has(kwKey)) data.set(kwKey, new Map());
       const periods = data.get(kwKey)!;
-      const ex = periods.get(pk) || { cost: 0, clicks: 0, conversions: 0 };
-      ex.cost += r.cost; ex.clicks += r.clicks; ex.conversions += r.conversions;
+      const ex = periods.get(pk) || { cost: 0, clicks: 0, cv_application: 0 };
+      ex.cost += r.cost; ex.clicks += r.clicks; ex.cv_application += r.cv_application;
       periods.set(pk, ex);
     }
 
@@ -1236,10 +1239,10 @@ function AdsKeywordTable({ adsKeywords, granularity, setGranularity }: {
         <p className="text-xs text-gray-500">{keywords.length} キーワード / 過去90日</p>
         <div className="flex items-center gap-3">
           <div className="flex gap-1 bg-white/5 rounded-lg p-0.5">
-            {(["cost", "clicks", "conversions", "impressions"] as const).map(s => (
+            {(["cost", "clicks", "cv_application", "impressions"] as const).map(s => (
               <button key={s} onClick={() => setSortBy(s)}
                 className={`px-2 py-1 text-[10px] rounded-md transition-colors ${sortBy === s ? "bg-brand text-white" : "text-gray-400 hover:text-white"}`}>
-                {s === "cost" ? "費用順" : s === "clicks" ? "クリック順" : s === "conversions" ? "CV順" : "表示順"}
+                {s === "cost" ? "費用順" : s === "clicks" ? "クリック順" : s === "cv_application" ? "CV順" : "表示順"}
               </button>
             ))}
           </div>
@@ -1258,7 +1261,7 @@ function AdsKeywordTable({ adsKeywords, granularity, setGranularity }: {
                 <th className="text-right py-2.5 px-2 w-14">Click</th>
                 <th className="text-right py-2.5 px-2 w-14">表示</th>
                 <th className="text-right py-2.5 px-2 w-12">CTR</th>
-                <th className="text-right py-2.5 px-2 w-10">CV</th>
+                <th className="text-right py-2.5 px-2 w-10">申込CV</th>
                 {periodKeys.slice(-12).map(pk => (
                   <th key={pk} className="text-center py-2.5 px-1 w-14 whitespace-nowrap text-[10px]">{formatPK(pk)}</th>
                 ))}
@@ -1279,14 +1282,14 @@ function AdsKeywordTable({ adsKeywords, granularity, setGranularity }: {
                     <td className="text-right py-2 px-2 text-gray-400">{k.impressions.toLocaleString()}</td>
                     <td className="text-right py-2 px-2 text-gray-400">{ctr.toFixed(1)}%</td>
                     <td className="text-right py-2 px-2">
-                      <span className={k.conversions > 0 ? "text-green-400 font-medium" : "text-gray-600"}>{k.conversions.toFixed(1)}</span>
+                      <span className={k.cv_application > 0 ? "text-green-400 font-medium" : "text-gray-600"}>{k.cv_application.toFixed(1)}</span>
                     </td>
                     {periodKeys.slice(-12).map(pk => {
                       const p = kwPeriods?.get(pk);
                       if (!p) return <td key={pk} className="text-center py-2 px-1 text-gray-700">—</td>;
                       return (
                         <td key={pk} className="text-center py-2 px-1" title={`費用: ¥${Math.round(p.cost).toLocaleString()}`}>
-                          <span className={p.conversions > 0 ? "text-green-400 text-[10px]" : "text-white/60 text-[10px]"}>
+                          <span className={p.cv_application > 0 ? "text-green-400 text-[10px]" : "text-white/60 text-[10px]"}>
                             {p.clicks > 0 ? p.clicks : "—"}
                           </span>
                         </td>

@@ -299,64 +299,88 @@ export async function GET(request: Request) {
 
     // ========================================
     // 5. Google Ads: キャンペーン別 + キーワード別 (日次)
+    //    CV = 申し込み(schedule遷移) と マイクロ に分離
     // ========================================
+    const APPLICATION_CV_ACTIONS = ["既卒(/schedule/遷移)", "新卒(schedule_newgraduate_遷移)"];
+    const MICRO_CV_ACTION = "マイクロCV";
+
+    async function adsSearchStream(query: string) {
+      const res = await fetch(
+        `https://googleads.googleapis.com/v18/customers/${GOOGLE_ADS_CUSTOMER_ID}/googleAds:searchStream`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "developer-token": GOOGLE_ADS_DEVELOPER_TOKEN,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ query }),
+        }
+      );
+      if (!res.ok) {
+        console.error("Google Ads API error:", res.status, await res.text().catch(() => ""));
+        return null;
+      }
+      return res.json();
+    }
+
     if (GOOGLE_ADS_DEVELOPER_TOKEN) {
       try {
-        const adsHeaders = {
-          Authorization: `Bearer ${accessToken}`,
-          "developer-token": GOOGLE_ADS_DEVELOPER_TOKEN,
-          "Content-Type": "application/json",
-        };
-
-        // 5a. Campaign daily
-        const campaignQuery = `
-          SELECT
-            segments.date,
-            campaign.name,
-            campaign.status,
-            metrics.impressions,
-            metrics.clicks,
-            metrics.ctr,
-            metrics.average_cpc,
-            metrics.cost_micros,
-            metrics.conversions,
-            metrics.cost_per_conversion
+        // 5a. Campaign daily (base metrics)
+        const campaignData = await adsSearchStream(`
+          SELECT segments.date, campaign.name, campaign.status,
+            metrics.impressions, metrics.clicks, metrics.ctr, metrics.average_cpc,
+            metrics.cost_micros, metrics.conversions, metrics.cost_per_conversion
           FROM campaign
-          WHERE segments.date = '${dateStr}'
-            AND campaign.status != 'REMOVED'
+          WHERE segments.date = '${dateStr}' AND campaign.status != 'REMOVED'
           ORDER BY metrics.cost_micros DESC
-        `;
+        `);
 
-        const adsRes = await fetch(
-          `https://googleads.googleapis.com/v18/customers/${GOOGLE_ADS_CUSTOMER_ID}/googleAds:searchStream`,
-          { method: "POST", headers: adsHeaders, body: JSON.stringify({ query: campaignQuery }) }
-        );
+        // 5b. Campaign CV breakdown by action
+        const campaignCvData = await adsSearchStream(`
+          SELECT segments.date, campaign.name, segments.conversion_action_name, metrics.conversions
+          FROM campaign
+          WHERE segments.date = '${dateStr}' AND campaign.status != 'REMOVED' AND metrics.conversions > 0
+        `);
 
-        if (adsRes.ok) {
-          const adsData = await adsRes.json();
+        // Build CV lookup: campaign_name -> { cv_application, cv_micro }
+        const cvLookup: Record<string, { cv_application: number; cv_micro: number }> = {};
+        if (campaignCvData) {
+          for (const batch of campaignCvData) {
+            for (const result of batch.results || []) {
+              const name = result.campaign?.name || "";
+              const action = result.segments?.conversionActionName || "";
+              const cv = parseFloat(result.metrics?.conversions || "0");
+              if (!cvLookup[name]) cvLookup[name] = { cv_application: 0, cv_micro: 0 };
+              if (APPLICATION_CV_ACTIONS.includes(action)) cvLookup[name].cv_application += cv;
+              else if (action === MICRO_CV_ACTION) cvLookup[name].cv_micro += cv;
+            }
+          }
+        }
+
+        if (campaignData) {
           const campaignRows: Record<string, unknown>[] = [];
-
-          for (const batch of adsData || []) {
+          for (const batch of campaignData) {
             for (const result of batch.results || []) {
               const m = result.metrics;
-              const costMicros = parseInt(m?.costMicros || "0");
-              const avgCpcMicros = parseInt(m?.averageCpc || "0");
-              const costPerConvMicros = parseInt(m?.costPerConversion || "0");
+              const name = result.campaign?.name || "Unknown";
+              const cvBreakdown = cvLookup[name] || { cv_application: 0, cv_micro: 0 };
               campaignRows.push({
                 date: dateStr,
-                campaign_name: result.campaign?.name || "Unknown",
+                campaign_name: name,
                 campaign_status: result.campaign?.status || "ENABLED",
                 impressions: parseInt(m?.impressions || "0"),
                 clicks: parseInt(m?.clicks || "0"),
                 ctr: parseFloat(m?.ctr || "0") * 100,
-                avg_cpc: avgCpcMicros / 1_000_000,
-                cost: costMicros / 1_000_000,
+                avg_cpc: parseInt(m?.averageCpc || "0") / 1_000_000,
+                cost: parseInt(m?.costMicros || "0") / 1_000_000,
                 conversions: parseFloat(m?.conversions || "0"),
-                cost_per_conversion: costPerConvMicros / 1_000_000,
+                cv_application: cvBreakdown.cv_application,
+                cv_micro: cvBreakdown.cv_micro,
+                cost_per_conversion: parseInt(m?.costPerConversion || "0") / 1_000_000,
               });
             }
           }
-
           if (campaignRows.length > 0) {
             const { error } = await supabase
               .from("analytics_ads_campaign_daily")
@@ -364,59 +388,73 @@ export async function GET(request: Request) {
             if (error) console.error("Ads campaign upsert error:", error.message);
           }
           results.ads_campaigns = campaignRows.length;
-        } else {
-          console.error("Google Ads campaign API error:", adsRes.status, await adsRes.text().catch(() => ""));
         }
 
-        // 5b. Keyword daily
-        const keywordQuery = `
-          SELECT
-            segments.date,
-            campaign.name,
-            ad_group_criterion.keyword.text,
-            ad_group_criterion.keyword.match_type,
-            metrics.impressions,
-            metrics.clicks,
-            metrics.ctr,
-            metrics.cost_micros,
-            metrics.conversions
+        // 5c. Keyword daily (base metrics)
+        const kwData = await adsSearchStream(`
+          SELECT segments.date, campaign.name,
+            ad_group_criterion.keyword.text, ad_group_criterion.keyword.match_type,
+            metrics.impressions, metrics.clicks, metrics.ctr, metrics.cost_micros, metrics.conversions
           FROM keyword_view
           WHERE segments.date = '${dateStr}'
-            AND campaign.status != 'REMOVED'
-            AND ad_group.status != 'REMOVED'
+            AND campaign.status != 'REMOVED' AND ad_group.status != 'REMOVED'
             AND metrics.impressions > 0
-          ORDER BY metrics.impressions DESC
-          LIMIT 100
-        `;
+          ORDER BY metrics.impressions DESC LIMIT 100
+        `);
 
-        const kwRes = await fetch(
-          `https://googleads.googleapis.com/v18/customers/${GOOGLE_ADS_CUSTOMER_ID}/googleAds:searchStream`,
-          { method: "POST", headers: adsHeaders, body: JSON.stringify({ query: keywordQuery }) }
-        );
+        // 5d. Keyword CV breakdown by action
+        const kwCvData = await adsSearchStream(`
+          SELECT segments.date, campaign.name,
+            ad_group_criterion.keyword.text, ad_group_criterion.keyword.match_type,
+            segments.conversion_action_name, metrics.conversions
+          FROM keyword_view
+          WHERE segments.date = '${dateStr}'
+            AND campaign.status != 'REMOVED' AND ad_group.status != 'REMOVED'
+            AND metrics.conversions > 0
+        `);
 
-        if (kwRes.ok) {
-          const kwData = await kwRes.json();
+        const kwCvLookup: Record<string, { cv_application: number; cv_micro: number }> = {};
+        if (kwCvData) {
+          for (const batch of kwCvData) {
+            for (const result of batch.results || []) {
+              const kwText = result.adGroupCriterion?.keyword?.text || "";
+              const mt = result.adGroupCriterion?.keyword?.matchType || "BROAD";
+              const campName = result.campaign?.name || "";
+              const action = result.segments?.conversionActionName || "";
+              const cv = parseFloat(result.metrics?.conversions || "0");
+              const key = `${campName}|${kwText}|${mt}`;
+              if (!kwCvLookup[key]) kwCvLookup[key] = { cv_application: 0, cv_micro: 0 };
+              if (APPLICATION_CV_ACTIONS.includes(action)) kwCvLookup[key].cv_application += cv;
+              else if (action === MICRO_CV_ACTION) kwCvLookup[key].cv_micro += cv;
+            }
+          }
+        }
+
+        if (kwData) {
           const keywordRows: Record<string, unknown>[] = [];
-
-          for (const batch of kwData || []) {
+          for (const batch of kwData) {
             for (const result of batch.results || []) {
               const m = result.metrics;
-              const costMicros = parseInt(m?.costMicros || "0");
+              const kwText = result.adGroupCriterion?.keyword?.text || "Unknown";
               const matchType = result.adGroupCriterion?.keyword?.matchType || "BROAD";
+              const campName = result.campaign?.name || "Unknown";
+              const key = `${campName}|${kwText}|${matchType}`;
+              const cvBreakdown = kwCvLookup[key] || { cv_application: 0, cv_micro: 0 };
               keywordRows.push({
                 date: dateStr,
-                campaign_name: result.campaign?.name || "Unknown",
-                keyword: result.adGroupCriterion?.keyword?.text || "Unknown",
+                campaign_name: campName,
+                keyword: kwText,
                 match_type: matchType,
                 impressions: parseInt(m?.impressions || "0"),
                 clicks: parseInt(m?.clicks || "0"),
                 ctr: parseFloat(m?.ctr || "0") * 100,
-                cost: costMicros / 1_000_000,
+                cost: parseInt(m?.costMicros || "0") / 1_000_000,
                 conversions: parseFloat(m?.conversions || "0"),
+                cv_application: cvBreakdown.cv_application,
+                cv_micro: cvBreakdown.cv_micro,
               });
             }
           }
-
           if (keywordRows.length > 0) {
             const { error } = await supabase
               .from("analytics_ads_keyword_daily")
@@ -424,8 +462,6 @@ export async function GET(request: Request) {
             if (error) console.error("Ads keyword upsert error:", error.message);
           }
           results.ads_keywords = keywordRows.length;
-        } else {
-          console.error("Google Ads keyword API error:", kwRes.status, await kwRes.text().catch(() => ""));
         }
       } catch (adsError) {
         console.error("Google Ads sync error:", adsError);

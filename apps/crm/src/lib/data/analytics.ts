@@ -155,6 +155,8 @@ export interface AdsCampaignDaily {
   avg_cpc: number;
   cost: number;
   conversions: number;
+  cv_application: number;
+  cv_micro: number;
   cost_per_conversion: number;
 }
 
@@ -168,6 +170,8 @@ export interface AdsKeywordDaily {
   ctr: number;
   cost: number;
   conversions: number;
+  cv_application: number;
+  cv_micro: number;
 }
 
 /** Google Ads キャンペーン別日次データ（90日） */
