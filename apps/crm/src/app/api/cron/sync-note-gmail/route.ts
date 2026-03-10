@@ -1,5 +1,4 @@
 import { createServiceClient } from "@/lib/supabase/server";
-import { notifyNotePurchase } from "@/lib/slack";
 import { NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 
@@ -187,100 +186,6 @@ function parseNoteOrderFromBody(
   };
 }
 
-// --- Zapier準拠: 商品名の正規化 ---
-
-/** 固定価格テーブル（パック/マガジン商品） */
-const NOTE_PRICE_MAP: Record<string, number> = {
-  "ケース面接/パック": 39800,
-  "マッキンゼー/パック": 39800,
-  "フェルミ推定/パック": 19800,
-  "ケースの教科書4冊セット/パック": 9800,
-};
-
-/**
- * Zapier準拠: 商品名を簡略化カテゴリにマッピング
- * - マッキンゼー, フェルミ, ケース面接, ジョブ, ケースの教科書 を検出
- * - パック/教科書/動画講座のタイプ判定
- */
-function normalizeProductName(rawName: string): {
-  product: string;
-  productType: "教科書" | "動画講座" | "マガジン";
-} {
-  const name = rawName.trim();
-  let product = name;
-  let productType: "教科書" | "動画講座" | "マガジン" = "マガジン";
-
-  // キーワードマッチで簡略化
-  if (name.includes("マッキンゼー")) {
-    product = name.includes("パック") ? "マッキンゼー/パック" : "マッキンゼー";
-  } else if (name.includes("フェルミ")) {
-    product = name.includes("パック") ? "フェルミ推定/パック" : "フェルミ推定";
-  } else if (name.includes("ケース面接")) {
-    product = name.includes("パック") ? "ケース面接/パック" : "ケース面接";
-  } else if (name.includes("ケースの教科書") && name.includes("セット")) {
-    product = "ケースの教科書4冊セット/パック";
-  } else if (name.includes("ジョブ")) {
-    product = "ジョブ型";
-  }
-
-  // タイプ判定
-  if (name.includes("教科書")) {
-    productType = "教科書";
-  } else if (name.includes("動画") || name.includes("講座") || name.includes("演習")) {
-    productType = "動画講座";
-  }
-
-  return { product, productType };
-}
-
-/** Google Sheets に行を追加（OAuth認証使用） */
-async function appendToNoteSheet(
-  accessToken: string,
-  data: ParsedNoteOrder,
-  normalizedProduct: string,
-  productType: string
-) {
-  const SHEET_ID = "1suAMf79-Cdwu_t0bIH0jHdBHh8w5hjbrnaHPG1bPyis";
-  const SHEET_NAME = "note販売";
-
-  // 日付から年月を抽出（例: "2026/03"）
-  const paidDate = new Date(data.paidAt);
-  const yearMonth = `${paidDate.getFullYear()}/${String(paidDate.getMonth() + 1).padStart(2, "0")}`;
-
-  // JST日時フォーマット
-  const jstDate = paidDate.toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" });
-
-  // 行データ: [年月, 日時, 購入者, 商品名, 商品タイプ, 金額, 注文ID]
-  const values = [[
-    `=TEXT(DATEVALUE(LEFT(B2,10)),"yyyy/mm")`,
-    jstDate,
-    data.buyerName,
-    normalizedProduct,
-    productType,
-    data.amount,
-    data.orderId,
-  ]];
-
-  try {
-    const resp = await fetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/'${encodeURIComponent(SHEET_NAME)}'!A2:G2:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ values }),
-      }
-    );
-    if (!resp.ok) {
-      console.warn("Failed to append to note sheet:", await resp.text());
-    }
-  } catch (e) {
-    console.warn("Note sheet append error:", e);
-  }
-}
-
 // --- Main Handler ---
 
 export async function GET(request: Request) {
@@ -410,9 +315,6 @@ export async function GET(request: Request) {
           continue;
         }
 
-        // 商品名正規化（Zapier準拠）
-        const { product: normalizedProduct, productType } = normalizeProductName(parsed.productName);
-
         // DB保存
         const { data: upsertResult, error: insertError } = await db
           .from("orders")
@@ -425,14 +327,13 @@ export async function GET(request: Request) {
               payment_method: "other",
               paid_at: parsed.paidAt,
               order_type: parsed.orderType,
-              product_name: normalizedProduct,
+              product_name: parsed.productName,
               contact_name: parsed.buyerName,
               match_status: "not_applicable",
               raw_data: {
                 gmail_message_id: msg.id,
                 subject,
                 body,
-                original_product_name: parsed.productName,
               },
             },
             { onConflict: "source,source_record_id", ignoreDuplicates: true }
@@ -448,22 +349,6 @@ export async function GET(request: Request) {
         } else if (upsertResult && upsertResult.length > 0) {
           rowsCreated++;
           existingIds.add(parsed.orderId);
-
-          // Slack通知（Zapier準拠: #note購入通知 チャンネルに通知）
-          const noteType = subject.includes("記事") ? "記事" as const : "マガジン" as const;
-          await notifyNotePurchase({
-            product: normalizedProduct,
-            price: parsed.amount,
-            buyer: parsed.buyerName,
-            type: noteType,
-          });
-
-          // Google Sheets書き込み（Zapier準拠: 売上管理 > note販売）
-          try {
-            await appendToNoteSheet(accessToken, parsed, normalizedProduct, productType);
-          } catch (sheetErr) {
-            console.warn("Sheet append failed:", sheetErr);
-          }
         } else {
           // ignoreDuplicates で既存をスキップ
           skippedDuplicates.push(parsed.orderId);

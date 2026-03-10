@@ -327,40 +327,6 @@ export async function notifyEnrollmentFormReceived(data: {
   await sendSlackMessage(channel, lines.join("\n"));
 }
 
-/** note購入通知 */
-export async function notifyNotePurchase(data: {
-  product: string;
-  price: number;
-  buyer: string;
-  type: "記事" | "マガジン";
-}) {
-  const channel = await getNotifyConfig("note_purchase", "C096RD04JQG");
-  if (!channel) return;
-  const icon = data.type === "記事" ? ":green_book:" : ":closed_book:";
-  const botName = data.type === "記事" ? "note(記事)販売通知" : "note(マガジン)販売通知";
-  // Zapier準拠: "{product}({price}) by "{buyer}""
-  const text = `${data.product}(${data.price}) by "${data.buyer}"`;
-
-  if (!SLACK_BOT_TOKEN) return;
-  try {
-    await fetch("https://slack.com/api/chat.postMessage", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${SLACK_BOT_TOKEN}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        channel,
-        text,
-        username: botName,
-        icon_emoji: icon,
-      }),
-    });
-  } catch (e) {
-    console.error("Note purchase Slack notification failed:", e);
-  }
-}
-
 /** 営業リマインド通知 */
 export async function notifySalesReminder(text: string) {
   const channel = await getNotifyConfig("sales_reminder", DEFAULT_CHANNELS.payment_success);
