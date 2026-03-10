@@ -36,16 +36,6 @@ function buildKanbanStages(today: Date): StageDef[] {
       },
     },
     {
-      label: "未実施（予定日後）",
-      match: ["未実施", "日程確定", "問い合わせ"],
-      borderColor: "border-t-red-400",
-      rich: false,
-      filter: (c) => {
-        const d = c.pipeline?.meeting_scheduled_date;
-        return !!d && new Date(d) < today;
-      },
-    },
-    {
       label: "検討中",
       match: ["検討中", "長期検討", "提案中", "面談実施"],
       borderColor: "border-t-blue-400",
@@ -267,6 +257,24 @@ export function PipelineClient({ customers }: PipelineClientProps) {
                           </span>
                         </div>
                       )}
+                      {/* 返答日（検討中） */}
+                      {(customer.pipeline.response_date || customer.pipeline.response_deadline) && (
+                        <div className="flex items-center justify-between mt-1">
+                          <span className="text-[10px] text-gray-500">返答日</span>
+                          <span className="text-xs text-gray-300">
+                            {formatDate(customer.pipeline.response_date || customer.pipeline.response_deadline || "")}
+                          </span>
+                        </div>
+                      )}
+                      {/* 追加指導日 */}
+                      {customer.pipeline.additional_coaching_date && (
+                        <div className="flex items-center justify-between mt-1">
+                          <span className="text-[10px] text-gray-500">追加指導日</span>
+                          <span className="text-xs text-gray-300">
+                            {formatDate(customer.pipeline.additional_coaching_date)}
+                          </span>
+                        </div>
+                      )}
                       {/* 追加営業内容 */}
                       {customer.pipeline.additional_sales_content && (
                         <div className="mt-1">
@@ -298,9 +306,24 @@ export function PipelineClient({ customers }: PipelineClientProps) {
                       LTV: {formatCurrency(calcExpectedLTV(customer))}
                     </p>
                   )}
-                  <p className="text-[10px] text-gray-400 mt-1">
-                    {formatDate(customer.application_date)}
-                  </p>
+                  {/* ステージごとの日付表示 */}
+                  {label.startsWith("未実施") && customer.pipeline?.meeting_scheduled_date ? (
+                    <p className="text-[10px] text-gray-400 mt-1">
+                      実施予定: {formatDate(customer.pipeline.meeting_scheduled_date)}
+                    </p>
+                  ) : label === "検討中" && (customer.pipeline?.response_date || customer.pipeline?.response_deadline) ? (
+                    <p className="text-[10px] text-gray-400 mt-1">
+                      返答日: {formatDate(customer.pipeline.response_date || customer.pipeline.response_deadline || "")}
+                    </p>
+                  ) : label === "追加指導" && customer.pipeline?.additional_coaching_date ? (
+                    <p className="text-[10px] text-gray-400 mt-1">
+                      追加指導日: {formatDate(customer.pipeline.additional_coaching_date)}
+                    </p>
+                  ) : (
+                    <p className="text-[10px] text-gray-400 mt-1">
+                      {formatDate(customer.application_date)}
+                    </p>
+                  )}
                 </Link>
               ))}
               {customers.length === 0 && (

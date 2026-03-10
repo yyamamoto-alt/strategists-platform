@@ -63,25 +63,6 @@ export function ChartsSkeleton() {
   );
 }
 
-export function CostSkeleton() {
-  return (
-    <div className="px-6 animate-pulse">
-      <div className="bg-surface-card rounded-xl border border-white/10 p-6">
-        <div className="h-5 bg-white/10 rounded w-36 mb-4" />
-        <div className="flex items-end gap-2 h-48">
-          {[50, 65, 45, 70, 55, 60, 75, 50, 65, 45, 70, 55].map((h, i) => (
-            <div
-              key={i}
-              className="flex-1 bg-white/5 rounded-t"
-              style={{ height: `${h}%` }}
-            />
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export function ChannelSkeleton() {
   return (
     <div className="px-6 animate-pulse">

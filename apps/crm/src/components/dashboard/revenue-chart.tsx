@@ -315,10 +315,12 @@ function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
         (d.projected_agent || 0) +
         (d.ltv_gap || 0);
       if (barTotal > max) max = barTotal;
+      // 費用表示ON時はコスト合計も考慮
+      if (showCost && d.total_cost > max) max = d.total_cost;
     }
     const step = 1000000;
     return Math.ceil(max * 1.1 / step) * step || 10000000;
-  }, [chartData]);
+  }, [chartData, showCost]);
 
   const yTicks = useMemo(() => {
     const step = yMax <= 10000000 ? 1000000 : yMax <= 30000000 ? 2000000 : 5000000;
@@ -441,18 +443,25 @@ function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
             radius={[4, 4, 0, 0]}
           />
 
-          {/* 費用表示ON時: コスト・利益の折れ線 */}
+          {/* 費用表示ON時: コスト棒グラフ（内訳）+ 利益折れ線 */}
           {showCost && Object.keys(costMap).length > 0 && (
             <>
-              <Line
+              <Bar
                 yAxisId="left"
-                type="monotone"
-                dataKey="total_cost"
-                name="総コスト（freee）"
-                stroke="#ef4444"
-                strokeWidth={2}
-                dot={{ r: 3, fill: "#ef4444", stroke: "#fff", strokeWidth: 1 }}
-                strokeDasharray="6 3"
+                dataKey="cost_of_sales"
+                name="売上原価（freee）"
+                fill="#f87171"
+                stackId="cost"
+                radius={[0, 0, 0, 0]}
+              />
+              <Bar
+                yAxisId="left"
+                dataKey="sga"
+                name="販管費（freee）"
+                fill="#ef4444"
+                fillOpacity={0.6}
+                stackId="cost"
+                radius={[2, 2, 0, 0]}
               />
               <Line
                 yAxisId="left"
