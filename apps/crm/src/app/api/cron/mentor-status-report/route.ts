@@ -226,10 +226,20 @@ export async function GET(request: Request) {
       lines.push(
         `　　セッション(30日): 完了${m.completedSessions30d}回 / キャンセル${m.cancelledSessions30d}回`
       );
-      // スプレッドシートからの追加情報
+      // スプレッドシートからの追加情報（ハート色分け: 評価に応じたアイコン）
       const sheetParts: string[] = [];
       if (m.utilization) sheetParts.push(`稼働率: ${m.utilization}`);
-      if (m.rating) sheetParts.push(`評価: ${m.rating}`);
+      if (m.rating) {
+        const ratingNum = parseFloat(m.rating);
+        let heart = "💛"; // デフォルト
+        if (!isNaN(ratingNum)) {
+          if (ratingNum >= 4.5) heart = "💚";      // 高評価
+          else if (ratingNum >= 4.0) heart = "💛";  // 良好
+          else if (ratingNum >= 3.0) heart = "🧡";  // 普通
+          else heart = "❤️";                        // 要改善
+        }
+        sheetParts.push(`${heart} 評価: ${m.rating}`);
+      }
       if (m.capacity) sheetParts.push(`キャパ: ${m.capacity}名`);
       if (m.additionalRequest) sheetParts.push(`追加希望: ${m.additionalRequest}名`);
       if (sheetParts.length > 0) {

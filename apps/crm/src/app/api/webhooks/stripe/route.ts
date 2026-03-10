@@ -84,21 +84,25 @@ export async function POST(request: Request) {
     normalized.match_status = "unmatched";
   }
 
-  // 顧客マッチ時: sales_pipeline を「成約」に自動更新
+  // 顧客マッチ時: sales_pipeline を「成約」に自動更新 + 受講ステータスを「受講中」に
   if (match) {
     const supabase = createServiceClient();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = supabase as any;
     const { data: existingPipeline } = await db
       .from("sales_pipeline")
-      .select("id")
+      .select("id, stage")
       .eq("customer_id", match.customer_id)
       .maybeSingle();
 
     if (existingPipeline) {
-      await db
-        .from("sales_pipeline")
-        .update({ stage: "成約", updated_at: new Date().toISOString() })
-        .eq("id", existingPipeline.id);
+      const skipStages = ["受講中", "入金済"];
+      if (!skipStages.includes(existingPipeline.stage)) {
+        await db
+          .from("sales_pipeline")
+          .update({ stage: "成約", updated_at: new Date().toISOString() })
+          .eq("id", existingPipeline.id);
+      }
     } else {
       await db
         .from("sales_pipeline")
@@ -108,6 +112,20 @@ export async function POST(request: Request) {
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         });
+    }
+
+    // 受講ステータスを「受講中」に更新（Zapier COL$AN準拠 → contractsテーブル）
+    const { data: contract } = await db
+      .from("contracts")
+      .select("id, enrollment_status")
+      .eq("customer_id", match.customer_id)
+      .maybeSingle();
+
+    if (contract && contract.enrollment_status !== "受講中") {
+      await db
+        .from("contracts")
+        .update({ enrollment_status: "受講中", updated_at: new Date().toISOString() })
+        .eq("id", contract.id);
     }
   }
 

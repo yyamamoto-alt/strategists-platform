@@ -141,21 +141,29 @@ export async function notifyPaymentSuccess(data: {
   customerUrl?: string;
   email?: string;
   cardInfo?: string;
+  discountedFrom?: number;
+  installmentInfo?: string;
 }) {
   const channel = await getNotifyConfig("payment_success", DEFAULT_CHANNELS.payment_success);
   if (!channel) return;
 
-  const amountStr = `¥${data.amount.toLocaleString()}`;
+  const amountStr = `${data.amount.toLocaleString()}円`;
   const lines = [
     `🎉 *成約おめでとうございます！* 🎉`,
     `*決済完了のお知らせ*`,
-    `名前: ${data.name}`,
-    `商品: ${data.product}`,
-    `金額: ${amountStr}`,
+    `*名前:* ${data.name}`,
+    `*商品:* ${data.product}`,
+    `*金額:* ${amountStr}`,
   ];
+  if (data.discountedFrom && data.discountedFrom > data.amount) {
+    lines.push(`*割引前金額:* ${data.discountedFrom.toLocaleString()}円`);
+  }
+  if (data.installmentInfo) {
+    lines.push(`*分割:* ${data.installmentInfo}`);
+  }
   // メール・カード情報があれば追加（マッチや特定の手がかりになる）
-  if (data.email) lines.push(`メール: ${data.email}`);
-  if (data.cardInfo) lines.push(`カード: ${data.cardInfo}`);
+  if (data.email) lines.push(`*メール:* ${data.email}`);
+  if (data.cardInfo) lines.push(`*カード:* ${data.cardInfo}`);
   lines.push(data.matched ? "✅ 顧客マッチ済み" : "⚠️ 未マッチ");
   if (data.customerUrl) lines.push(data.customerUrl);
 

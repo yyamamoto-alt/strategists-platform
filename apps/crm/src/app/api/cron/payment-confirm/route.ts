@@ -29,26 +29,137 @@ const PAYMENT_CATEGORIES = [
 
 type PaymentBreakdown = {
   total: number;
-  items: { category: string; amount: number }[];
+  items: { category: string; amount: number; count?: number; clCount?: number }[];
 };
 
 /**
  * スプレッドシートからスタッフ別の支払い情報を解析する
+ *
+ * Zapier準拠: シートは行ベースの構造
+ * - 行ヘッダー(A列相当): "名前-カテゴリ" 形式（例: "喜山", "喜山-営業報酬", "喜山-営業数"）
+ * - 列ヘッダー(行1): 月ラベル（例: "2025/7", "2025/8"）
+ * - データ: 各セルに金額や回数
+ *
+ * 列ベースのシート（名前列 + カテゴリ列）にもフォールバック対応
  */
 function parsePaymentSheet(
-  rows: string[][]
+  rows: string[][],
+  targetMonth?: string
 ): Map<string, PaymentBreakdown> {
   if (rows.length < 2) return new Map();
 
   const headers = rows[0];
 
-  // 名前列を探す（最初の列 or "名前"/"氏名" を含む列）
+  // まず行ベース（Zapier形式）か列ベースかを判定
+  // 行ベース: ヘッダーが "YYYY/M" のような月ラベルを含む
+  const monthPattern = /^\d{4}\/\d{1,2}$/;
+  const hasMonthHeaders = headers.some((h) => monthPattern.test(h?.trim() || ""));
+
+  if (hasMonthHeaders) {
+    return parseRowBasedSheet(rows, targetMonth);
+  }
+
+  // 列ベース（フォールバック）
+  return parseColumnBasedSheet(rows);
+}
+
+/** Zapier準拠: 行ベースの支払いシート解析 */
+function parseRowBasedSheet(
+  rows: string[][],
+  targetMonth?: string
+): Map<string, PaymentBreakdown> {
+  const headers = rows[0];
+
+  // 対象月のカラムインデックスを特定
+  const now = new Date();
+  // Zapierは先月分を表示（14日に実行 → 先月の支払い確認）
+  const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const monthKey = targetMonth || `${prevMonth.getFullYear()}/${prevMonth.getMonth() + 1}`;
+
+  let monthColIdx = headers.findIndex((h) => h?.trim() === monthKey);
+  if (monthColIdx === -1) {
+    // "2025/07" 形式も試す
+    const paddedKey = `${prevMonth.getFullYear()}/${String(prevMonth.getMonth() + 1).padStart(2, "0")}`;
+    monthColIdx = headers.findIndex((h) => h?.trim() === paddedKey);
+  }
+  if (monthColIdx === -1) return new Map();
+
+  // 人ごとにデータを集約
+  // 行形式: "喜山" (合計行), "喜山-稼働報酬", "喜山-営業報酬", "喜山-営業数", "喜山-営業(直前CL)数" etc.
+  const personData = new Map<string, Record<string, number>>();
+
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+    const nameCell = (row[0] || "").trim();
+    if (!nameCell) continue;
+
+    const rawValue = row[monthColIdx] || "";
+    const cleaned = rawValue.replace(/[,，円¥\s]/g, "");
+    const value = cleaned ? parseInt(cleaned, 10) : 0;
+    if (isNaN(value)) continue;
+
+    // "name-category" 形式を分解
+    const dashIdx = nameCell.indexOf("-");
+    if (dashIdx === -1) {
+      // カテゴリなし → 合計報酬行
+      if (!personData.has(nameCell)) personData.set(nameCell, {});
+      personData.get(nameCell)!["合計報酬"] = value;
+    } else {
+      const name = nameCell.slice(0, dashIdx).trim();
+      const category = nameCell.slice(dashIdx + 1).trim();
+      if (!personData.has(name)) personData.set(name, {});
+      personData.get(name)![category] = value;
+    }
+  }
+
+  // PaymentBreakdown に変換
+  const result = new Map<string, PaymentBreakdown>();
+  for (const [name, data] of personData) {
+    const items: PaymentBreakdown["items"] = [];
+
+    for (const cat of PAYMENT_CATEGORIES) {
+      const amount = data[cat] || 0;
+      const item: PaymentBreakdown["items"][0] = { category: cat, amount };
+
+      // 回数情報を付加
+      if (cat === "営業報酬") {
+        item.count = data["営業数"] || undefined;
+        item.clCount = data["営業(直前CL)数"] || data["直前CL営業数"] || undefined;
+      } else if (cat === "指導報酬") {
+        item.count = data["指導数"] || undefined;
+        item.clCount = data["指導(直前CL)数"] || data["直前CL指導数"] || undefined;
+      }
+
+      items.push(item);
+    }
+
+    // 合計: シートの合計報酬行があればそれを使用、なければ計算
+    let total = data["合計報酬"] || 0;
+    if (!total) {
+      total = (data["稼働報酬"] || 0)
+        + (data["営業報酬"] || 0)
+        + (data["指導報酬"] || 0)
+        + (data["臨時報酬"] || 0)
+        - (data["経費"] || 0);
+    }
+
+    if (total > 0 || items.some((it) => it.amount !== 0)) {
+      result.set(name, { total, items });
+    }
+  }
+
+  return result;
+}
+
+/** 列ベースのシート解析（フォールバック） */
+function parseColumnBasedSheet(rows: string[][]): Map<string, PaymentBreakdown> {
+  const headers = rows[0];
+
   let nameColIdx = headers.findIndex(
     (h) => h === "名前" || h === "氏名" || h === "スタッフ名"
   );
   if (nameColIdx === -1) nameColIdx = 0;
 
-  // 各報酬カテゴリの列インデックスを特定
   const categoryIndices: { category: string; colIdx: number }[] = [];
   for (const cat of PAYMENT_CATEGORIES) {
     const idx = headers.findIndex((h) => h.includes(cat));
@@ -69,7 +180,6 @@ function parsePaymentSheet(
 
     for (const { category, colIdx } of categoryIndices) {
       const rawValue = row[colIdx] || "";
-      // カンマ、円記号、スペースを除去して数値に変換
       const cleaned = rawValue.replace(/[,，円¥\s]/g, "");
       const amount = cleaned ? parseInt(cleaned, 10) : 0;
       if (!isNaN(amount) && amount !== 0) {
@@ -78,7 +188,6 @@ function parsePaymentSheet(
       }
     }
 
-    // 合計列がシートにある場合はそちらを優先
     const totalColIdx = headers.findIndex(
       (h) => h === "合計" || h === "支払合計" || h === "総額"
     );
@@ -175,16 +284,30 @@ export async function GET(request: Request) {
         continue;
       }
 
-      const breakdownLines = breakdown.items.map(
-        ({ category, amount }) => `- ${category}: ${formatYen(amount)}円`
-      );
+      // Zapier準拠: 回数情報付きの内訳メッセージ
+      const breakdownLines = breakdown.items.map(({ category, amount, count, clCount }) => {
+        let countStr = "";
+        if (count != null) {
+          countStr = clCount ? `（${count}回 + 直前CL${clCount}回）` : `（${count}回）`;
+        }
+        const prefix = category === "指導報酬" ? "-🧑" : "-";
+        return `${prefix}${category}\t${formatYen(amount)}円${countStr}`;
+      });
+
+      // 前月ラベル（Zapier準拠: "YYYY/M"形式）
+      const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const monthLabel2 = `${prevMonth.getFullYear()}/${prevMonth.getMonth() + 1}`;
 
       const dmMessage = [
         `(自動送信)`,
-        `【${month}月分の支払概要】`,
-        `支払予定額: ${formatYen(breakdown.total)}円`,
+        `【${monthLabel2}分の支払概要】`,
+        ``,
+        `支払予定額 ${formatYen(breakdown.total)}円`,
+        ``,
         ...breakdownLines,
-        `※自動計算システムが送付しています。万が一間違いがありましたら申し訳ございません。`,
+        ``,
+        `※今月14日時点の請求状況に基づいて自動計算されています。認識に齟齬があれば3日以内にお知らせください。過ぎた場合の支払いは原則翌月に持ち越しさせていただきます。※営業や指導のカウントは提出日基準`,
+        `※自動計算システムが送付しています。万が一間違いがありましたら申し訳ございません.`,
       ].join("\n");
 
       try {
@@ -264,36 +387,31 @@ export async function GET(request: Request) {
     }
   }
 
-  // 経営reportチャンネルにサマリー投稿
+  // 経営reportチャンネルにサマリー投稿（Zapier準拠: "経理bot"名義 + 支払い予定一覧）
+  const prevMonthForSummary = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const summaryMonthLabel = `${prevMonthForSummary.getFullYear()}年${prevMonthForSummary.getMonth() + 1}月`;
+
   const summaryLines = [
-    `💰 *${monthLabel} 報酬支払い確認 送信完了*`,
-    ``,
-    `送信日: ${today}`,
-    `送信成功: ${results.staff_notified}名`,
+    `*【${summaryMonthLabel}の支払い予定】*`,
   ];
 
+  // 個別の支払い金額一覧
+  if (summaryAmounts.length > 0) {
+    for (const { name, total } of summaryAmounts) {
+      summaryLines.push(`${name}: ${formatYen(total)}円`);
+    }
+    const grandTotal = summaryAmounts.reduce((sum, s) => sum + s.total, 0);
+    summaryLines.push(``);
+    summaryLines.push(`*合計: ${formatYen(grandTotal)}円*`);
+  }
+
   if (results.staff_skipped > 0) {
-    summaryLines.push(`スキップ（シートに情報なし）: ${results.staff_skipped}名`);
+    summaryLines.push(``);
+    summaryLines.push(`シートに情報なし: ${skippedNames.join("、")}`);
   }
 
   if (sheetError) {
     summaryLines.push(`⚠️ シート読み取りエラー: フォールバックメッセージを送信`);
-  }
-
-  // 個別の支払い金額サマリー
-  if (summaryAmounts.length > 0) {
-    summaryLines.push(``);
-    summaryLines.push(`*支払い金額一覧:*`);
-    for (const { name, total } of summaryAmounts) {
-      summaryLines.push(`• ${name}: ${formatYen(total)}円`);
-    }
-    const grandTotal = summaryAmounts.reduce((sum, s) => sum + s.total, 0);
-    summaryLines.push(`合計: ${formatYen(grandTotal)}円`);
-  }
-
-  if (skippedNames.length > 0) {
-    summaryLines.push(``);
-    summaryLines.push(`ℹ️ シートに情報なし: ${skippedNames.join("、")}`);
   }
 
   if (failedNames.length > 0) {

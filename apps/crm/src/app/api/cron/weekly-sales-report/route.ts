@@ -223,8 +223,8 @@ export async function GET(request: Request) {
   const message = lines.join("\n");
   await sendSlackMessage(channel, message);
 
-  // 経営reportチャンネルにも送信
-  const REPORT_CHANNEL = "C0951QVAJ5N";
+  // 経営reportチャンネルにも送信（Zapier準拠: C09EYNUMQ8K）
+  const REPORT_CHANNEL = "C09EYNUMQ8K";
   if (channel !== REPORT_CHANNEL) {
     await sendSlackMessage(REPORT_CHANNEL, message);
   }

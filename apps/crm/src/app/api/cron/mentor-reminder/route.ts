@@ -73,11 +73,11 @@ export async function GET(request: Request) {
 
       const customerName = (row.customers as any)?.name || "不明";
       const msg = [
-        `📋 *指導期間終了30日前のお知らせ*`,
+        `:warning: *指導期間終了30日前のお知らせ*`,
         `受講者: ${customerName}`,
         `指導終了日: ${thirtyDaysLaterStr}`,
         `指導期間の終了が30日後に迫っています。`,
-        `必要な対応をご確認ください。`,
+        `※自動送信です`,
       ].join("\n");
 
       await sendSlackDM(slackUserId, msg);
@@ -110,10 +110,11 @@ export async function GET(request: Request) {
 
       const customerName = (row.customers as any)?.name || "不明";
       const msg = [
-        `🔔 *本日が指導最終日です*`,
+        `:warning: *本日が指導最終日です*`,
         `受講者: ${customerName}`,
         `指導終了日: ${today}`,
         `本日で指導期間が終了します。最終報告の提出をお願いします。`,
+        `※自動送信です`,
       ].join("\n");
 
       await sendSlackDM(slackUserId, msg);
@@ -160,12 +161,13 @@ export async function GET(request: Request) {
         : "";
 
       const msg = [
-        `⏰ *リマインド日1のお知らせ*`,
+        `:warning: *リマインド日のお知らせ*`,
         `受講者: ${customerName}`,
         `指導開始日: ${record.coaching_start_date || "未設定"}`,
         `指導終了日: ${record.coaching_end_date || "未設定"}`,
         `${sessionsInfo}`,
         `リマインド日に達しました。受講者の進捗をご確認ください。`,
+        `※自動送信です`,
       ].filter(Boolean).join("\n");
 
       await sendSlackDM(mentorData.slack_user_id, msg);
