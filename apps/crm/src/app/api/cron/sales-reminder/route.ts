@@ -91,7 +91,9 @@ export async function GET(request: Request) {
         `cc: ${ccStr}`,
       ].join("\n");
 
-      await sendSlackMessage(REMINDER_CHANNEL, msg);
+      await sendSlackMessage(REMINDER_CHANNEL, msg, {
+        username: "Daily営業レポート",
+      });
       await logNotification({
         type: "sales_reminder",
         channel: REMINDER_CHANNEL,
@@ -139,7 +141,9 @@ export async function GET(request: Request) {
     }
 
     // CCメンバーにチャンネル通知
-    await sendSlackMessage(REMINDER_CHANNEL, escalationLines.join("\n"));
+    await sendSlackMessage(REMINDER_CHANNEL, escalationLines.join("\n"), {
+      username: "Daily営業レポート",
+    });
 
     // CCメンバーにDM
     for (const ccId of CC_USER_IDS) {
@@ -196,7 +200,9 @@ export async function GET(request: Request) {
       results.fourteen_day_auto_lost++;
     }
 
-    await sendSlackMessage(REMINDER_CHANNEL, lostLines.join("\n"));
+    await sendSlackMessage(REMINDER_CHANNEL, lostLines.join("\n"), {
+      username: "Daily営業レポート",
+    });
     for (const ccId of CC_USER_IDS) {
       await sendSlackDM(ccId, lostLines.join("\n"));
     }

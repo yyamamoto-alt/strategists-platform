@@ -172,7 +172,9 @@ export async function notifyPaymentSuccess(data: {
   lines.push(data.matched ? "✅ 顧客マッチ済み" : "⚠️ 未マッチ");
   if (data.customerUrl) lines.push(data.customerUrl);
 
-  await sendSlackMessage(channel, lines.join("\n"));
+  await sendSlackMessage(channel, lines.join("\n"), {
+    username: "営業勝ち取ったbot",
+  });
 }
 
 /** 日次売上レポート */

@@ -6,7 +6,31 @@ import {
   normalizeAppsPayment,
   normalizeFreeeTransaction,
 } from "@/lib/order-normalizers";
+import { sendSlackMessage } from "@/lib/slack";
 import type { Order } from "@strategy-school/shared-db";
+
+/** 銀行振込（freee）Slack通知 — Zapier ID 305870352 準拠 */
+const PAYMENT_SUCCESS_CHANNEL = "C094YLMKR4K";
+async function notifyBankTransfer(normalized: Partial<Order>, matched: boolean, customerUrl?: string) {
+  const name = normalized.contact_name || "不明";
+  const amount = normalized.amount ? normalized.amount.toLocaleString() : "不明";
+  const date = normalized.paid_at
+    ? new Date(normalized.paid_at).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" })
+    : "不明";
+
+  const lines = [
+    `:tada: *成約おめでとうございます！* :tada:`,
+    `*名前：* ${name}`,
+    `*金額：* ${amount}円`,
+    `*日時：* ${date}`,
+    matched ? "✅ 顧客マッチ済み" : "⚠️ 未マッチ",
+  ];
+  if (customerUrl) lines.push(customerUrl);
+
+  await sendSlackMessage(PAYMENT_SUCCESS_CHANNEL, lines.join("\n"), {
+    username: "営業勝ち取った君",
+  });
+}
 
 /**
  * POST /api/orders/ingest
@@ -100,6 +124,18 @@ export async function POST(request: Request) {
       { error: "Failed to upsert order" },
       { status: 500 }
     );
+  }
+
+  // 銀行振込（freee）の場合はSlack通知 — Zapier準拠
+  if (source === "freee") {
+    try {
+      const customerUrl = match
+        ? `https://strategists-crm.vercel.app/customers/${match.customer_id}`
+        : undefined;
+      await notifyBankTransfer(normalized, !!match, customerUrl);
+    } catch (e) {
+      console.error("Bank transfer Slack notification failed:", e);
+    }
   }
 
   return NextResponse.json({
