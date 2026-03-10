@@ -52,7 +52,7 @@ export function MarketingClient({ customers, attributionMap }: MarketingClientPr
       if (!byChannel.has(ch)) byChannel.set(ch, { count: 0, conducted: 0, closed: 0, ltvSum: 0, additionalCoaching: 0 });
       const m = byChannel.get(ch)!;
       m.count++;
-      const isClosed = c.pipeline?.stage === "成約" || c.pipeline?.stage === "入金済";
+      const isClosed = c.pipeline?.stage === "成約";
       // 実施判定: 営業日がある or 成約済み
       if (c.pipeline?.sales_date || isClosed) {
         m.conducted++;

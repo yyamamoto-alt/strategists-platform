@@ -130,7 +130,7 @@ export async function GET(request: Request) {
       sales_pipeline!inner(stage)
     `)
     .not("learning_records.coaching_end_date", "is", null)
-    .in("sales_pipeline.stage", ["成約", "入金済", "追加指導"]);
+    .in("sales_pipeline.stage", ["成約", "追加指導"]);
 
   if (error) {
     console.error("Student reminder query error:", error);

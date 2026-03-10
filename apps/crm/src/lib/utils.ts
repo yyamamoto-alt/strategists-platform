@@ -31,8 +31,6 @@ export function getStageColor(stage: string): string {
   const colors: Record<string, string> = {
     // 成約系（赤）
     成約: "bg-red-600 text-white",
-    入金済: "bg-red-600 text-white",
-    "成約(追加指導経由)": "bg-red-600 text-white",
     "成約見込(未入金)": "bg-red-700 text-white",
     // 購入系（ピンク）
     動画講座購入: "bg-pink-500 text-white",
@@ -42,7 +40,6 @@ export function getStageColor(stage: string): string {
     枠確保: "bg-orange-500 text-white",
     // 検討系（黄色）
     検討中: "bg-yellow-500 text-black",
-    "追加指導(検討中)": "bg-yellow-500 text-black",
     // 未実施系（シアン）
     未実施: "bg-cyan-500 text-white",
     日程未確: "bg-gray-500 text-white",
@@ -52,15 +49,9 @@ export function getStageColor(stage: string): string {
     失注見込: "bg-stone-600 text-white",
     "失注見込(自動)": "bg-stone-600 text-white",
     長期検討: "bg-stone-600 text-white",
-    CL: "bg-amber-800 text-white",
     NoShow: "bg-amber-800 text-white",
     実施不可: "bg-amber-800 text-white",
-    "途中解約(成約)": "bg-stone-600 text-white",
-    "追加指導(NoShow)": "bg-stone-600 text-white",
-    "追加指導(失注)": "bg-stone-600 text-white",
-    "追加指導(CL)": "bg-stone-600 text-white",
     キャンセル: "bg-stone-600 text-white",
-    直前キャンセル: "bg-stone-600 text-white",
     // 紫系
     非実施対象: "bg-purple-600 text-white",
     全額返金: "bg-purple-700 text-white",

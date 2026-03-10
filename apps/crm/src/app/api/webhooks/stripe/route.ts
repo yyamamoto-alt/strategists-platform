@@ -96,7 +96,7 @@ export async function POST(request: Request) {
       .maybeSingle();
 
     if (existingPipeline) {
-      const skipStages = ["受講中", "入金済"];
+      const skipStages = ["受講中", "成約"];
       if (!skipStages.includes(existingPipeline.stage)) {
         await db
           .from("sales_pipeline")

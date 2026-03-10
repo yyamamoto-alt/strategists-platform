@@ -52,7 +52,7 @@ function buildKanbanStages(today: Date): StageDef[] {
     },
     {
       label: "成約（直近2週間のみ）",
-      match: ["成約", "入金済"],
+      match: ["成約"],
       borderColor: "border-t-green-400",
       rich: false,
       recentOnly: true,
@@ -122,7 +122,7 @@ export function PipelineClient({ customers }: PipelineClientProps) {
 
   // 成約ステージの判定
   const isSeiyakuStage = (stage: string | undefined) =>
-    stage === "成約" || stage === "入金済";
+    stage === "成約";
 
   return (
     <div className="p-6 space-y-4">

@@ -35,7 +35,7 @@ async function applyAutoStageChanges() {
       .in("id", ids);
   }
 
-  // ルール2: 日程未設定 + 申込から1ヶ月経過 → 実施不可
+  // ルール2: 日程未設定 + 申込から1ヶ月経過 → 失注見込(自動)
   // (未実施/日程未確/問い合わせで、meeting_scheduled_dateがNULL、application_dateが1ヶ月以上前)
   const { data: staleRecords } = await db
     .from("sales_pipeline")
@@ -48,7 +48,7 @@ async function applyAutoStageChanges() {
     const ids = staleRecords.map((r: { id: string }) => r.id);
     await db
       .from("sales_pipeline")
-      .update({ stage: "実施不可" })
+      .update({ stage: "失注見込(自動)" })
       .in("id", ids);
   }
 }

@@ -10,10 +10,10 @@ export const maxDuration = 60;
  *
  * | 現ステージ   | 基準日             | 期限   | 遷移先           |
  * |-------------|-------------------|--------|-----------------|
- * | 未実施       | 営業日             | 1ヶ月  | 実施不可          |
- * | 日程未確     | 営業日             | 1ヶ月  | 実施不可          |
- * | 追加指導     | 追加指導日          | 3日   | 失注見込み         |
- * | 検討中       | 返答期限            | 3日   | 失注見込み         |
+ * | 未実施       | 営業日             | 1ヶ月  | 失注見込(自動)     |
+ * | 日程未確     | 営業日             | 1ヶ月  | 失注見込(自動)     |
+ * | 追加指導     | 追加指導日          | 3日   | 失注見込(自動)     |
+ * | 検討中       | 返答期限            | 3日   | 失注見込(自動)     |
  * | 検討中       | 営業日(期限なし時)   | 1ヶ月  | 失注見込(自動)     |
  * | 長期検討     | 営業日             | 1ヶ月  | 失注見込(自動)     |
  * | 失注見込     | 営業日             | 1ヶ月  | 失注見込(自動)     |
@@ -50,7 +50,7 @@ export async function GET(request: Request) {
     (paidCustomers || []).map((r: { customer_id: string }) => r.customer_id)
   );
 
-  // 0a. 追加指導 → 失注見込み（追加指導日から3日経過）
+  // 0a. 追加指導 → 失注見込(自動)（追加指導日から3日経過）
   {
     const { data: coachingTargets, error } = await supabase
       .from("sales_pipeline")
@@ -66,14 +66,14 @@ export async function GET(request: Request) {
       if (ids.length > 0) {
         const { count } = await supabase
           .from("sales_pipeline")
-          .update({ stage: "失注見込み" })
+          .update({ stage: "失注見込(自動)" })
           .in("id", ids);
-        results["追加指導→失注見込み(3日超過)"] = count || ids.length;
+        results["追加指導→失注見込(自動)(3日超過)"] = count || ids.length;
       }
     }
   }
 
-  // 0b. 検討中 → 失注見込み（返答期限から3日経過）
+  // 0b. 検討中 → 失注見込(自動)（返答期限から3日経過）
   {
     const { data: deadlineTargets, error } = await supabase
       .from("sales_pipeline")
@@ -89,14 +89,14 @@ export async function GET(request: Request) {
       if (ids.length > 0) {
         const { count } = await supabase
           .from("sales_pipeline")
-          .update({ stage: "失注見込み" })
+          .update({ stage: "失注見込(自動)" })
           .in("id", ids);
-        results["検討中→失注見込み(返答期限3日超過)"] = count || ids.length;
+        results["検討中→失注見込(自動)(返答期限3日超過)"] = count || ids.length;
       }
     }
   }
 
-  // 1. 未実施/日程未確 → 実施不可（営業日から1ヶ月）
+  // 1. 未実施/日程未確 → 失注見込(自動)（営業日から1ヶ月）
   //    営業日がなければ面談実施日、面談予定日、申込日の順でフォールバック
   const { data: appDateTargets, error: e1 } = await supabase
     .from("sales_pipeline")
@@ -115,9 +115,9 @@ export async function GET(request: Request) {
     if (idsToTransition1.length > 0) {
       const { count } = await supabase
         .from("sales_pipeline")
-        .update({ stage: "実施不可" })
+        .update({ stage: "失注見込(自動)" })
         .in("id", idsToTransition1);
-      results["未実施/日程未確→実施不可"] = count || idsToTransition1.length;
+      results["未実施/日程未確→失注見込(自動)"] = count || idsToTransition1.length;
     }
   }
 

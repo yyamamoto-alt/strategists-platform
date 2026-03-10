@@ -99,8 +99,8 @@ export async function POST(request: Request) {
       .maybeSingle();
 
     if (existingPipeline) {
-      // 既に受講中/入金済の場合はスキップ（2回目以降の分割決済対応）
-      const skipStages = ["受講中", "入金済"];
+      // 既に受講中/成約の場合はスキップ（2回目以降の分割決済対応）
+      const skipStages = ["受講中", "成約"];
       if (!skipStages.includes(existingPipeline.stage)) {
         await db
           .from("sales_pipeline")

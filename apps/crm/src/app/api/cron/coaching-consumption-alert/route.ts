@@ -175,7 +175,7 @@ export async function GET(request: Request) {
     }
   }
 
-  const validStages = new Set(["成約", "入金済", "追加指導"]);
+  const validStages = new Set(["成約", "追加指導"]);
 
   // ================================================================
   // 2. 各受講生の消化率を計算

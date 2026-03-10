@@ -40,7 +40,7 @@ export function SalesClient({ customers }: SalesClientProps) {
         meetingsThisMonth++;
       }
       // 今月成約（成約ステージ + 営業日が今月）
-      const isClosed = c.pipeline?.stage === "成約" || c.pipeline?.stage === "入金済" || c.pipeline?.stage === "成約(追加指導経由)";
+      const isClosed = c.pipeline?.stage === "成約";
       if (isClosed && c.pipeline?.sales_date?.startsWith(thisMonth)) {
         closedThisMonth++;
       }
@@ -48,7 +48,6 @@ export function SalesClient({ customers }: SalesClientProps) {
       if (
         c.pipeline &&
         c.pipeline.stage !== "成約" &&
-        c.pipeline.stage !== "入金済" &&
         c.pipeline.stage !== "失注"
       ) {
         pipelineTotal += c.pipeline.projected_amount || 0;

@@ -30,7 +30,7 @@ export function EducationClient({ customers }: EducationClientProps) {
   const enrolledCustomers = useMemo(
     () =>
       customers.filter(
-        (c) => c.pipeline?.stage === "成約" || c.pipeline?.stage === "入金済"
+        (c) => c.pipeline?.stage === "成約"
       ),
     [customers]
   );

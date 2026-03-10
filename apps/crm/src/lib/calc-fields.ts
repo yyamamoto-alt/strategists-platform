@@ -65,7 +65,7 @@ export function isAgentCustomer(c: CustomerWithRelations): boolean {
 /** 顧客が「受講中」か判定（Excel Col BU の条件） */
 export function isCurrentlyEnrolled(c: CustomerWithRelations): boolean {
   const stage = c.pipeline?.stage;
-  if (stage !== "成約" && stage !== "入金済" && stage !== "追加指導") return false;
+  if (stage !== "成約" && stage !== "追加指導") return false;
   if (!c.learning) return false;
   if (!c.learning.coaching_end_date) return true;
   const endDate = new Date(c.learning.coaching_end_date);
@@ -113,7 +113,7 @@ export function calcClosingProbability(c: CustomerWithRelations, recentRates?: R
   const t = Math.min(raw, 1.0);
 
   // --- 成約系 → 100% ---
-  if (stage === "成約" || stage === "入金済" || stage === "途中解約(成約)") return 1.0;
+  if (stage === "成約") return 1.0;
 
   // --- 追加指導系（サブタイプ判定） ---
   if (stage.startsWith("追加指導")) {
@@ -127,12 +127,11 @@ export function calcClosingProbability(c: CustomerWithRelations, recentRates?: R
   if (stage === "その他購入" || stage === "動画講座購入") return 0;
   if (stage.includes("成約見込")) return 0;
 
-  // --- CL / 全額返金 → 0% ---
-  if (stage === "CL") return 0;
+  // --- 全額返金 → 0% ---
   if (stage === "全額返金") return 0;
 
   // --- キャンセル系 → 0% ---
-  if (stage === "キャンセル" || stage === "直前キャンセル") return 0;
+  if (stage === "キャンセル") return 0;
 
   // --- 失注系 ---
   if (stage === "失注" || stage === "失注見込(自動)") return 0;

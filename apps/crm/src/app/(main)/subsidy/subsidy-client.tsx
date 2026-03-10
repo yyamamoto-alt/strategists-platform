@@ -74,7 +74,7 @@ function isSupportStarted(c: CustomerWithRelations): boolean {
 
 function isCourseStarted(c: CustomerWithRelations): boolean {
   const s = c.pipeline?.stage;
-  return s === "成約" || s === "入金済";
+  return s === "成約";
 }
 
 interface WeeklyStats {

@@ -149,15 +149,15 @@ const VIEW_COLUMNS: Record<ViewTab, string[] | null> = {
   ],
 };
 
-const CLOSED_STAGES = new Set(["成約", "途中解約(成約)"]);
+const CLOSED_STAGES = new Set(["成約"]);
 
 const STAGE_OPTIONS = [
   { group: "未実施", options: ["日程未確", "未実施", "実施不可"] },
   { group: "アクティブ", options: ["検討中", "長期検討"] },
-  { group: "成約", options: ["成約", "成約見込(未入金)", "途中解約(成約)"] },
+  { group: "成約", options: ["成約", "成約見込(未入金)"] },
   { group: "購入・追加", options: ["その他購入", "動画講座購入", "追加指導"] },
-  { group: "失注", options: ["失注", "失注見込", "失注見込(自動)", "CL", "NoShow", "全額返金"] },
-  { group: "その他", options: ["キャンセル", "直前キャンセル"] },
+  { group: "失注", options: ["失注", "失注見込", "失注見込(自動)", "NoShow", "全額返金", "キャンセル"] },
+  { group: "その他", options: ["非実施対象"] },
 ];
 
 function InlineStageSelect({ customerId, currentStage, onUpdate }: { customerId: string; currentStage: string; onUpdate: (id: string, newStage: string) => void }) {
@@ -738,28 +738,23 @@ export function CustomersClient() {
           </optgroup>
           <optgroup label="成約">
             <option value="成約">成約</option>
-            <option value="成約(追加指導経由)">成約(追加指導経由)</option>
             <option value="成約見込(未入金)">成約見込(未入金)</option>
-            <option value="途中解約(成約)">途中解約(成約)</option>
           </optgroup>
           <optgroup label="購入・追加">
             <option value="その他購入">その他購入</option>
             <option value="動画講座購入">動画講座購入</option>
             <option value="追加指導">追加指導</option>
-            <option value="追加指導(NoShow)">追加指導(NoShow)</option>
-            <option value="追加指導(CL)">追加指導(CL)</option>
           </optgroup>
           <optgroup label="失注">
             <option value="失注">失注</option>
             <option value="失注見込">失注見込</option>
             <option value="失注見込(自動)">失注見込(自動)</option>
-            <option value="CL">CL</option>
             <option value="NoShow">NoShow</option>
+            <option value="キャンセル">キャンセル</option>
             <option value="全額返金">全額返金</option>
           </optgroup>
           <optgroup label="その他">
-            <option value="キャンセル">キャンセル</option>
-            <option value="直前キャンセル">直前キャンセル</option>
+            <option value="非実施対象">非実施対象</option>
           </optgroup>
         </select>
       </div>

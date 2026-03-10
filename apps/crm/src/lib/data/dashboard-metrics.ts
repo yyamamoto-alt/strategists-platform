@@ -49,10 +49,10 @@ function filterByAnalyticsPeriod(
   );
 }
 
-/** 成約判定: 「成約」「入金済」「途中解約(成約)」。動画講座購入/その他購入/追加指導/成約見込は除外 */
+/** 成約判定: 「成約」。動画講座購入/その他購入/追加指導/成約見込は除外 */
 function isStageClosed(stage: string | undefined | null): boolean {
   if (!stage) return false;
-  return stage === "成約" || stage === "入金済" || stage === "途中解約(成約)"
+  return stage === "成約"
     || stage === "追加指導" || stage === "受講終了" || stage === "卒業";
 }
 
@@ -83,7 +83,7 @@ function isAdditionalCoaching(stage: string | undefined | null): boolean {
 /** 面談実施済み判定: 面談が実際に行われたステージのみ */
 const NOT_CONDUCTED_STAGES = new Set([
   "日程未確", "未実施", "実施不可",
-  "キャンセル", "直前キャンセル", "NoShow",
+  "キャンセル", "NoShow",
 ]);
 function isConducted(stage: string | undefined | null): boolean {
   if (!stage) return false;
@@ -95,7 +95,7 @@ function isConducted(stage: string | undefined | null): boolean {
  *  その他購入/動画講座購入 = 本コース不成約として含める
  */
 const LOST_STAGES = new Set([
-  "失注", "失注見込", "失注見込(自動)", "CL", "全額返金",
+  "失注", "失注見込", "失注見込(自動)", "キャンセル", "全額返金",
   "検討中", "長期検討",
   "その他購入", "動画講座購入",
 ]);
@@ -1210,12 +1210,12 @@ async function fetchDashboardDataRaw() {
     stageCounts[p.stage] = (stageCounts[p.stage] || 0) + 1;
   }
 
-  const closedStages = ["成約", "入金済"];
+  const closedStages = ["成約"];
   let closedCount = 0;
   for (const s of closedStages) {
     closedCount += stageCounts[s] || 0;
   }
-  const lostCount = (stageCounts["失注"] || 0) + (stageCounts["失注見込"] || 0) + (stageCounts["失注見込(自動)"] || 0) + (stageCounts["CL"] || 0) + (stageCounts["全額返金"] || 0);
+  const lostCount = (stageCounts["失注"] || 0) + (stageCounts["失注見込"] || 0) + (stageCounts["失注見込(自動)"] || 0) + (stageCounts["キャンセル"] || 0) + (stageCounts["全額返金"] || 0);
   const activeDeals =
     (totalCustomers || 0) - closedCount - lostCount;
 
