@@ -770,6 +770,332 @@ export interface PaginationParams {
   per_page: number;
 }
 
+// ---------- Analytics テーブル ----------
+
+export interface AnalyticsPageDaily {
+  id?: string;
+  date: string;
+  page_path: string;
+  page_title: string | null;
+  segment: string;
+  pageviews: number;
+  sessions: number;
+  users: number;
+  new_users: number;
+  avg_session_duration: number;
+  bounce_rate: number;
+  schedule_visits: number;
+}
+
+export interface AnalyticsPageHourly {
+  id?: string;
+  date: string;
+  hour: number;
+  segment: string;
+  pageviews: number;
+  sessions: number;
+  users: number;
+}
+
+export interface AnalyticsTrafficDaily {
+  id?: string;
+  date: string;
+  landing_page: string;
+  source: string | null;
+  medium: string | null;
+  campaign: string | null;
+  channel_group: string | null;
+  sessions: number;
+  users: number;
+  new_users: number;
+  schedule_visits: number;
+}
+
+export interface AnalyticsSearchDaily {
+  id?: string;
+  date: string;
+  page_path: string;
+  query: string;
+  clicks: number;
+  impressions: number;
+  ctr: number;
+  position: number;
+}
+
+// ---------- アプリ設定テーブル ----------
+
+export interface AppSetting {
+  id: string;
+  key: string;
+  value: unknown;
+  created_at: string;
+  updated_at: string;
+}
+
+// ---------- お知らせテーブル ----------
+
+export interface AnnouncementRow {
+  id: string;
+  title: string;
+  content: string;
+  priority: AnnouncementPriority;
+  published_at: string | null;
+  author_id: string | null;
+  is_active: boolean;
+  target_plan_ids: string[];
+  created_at?: string;
+  updated_at?: string;
+}
+
+// ---------- 自動化テーブル ----------
+
+export interface Automation {
+  id: string;
+  name: string;
+  spreadsheet_id: string;
+  sheet_name: string;
+  slack_channel_id: string;
+  slack_channel_name: string | null;
+  message_template: string | null;
+  link_to_customer: boolean;
+  column_mapping: Record<string, unknown>;
+  known_headers: string[];
+  is_active: boolean;
+  last_synced_row: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AutomationLog {
+  id: string;
+  automation_id: string;
+  status: string;
+  new_rows_count: number;
+  notifications_sent: number;
+  details: Record<string, unknown> | null;
+  triggered_at: string;
+}
+
+// ---------- 申込履歴テーブル ----------
+
+export interface ApplicationHistory {
+  id: string;
+  customer_id: string;
+  applied_at: string;
+  source: string | null;
+  raw_data: Record<string, unknown> | null;
+  notes: string | null;
+}
+
+// ---------- コーチング報告テーブル ----------
+
+export interface CoachingReport {
+  id: string;
+  coaching_date: string | null;
+  email: string | null;
+  session_number: number | null;
+  mentor_name: string | null;
+  cancellation: string | null;
+  level_fermi: string | null;
+  level_case: string | null;
+  level_mck: string | null;
+  customer_id: string | null;
+  created_at?: string;
+}
+
+// ---------- 教材テーブル (LMS) ----------
+
+export interface Content {
+  id: string;
+  title: string;
+  description: string | null;
+  category: string | null;
+  target_attribute: string | null;
+  status: string;
+  sort_order: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface ContentPlanAccess {
+  id: string;
+  content_id: string;
+  plan_id: string;
+  created_at: string;
+}
+
+export interface CourseContent {
+  id: string;
+  course_id: string;
+  content_id: string;
+  sort_order: number;
+  created_at?: string;
+}
+
+// ---------- 顧客メール・帰属テーブル ----------
+
+export interface CustomerEmail {
+  id: string;
+  customer_id: string;
+  email: string;
+  is_primary: boolean;
+  created_at: string;
+}
+
+// ---------- 招待テーブル ----------
+
+export interface Invitation {
+  id: string;
+  email: string;
+  display_name: string | null;
+  role: string;
+  token: string;
+  expires_at: string;
+  used_at: string | null;
+  customer_id: string | null;
+  course_ids: string[] | null;
+  source: string | null;
+  created_at?: string;
+}
+
+// ---------- フォームテーブル (LMS) ----------
+
+export interface Form {
+  id: string;
+  title: string;
+  url: string;
+  description: string | null;
+  sort_order: number;
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface FormPlanAccess {
+  id: string;
+  form_id: string;
+  plan_id: string;
+  created_at?: string;
+}
+
+// ---------- メンターテーブル ----------
+
+export interface Mentor {
+  id: string;
+  name: string;
+  slack_user_id: string | null;
+  booking_url: string | null;
+  line_url: string | null;
+  profile_text: string | null;
+  is_active: boolean;
+  customer_id?: string | null;
+  coaching_end_date?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface StudentMentor {
+  id: string;
+  user_id: string;
+  mentor_id: string;
+  role: "primary" | "sub";
+  is_active: boolean;
+  assigned_at: string;
+  updated_at?: string;
+}
+
+// ---------- 通知ログテーブル ----------
+
+export interface NotificationLog {
+  id: string;
+  type: string;
+  channel: string | null;
+  recipient: string | null;
+  customer_id: string | null;
+  message: string;
+  status: "success" | "failed";
+  error_message: string | null;
+  metadata: Record<string, unknown> | null;
+  created_at: string;
+}
+
+// ---------- その他売上テーブル ----------
+
+export interface OtherRevenue {
+  id: string;
+  category: string;
+  title: string;
+  amount: number;
+  revenue_date: string;
+  description: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+// ---------- スプレッドシート接続テーブル ----------
+
+export interface SpreadsheetConnection {
+  id: string;
+  name: string;
+  source_type: string;
+  spreadsheet_id: string;
+  sheet_name: string;
+  column_mapping: Record<string, string>;
+  sync_mode: string;
+  last_synced_at: string | null;
+  last_synced_row: number;
+  is_active: boolean;
+  known_headers: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SyncLog {
+  id: string;
+  connection_id: string;
+  started_at: string;
+  finished_at: string | null;
+  status: string;
+  rows_processed: number;
+  rows_created: number;
+  rows_updated: number;
+  rows_unmatched: number;
+  error_message: string | null;
+  details: Record<string, unknown> | null;
+}
+
+// ---------- 未マッチレコードテーブル ----------
+
+export interface UnmatchedRecord {
+  id: string;
+  sync_log_id: string | null;
+  connection_id: string;
+  raw_data: Record<string, unknown>;
+  email: string | null;
+  phone: string | null;
+  name: string | null;
+  status: string;
+  resolved_customer_id: string | null;
+  created_at: string;
+}
+
+// ---------- ユーザーコースアクセステーブル ----------
+
+export interface UserCourseAccess {
+  id: string;
+  user_id: string;
+  course_id: string;
+  created_at?: string;
+}
+
+// ---------- ユーザービュー ----------
+
+export interface UsersView {
+  id: string;
+  email: string | null;
+  created_at?: string;
+}
+
 // ---------- Supabase Database型 ----------
 
 export interface Database {
@@ -793,6 +1119,41 @@ export interface Database {
       plans: { Row: Plan; Insert: Partial<Plan> & { slug: string; name: string; target_attribute: string; tier: string }; Update: Partial<Plan> };
       course_plan_access: { Row: CoursePlanAccess; Insert: { course_id: string; plan_id: string }; Update: Partial<CoursePlanAccess> };
       contract_plan_mapping: { Row: ContractPlanMapping; Insert: { contract_plan_name: string; plan_id: string }; Update: Partial<ContractPlanMapping> };
+      orders: { Row: Order; Insert: Partial<Order> & { amount: number; order_type: OrderType; source: OrderSource }; Update: Partial<Order> };
+      enrollments: { Row: Enrollment; Insert: Partial<Enrollment> & { user_id: string; course_id: string }; Update: Partial<Enrollment> };
+      enrollment_applications: { Row: EnrollmentApplication; Insert: Partial<EnrollmentApplication> & { name: string; email: string }; Update: Partial<EnrollmentApplication> };
+      announcements: { Row: AnnouncementRow; Insert: Partial<AnnouncementRow> & { title: string }; Update: Partial<AnnouncementRow> };
+      ai_insights: { Row: AiInsight; Insert: Partial<AiInsight> & { category: string; content: string }; Update: Partial<AiInsight> };
+      analytics_page_daily: { Row: AnalyticsPageDaily; Insert: Partial<AnalyticsPageDaily> & { date: string; page_path: string }; Update: Partial<AnalyticsPageDaily> };
+      analytics_page_hourly: { Row: AnalyticsPageHourly; Insert: Partial<AnalyticsPageHourly> & { date: string; hour: number; segment: string }; Update: Partial<AnalyticsPageHourly> };
+      analytics_traffic_daily: { Row: AnalyticsTrafficDaily; Insert: Partial<AnalyticsTrafficDaily> & { date: string; landing_page: string }; Update: Partial<AnalyticsTrafficDaily> };
+      analytics_search_daily: { Row: AnalyticsSearchDaily; Insert: Partial<AnalyticsSearchDaily> & { date: string; page_path: string; query: string }; Update: Partial<AnalyticsSearchDaily> };
+      app_settings: { Row: AppSetting; Insert: Partial<AppSetting> & { key: string }; Update: Partial<AppSetting> };
+      application_history: { Row: ApplicationHistory; Insert: Partial<ApplicationHistory> & { customer_id: string }; Update: Partial<ApplicationHistory> };
+      automations: { Row: Automation; Insert: Partial<Automation> & { name: string; spreadsheet_id: string; slack_channel_id: string }; Update: Partial<Automation> };
+      automation_logs: { Row: AutomationLog; Insert: Partial<AutomationLog> & { automation_id: string }; Update: Partial<AutomationLog> };
+      channel_mapping_rules: { Row: ChannelMappingRule; Insert: Partial<ChannelMappingRule> & { source_field: string; source_value: string; channel_name: string }; Update: Partial<ChannelMappingRule> };
+      coaching_reports: { Row: CoachingReport; Insert: Partial<CoachingReport>; Update: Partial<CoachingReport> };
+      content_plan_access: { Row: ContentPlanAccess; Insert: { content_id: string; plan_id: string }; Update: Partial<ContentPlanAccess> };
+      contents: { Row: Content; Insert: Partial<Content> & { title: string }; Update: Partial<Content> };
+      course_contents: { Row: CourseContent; Insert: Partial<CourseContent> & { course_id: string; content_id: string }; Update: Partial<CourseContent> };
+      customer_channel_attribution: { Row: ChannelAttribution; Insert: Partial<ChannelAttribution> & { customer_id: string; marketing_channel: string }; Update: Partial<ChannelAttribution> };
+      customer_emails: { Row: CustomerEmail; Insert: Partial<CustomerEmail> & { customer_id: string; email: string }; Update: Partial<CustomerEmail> };
+      forms: { Row: Form; Insert: Partial<Form> & { title: string; url: string }; Update: Partial<Form> };
+      form_plan_access: { Row: FormPlanAccess; Insert: { form_id: string; plan_id: string }; Update: Partial<FormPlanAccess> };
+      invitations: { Row: Invitation; Insert: Partial<Invitation> & { email: string; token: string; role: string; expires_at: string }; Update: Partial<Invitation> };
+      marketing_channels: { Row: MarketingChannel; Insert: Partial<MarketingChannel> & { name: string }; Update: Partial<MarketingChannel> };
+      mentors: { Row: Mentor; Insert: Partial<Mentor> & { name: string }; Update: Partial<Mentor> };
+      notification_logs: { Row: NotificationLog; Insert: Partial<NotificationLog> & { type: string; message: string; status: string }; Update: Partial<NotificationLog> };
+      other_revenues: { Row: OtherRevenue; Insert: Partial<OtherRevenue> & { category: string; title: string; amount: number; revenue_date: string }; Update: Partial<OtherRevenue> };
+      spreadsheet_connections: { Row: SpreadsheetConnection; Insert: Partial<SpreadsheetConnection> & { name: string; spreadsheet_id: string }; Update: Partial<SpreadsheetConnection> };
+      student_mentors: { Row: StudentMentor; Insert: Partial<StudentMentor> & { user_id: string; mentor_id: string }; Update: Partial<StudentMentor> };
+      sync_logs: { Row: SyncLog; Insert: Partial<SyncLog> & { connection_id: string }; Update: Partial<SyncLog> };
+      unmatched_records: { Row: UnmatchedRecord; Insert: Partial<UnmatchedRecord> & { connection_id: string; raw_data: Record<string, unknown> }; Update: Partial<UnmatchedRecord> };
+      user_course_access: { Row: UserCourseAccess; Insert: Partial<UserCourseAccess> & { user_id: string; course_id: string }; Update: Partial<UserCourseAccess> };
+    };
+    Views: {
+      users_view: { Row: UsersView };
     };
   };
 }
