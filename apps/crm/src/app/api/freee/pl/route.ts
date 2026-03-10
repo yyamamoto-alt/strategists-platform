@@ -143,7 +143,16 @@ export async function GET(request: Request) {
     // 認証エラーの場合は再認証を促す
     const isAuthError = msg.includes("401") || msg.includes("403") || msg.includes("invalid_grant") || msg.includes("expired");
     return NextResponse.json(
-      { error: isAuthError ? "freee認証切れ — 設定画面から再連携してください" : msg },
+      {
+        error: isAuthError ? "freee認証切れ — 設定画面から再連携してください" : msg,
+        _debug: {
+          rawError: msg.substring(0, 300),
+          tokenLen: settingMap.freee_access_token?.length || 0,
+          expiresAt: settingMap.freee_token_expires_at || "missing",
+          companyId: settingMap.freee_company_id || "missing",
+          now: new Date().toISOString(),
+        },
+      },
       { status: isAuthError ? 401 : 500 },
     );
   }

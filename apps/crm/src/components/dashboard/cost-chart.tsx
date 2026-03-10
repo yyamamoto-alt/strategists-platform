@@ -70,7 +70,8 @@ export function CostChart() {
       .then(async (r) => {
         if (!r.ok) {
           const body = await r.json().catch(() => ({}));
-          throw new Error(body.error || "freee未連携またはデータ取得失敗");
+          const debugInfo = body._debug ? ` [token=${body._debug.tokenLen}chars, expires=${body._debug.expiresAt}, err=${body._debug.rawError?.substring(0, 80)}]` : "";
+          throw new Error((body.error || "freee未連携またはデータ取得失敗") + debugInfo);
         }
         return r.json();
       })
