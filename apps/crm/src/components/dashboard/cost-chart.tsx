@@ -183,9 +183,9 @@ export function CostChart() {
             ticks={Array.from({ length: Math.ceil(yMax / 1000000) + 1 }, (_, i) => i * 1000000)}
           />
           <Tooltip
-            formatter={(value: number, name: string) => [
-              `¥${value.toLocaleString()}`,
-              name === "total_cost" ? "総コスト" : name,
+            formatter={(value, name) => [
+              `¥${Number(value).toLocaleString()}`,
+              String(name),
             ]}
             contentStyle={{
               backgroundColor: "#1A1A1A",
