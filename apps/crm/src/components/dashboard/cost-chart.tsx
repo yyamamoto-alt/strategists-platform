@@ -10,12 +10,10 @@ import {
   ResponsiveContainer,
   ComposedChart,
   Bar,
-  Line,
 } from "recharts";
 
-interface PLData {
+interface CostData {
   period: string;
-  revenue: number;
   cost_of_sales: number;
   sga: number;
 }
@@ -28,8 +26,7 @@ const formatYen = (value: number) => {
   return value.toLocaleString();
 };
 
-/** localStorageからキャッシュ読み込み */
-function loadCachedData(): PLData[] | null {
+function loadCachedData(): CostData[] | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = localStorage.getItem(LOCALSTORAGE_KEY);
@@ -41,8 +38,7 @@ function loadCachedData(): PLData[] | null {
   }
 }
 
-/** localStorageにキャッシュ保存 */
-function saveCachedData(data: PLData[]) {
+function saveCachedData(data: CostData[]) {
   if (typeof window === "undefined") return;
   try {
     localStorage.setItem(LOCALSTORAGE_KEY, JSON.stringify({ data, savedAt: Date.now() }));
@@ -57,7 +53,7 @@ function buildApiUrl() {
 }
 
 export function CostChart() {
-  const [plData, setPlData] = useState<PLData[] | null>(() => loadCachedData());
+  const [costData, setCostData] = useState<CostData[] | null>(() => loadCachedData());
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -70,66 +66,61 @@ export function CostChart() {
       .then(async (r) => {
         if (!r.ok) {
           const body = await r.json().catch(() => ({}));
-          const debugInfo = body._debug ? ` [token=${body._debug.tokenLen}chars, expires=${body._debug.expiresAt}, err=${body._debug.rawError?.substring(0, 80)}]` : "";
-          throw new Error((body.error || "freee未連携またはデータ取得失敗") + debugInfo);
+          throw new Error(body.error || "freee未連携またはデータ取得失敗");
         }
         return r.json();
       })
       .then((d) => {
         if (Array.isArray(d) && d.length > 0) {
-          setPlData(d);
-          saveCachedData(d);
+          // コストのみ抽出（売上・利益はfreeeから取らない）
+          const mapped: CostData[] = d.map((item: { period: string; cost_of_sales: number; sga: number }) => ({
+            period: item.period,
+            cost_of_sales: item.cost_of_sales,
+            sga: item.sga,
+          }));
+          setCostData(mapped);
+          saveCachedData(mapped);
           setError(null);
         } else if (d.error) {
           throw new Error(d.error);
         }
       })
       .catch((e) => {
-        // キャッシュがあればエラーを表示しない
-        if (!plData) setError(e.message);
+        if (!costData) setError(e.message);
       })
       .finally(() => {
         setLoading(false);
         setRefreshing(false);
       });
-  }, [plData]);
+  }, [costData]);
 
   useEffect(() => {
-    // キャッシュがあれば即表示、なければローディング
-    if (plData) setLoading(false);
-    // バックグラウンドで最新データを取得
-    fetchData(!!plData);
+    if (costData) setLoading(false);
+    fetchData(!!costData);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const chartData = useMemo(() => {
-    if (!plData) return [];
-    return plData.map((d) => ({
+    if (!costData) return [];
+    return costData.map((d) => ({
       period: d.period,
-      revenue: d.revenue,
       cost_of_sales: d.cost_of_sales,
       sga: d.sga,
       total_cost: d.cost_of_sales + d.sga,
-      profit: d.revenue - d.cost_of_sales - d.sga,
     }));
-  }, [plData]);
+  }, [costData]);
 
-  const yDomain = useMemo(() => {
-    if (chartData.length === 0) return { min: 0, max: 5000000 };
+  const yMax = useMemo(() => {
+    if (chartData.length === 0) return 5000000;
     let max = 0;
-    let min = 0;
     for (const d of chartData) {
-      const barTotal = d.cost_of_sales + d.sga;
-      if (barTotal > max) max = barTotal;
-      if (d.profit < min) min = d.profit;
+      const total = d.cost_of_sales + d.sga;
+      if (total > max) max = total;
     }
     const step = 1000000;
-    return {
-      min: Math.floor(min / step) * step,
-      max: Math.ceil(max * 1.1 / step) * step || 5000000,
-    };
+    return Math.ceil(max * 1.1 / step) * step || 5000000;
   }, [chartData]);
 
-  if (loading && !plData) {
+  if (loading && !costData) {
     return (
       <div className="flex items-center justify-center h-[300px] text-gray-500 text-sm">
         freeeデータ読み込み中...
@@ -137,7 +128,7 @@ export function CostChart() {
     );
   }
 
-  if (error && !plData) {
+  if (error && !costData) {
     return (
       <div className="flex items-center justify-center h-[200px]">
         <div className="px-4 py-2 bg-red-900/20 border border-red-800/30 rounded-lg text-sm text-red-400 text-center">
@@ -162,14 +153,13 @@ export function CostChart() {
 
   return (
     <div>
-      {/* 更新中インジケータ */}
       {refreshing && (
         <div className="text-[10px] text-gray-500 mb-1 text-right">
           最新データ取得中...
         </div>
       )}
 
-      <ResponsiveContainer width="100%" height={350}>
+      <ResponsiveContainer width="100%" height={300}>
         <ComposedChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
           <XAxis
@@ -189,10 +179,13 @@ export function CostChart() {
             tickFormatter={formatYen}
             tick={{ fontSize: 10, fill: "#9ca3af" }}
             stroke="rgba(255,255,255,0.1)"
-            domain={[yDomain.min, yDomain.max]}
+            domain={[0, yMax]}
           />
           <Tooltip
-            formatter={(value, name) => [`¥${Number(value).toLocaleString()}`, name]}
+            formatter={(value: number, name: string) => [
+              `¥${value.toLocaleString()}`,
+              name === "total_cost" ? "総コスト" : name,
+            ]}
             contentStyle={{
               backgroundColor: "#1A1A1A",
               border: "1px solid rgba(255,255,255,0.1)",
@@ -218,47 +211,8 @@ export function CostChart() {
             stackId="cost"
             radius={[2, 2, 0, 0]}
           />
-          <Line
-            type="monotone"
-            dataKey="profit"
-            name="営業利益"
-            stroke="#22c55e"
-            strokeWidth={2.5}
-            dot={{ r: 4, fill: "#22c55e", stroke: "#fff", strokeWidth: 1.5 }}
-            activeDot={{ r: 6 }}
-          />
         </ComposedChart>
       </ResponsiveContainer>
-
-      {/* サマリーテーブル */}
-      <div className="mt-4 overflow-x-auto">
-        <table className="w-full text-xs">
-          <thead>
-            <tr className="border-b border-white/10">
-              <th className="text-left py-1.5 px-2 text-gray-500 font-medium">月</th>
-              <th className="text-right py-1.5 px-2 text-gray-500 font-medium">売上高</th>
-              <th className="text-right py-1.5 px-2 text-gray-500 font-medium">売上原価</th>
-              <th className="text-right py-1.5 px-2 text-gray-500 font-medium">販管費</th>
-              <th className="text-right py-1.5 px-2 text-gray-500 font-medium">総コスト</th>
-              <th className="text-right py-1.5 px-2 text-gray-500 font-medium">営業利益</th>
-            </tr>
-          </thead>
-          <tbody>
-            {chartData.map((d) => (
-              <tr key={d.period} className="border-b border-white/[0.04] hover:bg-white/[0.02]">
-                <td className="py-1 px-2 text-gray-400">{d.period}</td>
-                <td className="py-1 px-2 text-right text-gray-300">¥{d.revenue.toLocaleString()}</td>
-                <td className="py-1 px-2 text-right text-red-400">¥{d.cost_of_sales.toLocaleString()}</td>
-                <td className="py-1 px-2 text-right text-red-300">¥{d.sga.toLocaleString()}</td>
-                <td className="py-1 px-2 text-right text-red-400 font-medium">¥{d.total_cost.toLocaleString()}</td>
-                <td className={`py-1 px-2 text-right font-medium ${d.profit >= 0 ? "text-green-400" : "text-red-400"}`}>
-                  ¥{d.profit.toLocaleString()}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
     </div>
   );
 }
