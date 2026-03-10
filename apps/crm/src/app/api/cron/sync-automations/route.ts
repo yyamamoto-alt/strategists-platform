@@ -1,60 +1,125 @@
 import { createServiceClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { fetchSheetData } from "@/lib/google-sheets";
-import { sendSlackMessage } from "@/lib/slack";
+import { sendSlackMessage, sendSlackDM } from "@/lib/slack";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
-async function checkAndSendEscalation(
-  automationName: string,
-  rowData: Record<string, string>,
-  channel: string
-) {
-  if (!automationName.includes("評価")) return;
+// ================================================================
+// 型定義
+// ================================================================
 
-  // 評価値を探す
-  const ratingKey = Object.keys(rowData).find((k) => k.includes("評価"));
-  if (!ratingKey) return;
-  const ratingValue = rowData[ratingKey];
-  if (!ratingValue || (!/^1/.test(ratingValue) && !/^2/.test(ratingValue))) return;
+interface ExtraTarget {
+  /** "channel" or "dm" */
+  type: "channel" | "dm";
+  /** チャンネルIDまたはSlackユーザーID */
+  id: string;
+  /** メッセージテンプレート（{{フィールド名}} で置換） */
+  template: string;
+  /** Bot名（channelの場合のみ） */
+  bot_username?: string;
+  /** 条件: 指定フィールドの値がmatchに一致する場合のみ送信 */
+  condition?: {
+    field: string;
+    match: "contains" | "starts_with" | "not_empty" | "equals";
+    value?: string;
+  };
+}
 
-  // 低評価検出 — エスカレーションメッセージ送信
-  const mentorKey = Object.keys(rowData).find((k) => k.includes("メンター"));
-  const nameKey = Object.keys(rowData).find((k) => k.includes("名前") || k.includes("氏名"));
-  const feedbackKey = Object.keys(rowData).find((k) => k.includes("連絡") || k.includes("依頼"));
+// ================================================================
+// テンプレート展開
+// ================================================================
 
-  const mentor = mentorKey ? rowData[mentorKey] : "不明";
-  const studentName = nameKey ? rowData[nameKey] : "不明";
-  const feedback = feedbackKey ? rowData[feedbackKey] : "なし";
-
-  const escalationMessage = [
-    "<@U07GRS0T681><@U03TF7YESK1>",
-    "*低評価がついてます*",
-    `*担当メンター：* ${mentor}`,
-    `*名前：* ${studentName}`,
-    `*評価：* ${ratingValue}`,
-    `*運営への連絡・依頼事項：* ${feedback}`,
-  ].join("\n");
-
-  await sendSlackMessage(channel, escalationMessage);
+function renderTemplate(
+  template: string,
+  rowData: Record<string, string>
+): string {
+  return template.replace(/\{\{(.+?)\}\}/g, (_, key) => rowData[key.trim()] || "");
 }
 
 function buildSlackMessage(
   automationName: string,
   rowData: Record<string, string>,
   template: string | null
-): string {
+): string | null {
   if (template) {
-    return template.replace(/\{\{(.+?)\}\}/g, (_, key) => rowData[key.trim()] || "");
+    return renderTemplate(template, rowData);
   }
-  // デフォルト: フォーム名 + 全フィールド（空でないもの）
-  const fields = Object.entries(rowData)
-    .filter(([, v]) => v && v.trim())
-    .map(([k, v]) => `*${k}*: ${v}`)
-    .join("\n");
-  return `*${automationName}*\n\n${fields}`;
+  // テンプレート未設定 → 全フィールド送信は危険なので送信しない
+  console.error(
+    `[sync-automations] ${automationName}: message_template が未設定のため送信をスキップしました。DBにテンプレートを設定してください。`
+  );
+  return null;
 }
+
+// ================================================================
+// 条件評価
+// ================================================================
+
+function evaluateCondition(
+  condition: ExtraTarget["condition"],
+  rowData: Record<string, string>
+): boolean {
+  if (!condition) return true; // 条件なし = 常に送信
+
+  const fieldValue = rowData[condition.field] || "";
+  switch (condition.match) {
+    case "contains":
+      return fieldValue.includes(condition.value || "");
+    case "starts_with":
+      return fieldValue.startsWith(condition.value || "");
+    case "not_empty":
+      return fieldValue.trim() !== "";
+    case "equals":
+      return fieldValue === (condition.value || "");
+    default:
+      return true;
+  }
+}
+
+// ================================================================
+// Extra targets（複数チャンネル・DM・条件分岐）送信
+// ================================================================
+
+async function sendExtraTargets(
+  extraTargets: ExtraTarget[],
+  rowData: Record<string, string>
+): Promise<number> {
+  if (!extraTargets || extraTargets.length === 0) return 0;
+
+  let sent = 0;
+  for (const target of extraTargets) {
+    // 条件チェック
+    if (!evaluateCondition(target.condition, rowData)) continue;
+
+    const message = renderTemplate(target.template, rowData);
+    if (!message.trim()) continue;
+
+    try {
+      if (target.type === "dm") {
+        await sendSlackDM(target.id, message);
+      } else {
+        await sendSlackMessage(target.id, message, {
+          username: target.bot_username,
+        });
+      }
+      sent++;
+      // レートリミット対策
+      await new Promise((resolve) => setTimeout(resolve, 1100));
+    } catch (err) {
+      console.error(
+        `[sync-automations] extra target send failed (${target.type}:${target.id}):`,
+        err
+      );
+    }
+  }
+  return sent;
+}
+
+// ================================================================
+// メイン処理
+// ================================================================
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
@@ -103,13 +168,13 @@ export async function GET(request: Request) {
           automation.spreadsheet_id,
           automation.sheet_name
         );
-        const currentRowCount = allRows.length > 0 ? allRows.length - 1 : 0; // ヘッダー除く
+        const currentRowCount = allRows.length > 0 ? allRows.length - 1 : 0;
         const headers = allRows.length > 0 ? allRows[0] : [];
 
         await db
           .from("automations")
           .update({
-            last_synced_row: currentRowCount + 1, // 次回は新しい行のみ
+            last_synced_row: currentRowCount + 1,
             known_headers: headers,
             updated_at: new Date().toISOString(),
           })
@@ -141,7 +206,6 @@ export async function GET(request: Request) {
       );
 
       if (allRows.length < 2) {
-        // 新しい行なし
         await db.from("automation_logs").insert({
           automation_id: automation.id,
           status: "no_new_rows",
@@ -155,14 +219,13 @@ export async function GET(request: Request) {
       const headers = allRows[0];
       const dataRows = allRows.slice(1);
 
-      // ★ 安全上限: 1回の実行で送信する通知数を制限（異常な大量送信を防止）
+      // ★ 安全上限: 1回の実行で送信する通知数を制限
       const MAX_NOTIFICATIONS_PER_RUN = 20;
       if (dataRows.length > MAX_NOTIFICATIONS_PER_RUN) {
         console.warn(
-          `[sync-automations] ${automation.name}: ${dataRows.length} rows detected, exceeds limit of ${MAX_NOTIFICATIONS_PER_RUN}. Skipping to prevent mass notification.`
+          `[sync-automations] ${automation.name}: ${dataRows.length} rows detected, exceeds limit of ${MAX_NOTIFICATIONS_PER_RUN}. Skipping.`
         );
 
-        // last_synced_rowを進めて次回から新規行のみ処理
         const totalRow = automation.last_synced_row + dataRows.length;
         await db
           .from("automations")
@@ -207,9 +270,10 @@ export async function GET(request: Request) {
 
       let notificationsSent = 0;
       let newRowsCount = 0;
+      const extraTargets: ExtraTarget[] = automation.extra_targets || [];
+      const botUsername: string | undefined = automation.bot_username || undefined;
 
       for (const row of dataRows) {
-        // 空行スキップ
         if (row.every((cell: string) => !cell || cell.trim() === "")) continue;
         newRowsCount++;
 
@@ -219,18 +283,25 @@ export async function GET(request: Request) {
           if (i < row.length && row[i]) rowData[h] = row[i];
         });
 
-        // Slack通知送信
+        // ① メイン通知送信
         const message = buildSlackMessage(
           automation.name,
           rowData,
           automation.message_template
         );
-        await sendSlackMessage(automation.slack_channel_id, message);
-        await checkAndSendEscalation(automation.name, rowData, automation.slack_channel_id);
-        notificationsSent++;
+        if (message) {
+          await sendSlackMessage(automation.slack_channel_id, message, {
+            username: botUsername,
+          });
+          notificationsSent++;
+        }
 
-        // Slack APIレートリミット対策（1秒1回制限）
-        if (notificationsSent < dataRows.length) {
+        // ② Extra targets（複数チャンネル・DM・条件分岐）
+        const extraSent = await sendExtraTargets(extraTargets, rowData);
+        notificationsSent += extraSent;
+
+        // レートリミット対策
+        if (notificationsSent > 0) {
           await new Promise((resolve) => setTimeout(resolve, 1100));
         }
       }
@@ -247,7 +318,6 @@ export async function GET(request: Request) {
         })
         .eq("id", automation.id);
 
-      // ログ記録
       await db.from("automation_logs").insert({
         automation_id: automation.id,
         status: "success",

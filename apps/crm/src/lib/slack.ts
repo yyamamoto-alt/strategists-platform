@@ -18,20 +18,25 @@ async function getSetting(key: string): Promise<string> {
   return typeof v === "string" ? v.replace(/"/g, "") : String(v ?? "");
 }
 
-export async function sendSlackMessage(channel: string, text: string) {
+export async function sendSlackMessage(channel: string, text: string, options?: { username?: string }) {
   if (!SLACK_BOT_TOKEN) {
     console.warn("SLACK_BOT_TOKEN not set, skipping Slack notification");
     return;
   }
 
   try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const body: any = { channel, text };
+    if (options?.username) {
+      body.username = options.username;
+    }
     const res = await fetch("https://slack.com/api/chat.postMessage", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${SLACK_BOT_TOKEN}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ channel, text }),
+      body: JSON.stringify(body),
     });
 
     const data = await res.json();
