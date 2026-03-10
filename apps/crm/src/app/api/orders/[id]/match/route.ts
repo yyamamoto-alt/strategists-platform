@@ -1,5 +1,6 @@
 import { createServiceClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -60,6 +61,10 @@ export async function PATCH(request: Request, { params }: Props) {
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
+
+    revalidateTag("orders");
+    revalidateTag("customers");
+    revalidateTag("dashboard");
 
     return NextResponse.json(data);
   }
@@ -125,6 +130,10 @@ export async function PATCH(request: Request, { params }: Props) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
+    revalidateTag("orders");
+    revalidateTag("customers");
+    revalidateTag("dashboard");
+
     return NextResponse.json({ ...data, new_customer_id: newCustomer.id });
   }
 
@@ -139,6 +148,8 @@ export async function PATCH(request: Request, { params }: Props) {
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
+
+    revalidateTag("orders");
 
     return NextResponse.json(data);
   }

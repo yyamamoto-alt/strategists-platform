@@ -66,8 +66,12 @@ export async function POST(request: NextRequest) {
   }
 
   const supabase = createAdminClient();
+  const now = new Date().toISOString();
 
-  // 既存のレコードを確認
+  // ステータスの降格を防ぐ（完了 → 閲覧済みへの戻りは不可）
+  const statusOrder: Record<string, number> = { "未着手": 0, "進行中": 1, "閲覧済み": 2, "完了": 3 };
+
+  // 既存レコードを確認（降格防止チェックに必要）
   const { data: existing } = await supabase
     .from("lesson_progress")
     .select("id, status")
@@ -75,39 +79,25 @@ export async function POST(request: NextRequest) {
     .eq("lesson_id", lesson_id)
     .maybeSingle();
 
-  // ステータスの降格を防ぐ（完了 → 閲覧済みへの戻りは不可）
-  const statusOrder: Record<string, number> = { "未着手": 0, "進行中": 1, "閲覧済み": 2, "完了": 3 };
   if (existing && statusOrder[existing.status] >= statusOrder[status]) {
     return NextResponse.json({ status: existing.status, unchanged: true });
   }
 
-  const now = new Date().toISOString();
+  // upsert でSELECT→UPDATE/INSERTを1クエリに統合
   const upsertData: any = {
     customer_id: session.customerId,
     lesson_id,
     status,
     updated_at: now,
+    ...(status === "完了" ? { completed_at: now } : {}),
+    ...(!existing ? { started_at: now } : {}),
   };
 
-  if (!existing) {
-    upsertData.started_at = now;
-  }
-  if (status === "完了") {
-    upsertData.completed_at = now;
-  }
-
-  const { data, error } = existing
-    ? await supabase
-        .from("lesson_progress")
-        .update(upsertData)
-        .eq("id", existing.id)
-        .select("lesson_id, status")
-        .single()
-    : await supabase
-        .from("lesson_progress")
-        .insert(upsertData)
-        .select("lesson_id, status")
-        .single();
+  const { data, error } = await supabase
+    .from("lesson_progress")
+    .upsert(upsertData, { onConflict: "customer_id,lesson_id" })
+    .select("lesson_id, status")
+    .single();
 
   if (error) {
     console.error("progress POST error:", error);

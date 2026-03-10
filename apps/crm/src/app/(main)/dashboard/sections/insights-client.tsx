@@ -1,49 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import dynamic from "next/dynamic";
-import type {
-  FunnelMetrics,
-  RevenueMetrics,
-  ThreeTierRevenue,
-  AiInsight,
-} from "@strategy-school/shared-db";
-import type { ChannelTrend } from "@/lib/data/dashboard-metrics";
-
-function ChartSkeleton({ height = 300 }: { height?: number }) {
-  return (
-    <div
-      className="animate-pulse bg-white/[0.03] rounded-lg"
-      style={{ height }}
-    />
-  );
-}
-
-const RevenueChart = dynamic(
-  () => import("@/components/dashboard/revenue-chart").then((m) => m.RevenueChart),
-  { ssr: false, loading: () => <ChartSkeleton height={600} /> }
-);
-
-const FunnelChart = dynamic(
-  () => import("@/components/dashboard/funnel-chart").then((m) => m.FunnelChart),
-  { ssr: false, loading: () => <ChartSkeleton height={300} /> }
-);
-
-const CostChart = dynamic(
-  () => import("@/components/dashboard/cost-chart").then((m) => m.CostChart),
-  { ssr: false, loading: () => <ChartSkeleton height={350} /> }
-);
+import type { AiInsight } from "@strategy-school/shared-db";
 
 const CATEGORY_META: Record<string, { label: string; accent: string; icon: string }> = {
   revenue: { label: "売上", accent: "border-l-blue-500", icon: "chart-bar" },
   funnel: { label: "ファネル", accent: "border-l-emerald-500", icon: "funnel" },
   channel: { label: "チャネル", accent: "border-l-amber-500", icon: "megaphone" },
-  // 旧カテゴリ（後方互換）
   marketing: { label: "マーケティング", accent: "border-l-blue-500", icon: "chart-bar" },
   sales: { label: "営業", accent: "border-l-emerald-500", icon: "funnel" },
 };
 
-/** AI示唆テキストを ■ 単位でパース */
 function parseInsightItems(content: string): { title: string; body: string }[] {
   return content
     .split("■")
@@ -59,29 +26,11 @@ function parseInsightItems(content: string): { title: string; body: string }[] {
     });
 }
 
-interface DashboardClientProps {
-  totalCustomers: number;
-  closedCount: number;
-  funnelMetrics: FunnelMetrics[];
-  funnelKisotsu?: FunnelMetrics[];
-  funnelShinsotsu?: FunnelMetrics[];
-  revenueMetrics: RevenueMetrics[];
-  threeTierRevenue?: ThreeTierRevenue[];
+interface InsightsClientProps {
   insights?: AiInsight[];
-  channelTrends?: ChannelTrend[];
 }
 
-export function DashboardClient({
-  totalCustomers,
-  closedCount,
-  funnelMetrics,
-  funnelKisotsu,
-  funnelShinsotsu,
-  revenueMetrics,
-  threeTierRevenue,
-  insights,
-  channelTrends,
-}: DashboardClientProps) {
+export function InsightsClient({ insights }: InsightsClientProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [localInsights, setLocalInsights] = useState<AiInsight[] | undefined>(insights);
@@ -118,77 +67,7 @@ export function DashboardClient({
   );
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white">ダッシュボード</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            {totalCustomers}顧客 / 成約 {closedCount}件
-          </p>
-        </div>
-        <div className="text-sm text-gray-500">
-          最終更新: {new Date().toLocaleDateString("ja-JP")}
-        </div>
-      </div>
-
-      {/* 売上推移 + ファネル推移 横並び */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-6">
-          <h2 className="text-lg font-semibold text-white mb-4">売上推移</h2>
-          <RevenueChart data={revenueMetrics} threeTierData={threeTierRevenue} />
-        </div>
-        <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-6">
-          <h2 className="text-lg font-semibold text-white mb-4">ファネル推移</h2>
-          <FunnelChart
-            data={funnelMetrics}
-            kisotsuData={funnelKisotsu}
-            shinsotsuData={funnelShinsotsu}
-          />
-        </div>
-      </div>
-
-      {/* コスト推移（freee） */}
-      <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-6">
-        <h2 className="text-lg font-semibold text-white mb-4">コスト推移（freee）</h2>
-        <CostChart />
-      </div>
-
-      {/* チャネル別申込推移 */}
-      {channelTrends && channelTrends.length > 0 && (
-        <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-4">
-          <div className="mb-2">
-            <h2 className="text-sm font-semibold text-white">チャネル別申込推移</h2>
-            <p className="text-[10px] text-gray-500">直近1ヶ月 vs 前2ヶ月（月平均）</p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {channelTrends.map((t) => (
-              <div
-                key={t.channel}
-                className={`rounded border px-2 py-1.5 flex items-center gap-2 ${
-                  t.trend === "up"
-                    ? "border-green-500/30 bg-green-500/5"
-                    : t.trend === "down"
-                      ? "border-red-500/30 bg-red-500/5"
-                      : "border-white/10 bg-white/[0.02]"
-                }`}
-              >
-                <span className="text-[11px] text-gray-300">{t.channel}</span>
-                <span className="text-sm font-bold text-white">{t.recentCount}</span>
-                <span className="text-[10px] text-gray-500">/ {t.baselineMonthlyRate}</span>
-                {t.trendPct !== 0 && (
-                  <span className={`text-[11px] font-semibold ${
-                    t.trend === "up" ? "text-green-400" : t.trend === "down" ? "text-red-400" : "text-gray-400"
-                  }`}>
-                    {t.trendPct > 0 ? "+" : ""}{t.trendPct}%
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* AI経営分析（統合） */}
+    <div className="px-6 pb-6">
       <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">

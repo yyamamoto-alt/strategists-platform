@@ -11,6 +11,7 @@ export async function GET() {
 
   const admin = createAdminClient();
   const email = session.user.email;
+  const userId = session.user.id;
 
   // メールアドレスで顧客を検索
   const { data: customer } = await admin
@@ -23,35 +24,37 @@ export async function GET() {
     return NextResponse.json({ customer: null, contract: null, learning: null });
   }
 
-  // 契約情報
-  const { data: contract } = await admin
-    .from("contracts")
-    .select("plan_name, contract_date")
-    .eq("customer_id", customer.id)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle() as { data: { plan_name: string; contract_date: string } | null };
+  // 契約情報・学習情報・メンター紐付けを並列取得
+  const [contractResult, learningResult, studentMentorResult] = await Promise.all([
+    admin
+      .from("contracts")
+      .select("plan_name, contract_date")
+      .eq("customer_id", customer.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle() as unknown as Promise<{ data: { plan_name: string; contract_date: string } | null }>,
+    admin
+      .from("learning_records")
+      .select("coaching_start_date, total_sessions, remaining_sessions, mentor_name")
+      .eq("customer_id", customer.id)
+      .maybeSingle() as unknown as Promise<{ data: { coaching_start_date: string; total_sessions: number; remaining_sessions: number; mentor_name: string | null } | null }>,
+    admin
+      .from("student_mentors")
+      .select("mentor_id, role")
+      .eq("user_id", userId)
+      .eq("is_active", true)
+      .order("role", { ascending: true }) as unknown as Promise<{ data: { mentor_id: string; role: string }[] | null }>,
+  ]);
 
-  // 学習情報
-  const { data: learning } = await admin
-    .from("learning_records")
-    .select("coaching_start_date, total_sessions, remaining_sessions, mentor_name")
-    .eq("customer_id", customer.id)
-    .maybeSingle() as { data: { coaching_start_date: string; total_sessions: number; remaining_sessions: number; mentor_name: string | null } | null };
+  const contract = contractResult.data;
+  const learning = learningResult.data;
+  const studentMentorRows = studentMentorResult.data;
 
   // メンター情報を取得（複数メンター対応）
   type MentorInfo = { name: string; booking_url: string | null; line_url: string | null; profile_text: string | null; role: string };
   let mentors: MentorInfo[] = [];
 
   // 1. student_mentorsテーブルから取得（user_idベース）
-  const userId = session.user.id;
-  const { data: studentMentorRows } = await admin
-    .from("student_mentors")
-    .select("mentor_id, role")
-    .eq("user_id", userId)
-    .eq("is_active", true)
-    .order("role", { ascending: true }) as { data: { mentor_id: string; role: string }[] | null };
-
   if (studentMentorRows && studentMentorRows.length > 0) {
     const mentorIds = studentMentorRows.map(r => r.mentor_id);
     const { data: mentorRecords } = await admin
@@ -61,8 +64,10 @@ export async function GET() {
       .eq("is_active", true) as { data: { id: string; name: string; booking_url: string | null; line_url: string | null; profile_text: string | null }[] | null };
 
     if (mentorRecords) {
+      // N+1修正: Mapで高速ルックアップ
+      const mentorMap = new Map(mentorRecords.map(m => [m.id, m]));
       for (const row of studentMentorRows) {
-        const rec = mentorRecords.find(m => m.id === row.mentor_id);
+        const rec = mentorMap.get(row.mentor_id);
         if (rec) {
           mentors.push({ name: rec.name, booking_url: rec.booking_url, line_url: rec.line_url, profile_text: rec.profile_text, role: row.role });
         }

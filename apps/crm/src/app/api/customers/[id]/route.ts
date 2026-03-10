@@ -1,6 +1,7 @@
 import { createServiceClient } from "@/lib/supabase/server";
 import { computeAttributionForCustomer } from "@/lib/compute-attribution-for-customer";
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -34,6 +35,9 @@ export async function DELETE(_request: Request, { params }: Props) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
+  revalidateTag("customers");
+  revalidateTag("dashboard");
 
   return NextResponse.json({ success: true });
 }
@@ -101,6 +105,9 @@ export async function PATCH(request: Request, { params }: Props) {
   if (body.customer || body.pipeline) {
     computeAttributionForCustomer(id).catch(() => {});
   }
+
+  revalidateTag("customers");
+  revalidateTag("dashboard");
 
   return NextResponse.json({ success: true });
 }

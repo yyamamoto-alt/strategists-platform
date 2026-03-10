@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { matchCustomer } from "@/lib/customer-matching";
 import { upsertOrder } from "@/lib/data/orders";
 import { normalizeStripePayment } from "@/lib/order-normalizers";
@@ -135,6 +136,10 @@ export async function POST(request: Request) {
     email: normalized.contact_email || undefined,
     cardInfo,
   });
+
+  revalidateTag("orders");
+  revalidateTag("customers");
+  revalidateTag("dashboard");
 
   return NextResponse.json({
     success: true,

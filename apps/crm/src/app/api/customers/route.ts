@@ -1,5 +1,6 @@
 import { createServiceClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { fetchCustomersWithRelations, fetchFirstPaidDates } from "@/lib/data/customers";
 import { fetchChannelAttributions } from "@/lib/data/marketing-settings";
 
@@ -80,11 +81,16 @@ export async function POST(request: Request) {
     .filter(Boolean);
 
   if (errors.length > 0) {
+    revalidateTag("customers");
+    revalidateTag("dashboard");
     return NextResponse.json(
       { id: customerId, warnings: errors },
       { status: 201 }
     );
   }
+
+  revalidateTag("customers");
+  revalidateTag("dashboard");
 
   return NextResponse.json({ id: customerId }, { status: 201 });
 }

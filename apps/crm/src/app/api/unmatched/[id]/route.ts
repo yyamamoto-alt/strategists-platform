@@ -1,5 +1,6 @@
 import { createServiceClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 
 /**
  * raw_dataから申込日（タイムスタンプ/date）を抽出してISO文字列に変換
@@ -116,6 +117,9 @@ export async function PATCH(request: Request, { params }: Props) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
+    revalidateTag("customers");
+    revalidateTag("dashboard");
+
     return NextResponse.json(data);
   }
 
@@ -185,6 +189,9 @@ export async function PATCH(request: Request, { params }: Props) {
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
+
+    revalidateTag("customers");
+    revalidateTag("dashboard");
 
     return NextResponse.json({ ...data, new_customer_id: newCustomer.id });
   }

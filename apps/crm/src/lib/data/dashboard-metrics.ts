@@ -1227,11 +1227,11 @@ async function fetchDashboardDataRaw() {
   };
 }
 
-/** キャッシュ付きダッシュボードデータ取得（60秒間キャッシュ） */
+/** キャッシュ付きダッシュボードデータ取得（300秒間キャッシュ、タグ無効化対応） */
 export const fetchDashboardData = unstable_cache(
   fetchDashboardDataRaw,
   ["dashboard-data"],
-  { revalidate: 60 }
+  { revalidate: 300, tags: ["dashboard", "customers"] }
 );
 
 // ================================================================
@@ -1310,5 +1310,5 @@ async function computeOrderBasedRevenueRaw(): Promise<OrderBasedRevenue[]> {
 export const computeOrderBasedRevenue = unstable_cache(
   computeOrderBasedRevenueRaw,
   ["order-based-revenue"],
-  { revalidate: 60, tags: ["orders"] }
+  { revalidate: 300, tags: ["orders", "dashboard"] }
 );

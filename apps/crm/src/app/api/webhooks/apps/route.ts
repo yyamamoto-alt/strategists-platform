@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { createServiceClient } from "@/lib/supabase/server";
 import { matchCustomer } from "@/lib/customer-matching";
 import { upsertOrder } from "@/lib/data/orders";
@@ -153,6 +154,10 @@ export async function POST(request: Request) {
       cardInfo,
     });
   }
+
+  revalidateTag("orders");
+  revalidateTag("customers");
+  revalidateTag("dashboard");
 
   return NextResponse.json({
     success: true,

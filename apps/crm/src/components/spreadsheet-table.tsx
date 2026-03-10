@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { cn } from "@/lib/utils";
 
 export type ColumnCategory = "marketing" | "sales" | "education" | "agent" | "base";
@@ -204,8 +205,6 @@ export function SpreadsheetTable<T>({
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
-  const [visibleCount, setVisibleCount] = useState(pageSize);
-  const sentinelRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>(
@@ -322,29 +321,13 @@ export function SpreadsheetTable<T>({
     return result;
   }, [data, search, searchFilter, sortKey, sortDir, columns, columnFilters]);
 
-  // フィルタ/検索変更時にvisibleCountをリセット
-  useEffect(() => {
-    setVisibleCount(pageSize);
-  }, [search, sortKey, sortDir, pageSize, columnFilters]);
-
-  const visibleData = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount]);
-  const hasMore = visibleCount < filtered.length;
-
-  // IntersectionObserverで末尾到達を検知して追加読み込み
-  useEffect(() => {
-    const sentinel = sentinelRef.current;
-    if (!sentinel) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && hasMore) {
-          setVisibleCount((prev) => Math.min(prev + pageSize, filtered.length));
-        }
-      },
-      { root: scrollContainerRef.current, threshold: 0, rootMargin: "200px" }
-    );
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [hasMore, pageSize, filtered.length]);
+  // 仮想化: 表示行のみレンダリング
+  const rowVirtualizer = useVirtualizer({
+    count: filtered.length,
+    getScrollElement: () => scrollContainerRef.current,
+    estimateSize: () => ROW_H,
+    overscan: 20,
+  });
 
   const handleSort = useCallback((key: string) => {
     setSortKey((prev) => {
@@ -457,6 +440,9 @@ export function SpreadsheetTable<T>({
     [getColWidth]
   );
 
+  const virtualItems = rowVirtualizer.getVirtualItems();
+  const totalHeight = rowVirtualizer.getTotalSize();
+
   return (
     <div>
       <div className="flex items-center gap-2 mb-2">
@@ -495,21 +481,58 @@ export function SpreadsheetTable<T>({
                     </tr>
                   </thead>
                   <tbody>
-                    {visibleData.map((item, rowIdx) => (
-                      <tr
-                        key={getRowKey(item)}
-                        className={cn(
-                          "border-b border-white/[0.06] hover:bg-white/5 transition-colors",
-                          rowIdx % 2 === 1 && "bg-white/[0.015]"
-                        )}
-                      >
-                        {frozenCols.map((col) => renderTd(col, item, rowIdx, true))}
-                      </tr>
-                    ))}
-                    {visibleData.length === 0 && (
+                    {filtered.length === 0 ? (
                       <tr>
                         <td colSpan={frozenCols.length} className="py-8 text-center text-gray-500 text-sm">
                           &nbsp;
+                        </td>
+                      </tr>
+                    ) : (
+                      <tr>
+                        <td colSpan={frozenCols.length} style={{ padding: 0, height: totalHeight, position: "relative" }}>
+                          {virtualItems.map((virtualRow) => {
+                            const item = filtered[virtualRow.index];
+                            const rowIdx = virtualRow.index;
+                            return (
+                              <div
+                                key={getRowKey(item)}
+                                className={cn(
+                                  "border-b border-white/[0.06] hover:bg-white/5 transition-colors flex",
+                                  rowIdx % 2 === 1 && "bg-white/[0.015]"
+                                )}
+                                style={{
+                                  position: "absolute",
+                                  top: 0,
+                                  left: 0,
+                                  width: "100%",
+                                  height: ROW_H,
+                                  transform: `translateY(${virtualRow.start}px)`,
+                                }}
+                              >
+                                {frozenCols.map((col) => {
+                                  const cat = col.category || "base";
+                                  return (
+                                    <div
+                                      key={col.key}
+                                      className={cn(
+                                        "py-0.5 px-2 text-xs overflow-hidden whitespace-nowrap text-ellipsis flex-shrink-0",
+                                        col.align === "right" ? "text-right" : col.align === "center" ? "text-center" : "text-left",
+                                        "font-medium text-white bg-surface-card"
+                                      )}
+                                      style={{
+                                        width: getColWidth(col),
+                                        maxWidth: getColWidth(col),
+                                        height: ROW_H,
+                                        lineHeight: `${ROW_H}px`,
+                                      }}
+                                    >
+                                      {col.render(item)}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            );
+                          })}
                         </td>
                       </tr>
                     )}
@@ -527,21 +550,59 @@ export function SpreadsheetTable<T>({
                   </tr>
                 </thead>
                 <tbody>
-                  {visibleData.map((item, rowIdx) => (
-                    <tr
-                      key={getRowKey(item)}
-                      className={cn(
-                        "border-b border-white/[0.06] hover:bg-white/5 transition-colors",
-                        rowIdx % 2 === 1 && "bg-white/[0.015]"
-                      )}
-                    >
-                      {scrollCols.map((col) => renderTd(col, item, rowIdx, false))}
-                    </tr>
-                  ))}
-                  {visibleData.length === 0 && (
+                  {filtered.length === 0 ? (
                     <tr>
                       <td colSpan={scrollCols.length} className="py-8 text-center text-gray-500 text-sm">
                         データがありません
+                      </td>
+                    </tr>
+                  ) : (
+                    <tr>
+                      <td colSpan={scrollCols.length} style={{ padding: 0, height: totalHeight, position: "relative" }}>
+                        {virtualItems.map((virtualRow) => {
+                          const item = filtered[virtualRow.index];
+                          const rowIdx = virtualRow.index;
+                          return (
+                            <div
+                              key={getRowKey(item)}
+                              className={cn(
+                                "border-b border-white/[0.06] hover:bg-white/5 transition-colors flex",
+                                rowIdx % 2 === 1 && "bg-white/[0.015]"
+                              )}
+                              style={{
+                                position: "absolute",
+                                top: 0,
+                                left: 0,
+                                width: "100%",
+                                height: ROW_H,
+                                transform: `translateY(${virtualRow.start}px)`,
+                              }}
+                            >
+                              {scrollCols.map((col) => {
+                                const cat = col.category || "base";
+                                return (
+                                  <div
+                                    key={col.key}
+                                    className={cn(
+                                      "py-0.5 px-2 text-xs overflow-hidden whitespace-nowrap text-ellipsis flex-shrink-0",
+                                      col.align === "right" ? "text-right" : col.align === "center" ? "text-center" : "text-left",
+                                      "text-gray-300",
+                                      CATEGORY_CELL_COLORS[cat]
+                                    )}
+                                    style={{
+                                      width: getColWidth(col),
+                                      maxWidth: getColWidth(col),
+                                      height: ROW_H,
+                                      lineHeight: `${ROW_H}px`,
+                                    }}
+                                  >
+                                    {col.render(item)}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          );
+                        })}
                       </td>
                     </tr>
                   )}
@@ -549,12 +610,6 @@ export function SpreadsheetTable<T>({
               </table>
             </div>
           </div>
-          <div ref={sentinelRef} className="h-1" />
-          {hasMore && (
-            <div className="py-2 text-center text-xs text-gray-500">
-              {visibleCount} / {filtered.length}件 表示中
-            </div>
-          )}
         </div>
       </div>
     </div>

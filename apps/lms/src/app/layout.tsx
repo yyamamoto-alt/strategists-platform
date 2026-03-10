@@ -4,6 +4,7 @@ import "./globals.css";
 import { AuthProvider } from "@/lib/auth-context";
 import { getLmsSession } from "@/lib/supabase/server";
 import { NavigationProgress } from "@/components/layout/navigation-progress";
+import { SWRProvider } from "@/components/swr-provider";
 
 export const metadata: Metadata = {
   title: "Strategists LMS | 学習管理",
@@ -45,10 +46,12 @@ export default async function RootLayout({
       </head>
       <body>
         <AuthProvider initialUser={initialUser} initialRole={initialRole} initialDisplayName={initialDisplayName} initialAvatarUrl={initialAvatarUrl}>
-          <Suspense fallback={null}>
-            <NavigationProgress />
-          </Suspense>
-          {children}
+          <SWRProvider>
+            <Suspense fallback={null}>
+              <NavigationProgress />
+            </Suspense>
+            {children}
+          </SWRProvider>
         </AuthProvider>
       </body>
     </html>

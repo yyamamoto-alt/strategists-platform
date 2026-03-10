@@ -4,7 +4,19 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Plus, Trash2, ChevronUp, ChevronDown, ArrowLeft, GripVertical } from "lucide-react";
-import { RichEditor } from "@/components/content/rich-editor";
+import dynamic from "next/dynamic";
+
+const RichEditor = dynamic(
+  () => import("@/components/content/rich-editor").then((m) => m.RichEditor),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="border border-white/10 rounded-lg overflow-hidden bg-surface">
+        <div className="animate-pulse bg-white/[0.03] min-h-[300px] rounded-lg" />
+      </div>
+    ),
+  }
+);
 
 interface Lesson {
   id: string;
