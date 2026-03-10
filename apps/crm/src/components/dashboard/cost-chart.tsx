@@ -67,8 +67,11 @@ export function CostChart() {
     if (isRefresh) setRefreshing(true);
 
     fetch(url)
-      .then((r) => {
-        if (!r.ok) throw new Error("freee未連携またはデータ取得失敗");
+      .then(async (r) => {
+        if (!r.ok) {
+          const body = await r.json().catch(() => ({}));
+          throw new Error(body.error || "freee未連携またはデータ取得失敗");
+        }
         return r.json();
       })
       .then((d) => {

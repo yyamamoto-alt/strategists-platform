@@ -10,8 +10,6 @@ import type { OtherRevenueSummary } from "./revenue-client";
 
 export const revalidate = 60;
 
-import { mockCustomers } from "@/lib/mock-data";
-
 async function fetchOtherRevenueSummary(): Promise<OtherRevenueSummary> {
   const supabase = createServiceClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -54,13 +52,6 @@ async function fetchOtherRevenueSummary(): Promise<OtherRevenueSummary> {
 }
 
 export default async function RevenuePage() {
-  const useMock = process.env.NEXT_PUBLIC_USE_MOCK === "true";
-
-  if (useMock) {
-    const plData = computePLSheetData(mockCustomers, {});
-    return <RevenueClient plData={plData} />;
-  }
-
   const [customers, attributions, otherRevenues] = await Promise.all([
     fetchCustomersWithRelations(),
     fetchChannelAttributions(),

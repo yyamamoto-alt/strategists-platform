@@ -3,7 +3,6 @@ export const dynamic = "force-dynamic";
 import { fetchCustomersWithRelations } from "@/lib/data/customers";
 import { createServiceClient } from "@/lib/supabase/server";
 import { PipelineClient } from "./pipeline-client";
-import { mockCustomers } from "@/lib/mock-data";
 
 export const revalidate = 60;
 
@@ -55,12 +54,6 @@ async function applyAutoStageChanges() {
 }
 
 export default async function PipelinePage() {
-  const useMock = process.env.NEXT_PUBLIC_USE_MOCK === "true";
-
-  if (useMock) {
-    return <PipelineClient customers={mockCustomers} />;
-  }
-
   // 自動ステージ変更を適用してからデータ取得
   await applyAutoStageChanges();
   const customers = await fetchCustomersWithRelations();

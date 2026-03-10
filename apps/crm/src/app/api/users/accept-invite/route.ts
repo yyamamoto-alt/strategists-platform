@@ -72,8 +72,17 @@ export async function POST(request: Request) {
   if (authError) {
     // 既にユーザーが存在する場合 → パスワード更新で対応
     if (authError.message.includes("already") || authError.message.includes("exists")) {
-      const { data: users } = await supabase.auth.admin.listUsers();
-      const existingUser = users?.users?.find((u) => u.email === invitation.email);
+      // ページネーションで全ユーザーを走査（デフォルト50件制限の回避）
+      let existingUser: { id: string; email?: string } | undefined;
+      let page = 1;
+      const perPage = 1000;
+      while (!existingUser) {
+        const { data: users } = await supabase.auth.admin.listUsers({ page, perPage });
+        if (!users?.users?.length) break;
+        existingUser = users.users.find((u) => u.email === invitation.email);
+        if (users.users.length < perPage) break;
+        page++;
+      }
       if (!existingUser) {
         return NextResponse.json(
           { error: "ユーザー情報の取得に失敗しました" },

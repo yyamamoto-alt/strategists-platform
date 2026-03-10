@@ -6,7 +6,6 @@ import { fetchCustomerEmails, fetchApplicationHistory } from "@/lib/data/spreads
 import { fetchOrdersByCustomer } from "@/lib/data/orders";
 import { fetchMentorsByCustomerId } from "@/lib/data/mentors";
 import { CustomerDetailClient } from "./customer-detail-client";
-import { mockCustomers, mockActivities } from "@/lib/mock-data";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -14,23 +13,6 @@ interface Props {
 
 export default async function CustomerDetailPage({ params }: Props) {
   const { id } = await params;
-  const useMock = process.env.NEXT_PUBLIC_USE_MOCK === "true";
-
-  if (useMock) {
-    const customer = mockCustomers.find((c) => c.id === id);
-    if (!customer) return notFound();
-
-    const activities = mockActivities
-      .filter((a) => a.customer_id === customer.id)
-      .sort(
-        (a, b) =>
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      );
-
-    return (
-      <CustomerDetailClient customer={customer} activities={activities} emails={[]} applicationHistory={[]} orders={[]} mentors={[]} />
-    );
-  }
 
   const [result, emails, applicationHistory, orders, mentors] = await Promise.all([
     fetchCustomerById(id),
