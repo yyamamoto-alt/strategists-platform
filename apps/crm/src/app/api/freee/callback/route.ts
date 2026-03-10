@@ -35,10 +35,16 @@ export async function GET(request: Request) {
     ];
 
     for (const s of settings) {
-      await db
+      const { error } = await db
         .from("app_settings")
-        .upsert({ key: s.key, value: s.value }, { onConflict: "key" });
+        .upsert({ key: s.key, value: s.value, updated_at: new Date().toISOString() }, { onConflict: "key" });
+      if (error) {
+        console.error(`[freee callback] Failed to save ${s.key}:`, error);
+      }
     }
+
+    // 古いキャッシュを削除（新トークンで再取得させる）
+    await db.from("app_settings").delete().eq("key", "freee_pl_cache");
 
     return NextResponse.redirect(new URL("/settings?freee=connected", request.url));
   } catch (err) {
