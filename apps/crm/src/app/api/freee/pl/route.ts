@@ -34,9 +34,10 @@ export async function GET(request: Request) {
   const db = supabase as any;
 
   // freee接続チェック + キャッシュ + トークンを一括取得
+  // ※ Supabaseクエリにタイムスタンプを付加してキャッシュバイパス
   const { data: settings } = await db
     .from("app_settings")
-    .select("key, value")
+    .select("key, value, updated_at")
     .in("key", [
       "freee_connected",
       "freee_access_token",
@@ -112,8 +113,38 @@ export async function GET(request: Request) {
     }
 
     const companyId = Number(settingMap.freee_company_id);
-    console.log("[freee PL] Fetching data:", { companyId, startYear, endYear });
-    const plData = await fetchMonthlyPL(accessToken, companyId, startYear, endYear);
+    console.log("[freee PL] Fetching data:", { companyId, startYear, endYear, refreshed, tokenLen: accessToken.length });
+
+    let currentToken = accessToken;
+    let plData: FreeePLMonthly[];
+    try {
+      plData = await fetchMonthlyPL(currentToken, companyId, startYear, endYear);
+    } catch (firstErr) {
+      // 401の場合、expires_atが不正だった可能性 → 強制リフレッシュして再試行
+      const firstMsg = firstErr instanceof Error ? firstErr.message : "";
+      if (firstMsg.includes("401") && !refreshed) {
+        console.warn("[freee PL] Got 401 despite expires_at saying valid, forcing refresh...");
+        const { refreshAccessToken } = await import("@/lib/freee");
+        const newTokens = await refreshAccessToken(settingMap.freee_refresh_token);
+        currentToken = newTokens.access_token;
+        const ttlMs = (newTokens.expires_in || 21600) * 1000;
+        const newExpiresAt = new Date(Date.now() + ttlMs).toISOString();
+        // 新トークン保存
+        for (const u of [
+          { key: "freee_access_token", value: currentToken },
+          { key: "freee_refresh_token", value: newTokens.refresh_token },
+          { key: "freee_token_expires_at", value: newExpiresAt },
+        ]) {
+          await db.from("app_settings").upsert(
+            { key: u.key, value: u.value, updated_at: new Date().toISOString() },
+            { onConflict: "key" },
+          );
+        }
+        plData = await fetchMonthlyPL(currentToken, companyId, startYear, endYear);
+      } else {
+        throw firstErr;
+      }
+    }
     console.log("[freee PL] Got", plData.length, "months of data");
 
     // 空データはキャッシュしない（トークン失敗やデータなし時に空キャッシュが残るのを防ぐ）

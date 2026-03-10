@@ -47,6 +47,7 @@ const navGroups: NavGroup[] = [
       { name: "フォームDB", href: "/form-data", roles: ["admin", "mentor"] },
       { name: "注文管理", href: "/orders", roles: ["admin"] },
       { name: "その他売上", href: "/other-revenues", roles: ["admin"] },
+      { name: "note購入", href: "/note-sales", roles: ["admin"] },
       { name: "エージェント", href: "/agents", roles: ["admin", "mentor"] },
       { name: "補助金", href: "/subsidy", roles: ["admin"] },
     ],
