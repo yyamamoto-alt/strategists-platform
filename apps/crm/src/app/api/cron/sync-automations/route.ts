@@ -284,10 +284,6 @@ export async function GET(request: Request) {
         });
 
         // ① メイン通知送信
-        // DEBUG: テンプレート確認
-        if (newRowsCount === 1) {
-          console.log(`[sync-automations] ${automation.name}: message_template type=${typeof automation.message_template}, value=${automation.message_template ? automation.message_template.substring(0, 50) : 'NULL'}, bot=${automation.bot_username}`);
-        }
         const message = buildSlackMessage(
           automation.name,
           rowData,
