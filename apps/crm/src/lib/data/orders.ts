@@ -204,3 +204,116 @@ export const fetchReconciliationReport = unstable_cache(
   ["reconciliation-report"],
   { revalidate: 60, tags: ["orders"] }
 );
+
+// ================================================================
+// 売掛金（月別入金予定）
+// ================================================================
+
+export interface AccountsReceivableMonth {
+  /** "2026-03" 形式 */
+  month: string;
+  /** "2026年3月" 形式 */
+  label: string;
+  /** 合計金額 */
+  amount: number;
+  /** 件数 */
+  count: number;
+  /** 明細 */
+  items: {
+    id: string;
+    customer_name: string | null;
+    product_name: string | null;
+    amount: number;
+    paid_at: string | null;
+    status: string;
+  }[];
+}
+
+export interface AccountsReceivableSummary {
+  totalAmount: number;
+  totalCount: number;
+  months: AccountsReceivableMonth[];
+}
+
+async function fetchAccountsReceivableRaw(): Promise<AccountsReceivableSummary> {
+  const supabase = createServiceClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db = supabase as any;
+
+  // 未入金の注文（scheduled, pending, partial）を取得
+  const { data: orders } = await db
+    .from("orders")
+    .select("id, customer_id, product_name, amount, paid_at, status, contact_name")
+    .in("status", ["scheduled", "pending", "partial"])
+    .order("paid_at", { ascending: true });
+
+  if (!orders || orders.length === 0) {
+    return { totalAmount: 0, totalCount: 0, months: [] };
+  }
+
+  // 顧客名の取得
+  const customerIds = [...new Set(
+    orders.filter((o: { customer_id: string | null }) => o.customer_id).map((o: { customer_id: string }) => o.customer_id)
+  )];
+  const customerMap = new Map<string, string>();
+  if (customerIds.length > 0) {
+    const { data: customers } = await db
+      .from("customers")
+      .select("id, name")
+      .in("id", customerIds);
+    if (customers) {
+      for (const c of customers) {
+        customerMap.set(c.id, c.name || "不明");
+      }
+    }
+  }
+
+  // 月別にグルーピング
+  const monthMap = new Map<string, AccountsReceivableMonth>();
+
+  for (const o of orders) {
+    const paidAt = o.paid_at as string | null;
+    let monthKey: string;
+    let monthLabel: string;
+
+    if (paidAt) {
+      const d = new Date(paidAt);
+      const y = d.getFullYear();
+      const m = d.getMonth() + 1;
+      monthKey = `${y}-${String(m).padStart(2, "0")}`;
+      monthLabel = `${y}年${m}月`;
+    } else {
+      monthKey = "9999-99";
+      monthLabel = "日付未定";
+    }
+
+    if (!monthMap.has(monthKey)) {
+      monthMap.set(monthKey, { month: monthKey, label: monthLabel, amount: 0, count: 0, items: [] });
+    }
+
+    const entry = monthMap.get(monthKey)!;
+    const amt = o.amount || 0;
+    entry.amount += amt;
+    entry.count += 1;
+    entry.items.push({
+      id: o.id,
+      customer_name: (o.customer_id ? customerMap.get(o.customer_id) : null) || o.contact_name || null,
+      product_name: o.product_name,
+      amount: amt,
+      paid_at: paidAt,
+      status: o.status,
+    });
+  }
+
+  const months = Array.from(monthMap.values()).sort((a, b) => a.month.localeCompare(b.month));
+  const totalAmount = months.reduce((sum, m) => sum + m.amount, 0);
+  const totalCount = months.reduce((sum, m) => sum + m.count, 0);
+
+  return { totalAmount, totalCount, months };
+}
+
+export const fetchAccountsReceivable = unstable_cache(
+  fetchAccountsReceivableRaw,
+  ["accounts-receivable"],
+  { revalidate: 60, tags: ["orders"] }
+);

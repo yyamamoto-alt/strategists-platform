@@ -63,6 +63,38 @@ export function ChartsSkeleton() {
   );
 }
 
+export function ReceivableSkeleton() {
+  return (
+    <div className="px-6 animate-pulse">
+      <div className="bg-surface-card rounded-xl border border-white/10 p-6">
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <div className="h-5 bg-white/10 rounded w-20 mb-2" />
+            <div className="h-3 bg-white/5 rounded w-32" />
+          </div>
+          <div className="text-right">
+            <div className="h-7 bg-white/10 rounded w-36 mb-1" />
+            <div className="h-3 bg-white/5 rounded w-10 ml-auto" />
+          </div>
+        </div>
+        <div className="space-y-3">
+          {[75, 50, 30].map((w, i) => (
+            <div key={i}>
+              <div className="flex justify-between mb-1.5">
+                <div className="h-4 bg-white/10 rounded w-24" />
+                <div className="h-4 bg-white/10 rounded w-20" />
+              </div>
+              <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+                <div className="h-full bg-white/10 rounded-full" style={{ width: `${w}%` }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function ChannelSkeleton() {
   return (
     <div className="px-6 animate-pulse">
