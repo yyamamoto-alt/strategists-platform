@@ -5,29 +5,11 @@ import { fetchSubsidyCompletionData, fetchSubsidyDocuments } from "@/lib/data/su
 import { SubsidyClient } from "./subsidy-client";
 import type { CustomerWithRelations } from "@strategy-school/shared-db";
 
-// 補助金対象判定（server-side）
-const SUBSIDY_START = "2026-02-10";
-
-function normalizeDate(d: string | null | undefined): string {
-  if (!d) return "";
-  return d.replace(/\//g, "-").split("T")[0].split(" ")[0];
-}
-
-function isShinsotsu(attr: string | null | undefined): boolean {
-  return attr === "新卒";
-}
-
+/** 補助金対象判定: contracts.subsidy_eligible=true かつ 成約済み */
 function isSubsidyTarget(c: CustomerWithRelations): boolean {
-  if (isShinsotsu(c.attribute)) return false;
-  const appDate = normalizeDate(c.application_date);
-  const salesDate = normalizeDate(c.pipeline?.sales_date);
-  if (appDate > SUBSIDY_START) return true;
-  if (salesDate > SUBSIDY_START) {
-    const stage = c.pipeline?.stage;
-    if (stage === "未実施" || stage === "日程未確" || stage === "NoShow") return false;
-    return true;
-  }
-  return false;
+  if (!c.contract?.subsidy_eligible) return false;
+  if (c.pipeline?.stage !== "成約") return false;
+  return true;
 }
 
 export default async function SubsidyPage() {

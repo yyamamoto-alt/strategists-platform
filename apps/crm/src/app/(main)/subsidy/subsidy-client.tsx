@@ -67,17 +67,11 @@ function formatDateJP(d: string | null | undefined): string {
   return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`;
 }
 
+/** 補助金対象判定: contracts.subsidy_eligible=true かつ 成約済み */
 function isSubsidyTarget(c: CustomerWithRelations): boolean {
-  if (isShinsotsu(c.attribute)) return false;
-  const appDate = normalizeDate(c.application_date);
-  const salesDate = normalizeDate(c.pipeline?.sales_date);
-  if (appDate > SUBSIDY_START) return true;
-  if (salesDate > SUBSIDY_START) {
-    const stage = c.pipeline?.stage;
-    if (stage === "未実施" || stage === "日程未確" || stage === "NoShow") return false;
-    return true;
-  }
-  return false;
+  if (!c.contract?.subsidy_eligible) return false;
+  if (c.pipeline?.stage !== "成約") return false;
+  return true;
 }
 
 function getSubsidyDate(c: CustomerWithRelations): string {
