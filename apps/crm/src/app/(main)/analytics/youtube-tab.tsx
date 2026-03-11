@@ -75,10 +75,21 @@ function aggregateByGranularity<T extends { date: string }>(
     .map(([key, items]) => ({ key, ...aggregator(items) }));
 }
 
-/* ───── Funnel Helpers ───── */
+/* ───── Helpers ───── */
 function funnelIsClosed(stage: string | null): boolean {
   if (!stage) return false;
   return stage === "成約" || stage.startsWith("追加指導") || stage === "受講終了" || stage === "卒業";
+}
+
+function isKisotsu(attr: string | null): boolean {
+  if (!attr) return false;
+  return attr.includes("既卒") || attr.includes("中途");
+}
+
+function attributeBadgeColor(attr: string | null): string {
+  if (!attr) return "bg-gray-500/20 text-gray-300";
+  if (isKisotsu(attr)) return "bg-blue-500/20 text-blue-300";
+  return "bg-orange-500/20 text-orange-300"; // 新卒系（XX卒、新卒等）
 }
 
 /* ═══════════════════════════════════════════
@@ -460,7 +471,7 @@ function YouTubeClosedCustomersTab({ youtubeFunnel, youtubeVideos }: {
           sub={<span className="text-gray-500 text-[10px]">平均: ¥{closedCustomers.length > 0 ? Math.round(totalRevenue / closedCustomers.length).toLocaleString() : 0}/件</span>} />
         <KpiCard title="LTV合計（見込含む）" value={`¥${Math.round(totalLTV).toLocaleString()}`}
           sub={<span className="text-gray-500 text-[10px]">確定+人材+補助金</span>} />
-        <KpiCard title="既卒/新卒" value={`${closedCustomers.filter(c => c.attribute === "既卒").length} / ${closedCustomers.filter(c => c.attribute === "新卒").length}`}
+        <KpiCard title="既卒系/新卒系" value={`${closedCustomers.filter(c => isKisotsu(c.attribute)).length} / ${closedCustomers.filter(c => !isKisotsu(c.attribute)).length}`}
           sub={<span className="text-gray-500 text-[10px]">属性別内訳</span>} />
       </div>
 
@@ -496,11 +507,7 @@ function YouTubeClosedCustomersTab({ youtubeFunnel, youtubeVideos }: {
                     <td className="py-2.5 px-4 text-white font-medium whitespace-nowrap">{c.name}</td>
                     <td className="py-2.5 px-3 text-gray-400 whitespace-nowrap">{c.application_date || "—"}</td>
                     <td className="py-2.5 px-3">
-                      <span className={`px-1.5 py-0.5 rounded text-[10px] ${
-                        c.attribute === "既卒" ? "bg-blue-500/20 text-blue-300"
-                          : c.attribute === "新卒" ? "bg-orange-500/20 text-orange-300"
-                          : "bg-gray-500/20 text-gray-300"
-                      }`}>
+                      <span className={`px-1.5 py-0.5 rounded text-[10px] ${attributeBadgeColor(c.attribute)}`}>
                         {c.attribute || "—"}
                       </span>
                     </td>

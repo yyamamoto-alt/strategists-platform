@@ -297,6 +297,8 @@ export async function fetchAdsFunnelData(): Promise<AdsFunnelCustomer[]> {
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const r = (obj: any) => Array.isArray(obj) ? obj[0] : obj;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return (data || []).map((row: any) => ({
     id: row.id,
     name: row.name,
@@ -305,8 +307,8 @@ export async function fetchAdsFunnelData(): Promise<AdsFunnelCustomer[]> {
     utm_source: row.utm_source,
     utm_medium: row.utm_medium,
     utm_campaign: row.utm_campaign,
-    stage: row.sales_pipeline?.stage ?? null,
-    confirmed_amount: row.contracts?.confirmed_amount ?? 0,
+    stage: r(row.sales_pipeline)?.stage ?? null,
+    confirmed_amount: r(row.contracts)?.confirmed_amount ?? 0,
   }));
 }
 
@@ -427,24 +429,31 @@ export async function fetchYouTubeFunnelData(): Promise<YouTubeFunnelCustomer[]>
   const results: YouTubeFunnelCustomer[] = [];
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const mapRow = (row: any, sourceType: "utm" | "application_reason" | "initial_channel"): YouTubeFunnelCustomer => ({
-    id: row.id,
-    name: row.name,
-    application_date: row.application_date,
-    attribute: row.attribute,
-    utm_source: row.utm_source,
-    utm_medium: row.utm_medium,
-    utm_campaign: row.utm_campaign,
-    application_reason: row.application_reason ?? null,
-    initial_channel: row.sales_pipeline?.initial_channel ?? null,
-    stage: row.sales_pipeline?.stage ?? null,
-    confirmed_amount: row.contracts?.confirmed_amount ?? 0,
-    contract_total: row.contracts?.contract_total ?? 0,
-    plan_name: row.contracts?.plan_name ?? null,
-    subsidy_amount: row.contracts?.subsidy_amount ?? 0,
-    expected_referral_fee: row.agent_records?.expected_referral_fee ?? 0,
-    source_type: sourceType,
-  });
+  const rel = (obj: any) => Array.isArray(obj) ? obj[0] : obj;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mapRow = (row: any, sourceType: "utm" | "application_reason" | "initial_channel"): YouTubeFunnelCustomer => {
+    const sp = rel(row.sales_pipeline);
+    const ct = rel(row.contracts);
+    const ar = rel(row.agent_records);
+    return {
+      id: row.id,
+      name: row.name,
+      application_date: row.application_date,
+      attribute: row.attribute,
+      utm_source: row.utm_source,
+      utm_medium: row.utm_medium,
+      utm_campaign: row.utm_campaign,
+      application_reason: row.application_reason ?? null,
+      initial_channel: sp?.initial_channel ?? null,
+      stage: sp?.stage ?? null,
+      confirmed_amount: ct?.confirmed_amount ?? 0,
+      contract_total: ct?.contract_total ?? 0,
+      plan_name: ct?.plan_name ?? null,
+      subsidy_amount: ct?.subsidy_amount ?? 0,
+      expected_referral_fee: ar?.expected_referral_fee ?? 0,
+      source_type: sourceType,
+    };
+  };
 
   // 1. UTM経由 (utm_source に youtube/yt/lp3 を含む)
   const { data: utmData } = await supabase()

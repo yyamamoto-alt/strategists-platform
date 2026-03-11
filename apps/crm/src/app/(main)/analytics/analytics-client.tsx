@@ -1478,6 +1478,11 @@ function GranularitySelector({ granularity, setGranularity }: { granularity: Ads
    GOOGLE ADS FUNNEL ANALYSIS (CRM自社データ)
    ═══════════════════════════════════════════ */
 
+function isKisotsu(attr: string | null): boolean {
+  if (!attr) return false;
+  return attr.includes("既卒") || attr.includes("中途");
+}
+
 const FUNNEL_NOT_CONDUCTED = new Set(["日程未確", "未実施", "実施不可", "キャンセル", "NoShow"]);
 function funnelIsClosed(stage: string | null): boolean {
   if (!stage) return false;
@@ -1502,8 +1507,8 @@ function AdsFunnelTab({ adsFunnel }: { adsFunnel: AdsFunnelCustomer[] }) {
   const kpis = useMemo(() => {
     const count = closedCustomers.length;
     const revenue = closedCustomers.reduce((s, c) => s + c.confirmed_amount, 0);
-    const kisotsu = closedCustomers.filter(c => c.attribute === "既卒").length;
-    const shinsotsu = closedCustomers.filter(c => c.attribute === "新卒").length;
+    const kisotsu = closedCustomers.filter(c => isKisotsu(c.attribute)).length;
+    const shinsotsu = count - kisotsu;
     return { count, revenue, kisotsu, shinsotsu };
   }, [closedCustomers]);
 
@@ -1521,8 +1526,8 @@ function AdsFunnelTab({ adsFunnel }: { adsFunnel: AdsFunnelCustomer[] }) {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <KpiCard title="成約顧客数" value={String(kpis.count)} sub={<span className="text-gray-500 text-[10px]">広告経由</span>} />
         <KpiCard title="確定売上合計" value={`¥${Math.round(kpis.revenue).toLocaleString()}`} sub={<span className="text-gray-500 text-[10px]">{kpis.count > 0 ? `平均: ¥${Math.round(kpis.revenue / kpis.count).toLocaleString()}` : "—"}</span>} />
-        <KpiCard title="既卒" value={String(kpis.kisotsu)} sub={<span className="text-gray-500 text-[10px]">{kpis.count > 0 ? `${((kpis.kisotsu / kpis.count) * 100).toFixed(0)}%` : "—"}</span>} />
-        <KpiCard title="新卒" value={String(kpis.shinsotsu)} sub={<span className="text-gray-500 text-[10px]">{kpis.count > 0 ? `${((kpis.shinsotsu / kpis.count) * 100).toFixed(0)}%` : "—"}</span>} />
+        <KpiCard title="既卒系" value={String(kpis.kisotsu)} sub={<span className="text-gray-500 text-[10px]">{kpis.count > 0 ? `${((kpis.kisotsu / kpis.count) * 100).toFixed(0)}%` : "—"}</span>} />
+        <KpiCard title="新卒系" value={String(kpis.shinsotsu)} sub={<span className="text-gray-500 text-[10px]">{kpis.count > 0 ? `${((kpis.shinsotsu / kpis.count) * 100).toFixed(0)}%` : "—"}</span>} />
       </div>
 
       {/* Customer List Table */}
@@ -1550,7 +1555,7 @@ function AdsFunnelTab({ adsFunnel }: { adsFunnel: AdsFunnelCustomer[] }) {
                   <td className="py-2.5 px-4 text-white font-medium">{c.name}</td>
                   <td className="py-2.5 px-3 text-gray-400">{c.application_date || "—"}</td>
                   <td className="py-2.5 px-3">
-                    <span className={`px-1.5 py-0.5 rounded text-[10px] ${c.attribute === "既卒" ? "bg-blue-500/20 text-blue-300" : "bg-purple-500/20 text-purple-300"}`}>
+                    <span className={`px-1.5 py-0.5 rounded text-[10px] ${isKisotsu(c.attribute) ? "bg-blue-500/20 text-blue-300" : "bg-orange-500/20 text-orange-300"}`}>
                       {c.attribute || "—"}
                     </span>
                   </td>
