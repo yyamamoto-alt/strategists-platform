@@ -13,10 +13,15 @@ import type {
   AdsCampaignDaily,
   AdsKeywordDaily,
   AdsFunnelCustomer,
+  YouTubeVideo,
+  YouTubeDaily,
+  YouTubeChannelDaily,
+  YouTubeFunnelCustomer,
 } from "@/lib/data/analytics";
+import { YouTubeTab } from "./youtube-tab";
 
 /* ───────── Types ───────── */
-type MainTab = "seo" | "lp" | "ads";
+type MainTab = "seo" | "lp" | "ads" | "youtube";
 type SeoSub = "pages" | "ctr" | "cannibalization" | "decay" | "keywords" | "hourly";
 type Period = "week" | "month";
 type Metric = "pageviews" | "sessions" | "users";
@@ -44,6 +49,10 @@ interface Props {
   adsCampaigns: AdsCampaignDaily[];
   adsKeywords: AdsKeywordDaily[];
   adsFunnel: AdsFunnelCustomer[];
+  youtubeVideos: YouTubeVideo[];
+  youtubeDaily: YouTubeDaily[];
+  youtubeChannelDaily: YouTubeChannelDaily[];
+  youtubeFunnel: YouTubeFunnelCustomer[];
 }
 
 function classifyLabel(segment: string): string {
@@ -1575,7 +1584,7 @@ const SEO_SUBS: { key: SeoSub; label: string }[] = [
   { key: "hourly", label: "時間帯分析" },
 ];
 
-export function AnalyticsClient({ pageDailyRows, traffic, searchQueries, searchDailyRows, hourlyRows, adsCampaigns, adsKeywords, adsFunnel }: Props) {
+export function AnalyticsClient({ pageDailyRows, traffic, searchQueries, searchDailyRows, hourlyRows, adsCampaigns, adsKeywords, adsFunnel, youtubeVideos, youtubeDaily, youtubeChannelDaily, youtubeFunnel }: Props) {
   const [mainTab, setMainTab] = useState<MainTab>("seo");
   const [seoSub, setSeoSub] = useState<SeoSub>("pages");
   const [lpTab, setLpTab] = useState<"main" | "lp3">("main");
@@ -1584,13 +1593,14 @@ export function AnalyticsClient({ pageDailyRows, traffic, searchQueries, searchD
     <div className="p-6 space-y-4">
       <div>
         <h1 className="text-2xl font-bold text-white">マーケティング分析</h1>
-        <p className="text-sm text-gray-500 mt-1">GA4 + Search Console + Google Ads</p>
+        <p className="text-sm text-gray-500 mt-1">GA4 + Search Console + Google Ads + YouTube</p>
       </div>
 
       <div className="flex gap-1 border-b border-white/10">
         <TabButton label="SEO分析" active={mainTab === "seo"} onClick={() => setMainTab("seo")} />
         <TabButton label="LP分析" active={mainTab === "lp"} onClick={() => setMainTab("lp")} />
         <TabButton label="広告分析" active={mainTab === "ads"} onClick={() => setMainTab("ads")} />
+        <TabButton label="YouTube分析" active={mainTab === "youtube"} onClick={() => setMainTab("youtube")} />
       </div>
 
       {mainTab === "seo" && (
@@ -1622,6 +1632,10 @@ export function AnalyticsClient({ pageDailyRows, traffic, searchQueries, searchD
 
       {mainTab === "ads" && (
         <AdsTab adsCampaigns={adsCampaigns} adsKeywords={adsKeywords} adsFunnel={adsFunnel} />
+      )}
+
+      {mainTab === "youtube" && (
+        <YouTubeTab youtubeVideos={youtubeVideos} youtubeDaily={youtubeDaily} youtubeChannelDaily={youtubeChannelDaily} youtubeFunnel={youtubeFunnel} />
       )}
     </div>
   );

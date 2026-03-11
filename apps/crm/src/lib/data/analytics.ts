@@ -290,3 +290,132 @@ export async function fetchAdsFunnelData(): Promise<AdsFunnelCustomer[]> {
 }
 
 export { adsFunnelIsClosed, adsFunnelIsConducted, adsFunnelIsScheduled };
+
+/* ───── YouTube Analytics ───── */
+
+export interface YouTubeVideo {
+  video_id: string;
+  title: string;
+  published_at: string;
+  thumbnail_url: string | null;
+  duration_seconds: number;
+  total_views: number;
+  total_likes: number;
+  total_comments: number;
+}
+
+export interface YouTubeDaily {
+  date: string;
+  video_id: string;
+  views: number;
+  estimated_minutes_watched: number;
+  average_view_duration_seconds: number;
+  average_view_percentage: number;
+  likes: number;
+  comments: number;
+  shares: number;
+  subscribers_gained: number;
+  subscribers_lost: number;
+  impressions: number;
+  impressions_ctr: number;
+}
+
+export interface YouTubeChannelDaily {
+  date: string;
+  total_views: number;
+  estimated_minutes_watched: number;
+  subscribers_gained: number;
+  subscribers_lost: number;
+  total_subscribers: number;
+}
+
+export interface YouTubeFunnelCustomer {
+  id: string;
+  name: string;
+  application_date: string | null;
+  attribute: string | null;
+  utm_source: string | null;
+  utm_medium: string | null;
+  utm_campaign: string | null;
+  stage: string | null;
+  confirmed_amount: number;
+}
+
+/** YouTube動画マスタ一覧 */
+export async function fetchYouTubeVideos(): Promise<YouTubeVideo[]> {
+  const { data, error } = await supabase()
+    .from("analytics_youtube_videos")
+    .select("video_id,title,published_at,thumbnail_url,duration_seconds,total_views,total_likes,total_comments")
+    .eq("is_active", true)
+    .order("published_at", { ascending: false });
+
+  if (error) {
+    console.error("YouTube videos fetch error:", error.message);
+    return [];
+  }
+  return data || [];
+}
+
+/** YouTube動画別日別KPI */
+export async function fetchYouTubeDaily(days: number = 90): Promise<YouTubeDaily[]> {
+  const { from, to } = dateRange(days);
+
+  const { data, error } = await supabase()
+    .from("analytics_youtube_daily")
+    .select("date,video_id,views,estimated_minutes_watched,average_view_duration_seconds,average_view_percentage,likes,comments,shares,subscribers_gained,subscribers_lost,impressions,impressions_ctr")
+    .gte("date", from)
+    .lte("date", to)
+    .order("date", { ascending: true });
+
+  if (error) {
+    console.error("YouTube daily fetch error:", error.message);
+    return [];
+  }
+  return data || [];
+}
+
+/** YouTubeチャンネル日別KPI */
+export async function fetchYouTubeChannelDaily(days: number = 90): Promise<YouTubeChannelDaily[]> {
+  const { from, to } = dateRange(days);
+
+  const { data, error } = await supabase()
+    .from("analytics_youtube_channel_daily")
+    .select("date,total_views,estimated_minutes_watched,subscribers_gained,subscribers_lost,total_subscribers")
+    .gte("date", from)
+    .lte("date", to)
+    .order("date", { ascending: true });
+
+  if (error) {
+    console.error("YouTube channel daily fetch error:", error.message);
+    return [];
+  }
+  return data || [];
+}
+
+/** YouTube UTM経由の顧客ファネル */
+export async function fetchYouTubeFunnelData(): Promise<YouTubeFunnelCustomer[]> {
+  // YouTube経由 = utm_source が youtube系 or initial_channel = 'Youtube'
+  const { data, error } = await supabase()
+    .from("customers")
+    .select("id,name,application_date,attribute,utm_source,utm_medium,utm_campaign,sales_pipeline(stage),contracts(confirmed_amount)")
+    .or("utm_source.ilike.%youtube%,utm_source.eq.lp3")
+    .order("application_date", { ascending: false });
+
+  if (error) {
+    console.error("YouTube funnel fetch error:", error.message);
+    return [];
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (data || []).map((row: any) => ({
+    id: row.id,
+    name: row.name,
+    application_date: row.application_date,
+    attribute: row.attribute,
+    utm_source: row.utm_source,
+    utm_medium: row.utm_medium,
+    utm_campaign: row.utm_campaign,
+    stage: row.sales_pipeline?.stage ?? null,
+    confirmed_amount: row.contracts?.confirmed_amount ?? 0,
+  }));
+}
