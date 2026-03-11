@@ -2,7 +2,7 @@ import "server-only";
 
 import { google } from "googleapis";
 
-function getAuth() {
+function getAuth(readonly = true) {
   const credentialsJson = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
   if (!credentialsJson) {
     throw new Error("Missing GOOGLE_SERVICE_ACCOUNT_JSON environment variable");
@@ -11,7 +11,12 @@ function getAuth() {
   const credentials = JSON.parse(credentialsJson);
   return new google.auth.GoogleAuth({
     credentials,
-    scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"],
+    scopes: readonly
+      ? ["https://www.googleapis.com/auth/spreadsheets.readonly"]
+      : [
+          "https://www.googleapis.com/auth/spreadsheets",
+          "https://www.googleapis.com/auth/drive",
+        ],
   });
 }
 
@@ -191,4 +196,125 @@ export async function fetchColumnDataStatus(
   }
 
   return { headers, activeColumns };
+}
+
+// ================================================================
+// プログレスシート自動作成（Zapier移管）
+// ================================================================
+
+const PROGRESS_SHEET_TEMPLATE_ID = "1Xs0dNiMdN6teIMnlmNsMuBEXitrbFiPkD5h3I_Dlr6A";
+
+/**
+ * ProgressSheetテンプレートをコピーし、カルテ情報を書き込む
+ * Zapier「カルテ記入→Progress Sheet作成」の移植
+ */
+export async function createProgressSheet(data: {
+  name: string;
+  email: string;
+  nameKana?: string;
+  attribute?: string;
+  birthDate?: string;
+  careerHistory?: string;
+  caseStatus?: string;
+  targetCompanies?: string;
+  transferIntent?: string;
+  university?: string;
+  prefecture?: string;
+  gender?: string;
+  utmSource?: string;
+  enrollmentReason?: string;
+  interviewTiming?: string;
+  desiredStartDate?: string;
+  currentAgent?: string;
+  planName?: string;
+  agentUsage?: string;
+}): Promise<{ url: string; spreadsheetId: string } | null> {
+  try {
+    const auth = getAuth(false); // read-write scope
+
+    // 1. テンプレートをコピー
+    const drive = google.drive({ version: "v3", auth });
+    const title = `ProgressSheet_${data.name}_${data.email}`;
+
+    const copyRes = await drive.files.copy({
+      fileId: PROGRESS_SHEET_TEMPLATE_ID,
+      requestBody: { name: title },
+    });
+
+    const newId = copyRes.data.id;
+    if (!newId) return null;
+
+    // 2. 「カルテ入力情報参照用」シートにカルテ情報を書き込み（行2）
+    const sheets = google.sheets({ version: "v4", auth });
+
+    const age = data.birthDate ? calculateAge(data.birthDate) : null;
+    const ageStr = age !== null ? `${age}歳` : "";
+
+    // Zapierのマッピングに基づいてカラムに書き込み
+    const values = [
+      data.name || "",                                           // A: お名前
+      data.nameKana || "",                                       // B: フリガナ
+      data.email || "",                                          // C: メールアドレス
+      `${data.attribute || ""}${data.birthDate ? `/誕生日：${data.birthDate}` : ""}`, // D: 属性/誕生日
+      data.careerHistory || "",                                  // E: 経歴詳細
+      data.caseStatus || "",                                     // F: ケース面接対策の状況
+      data.university || "",                                     // G: 大学
+      data.prefecture || "",                                     // H: 居住地
+      data.gender || "",                                         // I: 性別
+      `知ったきっかけ：${data.utmSource || ""}\n決めて：${data.enrollmentReason || ""}`, // J
+      "",                                                        // K
+      `${data.targetCompanies || ""}、${data.transferIntent || ""}`, // L: 志望企業,転職意向
+      data.interviewTiming || "",                                // M: 面接予定時期
+      "",                                                        // N
+      "",                                                        // O
+      `入社希望日： ${data.desiredStartDate || ""}`,              // P
+      "",                                                        // Q
+      `${data.planName || ""}/エージェント割：${data.agentUsage || ""}`, // R
+    ];
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: newId,
+      range: "'カルテ入力情報参照用'!A2:R2",
+      valueInputOption: "RAW",
+      requestBody: { values: [values] },
+    });
+
+    // 3. サービスアカウントにはアクセス権があるので、リンク共有を設定
+    await drive.permissions.create({
+      fileId: newId,
+      requestBody: {
+        role: "writer",
+        type: "anyone",
+      },
+    });
+
+    const url = `https://docs.google.com/spreadsheets/d/${newId}/edit`;
+    return { url, spreadsheetId: newId };
+  } catch (e) {
+    console.error("[createProgressSheet] Failed:", e);
+    return null;
+  }
+}
+
+/** 生年月日から年齢を計算 */
+export function calculateAge(birthDateStr: string): number | null {
+  try {
+    // "2000/01/15", "2000-01-15", "2000年1月15日" 等に対応
+    const normalized = birthDateStr
+      .replace(/年|月/g, "/")
+      .replace(/日/g, "")
+      .trim();
+    const birth = new Date(normalized);
+    if (isNaN(birth.getTime())) return null;
+
+    const today = new Date();
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+      age--;
+    }
+    return age;
+  } catch {
+    return null;
+  }
 }

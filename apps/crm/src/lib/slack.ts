@@ -368,6 +368,69 @@ export async function notifyNotePurchase(data: {
   }
 }
 
+/** カルテ記入通知（Zapier移管: #biz-dev — 名前/年齢/経歴/志望/プログレスシートURL） */
+export async function notifyKarteSubmission(data: {
+  name: string;
+  attribute?: string;
+  age?: number | null;
+  xAccount?: string;
+  careerHistory?: string;
+  targetCompanies?: string;
+  caseStatus?: string;
+  interviewLevel?: string;
+  transferIntent?: string;
+  desiredStartDate?: string;
+  utmSource?: string;
+  progressSheetUrl?: string;
+  customerId?: string;
+}) {
+  const channel = await getNotifyConfig("karte_submission", "C07QXD9N524"); // #biz-dev
+  if (!channel) return;
+
+  const lines = [
+    `*名前：* ${data.name}/${data.attribute || ""}`,
+    data.age != null ? `*年齢：* ${data.age}歳` : "",
+    data.xAccount ? `*Xアカウント:* https://x.com/${data.xAccount}` : "",
+    data.careerHistory ? `*ご経歴：* ${data.careerHistory.substring(0, 200)}` : "",
+    data.targetCompanies ? `*志望ファーム：* ${data.targetCompanies}` : "",
+    data.caseStatus ? `*ケース面接対策の状況：* ${data.caseStatus}${data.interviewLevel ? `/${data.interviewLevel}` : ""}` : "",
+    data.transferIntent ? `*意向:* ${data.transferIntent}` : "",
+    data.desiredStartDate ? `*入社希望日:* ${data.desiredStartDate}` : "",
+    data.utmSource ? `*知ったきっかけ:* ${data.utmSource}` : "",
+    data.progressSheetUrl ? `*Progress Sheet:* ${data.progressSheetUrl}` : "",
+    data.customerId ? `https://strategists-crm.vercel.app/customers/${data.customerId}` : "",
+  ].filter(Boolean);
+
+  await sendSlackMessage(channel, lines.join("\n"), {
+    username: "新規顧客情報",
+  });
+}
+
+/** YouTube経由申込通知（Zapier移管: #youtube） */
+export async function notifyYouTubeReferral(data: {
+  name: string;
+  attribute?: string;
+  careerHistory?: string;
+  prefecture?: string;
+  originalMessageUrl?: string;
+  customerId?: string;
+}) {
+  const channel = await getNotifyConfig("youtube_report", "C07RL2EBPGB"); // #youtube
+  if (!channel) return;
+
+  const lines = [
+    `*youtube経由の申し込みが入りました*`,
+    `${data.name}${data.attribute ? `/${data.attribute}` : ""}`,
+    data.careerHistory ? data.careerHistory.substring(0, 150) : "",
+    data.prefecture || "",
+    data.customerId ? `https://strategists-crm.vercel.app/customers/${data.customerId}` : "",
+  ].filter(Boolean);
+
+  await sendSlackMessage(channel, lines.join("\n"), {
+    username: "お祝いbot",
+  });
+}
+
 /** 営業リマインド通知 */
 export async function notifySalesReminder(text: string) {
   const channel = await getNotifyConfig("sales_reminder", DEFAULT_CHANNELS.payment_success);
