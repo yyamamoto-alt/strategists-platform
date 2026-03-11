@@ -345,13 +345,22 @@ function YouTubeOverview({ youtubeVideos, youtubeDaily, channelDaily }: {
   );
 }
 
-/* ─── Video Table with Weekly Heatmap ─── */
+/* ─── Video Table — Monthly Heatmap (like the spreadsheet) ─── */
+
+function greenHeatmap(value: number, max: number): string {
+  if (max === 0 || value === 0) return "";
+  const r = value / max;
+  if (r > 0.6) return "bg-emerald-500/40";
+  if (r > 0.4) return "bg-emerald-500/30";
+  if (r > 0.2) return "bg-emerald-500/20";
+  if (r > 0.05) return "bg-emerald-500/10";
+  return "bg-emerald-500/5";
+}
+
 function YouTubeVideoTable({ youtubeVideos, youtubeDaily }: {
   youtubeVideos: YouTubeVideo[];
   youtubeDaily: YouTubeDaily[];
 }) {
-  const [period, setPeriod] = useState<"week" | "month" | "3months">("month");
-  const [sortBy, setSortBy] = useState<"views" | "minutes" | "avgPct" | "likes">("views");
   const [includeShorts, setIncludeShorts] = useState(false);
 
   const filteredVideos = useMemo(() =>
@@ -360,140 +369,115 @@ function YouTubeVideoTable({ youtubeVideos, youtubeDaily }: {
 
   const filteredVideoIds = useMemo(() => new Set(filteredVideos.map(v => v.video_id)), [filteredVideos]);
 
-  const { videoStats, weekKeys } = useMemo(() => {
-    const now = new Date();
-    const cutoff = new Date(now);
-    if (period === "week") cutoff.setDate(cutoff.getDate() - 7);
-    else if (period === "month") cutoff.setDate(cutoff.getDate() - 30);
-    else cutoff.setDate(cutoff.getDate() - 90);
-    const cutoffStr = cutoff.toISOString().slice(0, 10);
-
-    const filtered = youtubeDaily.filter(r => r.date >= cutoffStr && filteredVideoIds.has(r.video_id));
-
-    const statsMap = new Map<string, { views: number; minutes: number; avgPct: number; avgCount: number; likes: number; comments: number; shares: number; prevViews: number }>();
-    const weekMap = new Map<string, Map<string, number>>();
-    const allWeeks = new Set<string>();
-
-    const periodDays = period === "week" ? 7 : period === "month" ? 30 : 90;
-    const prevCutoff = new Date(cutoff);
-    prevCutoff.setDate(prevCutoff.getDate() - periodDays);
-    const prevCutoffStr = prevCutoff.toISOString().slice(0, 10);
+  // 全期間の月別再生回数ヒートマップ
+  const { videoRows, monthKeys, maxMonthViews } = useMemo(() => {
+    // 月別再生回数を集計
+    const monthMap = new Map<string, Map<string, number>>(); // videoId -> month -> views
+    const allMonths = new Set<string>();
 
     for (const r of youtubeDaily) {
       if (!filteredVideoIds.has(r.video_id)) continue;
-      if (r.date >= cutoffStr) {
-        const s = statsMap.get(r.video_id) || { views: 0, minutes: 0, avgPct: 0, avgCount: 0, likes: 0, comments: 0, shares: 0, prevViews: 0 };
-        s.views += r.views; s.minutes += r.estimated_minutes_watched;
-        if (r.average_view_percentage > 0) { s.avgPct += r.average_view_percentage; s.avgCount++; }
-        s.likes += r.likes; s.comments += r.comments; s.shares += r.shares;
-        statsMap.set(r.video_id, s);
-
-        const wk = getWeekKey(r.date);
-        allWeeks.add(wk);
-        if (!weekMap.has(r.video_id)) weekMap.set(r.video_id, new Map());
-        const wm = weekMap.get(r.video_id)!;
-        wm.set(wk, (wm.get(wk) || 0) + r.views);
-      } else if (r.date >= prevCutoffStr && r.date < cutoffStr) {
-        const s = statsMap.get(r.video_id) || { views: 0, minutes: 0, avgPct: 0, avgCount: 0, likes: 0, comments: 0, shares: 0, prevViews: 0 };
-        s.prevViews += r.views;
-        statsMap.set(r.video_id, s);
-      }
+      const month = r.date.slice(0, 7);
+      allMonths.add(month);
+      if (!monthMap.has(r.video_id)) monthMap.set(r.video_id, new Map());
+      const vm = monthMap.get(r.video_id)!;
+      vm.set(month, (vm.get(month) || 0) + r.views);
     }
 
+    const mKeys = Array.from(allMonths).sort();
+
+    // 総再生回数でソートした動画一覧
     const videoMeta = new Map(filteredVideos.map(v => [v.video_id, v]));
-    const videoStats = Array.from(statsMap.entries())
-      .map(([vid, s]) => ({
-        video_id: vid,
-        meta: videoMeta.get(vid),
-        views: s.views,
-        minutes: s.minutes,
-        avgPct: s.avgCount > 0 ? s.avgPct / s.avgCount : 0,
-        likes: s.likes,
-        comments: s.comments,
-        shares: s.shares,
-        prevViews: s.prevViews,
-        weeks: weekMap.get(vid) || new Map(),
-      }))
-      .filter(v => v.meta)
-      .sort((a, b) => b[sortBy] - a[sortBy]);
+    const rows = filteredVideos
+      .map(v => {
+        const months = monthMap.get(v.video_id) || new Map<string, number>();
+        const totalFromDaily = Array.from(months.values()).reduce((s, x) => s + x, 0);
+        return {
+          video: v,
+          totalViews: v.total_views || totalFromDaily,
+          months,
+        };
+      })
+      .sort((a, b) => b.totalViews - a.totalViews);
 
-    return { videoStats, weekKeys: Array.from(allWeeks).sort() };
-  }, [youtubeDaily, filteredVideos, filteredVideoIds, period, sortBy]);
+    // ヒートマップの最大値
+    let maxV = 0;
+    for (const r of rows) for (const v of r.months.values()) if (v > maxV) maxV = v;
 
-  const maxWeekViews = Math.max(...videoStats.flatMap(v => Array.from(v.weeks.values())), 1);
+    return { videoRows: rows, monthKeys: mKeys, maxMonthViews: maxV };
+  }, [youtubeDaily, filteredVideos, filteredVideoIds]);
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-2">
+      <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="flex gap-1 bg-white/5 rounded-lg p-0.5">
-            {(["views", "minutes", "avgPct", "likes"] as const).map(s => (
-              <button key={s} onClick={() => setSortBy(s)}
-                className={`px-2 py-1 text-[10px] rounded-md transition-colors ${sortBy === s ? "bg-brand text-white" : "text-gray-400 hover:text-white"}`}>
-                {s === "views" ? "視聴数順" : s === "minutes" ? "時間順" : s === "avgPct" ? "視聴率順" : "いいね順"}
-              </button>
-            ))}
-          </div>
+          <p className="text-xs text-gray-500">{videoRows.length} 動画 / 月別再生回数</p>
           <label className="flex items-center gap-1.5 cursor-pointer">
             <input type="checkbox" checked={includeShorts} onChange={e => setIncludeShorts(e.target.checked)}
               className="w-3.5 h-3.5 rounded border-white/20 bg-white/5 text-brand focus:ring-brand/50" />
             <span className="text-[10px] text-gray-400">ショートを含む</span>
           </label>
         </div>
-        <div className="flex gap-1 bg-white/5 rounded-lg p-0.5">
-          {([["week", "1週間"], ["month", "1ヶ月"], ["3months", "3ヶ月"]] as const).map(([v, label]) => (
-            <button key={v} onClick={() => setPeriod(v)}
-              className={`px-3 py-1 text-xs rounded-md transition-colors ${period === v ? "bg-brand text-white" : "text-gray-400 hover:text-white"}`}>{label}</button>
+        <div className="flex items-center gap-2 text-[10px] text-gray-500">
+          <span>少ない</span>
+          {["bg-emerald-500/5", "bg-emerald-500/10", "bg-emerald-500/20", "bg-emerald-500/30", "bg-emerald-500/40"].map((c, i) => (
+            <span key={i} className={`w-4 h-4 rounded ${c}`} />
           ))}
+          <span>多い</span>
         </div>
       </div>
 
       <div className="bg-surface-raised border border-white/10 rounded-xl overflow-hidden">
-        <div className="overflow-x-auto max-h-[700px] overflow-y-auto">
+        <div className="overflow-x-auto max-h-[800px] overflow-y-auto">
           <table className="w-full text-xs">
             <thead className="sticky top-0 bg-surface-raised z-10">
               <tr className="border-b border-white/10 text-gray-400">
-                <th className="text-left py-2.5 px-3 min-w-[280px]">動画</th>
-                <th className="text-right py-2.5 px-2 w-16">視聴数</th>
-                <th className="text-right py-2.5 px-2 w-16">視聴時間</th>
-                <th className="text-right py-2.5 px-2 w-14">視聴率</th>
-                <th className="text-right py-2.5 px-2 w-12">いいね</th>
-                {weekKeys.map(wk => (
-                  <th key={wk} className="text-center py-2.5 px-1 w-14 whitespace-nowrap text-[10px]">{wk.slice(5)}</th>
+                <th className="text-center py-2.5 px-2 w-8">No.</th>
+                <th className="text-left py-2.5 px-3 min-w-[300px]">動画名</th>
+                <th className="text-right py-2.5 px-3 w-20">総再生回数</th>
+                {monthKeys.map(mk => (
+                  <th key={mk} className="text-center py-2.5 px-1 w-16 whitespace-nowrap text-[10px]">
+                    {mk.replace("-", "/")}
+                  </th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {videoStats.slice(0, 50).map(v => (
-                <tr key={v.video_id} className="border-b border-white/5 hover:bg-white/5">
+              {videoRows.slice(0, 100).map((row, idx) => (
+                <tr key={row.video.video_id} className="border-b border-white/5 hover:bg-white/5">
+                  <td className="text-center py-2 px-2 text-gray-500">{idx + 1}</td>
                   <td className="py-2 px-3">
-                    <div className="flex items-center gap-2">
-                      {v.meta?.thumbnail_url && (
-                        <img src={v.meta.thumbnail_url} alt="" className="w-12 h-7 rounded object-cover flex-shrink-0" />
+                    <div className="flex items-center gap-3">
+                      {row.video.thumbnail_url && (
+                        <img src={row.video.thumbnail_url} alt="" className="w-20 h-11 rounded object-cover flex-shrink-0" />
                       )}
-                      <div className="min-w-0">
-                        <span className="text-white font-medium truncate max-w-[200px] block">{v.meta?.title || v.video_id}</span>
-                        {v.meta && isShort(v.meta) && <span className="text-[10px] px-1 py-0.5 rounded bg-yellow-500/20 text-yellow-300">Short</span>}
+                      <div className="min-w-0 flex-1">
+                        <a href={`https://www.youtube.com/watch?v=${row.video.video_id}`} target="_blank" rel="noopener noreferrer"
+                          className="text-white font-medium hover:text-brand transition-colors line-clamp-2 text-xs leading-tight">
+                          {row.video.title}
+                        </a>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          {isShort(row.video) && <span className="text-[9px] px-1 py-0.5 rounded bg-yellow-500/20 text-yellow-300">Short</span>}
+                          <span className="text-[10px] text-gray-600">{formatDuration(row.video.duration_seconds)}</span>
+                          <span className="text-[10px] text-gray-600">{row.video.published_at.slice(0, 10)}</span>
+                        </div>
                       </div>
                     </div>
                   </td>
-                  <td className="text-right py-2 px-2 text-white font-medium">{v.views.toLocaleString()}</td>
-                  <td className="text-right py-2 px-2 text-gray-300">{v.minutes.toFixed(0)}m</td>
-                  <td className="text-right py-2 px-2 text-gray-300">{v.avgPct.toFixed(1)}%</td>
-                  <td className="text-right py-2 px-2 text-gray-300">{v.likes}</td>
-                  {weekKeys.map(wk => {
-                    const wViews = v.weeks.get(wk) || 0;
-                    const intensity = wViews / maxWeekViews;
-                    const bg = intensity > 0.5 ? "bg-red-500/30" : intensity > 0.2 ? "bg-red-500/15" : intensity > 0 ? "bg-red-500/5" : "";
+                  <td className="text-right py-2 px-3 text-white font-bold text-sm">{row.totalViews.toLocaleString()}</td>
+                  {monthKeys.map(mk => {
+                    const val = row.months.get(mk) || 0;
                     return (
-                      <td key={wk} className={`text-center py-2 px-1 ${bg}`} title={`${wViews} views`}>
-                        <span className="text-white/70 text-[10px]">{wViews > 0 ? wViews : "—"}</span>
+                      <td key={mk} className={`text-center py-2 px-1 ${greenHeatmap(val, maxMonthViews)}`}>
+                        <span className={val > 0 ? "text-white/80 text-[10px]" : "text-gray-700 text-[10px]"}>
+                          {val > 0 ? val.toLocaleString() : ""}
+                        </span>
                       </td>
                     );
                   })}
                 </tr>
               ))}
-              {videoStats.length === 0 && <tr><td colSpan={5 + weekKeys.length} className="py-8 text-center text-gray-500">データなし</td></tr>}
+              {videoRows.length === 0 && <tr><td colSpan={3 + monthKeys.length} className="py-8 text-center text-gray-500">データなし</td></tr>}
             </tbody>
           </table>
         </div>
