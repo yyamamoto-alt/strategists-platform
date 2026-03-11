@@ -15,7 +15,7 @@ const DEFAULTS = {
   mid_threshold: 3,
   far_threshold: 3,
   evening_threshold: 6,
-  target_events: "",
+  target_events: "【中途】転職相談/ケース指導体験,【新卒】無料初回メンタリング_28卒",
   target_event_uids: "o072r8CvwVF4,_zDLK66WrbIT",
 };
 
@@ -69,7 +69,7 @@ async function loadSettings() {
       .split(",")
       .map((s) => s.trim())
       .filter(Boolean),
-    targetEventNames: (map["jicoo_availability_target_events"] || "")
+    targetEventNames: (map["jicoo_availability_target_events"] || DEFAULTS.target_events)
       .split(",")
       .map((s) => s.trim())
       .filter(Boolean),
@@ -196,7 +196,7 @@ export async function GET(request: Request) {
 
   // app_settingsから設定を読み込み
   const config = await loadSettings();
-  const headers = { Authorization: `Bearer ${JICOO_API_KEY}` };
+  const headers = { "X-Jicoo-Api-Key": JICOO_API_KEY };
 
   try {
     // 1. 対象イベントタイプを設定から取得（UIDベースで直接利用）
