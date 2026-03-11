@@ -544,6 +544,13 @@ export async function notifySubsidyEnrollment(data: {
   }
 }
 
+/** Googleカレンダー予定通知 → #予定通知 */
+export async function notifyCalendarEvent(text: string) {
+  const channel = await getNotifyConfig("calendar_notification", "C0962NEFQLA");
+  if (!channel) return;
+  await sendSlackMessage(channel, text);
+}
+
 // ================================================================
 // システム自動化 ON/OFF チェック
 // ================================================================
