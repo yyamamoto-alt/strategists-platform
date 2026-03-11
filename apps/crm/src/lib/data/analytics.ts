@@ -69,15 +69,25 @@ function dateRange(days: number): { from: string; to: string } {
 export async function fetchPageDailyRows(days: number = 90): Promise<PageDailyRow[]> {
   const { from, to } = dateRange(days);
 
-  const { data, error } = await supabase()
-    .from("analytics_page_daily")
-    .select("date,page_path,page_title,segment,pageviews,sessions,users")
-    .gte("date", from)
-    .lte("date", to)
-    .order("date", { ascending: true });
-
-  if (error) throw new Error(error.message);
-  return data || [];
+  // ~100 pages/day × 90 days = ~9000 rows; Supabase default is 1000
+  const all: PageDailyRow[] = [];
+  let offset = 0;
+  const PAGE_SIZE = 1000;
+  while (true) {
+    const { data, error } = await supabase()
+      .from("analytics_page_daily")
+      .select("date,page_path,page_title,segment,pageviews,sessions,users")
+      .gte("date", from)
+      .lte("date", to)
+      .order("date", { ascending: true })
+      .range(offset, offset + PAGE_SIZE - 1);
+    if (error) throw new Error(error.message);
+    if (!data || data.length === 0) break;
+    all.push(...data);
+    if (data.length < PAGE_SIZE) break;
+    offset += PAGE_SIZE;
+  }
+  return all;
 }
 
 /** LP流入経路（90日、日別生データ） */
@@ -89,7 +99,8 @@ export async function fetchTrafficSources(days: number = 90): Promise<TrafficDai
     .select("*")
     .gte("date", from)
     .lte("date", to)
-    .order("date", { ascending: true });
+    .order("date", { ascending: true })
+    .limit(5000);
 
   if (error) throw new Error(error.message);
   return data || [];
@@ -183,7 +194,8 @@ export async function fetchAdsCampaignDaily(days: number = 90): Promise<AdsCampa
     .select("*")
     .gte("date", from)
     .lte("date", to)
-    .order("date", { ascending: true });
+    .order("date", { ascending: true })
+    .limit(5000);
 
   if (error) {
     console.error("Ads campaign fetch error:", error.message);
@@ -201,7 +213,8 @@ export async function fetchAdsKeywordDaily(days: number = 90): Promise<AdsKeywor
     .select("*")
     .gte("date", from)
     .lte("date", to)
-    .order("date", { ascending: true });
+    .order("date", { ascending: true })
+    .limit(5000);
 
   if (error) {
     console.error("Ads keyword fetch error:", error.message);
@@ -214,19 +227,27 @@ export async function fetchAdsKeywordDaily(days: number = 90): Promise<AdsKeywor
 export async function fetchHourlyData(days: number = 90): Promise<HourlyRow[]> {
   const { from, to } = dateRange(days);
 
-  const { data, error } = await supabase()
-    .from("analytics_page_hourly")
-    .select("date,hour,segment,pageviews,sessions,users")
-    .gte("date", from)
-    .lte("date", to)
-    .order("date", { ascending: true });
-
-  if (error) {
-    // Table may not exist yet
-    console.error("Hourly data fetch error:", error.message);
-    return [];
+  const all: HourlyRow[] = [];
+  let offset = 0;
+  const PAGE_SIZE = 1000;
+  while (true) {
+    const { data, error } = await supabase()
+      .from("analytics_page_hourly")
+      .select("date,hour,segment,pageviews,sessions,users")
+      .gte("date", from)
+      .lte("date", to)
+      .order("date", { ascending: true })
+      .range(offset, offset + PAGE_SIZE - 1);
+    if (error) {
+      console.error("Hourly data fetch error:", error.message);
+      return all;
+    }
+    if (!data || data.length === 0) break;
+    all.push(...data);
+    if (data.length < PAGE_SIZE) break;
+    offset += PAGE_SIZE;
   }
-  return data || [];
+  return all;
 }
 
 /* ───── Google Ads ファネル分析（CRM自社データ） ───── */
