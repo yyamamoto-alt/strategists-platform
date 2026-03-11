@@ -800,28 +800,33 @@ function LpTrafficTrendTab({ traffic, landingPage }: { traffic: TrafficDaily[]; 
     return mv;
   }, [sources, metric]);
 
-  // KPIサマリー（全体）
-  const kpis = useMemo(() => {
-    const totals = { sessions: 0, users: 0, new_users: 0, schedule_visits: 0 };
-    for (const row of lpRows) {
-      totals.sessions += row.sessions; totals.users += row.users;
-      totals.new_users += row.new_users; totals.schedule_visits += row.schedule_visits;
-    }
-    return totals;
-  }, [lpRows]);
+  // アド系/オーガニック系の分類
+  const AD_KEYWORDS = ["cpc", "ads", "facebook", "fb", "instagram", "ig", "paid"];
+  const isAdSource = (src: AggregatedTrafficSource) => {
+    const s = (src.source || "").toLowerCase();
+    const m = (src.medium || "").toLowerCase();
+    return AD_KEYWORDS.some(kw => s.includes(kw) || m.includes(kw));
+  };
 
-  const lpLabel = landingPage === "/" ? "メインLP (/)" : "YouTube LP (/lp3/)";
+  const adSources = useMemo(() => sources.filter(isAdSource), [sources]);
+  const organicSources = useMemo(() => sources.filter(s => !isAdSource(s)), [sources]);
+
+  const adMaxVal = useMemo(() => {
+    let mv = 0;
+    for (const s of adSources) for (const prd of Object.values(s.periods)) if (prd[metric] > mv) mv = prd[metric];
+    return mv;
+  }, [adSources, metric]);
+
+  const organicMaxVal = useMemo(() => {
+    let mv = 0;
+    for (const s of organicSources) for (const prd of Object.values(s.periods)) if (prd[metric] > mv) mv = prd[metric];
+    return mv;
+  }, [organicSources, metric]);
+
+  const lpLabel = landingPage === "/" ? "メインLP (/)" : "面談申込特化LP (/lp3/)";
 
   return (
     <div className="space-y-4">
-      {/* KPI Summary */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <KpiCard title="セッション" value={kpis.sessions.toLocaleString()} sub={<span className="text-gray-500 text-[10px]">過去90日</span>} />
-        <KpiCard title="ユーザー" value={kpis.users.toLocaleString()} sub={<span className="text-gray-500 text-[10px]">過去90日</span>} />
-        <KpiCard title="新規ユーザー" value={kpis.new_users.toLocaleString()} sub={<span className="text-gray-500 text-[10px]">過去90日</span>} />
-        <KpiCard title="CV（日程予約）" value={kpis.schedule_visits.toLocaleString()} sub={<span className="text-gray-500 text-[10px]">CVR: {kpis.sessions > 0 ? `${((kpis.schedule_visits / kpis.sessions) * 100).toFixed(1)}%` : "—"}</span>} />
-      </div>
-
       {/* Heatmap Table */}
       <div className="flex items-center justify-between">
         <p className="text-xs text-gray-500">{lpLabel} 流入経路別推移 / {sources.length} ソース</p>
@@ -844,41 +849,125 @@ function LpTrafficTrendTab({ traffic, landingPage }: { traffic: TrafficDaily[]; 
           </div>
         </div>
       </div>
-      <div className="bg-surface-raised border border-white/10 rounded-xl overflow-hidden">
-        <div className="overflow-x-auto max-h-[700px] overflow-y-auto">
-          <table className="w-full text-xs">
-            <thead className="sticky top-0 bg-surface-raised z-10">
-              <tr className="border-b border-white/10">
-                <th className="text-left py-2.5 px-3 text-gray-400 min-w-[200px]">流入経路</th>
-                <th className="text-right py-2.5 px-2 text-gray-400 w-20">合計</th>
-                {periodKeys.map(pk => (
-                  <th key={pk} className="text-center py-2.5 px-1 text-gray-500 w-16 whitespace-nowrap">{periodLabel(pk, period)}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {sources.slice(0, 50).map(s => (
-                <tr key={s.label} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                  <td className="py-2 px-3">
-                    <p className="text-white">{s.source || "(direct)"}</p>
-                    <p className="text-[10px] text-gray-600">{s.medium || "(none)"}</p>
-                  </td>
-                  <td className="text-right py-2 px-2 text-white font-medium">{s.totals[metric].toLocaleString()}</td>
-                  {periodKeys.map(pk => {
-                    const val = s.periods[pk]?.[metric] || 0;
-                    return (
-                      <td key={pk} className={`text-center py-2 px-1 ${heatmapBg(val, maxVal)}`}>
-                        <span className={val > 0 ? "text-white/80" : "text-gray-700"}>{val > 0 ? val.toLocaleString() : ""}</span>
+      {landingPage === "/" ? (
+        <>
+          {/* 広告流入 */}
+          <div className="bg-surface-raised border border-white/10 rounded-xl overflow-hidden">
+            <div className="px-4 py-3 border-b border-white/10">
+              <h4 className="text-sm font-medium text-amber-400">広告流入</h4>
+            </div>
+            <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
+              <table className="w-full text-xs">
+                <thead className="sticky top-0 bg-surface-raised z-10">
+                  <tr className="border-b border-white/10">
+                    <th className="text-left py-2.5 px-3 text-gray-400 min-w-[200px]">流入経路</th>
+                    <th className="text-right py-2.5 px-2 text-gray-400 w-20">合計</th>
+                    {periodKeys.map(pk => (
+                      <th key={pk} className="text-center py-2.5 px-1 text-gray-500 w-16 whitespace-nowrap">{periodLabel(pk, period)}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {adSources.map(s => (
+                    <tr key={s.label} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                      <td className="py-2 px-3">
+                        <p className="text-white">{s.source || "(direct)"}</p>
+                        <p className="text-[10px] text-gray-600">{s.medium || "(none)"}</p>
                       </td>
-                    );
-                  })}
+                      <td className="text-right py-2 px-2 text-white font-medium">{s.totals[metric].toLocaleString()}</td>
+                      {periodKeys.map(pk => {
+                        const val = s.periods[pk]?.[metric] || 0;
+                        return (
+                          <td key={pk} className={`text-center py-2 px-1 ${heatmapBg(val, adMaxVal)}`}>
+                            <span className={val > 0 ? "text-white/80" : "text-gray-700"}>{val > 0 ? val.toLocaleString() : ""}</span>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                  {adSources.length === 0 && <tr><td colSpan={2 + periodKeys.length} className="py-4 text-center text-gray-500">広告流入データなし</td></tr>}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* オーガニック流入 */}
+          <div className="bg-surface-raised border border-white/10 rounded-xl overflow-hidden">
+            <div className="px-4 py-3 border-b border-white/10">
+              <h4 className="text-sm font-medium text-green-400">オーガニック流入</h4>
+            </div>
+            <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
+              <table className="w-full text-xs">
+                <thead className="sticky top-0 bg-surface-raised z-10">
+                  <tr className="border-b border-white/10">
+                    <th className="text-left py-2.5 px-3 text-gray-400 min-w-[200px]">流入経路</th>
+                    <th className="text-right py-2.5 px-2 text-gray-400 w-20">合計</th>
+                    {periodKeys.map(pk => (
+                      <th key={pk} className="text-center py-2.5 px-1 text-gray-500 w-16 whitespace-nowrap">{periodLabel(pk, period)}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {organicSources.map(s => (
+                    <tr key={s.label} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                      <td className="py-2 px-3">
+                        <p className="text-white">{s.source || "(direct)"}</p>
+                        <p className="text-[10px] text-gray-600">{s.medium || "(none)"}</p>
+                      </td>
+                      <td className="text-right py-2 px-2 text-white font-medium">{s.totals[metric].toLocaleString()}</td>
+                      {periodKeys.map(pk => {
+                        const val = s.periods[pk]?.[metric] || 0;
+                        return (
+                          <td key={pk} className={`text-center py-2 px-1 ${heatmapBg(val, organicMaxVal)}`}>
+                            <span className={val > 0 ? "text-white/80" : "text-gray-700"}>{val > 0 ? val.toLocaleString() : ""}</span>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                  {organicSources.length === 0 && <tr><td colSpan={2 + periodKeys.length} className="py-4 text-center text-gray-500">オーガニック流入データなし</td></tr>}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      ) : (
+        <div className="bg-surface-raised border border-white/10 rounded-xl overflow-hidden">
+          <div className="overflow-x-auto max-h-[700px] overflow-y-auto">
+            <table className="w-full text-xs">
+              <thead className="sticky top-0 bg-surface-raised z-10">
+                <tr className="border-b border-white/10">
+                  <th className="text-left py-2.5 px-3 text-gray-400 min-w-[200px]">流入経路</th>
+                  <th className="text-right py-2.5 px-2 text-gray-400 w-20">合計</th>
+                  {periodKeys.map(pk => (
+                    <th key={pk} className="text-center py-2.5 px-1 text-gray-500 w-16 whitespace-nowrap">{periodLabel(pk, period)}</th>
+                  ))}
                 </tr>
-              ))}
-              {sources.length === 0 && <tr><td colSpan={2 + periodKeys.length} className="py-8 text-center text-gray-500">データがありません</td></tr>}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {sources.slice(0, 50).map(s => (
+                  <tr key={s.label} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                    <td className="py-2 px-3">
+                      <p className="text-white">{s.source || "(direct)"}</p>
+                      <p className="text-[10px] text-gray-600">{s.medium || "(none)"}</p>
+                    </td>
+                    <td className="text-right py-2 px-2 text-white font-medium">{s.totals[metric].toLocaleString()}</td>
+                    {periodKeys.map(pk => {
+                      const val = s.periods[pk]?.[metric] || 0;
+                      return (
+                        <td key={pk} className={`text-center py-2 px-1 ${heatmapBg(val, maxVal)}`}>
+                          <span className={val > 0 ? "text-white/80" : "text-gray-700"}>{val > 0 ? val.toLocaleString() : ""}</span>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+                {sources.length === 0 && <tr><td colSpan={2 + periodKeys.length} className="py-8 text-center text-gray-500">データがありません</td></tr>}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -890,7 +979,7 @@ type AdsGranularity = "daily" | "weekly" | "monthly";
 type AdsSub = "overview" | "campaigns" | "keywords" | "funnel";
 
 function AdsTab({ adsCampaigns, adsKeywords, adsFunnel }: { adsCampaigns: AdsCampaignDaily[]; adsKeywords: AdsKeywordDaily[]; adsFunnel: AdsFunnelCustomer[] }) {
-  const [granularity, setGranularity] = useState<AdsGranularity>("daily");
+  const [granularity, setGranularity] = useState<AdsGranularity>("weekly");
   const [adsSub, setAdsSub] = useState<AdsSub>("overview");
 
   if (adsCampaigns.length === 0) {
@@ -907,7 +996,7 @@ function AdsTab({ adsCampaigns, adsKeywords, adsFunnel }: { adsCampaigns: AdsCam
         <SubTab label="サマリー" active={adsSub === "overview"} onClick={() => setAdsSub("overview")} />
         <SubTab label="キャンペーン別" active={adsSub === "campaigns"} onClick={() => setAdsSub("campaigns")} />
         <SubTab label="キーワード別" active={adsSub === "keywords"} onClick={() => setAdsSub("keywords")} />
-        <SubTab label="ファネル分析" active={adsSub === "funnel"} onClick={() => setAdsSub("funnel")} />
+        <SubTab label="成約顧客リスト" active={adsSub === "funnel"} onClick={() => setAdsSub("funnel")} />
       </div>
       {adsSub === "overview" && <AdsOverview adsCampaigns={adsCampaigns} />}
       {adsSub === "campaigns" && <AdsCampaignTable adsCampaigns={adsCampaigns} granularity={granularity} setGranularity={setGranularity} />}
@@ -1044,7 +1133,7 @@ function AdsOverview({ adsCampaigns }: { adsCampaigns: AdsCampaignDaily[] }) {
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
               <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#6b7280" }}
                 tickFormatter={(v: string) => v.slice(5)} interval={6} />
-              <YAxis yAxisId="left" tick={{ fontSize: 10, fill: "#6b7280" }} />
+              <YAxis yAxisId="left" tick={{ fontSize: 10, fill: "#6b7280" }} domain={[0, (dataMax: number) => Math.max(dataMax, 5)]} />
               <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10, fill: "#6b7280" }} />
               <Tooltip
                 contentStyle={{ backgroundColor: "#1f2937", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 12 }}
@@ -1160,7 +1249,7 @@ function AdsCampaignTable({ adsCampaigns, granularity, setGranularity }: {
 
     return {
       rows: Array.from(campMap.values()).sort((a, b) => b.totals.cost - a.totals.cost),
-      periodKeys: Array.from(allPKs).sort(),
+      periodKeys: Array.from(allPKs).sort().reverse(),
     };
   }, [adsCampaigns, granularity]);
 
@@ -1277,7 +1366,7 @@ function AdsKeywordTable({ adsKeywords, granularity, setGranularity }: {
       periods.set(pk, ex);
     }
 
-    return { periodData: data, periodKeys: Array.from(allPKs).sort() };
+    return { periodData: data, periodKeys: Array.from(allPKs).sort().reverse() };
   }, [adsKeywords, granularity]);
 
   const formatPK = (pk: string) => {
@@ -1292,7 +1381,12 @@ function AdsKeywordTable({ adsKeywords, granularity, setGranularity }: {
       PHRASE: "bg-purple-500/20 text-purple-300",
       BROAD: "bg-gray-500/20 text-gray-400",
     };
-    return <span className={`px-1.5 py-0.5 rounded text-[10px] ${c[mt] || c.BROAD}`}>{mt}</span>;
+    const tooltips: Record<string, string> = {
+      EXACT: "完全一致: 検索語と完全に一致する場合のみ広告表示",
+      PHRASE: "フレーズ一致: 検索語にキーワードの意味が含まれる場合に広告表示",
+      BROAD: "部分一致: 検索語がキーワードに関連する場合に広告表示（最も広い）",
+    };
+    return <span className={`px-1.5 py-0.5 rounded text-[10px] cursor-help ${c[mt] || c.BROAD}`} title={tooltips[mt] || ""}>{mt}</span>;
   };
 
   return (
@@ -1399,58 +1493,19 @@ function funnelIsScheduled(stage: string | null): boolean {
 }
 
 function AdsFunnelTab({ adsFunnel }: { adsFunnel: AdsFunnelCustomer[] }) {
-  const funnel = useMemo(() => {
-    const total = adsFunnel.length;
-    const scheduled = adsFunnel.filter(c => funnelIsScheduled(c.stage)).length;
-    const conducted = adsFunnel.filter(c => funnelIsConducted(c.stage)).length;
-    const closed = adsFunnel.filter(c => funnelIsClosed(c.stage)).length;
-    const totalRevenue = adsFunnel.filter(c => funnelIsClosed(c.stage)).reduce((s, c) => s + c.confirmed_amount, 0);
-
-    return { total, scheduled, conducted, closed, totalRevenue };
-  }, [adsFunnel]);
-
-  // Monthly breakdown
-  const monthlyData = useMemo(() => {
-    const map = new Map<string, { month: string; applications: number; scheduled: number; conducted: number; closed: number; revenue: number }>();
-
-    for (const c of adsFunnel) {
-      const month = c.application_date?.slice(0, 7) || "不明";
-      const ex = map.get(month) || { month, applications: 0, scheduled: 0, conducted: 0, closed: 0, revenue: 0 };
-      ex.applications++;
-      if (funnelIsScheduled(c.stage)) ex.scheduled++;
-      if (funnelIsConducted(c.stage)) ex.conducted++;
-      if (funnelIsClosed(c.stage)) { ex.closed++; ex.revenue += c.confirmed_amount; }
-      map.set(month, ex);
-    }
-
-    return Array.from(map.values()).sort((a, b) => a.month.localeCompare(b.month)).filter(m => m.month !== "不明");
-  }, [adsFunnel]);
-
-  // Ad group / keyword breakdown (utm_medium contains adgroup+keyword info)
-  const adGroupFunnel = useMemo(() => {
-    const map = new Map<string, { label: string; applications: number; scheduled: number; conducted: number; closed: number; revenue: number }>();
-
-    for (const c of adsFunnel) {
-      // utm_medium has "{adgroupname}_keyword" format, or raw values like "303"
-      const label = c.utm_medium || c.utm_campaign || "(不明)";
-      const ex = map.get(label) || { label, applications: 0, scheduled: 0, conducted: 0, closed: 0, revenue: 0 };
-      ex.applications++;
-      if (funnelIsScheduled(c.stage)) ex.scheduled++;
-      if (funnelIsConducted(c.stage)) ex.conducted++;
-      if (funnelIsClosed(c.stage)) { ex.closed++; ex.revenue += c.confirmed_amount; }
-      map.set(label, ex);
-    }
-
-    return Array.from(map.values()).sort((a, b) => b.applications - a.applications);
-  }, [adsFunnel]);
-
-  // Recent closed customers from ads
-  const recentClosed = useMemo(() => {
+  const closedCustomers = useMemo(() => {
     return adsFunnel
       .filter(c => funnelIsClosed(c.stage))
-      .sort((a, b) => (b.application_date || "").localeCompare(a.application_date || ""))
-      .slice(0, 20);
+      .sort((a, b) => (b.application_date || "").localeCompare(a.application_date || ""));
   }, [adsFunnel]);
+
+  const kpis = useMemo(() => {
+    const count = closedCustomers.length;
+    const revenue = closedCustomers.reduce((s, c) => s + c.confirmed_amount, 0);
+    const kisotsu = closedCustomers.filter(c => c.attribute === "既卒").length;
+    const shinsotsu = closedCustomers.filter(c => c.attribute === "新卒").length;
+    return { count, revenue, kisotsu, shinsotsu };
+  }, [closedCustomers]);
 
   if (adsFunnel.length === 0) {
     return (
@@ -1460,163 +1515,60 @@ function AdsFunnelTab({ adsFunnel }: { adsFunnel: AdsFunnelCustomer[] }) {
     );
   }
 
-  const stages = [
-    { label: "申し込み", count: funnel.total, color: "bg-blue-500" },
-    { label: "日程確定", count: funnel.scheduled, color: "bg-cyan-500" },
-    { label: "面談実施", count: funnel.conducted, color: "bg-amber-500" },
-    { label: "成約", count: funnel.closed, color: "bg-green-500" },
-  ];
-
   return (
     <div className="space-y-6">
-      {/* Funnel Summary KPI */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <KpiCard title="広告経由 申し込み" value={String(funnel.total)} sub={<span className="text-gray-500 text-[10px]">utm_source=googleads</span>} />
-        <KpiCard title="日程確定" value={String(funnel.scheduled)} sub={<span className="text-[10px] text-gray-400">{funnel.total > 0 ? `${((funnel.scheduled / funnel.total) * 100).toFixed(0)}%` : "—"}</span>} />
-        <KpiCard title="面談実施" value={String(funnel.conducted)} sub={<span className="text-[10px] text-gray-400">{funnel.scheduled > 0 ? `${((funnel.conducted / funnel.scheduled) * 100).toFixed(0)}% of 日程確定` : "—"}</span>} />
-        <KpiCard title="成約" value={String(funnel.closed)} sub={<span className="text-[10px] text-gray-400">{funnel.conducted > 0 ? `${((funnel.closed / funnel.conducted) * 100).toFixed(0)}% of 面談実施` : "—"}</span>} />
-        <KpiCard title="成約売上合計" value={`¥${Math.round(funnel.totalRevenue).toLocaleString()}`} sub={<span className="text-[10px] text-gray-400">{funnel.closed > 0 ? `CPA: ¥${Math.round(funnel.totalRevenue / funnel.closed).toLocaleString()}/件` : "—"}</span>} />
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <KpiCard title="成約顧客数" value={String(kpis.count)} sub={<span className="text-gray-500 text-[10px]">広告経由</span>} />
+        <KpiCard title="確定売上合計" value={`¥${Math.round(kpis.revenue).toLocaleString()}`} sub={<span className="text-gray-500 text-[10px]">{kpis.count > 0 ? `平均: ¥${Math.round(kpis.revenue / kpis.count).toLocaleString()}` : "—"}</span>} />
+        <KpiCard title="既卒" value={String(kpis.kisotsu)} sub={<span className="text-gray-500 text-[10px]">{kpis.count > 0 ? `${((kpis.kisotsu / kpis.count) * 100).toFixed(0)}%` : "—"}</span>} />
+        <KpiCard title="新卒" value={String(kpis.shinsotsu)} sub={<span className="text-gray-500 text-[10px]">{kpis.count > 0 ? `${((kpis.shinsotsu / kpis.count) * 100).toFixed(0)}%` : "—"}</span>} />
       </div>
 
-      {/* Visual Funnel Bar */}
-      <div className="bg-surface-raised border border-white/10 rounded-xl p-5">
-        <h3 className="text-sm font-medium text-gray-300 mb-4">ファネル（全期間）</h3>
-        <div className="space-y-3">
-          {stages.map((s, i) => {
-            const width = funnel.total > 0 ? (s.count / funnel.total) * 100 : 0;
-            const prevCount = i > 0 ? stages[i - 1].count : s.count;
-            const stepRate = prevCount > 0 ? ((s.count / prevCount) * 100).toFixed(0) : "—";
-            return (
-              <div key={s.label} className="flex items-center gap-3">
-                <span className="text-xs text-gray-400 w-16 text-right">{s.label}</span>
-                <div className="flex-1 h-8 bg-white/5 rounded-lg overflow-hidden relative">
-                  <div className={`h-full ${s.color} rounded-lg transition-all`} style={{ width: `${Math.max(width, 2)}%` }} />
-                  <span className="absolute inset-0 flex items-center px-3 text-xs text-white font-medium">
-                    {s.count}名 {i > 0 && <span className="ml-2 text-white/60">({stepRate}%)</span>}
-                  </span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-        <div className="mt-3 text-right">
-          <span className="text-xs text-gray-500">
-            全体成約率: {funnel.total > 0 ? `${((funnel.closed / funnel.total) * 100).toFixed(1)}%` : "—"}
-          </span>
-        </div>
-      </div>
-
-      {/* Monthly Funnel Trend */}
-      {monthlyData.length > 1 && (
-        <div className="bg-surface-raised border border-white/10 rounded-xl p-5">
-          <h3 className="text-sm font-medium text-gray-300 mb-4">月別ファネル推移</h3>
-          <ResponsiveContainer width="100%" height={280}>
-            <LineChart data={monthlyData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-              <XAxis dataKey="month" tick={{ fontSize: 10, fill: "#6b7280" }} />
-              <YAxis tick={{ fontSize: 10, fill: "#6b7280" }} />
-              <Tooltip
-                contentStyle={{ backgroundColor: "#1f2937", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 12 }}
-                labelStyle={{ color: "#9ca3af" }}
-              />
-              <Legend wrapperStyle={{ fontSize: 11 }} />
-              <Line type="monotone" dataKey="applications" name="申し込み" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} />
-              <Line type="monotone" dataKey="scheduled" name="日程確定" stroke="#06b6d4" strokeWidth={2} dot={{ r: 3 }} />
-              <Line type="monotone" dataKey="conducted" name="面談実施" stroke="#f59e0b" strokeWidth={2} dot={{ r: 3 }} />
-              <Line type="monotone" dataKey="closed" name="成約" stroke="#10b981" strokeWidth={2} dot={{ r: 3 }} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      )}
-
-      {/* Ad Group / Keyword Funnel Breakdown */}
+      {/* Customer List Table */}
       <div className="bg-surface-raised border border-white/10 rounded-xl overflow-hidden">
         <div className="px-5 py-3 border-b border-white/10">
-          <h3 className="text-sm font-medium text-gray-300">広告グループ・キーワード別ファネル</h3>
-          <p className="text-[10px] text-gray-500 mt-0.5">utm_medium ベース</p>
+          <h3 className="text-sm font-medium text-gray-300">広告経由の成約顧客一覧</h3>
+          <p className="text-[10px] text-gray-500 mt-0.5">{closedCustomers.length}名</p>
         </div>
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
           <table className="w-full text-xs">
-            <thead>
+            <thead className="sticky top-0 bg-surface-raised z-10">
               <tr className="border-b border-white/10 text-gray-400">
-                <th className="text-left py-2.5 px-4">広告グループ / キーワード</th>
-                <th className="text-right py-2.5 px-3">申し込み</th>
-                <th className="text-right py-2.5 px-3">日程確定</th>
-                <th className="text-right py-2.5 px-3">面談実施</th>
-                <th className="text-right py-2.5 px-3">成約</th>
-                <th className="text-right py-2.5 px-3">成約率</th>
-                <th className="text-right py-2.5 px-3">成約売上</th>
+                <th className="text-left py-2.5 px-4">顧客名</th>
+                <th className="text-left py-2.5 px-3">申込日</th>
+                <th className="text-left py-2.5 px-3">属性</th>
+                <th className="text-left py-2.5 px-3">ステージ</th>
+                <th className="text-left py-2.5 px-3">キャンペーン</th>
+                <th className="text-left py-2.5 px-3">メディア</th>
+                <th className="text-right py-2.5 px-3">確定売上</th>
               </tr>
             </thead>
             <tbody>
-              {adGroupFunnel.map(c => {
-                const rate = c.applications > 0 ? ((c.closed / c.applications) * 100).toFixed(1) : "—";
-                return (
-                  <tr key={c.label} className="border-b border-white/5 hover:bg-white/5">
-                    <td className="py-2.5 px-4 text-white font-medium truncate max-w-[300px]">{c.label}</td>
-                    <td className="text-right py-2.5 px-3 text-blue-400">{c.applications}</td>
-                    <td className="text-right py-2.5 px-3 text-cyan-400">{c.scheduled}</td>
-                    <td className="text-right py-2.5 px-3 text-amber-400">{c.conducted}</td>
-                    <td className="text-right py-2.5 px-3">
-                      <span className={c.closed > 0 ? "text-green-400 font-medium" : "text-gray-600"}>{c.closed}</span>
-                    </td>
-                    <td className="text-right py-2.5 px-3">
-                      <span className={c.closed > 0 ? "text-green-400" : "text-gray-600"}>{rate}{rate !== "—" ? "%" : ""}</span>
-                    </td>
-                    <td className="text-right py-2.5 px-3 text-white">{c.revenue > 0 ? `¥${Math.round(c.revenue).toLocaleString()}` : "—"}</td>
-                  </tr>
-                );
-              })}
-              {adGroupFunnel.length === 0 && (
-                <tr><td colSpan={7} className="py-8 text-center text-gray-500">データなし</td></tr>
+              {closedCustomers.map(c => (
+                <tr key={c.id} className="border-b border-white/5 hover:bg-white/5">
+                  <td className="py-2.5 px-4 text-white font-medium">{c.name}</td>
+                  <td className="py-2.5 px-3 text-gray-400">{c.application_date || "—"}</td>
+                  <td className="py-2.5 px-3">
+                    <span className={`px-1.5 py-0.5 rounded text-[10px] ${c.attribute === "既卒" ? "bg-blue-500/20 text-blue-300" : "bg-purple-500/20 text-purple-300"}`}>
+                      {c.attribute || "—"}
+                    </span>
+                  </td>
+                  <td className="py-2.5 px-3">
+                    <span className="px-1.5 py-0.5 rounded text-[10px] bg-green-500/20 text-green-300">{c.stage}</span>
+                  </td>
+                  <td className="py-2.5 px-3 text-gray-400 truncate max-w-[150px]">{c.utm_campaign || "—"}</td>
+                  <td className="py-2.5 px-3 text-gray-400 truncate max-w-[150px]">{c.utm_medium || "—"}</td>
+                  <td className="text-right py-2.5 px-3 text-white">{c.confirmed_amount > 0 ? `¥${Math.round(c.confirmed_amount).toLocaleString()}` : "—"}</td>
+                </tr>
+              ))}
+              {closedCustomers.length === 0 && (
+                <tr><td colSpan={7} className="py-8 text-center text-gray-500">成約顧客なし</td></tr>
               )}
             </tbody>
           </table>
         </div>
       </div>
-
-      {/* Recent Closed Customers from Ads */}
-      {recentClosed.length > 0 && (
-        <div className="bg-surface-raised border border-white/10 rounded-xl overflow-hidden">
-          <div className="px-5 py-3 border-b border-white/10">
-            <h3 className="text-sm font-medium text-gray-300">広告経由の成約顧客（直近）</h3>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b border-white/10 text-gray-400">
-                  <th className="text-left py-2.5 px-4">顧客名</th>
-                  <th className="text-left py-2.5 px-3">申込日</th>
-                  <th className="text-left py-2.5 px-3">属性</th>
-                  <th className="text-left py-2.5 px-3">ステージ</th>
-                  <th className="text-left py-2.5 px-3">キャンペーン</th>
-                  <th className="text-left py-2.5 px-3">メディア</th>
-                  <th className="text-right py-2.5 px-3">確定売上</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentClosed.map(c => (
-                  <tr key={c.id} className="border-b border-white/5 hover:bg-white/5">
-                    <td className="py-2.5 px-4 text-white font-medium">{c.name}</td>
-                    <td className="py-2.5 px-3 text-gray-400">{c.application_date || "—"}</td>
-                    <td className="py-2.5 px-3">
-                      <span className={`px-1.5 py-0.5 rounded text-[10px] ${c.attribute === "既卒" ? "bg-blue-500/20 text-blue-300" : "bg-purple-500/20 text-purple-300"}`}>
-                        {c.attribute || "—"}
-                      </span>
-                    </td>
-                    <td className="py-2.5 px-3">
-                      <span className="px-1.5 py-0.5 rounded text-[10px] bg-green-500/20 text-green-300">{c.stage}</span>
-                    </td>
-                    <td className="py-2.5 px-3 text-gray-400 truncate max-w-[150px]">{c.utm_campaign || "—"}</td>
-                    <td className="py-2.5 px-3 text-gray-400 truncate max-w-[150px]">{c.utm_medium || "—"}</td>
-                    <td className="text-right py-2.5 px-3 text-white">{c.confirmed_amount > 0 ? `¥${Math.round(c.confirmed_amount).toLocaleString()}` : "—"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -1672,7 +1624,7 @@ export function AnalyticsClient({ pageDailyRows, traffic, searchQueries, searchD
         <div className="space-y-4">
           <div className="flex gap-2">
             <SubTab label="メインLP" active={lpTab === "main"} onClick={() => setLpTab("main")} />
-            <SubTab label="YouTube LP" active={lpTab === "lp3"} onClick={() => setLpTab("lp3")} />
+            <SubTab label="面談申込特化LP" active={lpTab === "lp3"} onClick={() => setLpTab("lp3")} />
           </div>
           {lpTab === "main" && <LpTrafficTrendTab traffic={traffic} landingPage="/" />}
           {lpTab === "lp3" && <LpTrafficTrendTab traffic={traffic} landingPage="/lp3/" />}
