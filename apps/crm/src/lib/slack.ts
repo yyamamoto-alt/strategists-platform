@@ -431,6 +431,44 @@ export async function notifyYouTubeReferral(data: {
   });
 }
 
+/** メンター評価レポート通知（Zapier移管: #指導管理 — bot名: 浦島太郎） */
+export async function notifyMentoringEvaluation(data: {
+  mentorName: string;
+  studentName: string;
+  rating: string;
+  operationsNote: string;
+}) {
+  const channel = await getNotifyConfig("mentoring_evaluation", "C094DA9A9B4"); // #指導管理
+  if (!channel) return;
+
+  const lines = [
+    `*担当メンター：* ${data.mentorName}`,
+    `*名前：* ${data.studentName}`,
+    `*評価：* ${data.rating}`,
+    `*運営への連絡・依頼事項：* ${data.operationsNote || ""}`,
+  ];
+
+  await sendSlackMessage(channel, lines.join("\n"), {
+    username: "浦島太郎",
+  });
+
+  // 低評価（1 or 2）の場合、アラート通知
+  if (data.rating.startsWith("1：") || data.rating.startsWith("2：")) {
+    const alertLines = [
+      `<@U07GRS0T681><@U03TF7YESK1>`,
+      `*低評価がついてます*`,
+      `*担当メンター：* ${data.mentorName}`,
+      `*名前：* ${data.studentName}`,
+      `*評価：* ${data.rating}`,
+      `*運営への連絡・依頼事項：* ${data.operationsNote || ""}`,
+    ];
+
+    await sendSlackMessage(channel, alertLines.join("\n"), {
+      username: "浦島太郎",
+    });
+  }
+}
+
 /** 営業リマインド通知 */
 export async function notifySalesReminder(text: string) {
   const channel = await getNotifyConfig("sales_reminder", DEFAULT_CHANNELS.payment_success);

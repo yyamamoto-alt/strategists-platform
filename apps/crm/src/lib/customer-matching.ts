@@ -2,7 +2,7 @@ import "server-only";
 
 import { createServiceClient } from "@/lib/supabase/server";
 import { computeAttributionForCustomer } from "@/lib/compute-attribution-for-customer";
-import { notifyEnrollmentFormReceived, notifySubsidyEnrollment, notifyKarteSubmission, notifyYouTubeReferral } from "@/lib/slack";
+import { notifyEnrollmentFormReceived, notifySubsidyEnrollment, notifyKarteSubmission, notifyYouTubeReferral, notifyMentoringEvaluation } from "@/lib/slack";
 import { createProgressSheet, calculateAge } from "@/lib/google-sheets";
 import crypto from "crypto";
 
@@ -519,12 +519,21 @@ async function syncFormFieldsToRelatedTables(
     }
   }
 
-  // --- 課題提出 → learning_records (満足度) ---
+  // --- 課題提出 → learning_records (満足度) + Slack通知 ---
   if (sourceName === "課題提出") {
     if (rawData["前回メンタリングの満足度"]) {
       await upsertRelated(db, "learning_records", customerId, {
         mentoring_satisfaction: rawData["前回メンタリングの満足度"],
       });
+
+      // Slack通知: #指導管理（Zapier「メンター評価レポート」移管）
+      const { data: custData } = await db.from("customers").select("name").eq("id", customerId).single();
+      notifyMentoringEvaluation({
+        mentorName: rawData["担当メンター"] || rawData["メンター名"] || "不明",
+        studentName: custData?.name || rawData["お名前"] || "不明",
+        rating: rawData["前回メンタリングの満足度"],
+        operationsNote: rawData["運営への連絡・依頼事項"] || rawData["運営への要望・連絡事項"] || "",
+      }).catch(() => {});
     }
   }
 }
