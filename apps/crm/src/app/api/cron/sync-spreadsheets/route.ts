@@ -70,10 +70,18 @@ export async function GET(request: Request) {
         .select()
         .single();
 
+      // last_synced_row を処理直前にDBから再取得（冒頭の一括取得では古い値の可能性）
+      const { data: freshConnData } = await db
+        .from("spreadsheet_connections")
+        .select("last_synced_row")
+        .eq("id", connection.id)
+        .single();
+      const currentLastSyncedRow = freshConnData?.last_synced_row ?? connection.last_synced_row;
+
       // Google Sheets からデータ取得（append: 前回の続きから）
       const startRow =
-        connection.sync_mode === "append" && connection.last_synced_row > 0
-          ? connection.last_synced_row + 1
+        connection.sync_mode === "append" && currentLastSyncedRow > 0
+          ? currentLastSyncedRow + 1
           : undefined;
 
       const allRows = await fetchSheetData(
@@ -207,19 +215,21 @@ export async function GET(request: Request) {
         // ============================================================
 
         // 同期済みraw_data_hashを取得（重複検知用 — DBユニーク制約との二重防御）
-        const [{ data: recentHistory }, { data: recentUnmatched }] = await Promise.all([
+        const [historyResult, unmatchedResult] = await Promise.all([
           db.from("application_history").select("raw_data_hash").eq("source", connection.name).order("applied_at", { ascending: false }).limit(5000),
-          db.from("unmatched_records").select("raw_data").eq("connection_id", connection.id).order("created_at", { ascending: false }).limit(2000),
+          db.from("unmatched_records").select("raw_data_hash").eq("connection_id", connection.id).order("created_at", { ascending: false }).limit(2000),
         ]);
+        if (historyResult.error) console.error(`application_history query error for ${connection.name}:`, historyResult.error);
+        if (unmatchedResult.error) console.error(`unmatched_records query error for ${connection.name}:`, unmatchedResult.error);
+
         const knownHashes = new Set<string>();
-        for (const h of (recentHistory || [])) {
+        for (const h of (historyResult.data || [])) {
           const hash = (h as { raw_data_hash: string }).raw_data_hash;
           if (hash) knownHashes.add(hash);
         }
-        for (const h of (recentUnmatched || [])) {
-          // MD5ハッシュに変換して比較（application_historyと同じ形式に統一）
-          const rawStr = stableStringify((h as { raw_data: Record<string, unknown> }).raw_data);
-          knownHashes.add(crypto.createHash("md5").update(rawStr).digest("hex"));
+        for (const h of (unmatchedResult.data || [])) {
+          const hash = (h as { raw_data_hash: string }).raw_data_hash;
+          if (hash) knownHashes.add(hash);
         }
 
         for (const row of dataRows) {
@@ -252,6 +262,7 @@ export async function GET(request: Request) {
             if (result.action === "created") rowsCreated++;
             else if (result.action === "updated") rowsUpdated++;
             else if (result.action === "unmatched") rowsUnmatched++;
+            else if (result.action === "skipped") rowsSkipped++;
 
             if (syncedRecords.length < 100) {
               const summaryKeys = headers.slice(0, 5);
@@ -273,8 +284,10 @@ export async function GET(request: Request) {
         }
       }
 
+      // totalRow を Google Sheet の実際の行位置から計算
+      // startRow があるとき: 取得開始行 + データ行数 - 1 = 最終行番号
       const totalRow = startRow
-        ? connection.last_synced_row + dataRows.length
+        ? (startRow - 1) + dataRows.length
         : dataRows.length + 1;
 
       // sync_log更新
@@ -293,18 +306,21 @@ export async function GET(request: Request) {
           .eq("id", syncLog.id);
       }
 
-      // connection更新（last_synced_row）— エラーチェック付き
-      const { error: updateError } = await db
+      // connection更新（last_synced_row）— 後退防止のためJS側でMAXを取る
+      const newRow = Math.max(totalRow, currentLastSyncedRow);
+      const { error: updateConnErr } = await db
         .from("spreadsheet_connections")
         .update({
           last_synced_at: new Date().toISOString(),
-          last_synced_row: totalRow,
+          last_synced_row: newRow,
           updated_at: new Date().toISOString(),
         })
         .eq("id", connection.id);
 
-      if (updateError) {
-        console.error(`Failed to update last_synced_row for ${connection.name}:`, updateError);
+      if (updateConnErr) {
+        console.error(`Failed to update last_synced_row for ${connection.name}: ${JSON.stringify(updateConnErr)}`);
+      } else {
+        console.log(`${connection.name}: last_synced_row ${currentLastSyncedRow} → ${newRow} (totalRow: ${totalRow})`);
       }
 
       results.push({

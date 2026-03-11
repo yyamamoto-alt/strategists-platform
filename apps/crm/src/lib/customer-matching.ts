@@ -460,7 +460,7 @@ export function extractFieldsFromRow(
 }
 
 export interface UpsertResult {
-  action: "created" | "updated" | "unmatched";
+  action: "created" | "updated" | "unmatched" | "skipped";
   customer_id?: string;
   match_type?: string;
 }
@@ -599,14 +599,19 @@ export async function upsertFromSpreadsheet(
       .single();
 
     if (createError || !newCustomer) {
-      // 作成失敗 → 未マッチキューに入れる
-      await db.from("unmatched_records").insert({
+      // 作成失敗 → 未マッチキューに入れる（UNIQUE制約で重複防止）
+      const unmatchedHash = await md5Hash(stableStringify(rawData));
+      const { error: unmatchedErr } = await db.from("unmatched_records").insert({
         sync_log_id: syncLogId,
         connection_id: connectionId,
         raw_data: rawData,
+        raw_data_hash: unmatchedHash,
         email, phone, name,
       });
-      return { action: "unmatched" };
+      if (unmatchedErr && unmatchedErr.code !== "23505") {
+        console.error("unmatched_records insert error:", unmatchedErr);
+      }
+      return { action: unmatchedErr?.code === "23505" ? "skipped" : "unmatched" };
     }
 
     // customer_emails に登録
@@ -638,13 +643,19 @@ export async function upsertFromSpreadsheet(
     return { action: "created", customer_id: newCustomer.id };
   }
 
-  // 未マッチ → unmatched_records に追加
-  await db.from("unmatched_records").insert({
+  // 未マッチ → unmatched_records に追加（raw_data_hashで重複防止）
+  const unmatchedHash = await md5Hash(stableStringify(rawData));
+  const { error: unmatchedErr } = await db.from("unmatched_records").insert({
     sync_log_id: syncLogId,
     connection_id: connectionId,
     raw_data: rawData,
+    raw_data_hash: unmatchedHash,
     email, phone, name,
   });
+  // UNIQUE制約違反（既に同じraw_dataが登録済み）は無視
+  if (unmatchedErr && unmatchedErr.code !== "23505") {
+    console.error("unmatched_records insert error:", unmatchedErr);
+  }
 
-  return { action: "unmatched" };
+  return { action: unmatchedErr?.code === "23505" ? "skipped" : "unmatched" };
 }
