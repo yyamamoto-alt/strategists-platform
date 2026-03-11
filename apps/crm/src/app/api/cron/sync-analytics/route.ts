@@ -132,19 +132,33 @@ async function syncOneDay(
     (sum: number, r: AnyRow) => sum + parseInt(r.metricValues[0].value), 0
   );
 
-  const pageRows = (ga4Pages.rows || []).map((r: AnyRow) => ({
-    date: dateStr,
-    page_path: r.dimensionValues[1].value,
-    page_title: r.dimensionValues[0].value,
-    segment: classifySegment(r.dimensionValues[1].value),
-    pageviews: parseInt(r.metricValues[0].value),
-    sessions: parseInt(r.metricValues[1].value),
-    users: parseInt(r.metricValues[2].value),
-    new_users: parseInt(r.metricValues[3].value),
-    avg_session_duration: parseFloat(r.metricValues[4].value),
-    bounce_rate: parseFloat(r.metricValues[5].value),
-    schedule_visits: 0,
-  }));
+  // Deduplicate by page_path (GA4 may return multiple rows with different pageTitles)
+  const pageMap = new Map<string, AnyRow>();
+  for (const r of ga4Pages.rows || []) {
+    const pagePath = r.dimensionValues[1].value;
+    const existing = pageMap.get(pagePath);
+    if (existing) {
+      existing.pageviews += parseInt(r.metricValues[0].value);
+      existing.sessions += parseInt(r.metricValues[1].value);
+      existing.users += parseInt(r.metricValues[2].value);
+      existing.new_users += parseInt(r.metricValues[3].value);
+    } else {
+      pageMap.set(pagePath, {
+        date: dateStr,
+        page_path: pagePath,
+        page_title: r.dimensionValues[0].value,
+        segment: classifySegment(pagePath),
+        pageviews: parseInt(r.metricValues[0].value),
+        sessions: parseInt(r.metricValues[1].value),
+        users: parseInt(r.metricValues[2].value),
+        new_users: parseInt(r.metricValues[3].value),
+        avg_session_duration: parseFloat(r.metricValues[4].value),
+        bounce_rate: parseFloat(r.metricValues[5].value),
+        schedule_visits: 0,
+      });
+    }
+  }
+  const pageRows = Array.from(pageMap.values());
 
   if (pageRows.length > 0 && totalScheduleVisits > 0) {
     const scheduleRow = pageRows.find((r: AnyRow) => r.page_path.startsWith("/schedule"));
