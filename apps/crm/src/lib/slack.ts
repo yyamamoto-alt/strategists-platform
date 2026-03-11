@@ -382,6 +382,67 @@ export async function notifyJicooAvailability(text: string) {
   await sendSlackMessage(channel, text);
 }
 
+/** 補助金顧客の入塾フォーム提出時に荒井さんへ通知 */
+export async function notifySubsidyEnrollment(data: {
+  customerName: string;
+  customerId: string;
+  hasIdentityDoc: boolean;
+  hasBankDoc: boolean;
+  identityDocUrl: string | null;
+  bankDocUrl: string | null;
+}) {
+  // 荒井さんのSlack ID（app_settingsのstaff_slack_mappingから取得、またはフォールバック）
+  const mapping = await getStaffSlackMapping();
+  const araiSlackId = mapping["荒井"];
+
+  if (!araiSlackId) {
+    console.error("[notifySubsidyEnrollment] 荒井さんのSlack IDが見つかりません。staff_slack_mappingに追加してください。");
+    // チャンネルにフォールバック
+    const channel = await getNotifyConfig("subsidy_enrollment", DEFAULT_CHANNELS.payment_success);
+    if (!channel) return;
+
+    const crmUrl = `https://strategists-crm.vercel.app/customers/${data.customerId}`;
+    const lines = [
+      `📋 *【補助金】入塾フォーム受信 — 確認TODO*`,
+      `受講生: ${data.customerName}`,
+      ``,
+      `*確認事項:*`,
+      `${data.hasIdentityDoc ? "✅" : "❌"} 本人確認書類が正しく保存されているか（画像の不備確認）`,
+      `${data.hasBankDoc ? "✅" : "❌"} 振込先確認書類が正しく保存されているか（画像の不備確認）`,
+      `⬜ 契約書が締結されているか`,
+      ``,
+      crmUrl,
+    ];
+    await sendSlackMessage(channel, lines.join("\n"));
+    return;
+  }
+
+  const crmUrl = `https://strategists-crm.vercel.app/customers/${data.customerId}`;
+  const lines = [
+    `📋 *【補助金】入塾フォーム受信 — 確認TODO*`,
+    `受講生: ${data.customerName}`,
+    ``,
+    `*確認事項:*`,
+    `${data.hasIdentityDoc ? "✅" : "❌"} 本人確認書類が正しく保存されているか（画像の不備確認）`,
+    data.hasIdentityDoc && data.identityDocUrl ? `  └ ${data.identityDocUrl.split(",")[0].trim()}` : "",
+    `${data.hasBankDoc ? "✅" : "❌"} 振込先確認書類が正しく保存されているか（画像の不備確認）`,
+    data.hasBankDoc && data.bankDocUrl ? `  └ ${data.bankDocUrl.split(",")[0].trim()}` : "",
+    `⬜ 契約書が締結されているか`,
+    ``,
+    crmUrl,
+  ].filter(Boolean);
+
+  try {
+    await sendSlackDM(araiSlackId, lines.join("\n"));
+  } catch (e) {
+    console.error("[notifySubsidyEnrollment] DM failed, falling back to channel:", e);
+    const channel = await getNotifyConfig("subsidy_enrollment", DEFAULT_CHANNELS.payment_success);
+    if (channel) {
+      await sendSlackMessage(channel, `<@${araiSlackId}> ` + lines.join("\n"));
+    }
+  }
+}
+
 // ================================================================
 // システム自動化 ON/OFF チェック
 // ================================================================

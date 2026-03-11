@@ -2,7 +2,7 @@ import "server-only";
 
 import { createServiceClient } from "@/lib/supabase/server";
 import { computeAttributionForCustomer } from "@/lib/compute-attribution-for-customer";
-import { notifyEnrollmentFormReceived } from "@/lib/slack";
+import { notifyEnrollmentFormReceived, notifySubsidyEnrollment } from "@/lib/slack";
 import crypto from "crypto";
 
 /** MD5ハッシュ（DB側のmd5()と同等） */
@@ -391,6 +391,20 @@ async function syncFormFieldsToRelatedTables(
       subsidyEligible: rawData["申込プラン"]?.includes("補助金") ?? false,
       salesPerson: custPipeline?.sales_person || null,
     }).catch(() => {}); // エラーで同期を止めない
+
+    // 補助金適用顧客の場合、荒井さんへSlack通知（書類確認TODO）
+    if (rawData["申込プラン"]?.includes("補助金")) {
+      const identityDoc = rawData["本人確認書類の写し"] || null;
+      const bankDoc = rawData["振込先口座を確認できる書類の写し"] || null;
+      notifySubsidyEnrollment({
+        customerName: custData?.name || rawData["お名前"] || "不明",
+        customerId,
+        hasIdentityDoc: !!identityDoc,
+        hasBankDoc: !!bankDoc,
+        identityDocUrl: identityDoc,
+        bankDocUrl: bankDoc,
+      }).catch(() => {}); // エラーで同期を止めない
+    }
   }
 
   // --- 指導終了報告 → learning_records ---
