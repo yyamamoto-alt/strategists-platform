@@ -151,13 +151,24 @@ function PagesTab({ pageDailyRows, searchQueries }: { pageDailyRows: PageDailyRo
   const [metric, setMetric] = useState<Metric>("users");
   const [expandedPage, setExpandedPage] = useState<string | null>(null);
 
+  // LP除外: SEO分析にはブログ等のみ表示
+  const seoRows = useMemo(() => {
+    return pageDailyRows.filter(r => {
+      const seg = r.segment || "";
+      if (seg === "lp_main" || seg === "lp3") return false;
+      // segment未設定の場合はpathで判定
+      if (!seg && (r.page_path === "/" || r.page_path.startsWith("/lp"))) return false;
+      return true;
+    });
+  }, [pageDailyRows]);
+
   const { pages, periodKeys } = useMemo(() => {
     const getPK = period === "week" ? getWeekKey : getMonthKey;
     const pageMap = new Map<string, AggregatedPage>();
     const allPKs = new Set<string>();
     const empty = (): Record<Metric, number> => ({ pageviews: 0, sessions: 0, users: 0 });
 
-    for (const row of pageDailyRows) {
+    for (const row of seoRows) {
       const pk = getPK(row.date);
       allPKs.add(pk);
       const ex = pageMap.get(row.page_path);
@@ -179,7 +190,7 @@ function PagesTab({ pageDailyRows, searchQueries }: { pageDailyRows: PageDailyRo
       pages: Array.from(pageMap.values()).sort((a, b) => b.totals[metric] - a.totals[metric]),
       periodKeys: Array.from(allPKs).sort(),
     };
-  }, [pageDailyRows, period, metric]);
+  }, [seoRows, period, metric]);
 
   const maxVal = useMemo(() => {
     let mv = 0;
@@ -192,12 +203,10 @@ function PagesTab({ pageDailyRows, searchQueries }: { pageDailyRows: PageDailyRo
     return searchQueries.filter(q => q.page_path === expandedPage).sort((a, b) => b.clicks - a.clicks);
   }, [expandedPage, searchQueries]);
 
-  const trendKeys = periodKeys.length >= 2 ? periodKeys.slice(-2) : [];
-
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-xs text-gray-500">{pages.length} ページ / 過去90日</p>
+        <p className="text-xs text-gray-500">{pages.length} ページ / 過去90日（SEOのみ）</p>
         <div className="flex items-center gap-3">
           <div className="flex gap-1 bg-white/5 rounded-lg p-0.5">
             {(["pageviews", "sessions", "users"] as const).map(m => (
@@ -225,7 +234,6 @@ function PagesTab({ pageDailyRows, searchQueries }: { pageDailyRows: PageDailyRo
                 <th className="text-left py-2.5 px-3 text-gray-400 w-20">種別</th>
                 <th className="text-left py-2.5 px-3 text-gray-400 min-w-[250px]">ページ</th>
                 <th className="text-right py-2.5 px-2 text-gray-400 w-20">合計</th>
-                <th className="text-center py-2.5 px-2 text-gray-400 w-16">前週比</th>
                 {periodKeys.map(pk => (
                   <th key={pk} className="text-center py-2.5 px-1 text-gray-500 w-16 whitespace-nowrap">{periodLabel(pk, period)}</th>
                 ))}
@@ -234,8 +242,6 @@ function PagesTab({ pageDailyRows, searchQueries }: { pageDailyRows: PageDailyRo
             <tbody>
               {pages.slice(0, 100).map(p => {
                 const isExp = expandedPage === p.page_path;
-                const cur = trendKeys.length === 2 ? (p.periods[trendKeys[1]]?.[metric] || 0) : 0;
-                const prv = trendKeys.length === 2 ? (p.periods[trendKeys[0]]?.[metric] || 0) : 0;
                 return (
                   <>
                     <tr key={p.page_path} className={`border-b border-white/5 hover:bg-white/5 transition-colors cursor-pointer ${isExp ? "bg-white/5" : ""}`}
@@ -256,7 +262,6 @@ function PagesTab({ pageDailyRows, searchQueries }: { pageDailyRows: PageDailyRo
                         </div>
                       </td>
                       <td className="text-right py-2 px-2 text-white font-medium">{p.totals[metric].toLocaleString()}</td>
-                      <td className="text-center py-2 px-2 text-xs">{trendKeys.length === 2 ? trendArrow(cur, prv) : "—"}</td>
                       {periodKeys.map(pk => {
                         const val = p.periods[pk]?.[metric] || 0;
                         return (
@@ -268,7 +273,7 @@ function PagesTab({ pageDailyRows, searchQueries }: { pageDailyRows: PageDailyRo
                     </tr>
                     {isExp && (
                       <tr key={`${p.page_path}-q`}>
-                        <td colSpan={4 + periodKeys.length} className="bg-white/[0.02] px-6 py-3">
+                        <td colSpan={3 + periodKeys.length} className="bg-white/[0.02] px-6 py-3">
                           {queriesForPage.length > 0 ? (
                             <div>
                               <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-2">検索クエリ（直近30日）</p>
@@ -314,14 +319,14 @@ function PagesTab({ pageDailyRows, searchQueries }: { pageDailyRows: PageDailyRo
 function CtrOpportunities({ searchQueries }: { searchQueries: SearchQueryRow[] }) {
   const opportunities = useMemo(() => {
     return searchQueries
-      .filter(q => q.impressions >= 20 && q.position <= 20)
+      .filter(q => q.impressions >= 5 && q.position <= 30)
       .map(q => {
         const exp = expectedCtr(q.position);
         const gap = exp - q.ctr;
         const potentialClicks = Math.round(gap * q.impressions);
         return { ...q, expected: exp, gap, potentialClicks };
       })
-      .filter(q => q.gap > 0.01)
+      .filter(q => q.gap > 0.005 && q.potentialClicks >= 1)
       .sort((a, b) => b.potentialClicks - a.potentialClicks);
   }, [searchQueries]);
 
@@ -465,12 +470,13 @@ function CannibalizationDetection({ searchQueries }: { searchQueries: SearchQuer
    ═══════════════════════════════════════════ */
 function ContentDecay({ pageDailyRows }: { pageDailyRows: PageDailyRow[] }) {
   const { declining, growing } = useMemo(() => {
-    const now = daysAgo(1), d14 = daysAgo(14), d28 = daysAgo(28);
+    // GA4データは2-3日遅れるため、7日前を基準に比較（直近すぎると不完全データで誤判定する）
+    const base = daysAgo(7), d14 = daysAgo(21), d28 = daysAgo(35);
     const recent = new Map<string, { users: number; title: string | null; segment: string }>();
     const prev = new Map<string, { users: number }>();
 
     for (const r of pageDailyRows) {
-      if (r.date > d14 && r.date <= now) {
+      if (r.date > d14 && r.date <= base) {
         const ex = recent.get(r.page_path);
         if (ex) ex.users += r.users; else recent.set(r.page_path, { users: r.users, title: r.page_title, segment: r.segment });
       } else if (r.date > d28 && r.date <= d14) {
@@ -530,8 +536,8 @@ function ContentDecay({ pageDailyRows }: { pageDailyRows: PageDailyRow[] }) {
 
   return (
     <div className="space-y-4">
-      <p className="text-xs text-gray-500">直近2週間 vs 前2週間のユーザー数を比較</p>
-      <div className="grid grid-cols-2 gap-4">
+      <p className="text-xs text-gray-500">8〜21日前 vs 22〜35日前のユーザー数を比較（データ遅延を考慮し直近7日を除外）</p>
+      <div className="space-y-4">
         {renderTable(declining, "text-red-400", "衰退コンテンツ")}
         {renderTable(growing, "text-green-400", "成長コンテンツ")}
       </div>
@@ -736,96 +742,139 @@ function HourlyHeatmap({ hourlyRows }: { hourlyRows: HourlyRow[] }) {
 }
 
 /* ═══════════════════════════════════════════
-   LP TRAFFIC TAB
+   LP TRAFFIC TREND TAB (heatmap style)
    ═══════════════════════════════════════════ */
-type TrafficRange = "7" | "30" | "90" | "custom";
+type LpMetric = "sessions" | "users" | "new_users" | "schedule_visits";
+const LP_METRIC_LABELS: Record<LpMetric, string> = { sessions: "セッション", users: "ユーザー", new_users: "新規", schedule_visits: "CV" };
 
-interface AggregatedTraffic {
-  source: string | null; medium: string | null; campaign: string | null;
-  channel_group: string | null; sessions: number; users: number;
-  new_users: number; schedule_visits: number;
+interface AggregatedTrafficSource {
+  label: string;
+  source: string | null;
+  medium: string | null;
+  totals: Record<LpMetric, number>;
+  periods: Record<string, Record<LpMetric, number>>;
 }
 
-function TrafficTabContent({ traffic, landingPage }: { traffic: TrafficDaily[]; landingPage: string }) {
-  const [range, setRange] = useState<TrafficRange>("30");
-  const [customFrom, setCustomFrom] = useState("");
-  const [customTo, setCustomTo] = useState("");
+function LpTrafficTrendTab({ traffic, landingPage }: { traffic: TrafficDaily[]; landingPage: string }) {
+  const [period, setPeriod] = useState<Period>("week");
+  const [metric, setMetric] = useState<LpMetric>("sessions");
 
-  const filtered = useMemo(() => {
-    let fromDate: string, toDate: string;
-    if (range === "custom" && customFrom && customTo) { fromDate = customFrom; toDate = customTo; }
-    else if (range === "custom") { fromDate = daysAgo(90); toDate = daysAgo(0); }
-    else { fromDate = daysAgo(parseInt(range)); toDate = daysAgo(0); }
+  const lpRows = useMemo(() => traffic.filter(t => t.landing_page === landingPage), [traffic, landingPage]);
 
-    const rows = traffic.filter(t => t.landing_page === landingPage && t.date >= fromDate && t.date <= toDate);
-    const map = new Map<string, AggregatedTraffic>();
-    for (const row of rows) {
-      const key = `${row.source}|${row.medium}|${row.campaign}`;
-      const ex = map.get(key);
-      if (ex) { ex.sessions += row.sessions; ex.users += row.users; ex.new_users += row.new_users; ex.schedule_visits += row.schedule_visits; }
-      else map.set(key, { source: row.source, medium: row.medium, campaign: row.campaign, channel_group: row.channel_group, sessions: row.sessions, users: row.users, new_users: row.new_users, schedule_visits: row.schedule_visits });
+  const { sources, periodKeys } = useMemo(() => {
+    const getPK = period === "week" ? getWeekKey : getMonthKey;
+    const srcMap = new Map<string, AggregatedTrafficSource>();
+    const allPKs = new Set<string>();
+    const empty = (): Record<LpMetric, number> => ({ sessions: 0, users: 0, new_users: 0, schedule_visits: 0 });
+
+    for (const row of lpRows) {
+      const pk = getPK(row.date);
+      allPKs.add(pk);
+      const key = `${row.source || "(direct)"}/${row.medium || "(none)"}`;
+      const ex = srcMap.get(key);
+      if (ex) {
+        ex.totals.sessions += row.sessions; ex.totals.users += row.users;
+        ex.totals.new_users += row.new_users; ex.totals.schedule_visits += row.schedule_visits;
+        if (!ex.periods[pk]) ex.periods[pk] = empty();
+        ex.periods[pk].sessions += row.sessions; ex.periods[pk].users += row.users;
+        ex.periods[pk].new_users += row.new_users; ex.periods[pk].schedule_visits += row.schedule_visits;
+      } else {
+        const t = empty();
+        t.sessions = row.sessions; t.users = row.users; t.new_users = row.new_users; t.schedule_visits = row.schedule_visits;
+        const pr = { ...t };
+        srcMap.set(key, {
+          label: key, source: row.source, medium: row.medium,
+          totals: t, periods: { [pk]: pr },
+        });
+      }
     }
-    return Array.from(map.values()).sort((a, b) => b.sessions - a.sessions);
-  }, [traffic, landingPage, range, customFrom, customTo]);
+    return {
+      sources: Array.from(srcMap.values()).sort((a, b) => b.totals[metric] - a.totals[metric]),
+      periodKeys: Array.from(allPKs).sort(),
+    };
+  }, [lpRows, period, metric]);
+
+  const maxVal = useMemo(() => {
+    let mv = 0;
+    for (const s of sources) for (const prd of Object.values(s.periods)) if (prd[metric] > mv) mv = prd[metric];
+    return mv;
+  }, [sources, metric]);
+
+  // KPIサマリー（全体）
+  const kpis = useMemo(() => {
+    const totals = { sessions: 0, users: 0, new_users: 0, schedule_visits: 0 };
+    for (const row of lpRows) {
+      totals.sessions += row.sessions; totals.users += row.users;
+      totals.new_users += row.new_users; totals.schedule_visits += row.schedule_visits;
+    }
+    return totals;
+  }, [lpRows]);
+
+  const lpLabel = landingPage === "/" ? "メインLP (/)" : "YouTube LP (/lp3/)";
 
   return (
     <div className="space-y-4">
+      {/* KPI Summary */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <KpiCard title="セッション" value={kpis.sessions.toLocaleString()} sub={<span className="text-gray-500 text-[10px]">過去90日</span>} />
+        <KpiCard title="ユーザー" value={kpis.users.toLocaleString()} sub={<span className="text-gray-500 text-[10px]">過去90日</span>} />
+        <KpiCard title="新規ユーザー" value={kpis.new_users.toLocaleString()} sub={<span className="text-gray-500 text-[10px]">過去90日</span>} />
+        <KpiCard title="CV（日程予約）" value={kpis.schedule_visits.toLocaleString()} sub={<span className="text-gray-500 text-[10px]">CVR: {kpis.sessions > 0 ? `${((kpis.schedule_visits / kpis.sessions) * 100).toFixed(1)}%` : "—"}</span>} />
+      </div>
+
+      {/* Heatmap Table */}
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium text-gray-300">
-          {landingPage === "/" ? "メインLP (/) 流入経路" : "YouTube LP (/lp3/) 流入経路"}
-        </h3>
+        <p className="text-xs text-gray-500">{lpLabel} 流入経路別推移 / {sources.length} ソース</p>
         <div className="flex items-center gap-3">
           <div className="flex gap-1 bg-white/5 rounded-lg p-0.5">
-            {([["7", "1週間"], ["30", "1ヶ月"], ["90", "3ヶ月"], ["custom", "期間指定"]] as const).map(([v, label]) => (
-              <button key={v} onClick={() => setRange(v as TrafficRange)}
-                className={`px-3 py-1 text-xs rounded-md transition-colors ${range === v ? "bg-brand text-white" : "text-gray-400 hover:text-white"}`}>{label}</button>
+            {(["sessions", "users", "new_users", "schedule_visits"] as const).map(m => (
+              <button key={m} onClick={() => setMetric(m)}
+                className={`px-3 py-1 text-xs rounded-md transition-colors ${metric === m ? "bg-brand text-white" : "text-gray-400 hover:text-white"}`}>
+                {LP_METRIC_LABELS[m]}
+              </button>
             ))}
           </div>
-          {range === "custom" && (
-            <div className="flex items-center gap-1.5">
-              <input type="date" value={customFrom} onChange={e => setCustomFrom(e.target.value)}
-                className="bg-white/5 border border-white/10 rounded px-2 py-1 text-xs text-white" />
-              <span className="text-gray-500 text-xs">〜</span>
-              <input type="date" value={customTo} onChange={e => setCustomTo(e.target.value)}
-                className="bg-white/5 border border-white/10 rounded px-2 py-1 text-xs text-white" />
-            </div>
-          )}
+          <div className="flex gap-1 bg-white/5 rounded-lg p-0.5">
+            {(["week", "month"] as const).map(p => (
+              <button key={p} onClick={() => setPeriod(p)}
+                className={`px-3 py-1 text-xs rounded-md transition-colors ${period === p ? "bg-brand text-white" : "text-gray-400 hover:text-white"}`}>
+                {p === "week" ? "週別" : "月別"}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
       <div className="bg-surface-raised border border-white/10 rounded-xl overflow-hidden">
-        <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
+        <div className="overflow-x-auto max-h-[700px] overflow-y-auto">
           <table className="w-full text-xs">
             <thead className="sticky top-0 bg-surface-raised z-10">
-              <tr className="border-b border-white/10 text-gray-400">
-                <th className="text-left py-2.5 px-3">ソース</th>
-                <th className="text-left py-2.5 px-3">メディア</th>
-                <th className="text-left py-2.5 px-3">キャンペーン</th>
-                <th className="text-right py-2.5 px-3">セッション</th>
-                <th className="text-right py-2.5 px-3">ユーザー</th>
-                <th className="text-right py-2.5 px-3">CV</th>
-                <th className="text-right py-2.5 px-3">CVR</th>
+              <tr className="border-b border-white/10">
+                <th className="text-left py-2.5 px-3 text-gray-400 min-w-[200px]">流入経路</th>
+                <th className="text-right py-2.5 px-2 text-gray-400 w-20">合計</th>
+                {periodKeys.map(pk => (
+                  <th key={pk} className="text-center py-2.5 px-1 text-gray-500 w-16 whitespace-nowrap">{periodLabel(pk, period)}</th>
+                ))}
               </tr>
             </thead>
             <tbody>
-              {filtered.map((t, i) => {
-                const cvr = t.sessions > 0 ? (t.schedule_visits / t.sessions) * 100 : 0;
-                return (
-                  <tr key={i} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                    <td className="py-2.5 px-3 text-white">{t.source || "(direct)"}</td>
-                    <td className="py-2.5 px-3 text-gray-300">{t.medium || "(none)"}</td>
-                    <td className="py-2.5 px-3 text-gray-400 truncate max-w-[200px]">{t.campaign || "—"}</td>
-                    <td className="text-right py-2.5 px-3 text-white font-medium">{t.sessions.toLocaleString()}</td>
-                    <td className="text-right py-2.5 px-3 text-gray-300">{t.users.toLocaleString()}</td>
-                    <td className="text-right py-2.5 px-3">
-                      <span className={t.schedule_visits > 0 ? "text-green-400 font-medium" : "text-gray-600"}>{t.schedule_visits}</span>
-                    </td>
-                    <td className="text-right py-2.5 px-3">
-                      <span className={cvr > 0 ? "text-green-400" : "text-gray-600"}>{cvr > 0 ? `${cvr.toFixed(1)}%` : "—"}</span>
-                    </td>
-                  </tr>
-                );
-              })}
-              {filtered.length === 0 && <tr><td colSpan={7} className="py-8 text-center text-gray-500">データがありません</td></tr>}
+              {sources.slice(0, 50).map(s => (
+                <tr key={s.label} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                  <td className="py-2 px-3">
+                    <p className="text-white">{s.source || "(direct)"}</p>
+                    <p className="text-[10px] text-gray-600">{s.medium || "(none)"}</p>
+                  </td>
+                  <td className="text-right py-2 px-2 text-white font-medium">{s.totals[metric].toLocaleString()}</td>
+                  {periodKeys.map(pk => {
+                    const val = s.periods[pk]?.[metric] || 0;
+                    return (
+                      <td key={pk} className={`text-center py-2 px-1 ${heatmapBg(val, maxVal)}`}>
+                        <span className={val > 0 ? "text-white/80" : "text-gray-700"}>{val > 0 ? val.toLocaleString() : ""}</span>
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+              {sources.length === 0 && <tr><td colSpan={2 + periodKeys.length} className="py-8 text-center text-gray-500">データがありません</td></tr>}
             </tbody>
           </table>
         </div>
@@ -1625,8 +1674,8 @@ export function AnalyticsClient({ pageDailyRows, traffic, searchQueries, searchD
             <SubTab label="メインLP" active={lpTab === "main"} onClick={() => setLpTab("main")} />
             <SubTab label="YouTube LP" active={lpTab === "lp3"} onClick={() => setLpTab("lp3")} />
           </div>
-          {lpTab === "main" && <TrafficTabContent traffic={traffic} landingPage="/" />}
-          {lpTab === "lp3" && <TrafficTabContent traffic={traffic} landingPage="/lp3/" />}
+          {lpTab === "main" && <LpTrafficTrendTab traffic={traffic} landingPage="/" />}
+          {lpTab === "lp3" && <LpTrafficTrendTab traffic={traffic} landingPage="/lp3/" />}
         </div>
       )}
 

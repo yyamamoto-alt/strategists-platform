@@ -358,8 +358,11 @@ export interface YouTubeFunnelCustomer {
   utm_source: string | null;
   utm_medium: string | null;
   utm_campaign: string | null;
+  application_reason: string | null;
+  initial_channel: string | null;
   stage: string | null;
   confirmed_amount: number;
+  source_type: "utm" | "application_reason" | "initial_channel";
 }
 
 /** YouTube動画マスタ一覧 */
@@ -413,22 +416,14 @@ export async function fetchYouTubeChannelDaily(days: number = 90): Promise<YouTu
   return data || [];
 }
 
-/** YouTube UTM経由の顧客ファネル */
+/** YouTube経由の顧客ファネル（UTM + 申込理由 + 初回チャネル） */
 export async function fetchYouTubeFunnelData(): Promise<YouTubeFunnelCustomer[]> {
-  // YouTube経由 = utm_source が youtube系 or initial_channel = 'Youtube'
-  const { data, error } = await supabase()
-    .from("customers")
-    .select("id,name,application_date,attribute,utm_source,utm_medium,utm_campaign,sales_pipeline(stage),contracts(confirmed_amount)")
-    .or("utm_source.ilike.%youtube%,utm_source.eq.lp3")
-    .order("application_date", { ascending: false });
-
-  if (error) {
-    console.error("YouTube funnel fetch error:", error.message);
-    return [];
-  }
+  // 3つのソースから取得してマージ（重複排除）
+  const seen = new Set<string>();
+  const results: YouTubeFunnelCustomer[] = [];
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (data || []).map((row: any) => ({
+  const mapRow = (row: any, sourceType: "utm" | "application_reason" | "initial_channel"): YouTubeFunnelCustomer => ({
     id: row.id,
     name: row.name,
     application_date: row.application_date,
@@ -436,7 +431,46 @@ export async function fetchYouTubeFunnelData(): Promise<YouTubeFunnelCustomer[]>
     utm_source: row.utm_source,
     utm_medium: row.utm_medium,
     utm_campaign: row.utm_campaign,
+    application_reason: row.application_reason ?? null,
+    initial_channel: row.sales_pipeline?.initial_channel ?? null,
     stage: row.sales_pipeline?.stage ?? null,
     confirmed_amount: row.contracts?.confirmed_amount ?? 0,
-  }));
+    source_type: sourceType,
+  });
+
+  // 1. UTM経由 (utm_source に youtube/yt/lp3 を含む)
+  const { data: utmData } = await supabase()
+    .from("customers")
+    .select("id,name,application_date,attribute,utm_source,utm_medium,utm_campaign,application_reason,sales_pipeline(stage,initial_channel),contracts(confirmed_amount)")
+    .or("utm_source.ilike.%youtube%,utm_source.ilike.%yt%,utm_source.eq.lp3")
+    .order("application_date", { ascending: false });
+  for (const row of utmData || []) {
+    if (!seen.has(row.id)) { seen.add(row.id); results.push(mapRow(row, "utm")); }
+  }
+
+  // 2. 申込理由にYouTubeを含む
+  const { data: reasonData } = await supabase()
+    .from("customers")
+    .select("id,name,application_date,attribute,utm_source,utm_medium,utm_campaign,application_reason,sales_pipeline(stage,initial_channel),contracts(confirmed_amount)")
+    .ilike("application_reason", "%youtube%")
+    .order("application_date", { ascending: false });
+  for (const row of reasonData || []) {
+    if (!seen.has(row.id)) { seen.add(row.id); results.push(mapRow(row, "application_reason")); }
+  }
+
+  // 3. initial_channel = YouTube（ネストフィルタ不可のためクライアント側フィルタ）
+  const { data: channelData } = await supabase()
+    .from("customers")
+    .select("id,name,application_date,attribute,utm_source,utm_medium,utm_campaign,application_reason,sales_pipeline(stage,initial_channel),contracts(confirmed_amount)")
+    .order("application_date", { ascending: false });
+  for (const row of channelData || []) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const initialChannel = (row as any).sales_pipeline?.initial_channel || "";
+    if (initialChannel.toLowerCase().includes("youtube") && !seen.has(row.id)) {
+      seen.add(row.id);
+      results.push(mapRow(row, "initial_channel"));
+    }
+  }
+
+  return results;
 }

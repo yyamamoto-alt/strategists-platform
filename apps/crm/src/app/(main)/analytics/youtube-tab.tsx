@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import {
-  LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend,
+  LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend,
 } from "recharts";
 import type {
   YouTubeVideo,
@@ -13,6 +13,7 @@ import type {
 
 /* ───── Types ───── */
 type YouTubeSub = "overview" | "videos" | "trends" | "funnel";
+type ChartGranularity = "daily" | "weekly" | "monthly";
 
 /* ───── Shared ───── */
 function SubTab({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
@@ -48,6 +49,10 @@ function formatDuration(seconds: number): string {
   return m > 0 ? `${m}分${s > 0 ? `${s}秒` : ""}` : `${s}秒`;
 }
 
+function isShort(video: YouTubeVideo): boolean {
+  return video.duration_seconds <= 60;
+}
+
 function kpiChange(current: number, prev: number, invert?: boolean) {
   if (prev === 0 && current === 0) return <span className="text-gray-600 text-[10px]">—</span>;
   if (prev === 0) return <span className="text-green-400 text-[10px]">NEW</span>;
@@ -58,6 +63,38 @@ function kpiChange(current: number, prev: number, invert?: boolean) {
       {pct > 0 ? "+" : ""}{pct.toFixed(0)}% vs 前月同期
     </span>
   );
+}
+
+function GranularitySelector({ value, onChange }: { value: ChartGranularity; onChange: (g: ChartGranularity) => void }) {
+  return (
+    <div className="flex gap-1 bg-white/5 rounded-lg p-0.5">
+      {([["daily", "日別"], ["weekly", "週別"], ["monthly", "月別"]] as const).map(([v, label]) => (
+        <button key={v} onClick={() => onChange(v)}
+          className={`px-2 py-1 text-[10px] rounded-md transition-colors ${value === v ? "bg-brand text-white" : "text-gray-400 hover:text-white"}`}>{label}</button>
+      ))}
+    </div>
+  );
+}
+
+function aggregateByGranularity<T extends { date: string }>(
+  data: T[],
+  granularity: ChartGranularity,
+  aggregator: (items: T[]) => Record<string, number>,
+): { key: string; [k: string]: number | string }[] {
+  const getKey = granularity === "daily" ? (d: string) => d
+    : granularity === "weekly" ? getWeekKey : (d: string) => d.slice(0, 7);
+
+  const groups = new Map<string, T[]>();
+  for (const item of data) {
+    const key = getKey(item.date);
+    const arr = groups.get(key) || [];
+    arr.push(item);
+    groups.set(key, arr);
+  }
+
+  return Array.from(groups.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([key, items]) => ({ key, ...aggregator(items) }));
 }
 
 /* ───── Funnel Helpers ───── */
@@ -121,6 +158,8 @@ function YouTubeOverview({ youtubeVideos, youtubeDaily, channelDaily }: {
   youtubeDaily: YouTubeDaily[];
   channelDaily: YouTubeChannelDaily[];
 }) {
+  const [chartGranularity, setChartGranularity] = useState<ChartGranularity>("weekly");
+
   const kpis = useMemo(() => {
     const now = new Date();
     const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
@@ -145,7 +184,6 @@ function YouTubeOverview({ youtubeVideos, youtubeDaily, channelDaily }: {
       }
     }
 
-    // 平均視聴率は動画別日次データから算出
     let curAvgPct = 0, prevAvgPct = 0, curPctCount = 0, prevPctCount = 0;
     for (const r of youtubeDaily) {
       if (r.average_view_percentage <= 0) continue;
@@ -169,6 +207,37 @@ function YouTubeOverview({ youtubeVideos, youtubeDaily, channelDaily }: {
     };
   }, [channelDaily, youtubeDaily, youtubeVideos]);
 
+  // Chart data with granularity
+  const viewsChartData = useMemo(() =>
+    aggregateByGranularity(channelDaily, chartGranularity, items => ({
+      total_views: items.reduce((s, r) => s + r.total_views, 0),
+    })),
+  [channelDaily, chartGranularity]);
+
+  const minutesChartData = useMemo(() =>
+    aggregateByGranularity(channelDaily, chartGranularity, items => ({
+      estimated_minutes_watched: items.reduce((s, r) => s + r.estimated_minutes_watched, 0),
+    })),
+  [channelDaily, chartGranularity]);
+
+  // 月別動画投稿数
+  const publishData = useMemo(() => {
+    const map = new Map<string, { month: string; count: number; shorts: number }>();
+    for (const v of youtubeVideos) {
+      const month = v.published_at.slice(0, 7);
+      const ex = map.get(month) || { month, count: 0, shorts: 0 };
+      ex.count++;
+      if (isShort(v)) ex.shorts++;
+      map.set(month, ex);
+    }
+    return Array.from(map.values()).sort((a, b) => a.month.localeCompare(b.month));
+  }, [youtubeVideos]);
+
+  // 人気動画 - 全動画をソート（上位30件表示）
+  const topVideos = useMemo(() =>
+    [...youtubeVideos].sort((a, b) => b.total_views - a.total_views).slice(0, 30),
+  [youtubeVideos]);
+
   return (
     <div className="space-y-6">
       {/* KPI Cards */}
@@ -181,42 +250,63 @@ function YouTubeOverview({ youtubeVideos, youtubeDaily, channelDaily }: {
         <KpiCard title="動画数" value={String(kpis.totalVideos)} sub={<span className="text-gray-500 text-[10px]">公開中</span>} />
       </div>
 
-      {/* Charts */}
+      {/* Charts with granularity switcher */}
+      <div className="flex justify-end">
+        <GranularitySelector value={chartGranularity} onChange={setChartGranularity} />
+      </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="bg-surface-raised border border-white/10 rounded-xl p-5">
-          <h3 className="text-sm font-medium text-gray-300 mb-4">視聴数推移（日別）</h3>
+          <h3 className="text-sm font-medium text-gray-300 mb-4">視聴数推移</h3>
           <ResponsiveContainer width="100%" height={250}>
-            <LineChart data={channelDaily}>
+            <LineChart data={viewsChartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-              <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#6b7280" }} tickFormatter={(v: string) => v.slice(5)} interval={6} />
+              <XAxis dataKey="key" tick={{ fontSize: 10, fill: "#6b7280" }} tickFormatter={(v: string) => v.slice(5)} interval={chartGranularity === "daily" ? 6 : 0} />
               <YAxis tick={{ fontSize: 10, fill: "#6b7280" }} />
               <Tooltip contentStyle={{ backgroundColor: "#1f2937", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 12 }} labelStyle={{ color: "#9ca3af" }} />
-              <Line type="monotone" dataKey="total_views" name="視聴数" stroke="#ef4444" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="total_views" name="視聴数" stroke="#ef4444" strokeWidth={2} dot={chartGranularity !== "daily"} />
             </LineChart>
           </ResponsiveContainer>
         </div>
         <div className="bg-surface-raised border border-white/10 rounded-xl p-5">
-          <h3 className="text-sm font-medium text-gray-300 mb-4">視聴時間推移（日別・分）</h3>
+          <h3 className="text-sm font-medium text-gray-300 mb-4">視聴時間推移（分）</h3>
           <ResponsiveContainer width="100%" height={250}>
-            <LineChart data={channelDaily}>
+            <LineChart data={minutesChartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-              <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#6b7280" }} tickFormatter={(v: string) => v.slice(5)} interval={6} />
+              <XAxis dataKey="key" tick={{ fontSize: 10, fill: "#6b7280" }} tickFormatter={(v: string) => v.slice(5)} interval={chartGranularity === "daily" ? 6 : 0} />
               <YAxis tick={{ fontSize: 10, fill: "#6b7280" }} />
               <Tooltip contentStyle={{ backgroundColor: "#1f2937", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 12 }} labelStyle={{ color: "#9ca3af" }} />
-              <Line type="monotone" dataKey="estimated_minutes_watched" name="視聴時間(分)" stroke="#f59e0b" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="estimated_minutes_watched" name="視聴時間(分)" stroke="#f59e0b" strokeWidth={2} dot={chartGranularity !== "daily"} />
             </LineChart>
           </ResponsiveContainer>
         </div>
       </div>
 
-      {/* Top videos by total views */}
+      {/* Monthly publish count */}
+      {publishData.length > 1 && (
+        <div className="bg-surface-raised border border-white/10 rounded-xl p-5">
+          <h3 className="text-sm font-medium text-gray-300 mb-4">月別動画投稿数</h3>
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={publishData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+              <XAxis dataKey="month" tick={{ fontSize: 10, fill: "#6b7280" }} />
+              <YAxis tick={{ fontSize: 10, fill: "#6b7280" }} allowDecimals={false} />
+              <Tooltip contentStyle={{ backgroundColor: "#1f2937", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 12 }} labelStyle={{ color: "#9ca3af" }} />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <Bar dataKey="count" name="通常動画" fill="#ef4444" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="shorts" name="ショート" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+
+      {/* Top videos - all videos sorted by views */}
       <div className="bg-surface-raised border border-white/10 rounded-xl overflow-hidden">
         <div className="px-5 py-3 border-b border-white/10">
-          <h3 className="text-sm font-medium text-gray-300">人気動画（総視聴数順）</h3>
+          <h3 className="text-sm font-medium text-gray-300">人気動画（総視聴数順・全{youtubeVideos.length}本中上位30）</h3>
         </div>
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
           <table className="w-full text-xs">
-            <thead>
+            <thead className="sticky top-0 bg-surface-raised z-10">
               <tr className="border-b border-white/10 text-gray-400">
                 <th className="text-left py-2.5 px-4">動画</th>
                 <th className="text-right py-2.5 px-3">総視聴数</th>
@@ -227,14 +317,17 @@ function YouTubeOverview({ youtubeVideos, youtubeDaily, channelDaily }: {
               </tr>
             </thead>
             <tbody>
-              {youtubeVideos.slice(0, 15).sort((a, b) => b.total_views - a.total_views).map(v => (
+              {topVideos.map(v => (
                 <tr key={v.video_id} className="border-b border-white/5 hover:bg-white/5">
                   <td className="py-2.5 px-4">
                     <div className="flex items-center gap-3">
                       {v.thumbnail_url && (
                         <img src={v.thumbnail_url} alt="" className="w-16 h-9 rounded object-cover flex-shrink-0" />
                       )}
-                      <span className="text-white font-medium truncate max-w-[300px]">{v.title}</span>
+                      <div className="min-w-0">
+                        <span className="text-white font-medium truncate max-w-[300px] block">{v.title}</span>
+                        {isShort(v) && <span className="text-[10px] px-1 py-0.5 rounded bg-yellow-500/20 text-yellow-300">Short</span>}
+                      </div>
                     </div>
                   </td>
                   <td className="text-right py-2.5 px-3 text-white font-medium">{v.total_views.toLocaleString()}</td>
@@ -259,6 +352,13 @@ function YouTubeVideoTable({ youtubeVideos, youtubeDaily }: {
 }) {
   const [period, setPeriod] = useState<"week" | "month" | "3months">("month");
   const [sortBy, setSortBy] = useState<"views" | "minutes" | "avgPct" | "likes">("views");
+  const [includeShorts, setIncludeShorts] = useState(false);
+
+  const filteredVideos = useMemo(() =>
+    includeShorts ? youtubeVideos : youtubeVideos.filter(v => !isShort(v)),
+  [youtubeVideos, includeShorts]);
+
+  const filteredVideoIds = useMemo(() => new Set(filteredVideos.map(v => v.video_id)), [filteredVideos]);
 
   const { videoStats, weekKeys } = useMemo(() => {
     const now = new Date();
@@ -268,21 +368,19 @@ function YouTubeVideoTable({ youtubeVideos, youtubeDaily }: {
     else cutoff.setDate(cutoff.getDate() - 90);
     const cutoffStr = cutoff.toISOString().slice(0, 10);
 
-    const filtered = youtubeDaily.filter(r => r.date >= cutoffStr);
+    const filtered = youtubeDaily.filter(r => r.date >= cutoffStr && filteredVideoIds.has(r.video_id));
 
-    // Video aggregate
     const statsMap = new Map<string, { views: number; minutes: number; avgPct: number; avgCount: number; likes: number; comments: number; shares: number; prevViews: number }>();
-    // Weekly data
-    const weekMap = new Map<string, Map<string, number>>(); // videoId -> weekKey -> views
+    const weekMap = new Map<string, Map<string, number>>();
     const allWeeks = new Set<string>();
 
-    // Previous period for comparison
-    const prevCutoff = new Date(cutoff);
     const periodDays = period === "week" ? 7 : period === "month" ? 30 : 90;
+    const prevCutoff = new Date(cutoff);
     prevCutoff.setDate(prevCutoff.getDate() - periodDays);
     const prevCutoffStr = prevCutoff.toISOString().slice(0, 10);
 
     for (const r of youtubeDaily) {
+      if (!filteredVideoIds.has(r.video_id)) continue;
       if (r.date >= cutoffStr) {
         const s = statsMap.get(r.video_id) || { views: 0, minutes: 0, avgPct: 0, avgCount: 0, likes: 0, comments: 0, shares: 0, prevViews: 0 };
         s.views += r.views; s.minutes += r.estimated_minutes_watched;
@@ -302,7 +400,7 @@ function YouTubeVideoTable({ youtubeVideos, youtubeDaily }: {
       }
     }
 
-    const videoMeta = new Map(youtubeVideos.map(v => [v.video_id, v]));
+    const videoMeta = new Map(filteredVideos.map(v => [v.video_id, v]));
     const videoStats = Array.from(statsMap.entries())
       .map(([vid, s]) => ({
         video_id: vid,
@@ -320,20 +418,27 @@ function YouTubeVideoTable({ youtubeVideos, youtubeDaily }: {
       .sort((a, b) => b[sortBy] - a[sortBy]);
 
     return { videoStats, weekKeys: Array.from(allWeeks).sort() };
-  }, [youtubeDaily, youtubeVideos, period, sortBy]);
+  }, [youtubeDaily, filteredVideos, filteredVideoIds, period, sortBy]);
 
   const maxWeekViews = Math.max(...videoStats.flatMap(v => Array.from(v.weeks.values())), 1);
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex gap-1 bg-white/5 rounded-lg p-0.5">
-          {(["views", "minutes", "avgPct", "likes"] as const).map(s => (
-            <button key={s} onClick={() => setSortBy(s)}
-              className={`px-2 py-1 text-[10px] rounded-md transition-colors ${sortBy === s ? "bg-brand text-white" : "text-gray-400 hover:text-white"}`}>
-              {s === "views" ? "視聴数順" : s === "minutes" ? "時間順" : s === "avgPct" ? "視聴率順" : "いいね順"}
-            </button>
-          ))}
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-center gap-3">
+          <div className="flex gap-1 bg-white/5 rounded-lg p-0.5">
+            {(["views", "minutes", "avgPct", "likes"] as const).map(s => (
+              <button key={s} onClick={() => setSortBy(s)}
+                className={`px-2 py-1 text-[10px] rounded-md transition-colors ${sortBy === s ? "bg-brand text-white" : "text-gray-400 hover:text-white"}`}>
+                {s === "views" ? "視聴数順" : s === "minutes" ? "時間順" : s === "avgPct" ? "視聴率順" : "いいね順"}
+              </button>
+            ))}
+          </div>
+          <label className="flex items-center gap-1.5 cursor-pointer">
+            <input type="checkbox" checked={includeShorts} onChange={e => setIncludeShorts(e.target.checked)}
+              className="w-3.5 h-3.5 rounded border-white/20 bg-white/5 text-brand focus:ring-brand/50" />
+            <span className="text-[10px] text-gray-400">ショートを含む</span>
+          </label>
         </div>
         <div className="flex gap-1 bg-white/5 rounded-lg p-0.5">
           {([["week", "1週間"], ["month", "1ヶ月"], ["3months", "3ヶ月"]] as const).map(([v, label]) => (
@@ -350,7 +455,6 @@ function YouTubeVideoTable({ youtubeVideos, youtubeDaily }: {
               <tr className="border-b border-white/10 text-gray-400">
                 <th className="text-left py-2.5 px-3 min-w-[280px]">動画</th>
                 <th className="text-right py-2.5 px-2 w-16">視聴数</th>
-                <th className="text-right py-2.5 px-2 w-16">前期比</th>
                 <th className="text-right py-2.5 px-2 w-16">視聴時間</th>
                 <th className="text-right py-2.5 px-2 w-14">視聴率</th>
                 <th className="text-right py-2.5 px-2 w-12">いいね</th>
@@ -360,41 +464,36 @@ function YouTubeVideoTable({ youtubeVideos, youtubeDaily }: {
               </tr>
             </thead>
             <tbody>
-              {videoStats.slice(0, 50).map(v => {
-                const change = v.prevViews > 0 ? ((v.views - v.prevViews) / v.prevViews) * 100 : (v.views > 0 ? 100 : 0);
-                return (
-                  <tr key={v.video_id} className="border-b border-white/5 hover:bg-white/5">
-                    <td className="py-2 px-3">
-                      <div className="flex items-center gap-2">
-                        {v.meta?.thumbnail_url && (
-                          <img src={v.meta.thumbnail_url} alt="" className="w-12 h-7 rounded object-cover flex-shrink-0" />
-                        )}
-                        <span className="text-white font-medium truncate max-w-[200px]">{v.meta?.title || v.video_id}</span>
+              {videoStats.slice(0, 50).map(v => (
+                <tr key={v.video_id} className="border-b border-white/5 hover:bg-white/5">
+                  <td className="py-2 px-3">
+                    <div className="flex items-center gap-2">
+                      {v.meta?.thumbnail_url && (
+                        <img src={v.meta.thumbnail_url} alt="" className="w-12 h-7 rounded object-cover flex-shrink-0" />
+                      )}
+                      <div className="min-w-0">
+                        <span className="text-white font-medium truncate max-w-[200px] block">{v.meta?.title || v.video_id}</span>
+                        {v.meta && isShort(v.meta) && <span className="text-[10px] px-1 py-0.5 rounded bg-yellow-500/20 text-yellow-300">Short</span>}
                       </div>
-                    </td>
-                    <td className="text-right py-2 px-2 text-white font-medium">{v.views.toLocaleString()}</td>
-                    <td className="text-right py-2 px-2">
-                      <span className={change > 0 ? "text-green-400 text-[10px]" : change < 0 ? "text-red-400 text-[10px]" : "text-gray-600 text-[10px]"}>
-                        {change > 0 ? "+" : ""}{change.toFixed(0)}%
-                      </span>
-                    </td>
-                    <td className="text-right py-2 px-2 text-gray-300">{v.minutes.toFixed(0)}m</td>
-                    <td className="text-right py-2 px-2 text-gray-300">{v.avgPct.toFixed(1)}%</td>
-                    <td className="text-right py-2 px-2 text-gray-300">{v.likes}</td>
-                    {weekKeys.map(wk => {
-                      const wViews = v.weeks.get(wk) || 0;
-                      const intensity = wViews / maxWeekViews;
-                      const bg = intensity > 0.5 ? "bg-red-500/30" : intensity > 0.2 ? "bg-red-500/15" : intensity > 0 ? "bg-red-500/5" : "";
-                      return (
-                        <td key={wk} className={`text-center py-2 px-1 ${bg}`} title={`${wViews} views`}>
-                          <span className="text-white/70 text-[10px]">{wViews > 0 ? wViews : "—"}</span>
-                        </td>
-                      );
-                    })}
-                  </tr>
-                );
-              })}
-              {videoStats.length === 0 && <tr><td colSpan={6 + weekKeys.length} className="py-8 text-center text-gray-500">データなし</td></tr>}
+                    </div>
+                  </td>
+                  <td className="text-right py-2 px-2 text-white font-medium">{v.views.toLocaleString()}</td>
+                  <td className="text-right py-2 px-2 text-gray-300">{v.minutes.toFixed(0)}m</td>
+                  <td className="text-right py-2 px-2 text-gray-300">{v.avgPct.toFixed(1)}%</td>
+                  <td className="text-right py-2 px-2 text-gray-300">{v.likes}</td>
+                  {weekKeys.map(wk => {
+                    const wViews = v.weeks.get(wk) || 0;
+                    const intensity = wViews / maxWeekViews;
+                    const bg = intensity > 0.5 ? "bg-red-500/30" : intensity > 0.2 ? "bg-red-500/15" : intensity > 0 ? "bg-red-500/5" : "";
+                    return (
+                      <td key={wk} className={`text-center py-2 px-1 ${bg}`} title={`${wViews} views`}>
+                        <span className="text-white/70 text-[10px]">{wViews > 0 ? wViews : "—"}</span>
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+              {videoStats.length === 0 && <tr><td colSpan={5 + weekKeys.length} className="py-8 text-center text-gray-500">データなし</td></tr>}
             </tbody>
           </table>
         </div>
@@ -410,15 +509,11 @@ function YouTubeWeeklyTrends({ youtubeVideos, youtubeDaily }: {
 }) {
   const [selectedVideos, setSelectedVideos] = useState<Set<string>>(new Set());
 
-  // Weekly aggregated data
   const { weeklyOverview, videoWeekly, highlights } = useMemo(() => {
     const videoMeta = new Map(youtubeVideos.map(v => [v.video_id, v]));
 
-    // Weekly overview: total channel stats per week
     const weekOverMap = new Map<string, { week: string; views: number; minutes: number; subNet: number }>();
-    // Per-video weekly data
-    const vidWeekMap = new Map<string, Map<string, number>>(); // videoId -> weekKey -> views
-    // For highlights: this week vs last week
+    const vidWeekMap = new Map<string, Map<string, number>>();
     const thisWeek = getWeekKey(new Date().toISOString().slice(0, 10));
     const lastWeekDate = new Date();
     lastWeekDate.setDate(lastWeekDate.getDate() - 7);
@@ -430,25 +525,21 @@ function YouTubeWeeklyTrends({ youtubeVideos, youtubeDaily }: {
     for (const r of youtubeDaily) {
       const wk = getWeekKey(r.date);
 
-      // Overview
       const ov = weekOverMap.get(wk) || { week: wk, views: 0, minutes: 0, subNet: 0 };
       ov.views += r.views; ov.minutes += r.estimated_minutes_watched;
       ov.subNet += (r.subscribers_gained - r.subscribers_lost);
       weekOverMap.set(wk, ov);
 
-      // Per-video
       if (!vidWeekMap.has(r.video_id)) vidWeekMap.set(r.video_id, new Map());
       const vwm = vidWeekMap.get(r.video_id)!;
       vwm.set(wk, (vwm.get(wk) || 0) + r.views);
 
-      // Highlights
       if (wk === thisWeek) thisWeekViews.set(r.video_id, (thisWeekViews.get(r.video_id) || 0) + r.views);
       if (wk === lastWeek) lastWeekViews.set(r.video_id, (lastWeekViews.get(r.video_id) || 0) + r.views);
     }
 
     const weeklyOverview = Array.from(weekOverMap.values()).sort((a, b) => a.week.localeCompare(b.week));
 
-    // Highlights
     let topVideo = "";
     let topViews = 0;
     let mostGrown = "";
@@ -460,7 +551,6 @@ function YouTubeWeeklyTrends({ youtubeVideos, youtubeDaily }: {
       if (growth > mostGrowth && views >= 5) { mostGrowth = growth; mostGrown = vid; }
     }
 
-    // Auto-select top 5 videos if none selected
     const topByViews = Array.from(thisWeekViews.entries())
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5)
@@ -479,15 +569,12 @@ function YouTubeWeeklyTrends({ youtubeVideos, youtubeDaily }: {
     };
   }, [youtubeDaily, youtubeVideos]);
 
-  // Use default selection if none chosen
   const activeSelection = selectedVideos.size > 0
     ? selectedVideos
     : new Set(highlights.defaultSelection);
 
-  // Build chart data for selected videos
   const chartData = useMemo(() => {
     const videoMeta = new Map(youtubeVideos.map(v => [v.video_id, v]));
-
     return videoWeekly.weekKeys.map(wk => {
       const point: Record<string, string | number> = { week: wk };
       for (const vid of activeSelection) {
@@ -600,7 +687,7 @@ function YouTubeWeeklyTrends({ youtubeVideos, youtubeDaily }: {
   );
 }
 
-/* ─── Funnel (YouTube UTM customers) ─── */
+/* ─── Funnel (YouTube customers from multiple sources) ─── */
 function YouTubeFunnelTab({ youtubeFunnel }: { youtubeFunnel: YouTubeFunnelCustomer[] }) {
   const funnel = useMemo(() => {
     const total = youtubeFunnel.length;
@@ -609,6 +696,16 @@ function YouTubeFunnelTab({ youtubeFunnel }: { youtubeFunnel: YouTubeFunnelCusto
     const closed = youtubeFunnel.filter(c => funnelIsClosed(c.stage)).length;
     const totalRevenue = youtubeFunnel.filter(c => funnelIsClosed(c.stage)).reduce((s, c) => s + c.confirmed_amount, 0);
     return { total, scheduled, conducted, closed, totalRevenue };
+  }, [youtubeFunnel]);
+
+  // Source type breakdown
+  const sourceBreakdown = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const c of youtubeFunnel) {
+      const label = c.source_type === "utm" ? "UTM経由" : c.source_type === "application_reason" ? "申込理由にYouTube" : "初回チャネルYouTube";
+      map.set(label, (map.get(label) || 0) + 1);
+    }
+    return Array.from(map.entries()).sort((a, b) => b[1] - a[1]);
   }, [youtubeFunnel]);
 
   const monthlyData = useMemo(() => {
@@ -623,6 +720,19 @@ function YouTubeFunnelTab({ youtubeFunnel }: { youtubeFunnel: YouTubeFunnelCusto
       map.set(month, ex);
     }
     return Array.from(map.values()).sort((a, b) => a.month.localeCompare(b.month)).filter(m => m.month !== "不明");
+  }, [youtubeFunnel]);
+
+  // UTM campaign breakdown (which video they came from)
+  const campaignBreakdown = useMemo(() => {
+    const map = new Map<string, { campaign: string; count: number; closed: number; revenue: number }>();
+    for (const c of youtubeFunnel) {
+      if (!c.utm_campaign) continue;
+      const ex = map.get(c.utm_campaign) || { campaign: c.utm_campaign, count: 0, closed: 0, revenue: 0 };
+      ex.count++;
+      if (funnelIsClosed(c.stage)) { ex.closed++; ex.revenue += c.confirmed_amount; }
+      map.set(c.utm_campaign, ex);
+    }
+    return Array.from(map.values()).sort((a, b) => b.count - a.count);
   }, [youtubeFunnel]);
 
   const recentClosed = useMemo(() => {
@@ -650,11 +760,25 @@ function YouTubeFunnelTab({ youtubeFunnel }: { youtubeFunnel: YouTubeFunnelCusto
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <KpiCard title="YouTube経由 申し込み" value={String(funnel.total)} sub={<span className="text-gray-500 text-[10px]">utm_source=youtube系</span>} />
+        <KpiCard title="YouTube経由 申し込み" value={String(funnel.total)}
+          sub={<span className="text-gray-500 text-[10px]">UTM+申込理由+初回チャネル</span>} />
         <KpiCard title="日程確定" value={String(funnel.scheduled)} sub={<span className="text-[10px] text-gray-400">{funnel.total > 0 ? `${((funnel.scheduled / funnel.total) * 100).toFixed(0)}%` : "—"}</span>} />
         <KpiCard title="面談実施" value={String(funnel.conducted)} sub={<span className="text-[10px] text-gray-400">{funnel.scheduled > 0 ? `${((funnel.conducted / funnel.scheduled) * 100).toFixed(0)}% of 日程確定` : "—"}</span>} />
         <KpiCard title="成約" value={String(funnel.closed)} sub={<span className="text-[10px] text-gray-400">{funnel.conducted > 0 ? `${((funnel.closed / funnel.conducted) * 100).toFixed(0)}% of 面談実施` : "—"}</span>} />
         <KpiCard title="成約売上合計" value={`¥${Math.round(funnel.totalRevenue).toLocaleString()}`} sub={<span className="text-[10px] text-gray-400">{funnel.closed > 0 ? `平均: ¥${Math.round(funnel.totalRevenue / funnel.closed).toLocaleString()}/件` : "—"}</span>} />
+      </div>
+
+      {/* Source breakdown */}
+      <div className="bg-surface-raised border border-white/10 rounded-xl p-4">
+        <h4 className="text-xs font-medium text-gray-400 mb-2">検出ソース内訳</h4>
+        <div className="flex flex-wrap gap-3">
+          {sourceBreakdown.map(([label, count]) => (
+            <div key={label} className="flex items-center gap-2">
+              <span className="text-xs text-white">{label}:</span>
+              <span className="text-xs font-medium text-brand">{count}名</span>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Funnel bar */}
@@ -682,6 +806,44 @@ function YouTubeFunnelTab({ youtubeFunnel }: { youtubeFunnel: YouTubeFunnelCusto
           <span className="text-xs text-gray-500">全体成約率: {funnel.total > 0 ? `${((funnel.closed / funnel.total) * 100).toFixed(1)}%` : "—"}</span>
         </div>
       </div>
+
+      {/* UTM campaign breakdown (which video) */}
+      {campaignBreakdown.length > 0 && (
+        <div className="bg-surface-raised border border-white/10 rounded-xl overflow-hidden">
+          <div className="px-5 py-3 border-b border-white/10">
+            <h3 className="text-sm font-medium text-gray-300">流入元キャンペーン（動画別）</h3>
+            <p className="text-[10px] text-gray-500 mt-0.5">utm_campaign ベース — どの動画/LPから来たか分かる範囲</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-white/10 text-gray-400">
+                  <th className="text-left py-2.5 px-4">キャンペーン</th>
+                  <th className="text-right py-2.5 px-3">申し込み</th>
+                  <th className="text-right py-2.5 px-3">成約</th>
+                  <th className="text-right py-2.5 px-3">成約率</th>
+                  <th className="text-right py-2.5 px-3">売上</th>
+                </tr>
+              </thead>
+              <tbody>
+                {campaignBreakdown.map(c => (
+                  <tr key={c.campaign} className="border-b border-white/5 hover:bg-white/5">
+                    <td className="py-2.5 px-4 text-white font-medium truncate max-w-[300px]">{c.campaign}</td>
+                    <td className="text-right py-2.5 px-3 text-gray-300">{c.count}</td>
+                    <td className="text-right py-2.5 px-3">
+                      <span className={c.closed > 0 ? "text-green-400 font-medium" : "text-gray-600"}>{c.closed}</span>
+                    </td>
+                    <td className="text-right py-2.5 px-3">
+                      <span className={c.closed > 0 ? "text-green-400" : "text-gray-600"}>{c.count > 0 ? `${((c.closed / c.count) * 100).toFixed(0)}%` : "—"}</span>
+                    </td>
+                    <td className="text-right py-2.5 px-3 text-white">{c.revenue > 0 ? `¥${Math.round(c.revenue).toLocaleString()}` : "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Monthly trend */}
       {monthlyData.length > 1 && (
@@ -717,7 +879,8 @@ function YouTubeFunnelTab({ youtubeFunnel }: { youtubeFunnel: YouTubeFunnelCusto
                   <th className="text-left py-2.5 px-3">申込日</th>
                   <th className="text-left py-2.5 px-3">属性</th>
                   <th className="text-left py-2.5 px-3">ステージ</th>
-                  <th className="text-left py-2.5 px-3">流入元</th>
+                  <th className="text-left py-2.5 px-3">検出元</th>
+                  <th className="text-left py-2.5 px-3">キャンペーン</th>
                   <th className="text-right py-2.5 px-3">確定売上</th>
                 </tr>
               </thead>
@@ -732,7 +895,16 @@ function YouTubeFunnelTab({ youtubeFunnel }: { youtubeFunnel: YouTubeFunnelCusto
                       </span>
                     </td>
                     <td className="py-2.5 px-3"><span className="px-1.5 py-0.5 rounded text-[10px] bg-green-500/20 text-green-300">{c.stage}</span></td>
-                    <td className="py-2.5 px-3 text-gray-400">{c.utm_source || "—"}</td>
+                    <td className="py-2.5 px-3">
+                      <span className={`px-1.5 py-0.5 rounded text-[10px] ${
+                        c.source_type === "utm" ? "bg-blue-500/20 text-blue-300"
+                          : c.source_type === "application_reason" ? "bg-purple-500/20 text-purple-300"
+                          : "bg-amber-500/20 text-amber-300"
+                      }`}>
+                        {c.source_type === "utm" ? "UTM" : c.source_type === "application_reason" ? "申込理由" : "初回CH"}
+                      </span>
+                    </td>
+                    <td className="py-2.5 px-3 text-gray-400 truncate max-w-[150px]">{c.utm_campaign || "—"}</td>
                     <td className="text-right py-2.5 px-3 text-white">{c.confirmed_amount > 0 ? `¥${Math.round(c.confirmed_amount).toLocaleString()}` : "—"}</td>
                   </tr>
                 ))}
