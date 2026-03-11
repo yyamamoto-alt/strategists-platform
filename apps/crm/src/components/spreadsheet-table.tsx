@@ -370,11 +370,9 @@ export function SpreadsheetTable<T>({
   const renderTh = useCallback(
     (col: SpreadsheetColumn<T>, inFrozen: boolean) => {
       const cat = col.category || "base";
-      const isSortable = !!col.sortValue;
       return (
         <th
           key={col.key}
-          onClick={isSortable ? () => handleSort(col.key) : undefined}
           className={cn(
             "py-1.5 px-2 text-[11px] font-semibold whitespace-nowrap select-none relative",
             col.computed
@@ -383,7 +381,6 @@ export function SpreadsheetTable<T>({
             CATEGORY_HEADER_COLORS[cat],
             inFrozen ? "bg-surface-elevated" : "",
             col.align === "right" ? "text-right" : "text-left",
-            isSortable && "cursor-pointer hover:text-gray-300 transition-colors"
           )}
           style={{
             width: getColWidth(col),
@@ -395,9 +392,6 @@ export function SpreadsheetTable<T>({
           <span className="inline-flex items-center gap-0.5 overflow-hidden">
             {col.label}
             {col.computed && col.formula && <FormulaTooltip formula={col.formula} />}
-            {sortKey === col.key && (
-              <span className="text-brand ml-0.5">{sortDir === "asc" ? "↑" : "↓"}</span>
-            )}
           </span>
           <div
             onMouseDown={(e) => handleResizeStart(e, col.key)}
@@ -406,7 +400,7 @@ export function SpreadsheetTable<T>({
         </th>
       );
     },
-    [getColWidth, handleSort, handleResizeStart, sortKey, sortDir]
+    [getColWidth, handleResizeStart]
   );
 
   // ボディセル描画

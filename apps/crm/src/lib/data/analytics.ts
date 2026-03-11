@@ -362,6 +362,10 @@ export interface YouTubeFunnelCustomer {
   initial_channel: string | null;
   stage: string | null;
   confirmed_amount: number;
+  contract_total: number;
+  plan_name: string | null;
+  subsidy_amount: number;
+  expected_referral_fee: number;
   source_type: "utm" | "application_reason" | "initial_channel";
 }
 
@@ -435,13 +439,17 @@ export async function fetchYouTubeFunnelData(): Promise<YouTubeFunnelCustomer[]>
     initial_channel: row.sales_pipeline?.initial_channel ?? null,
     stage: row.sales_pipeline?.stage ?? null,
     confirmed_amount: row.contracts?.confirmed_amount ?? 0,
+    contract_total: row.contracts?.contract_total ?? 0,
+    plan_name: row.contracts?.plan_name ?? null,
+    subsidy_amount: row.contracts?.subsidy_amount ?? 0,
+    expected_referral_fee: row.agent_records?.expected_referral_fee ?? 0,
     source_type: sourceType,
   });
 
   // 1. UTM経由 (utm_source に youtube/yt/lp3 を含む)
   const { data: utmData } = await supabase()
     .from("customers")
-    .select("id,name,application_date,attribute,utm_source,utm_medium,utm_campaign,application_reason,sales_pipeline(stage,initial_channel),contracts(confirmed_amount)")
+    .select("id,name,application_date,attribute,utm_source,utm_medium,utm_campaign,application_reason,sales_pipeline(stage,initial_channel),contracts(confirmed_amount,contract_total,plan_name,subsidy_amount),agent_records(expected_referral_fee)")
     .or("utm_source.ilike.%youtube%,utm_source.ilike.%yt%,utm_source.eq.lp3")
     .order("application_date", { ascending: false });
   for (const row of utmData || []) {
@@ -451,7 +459,7 @@ export async function fetchYouTubeFunnelData(): Promise<YouTubeFunnelCustomer[]>
   // 2. 申込理由にYouTubeを含む
   const { data: reasonData } = await supabase()
     .from("customers")
-    .select("id,name,application_date,attribute,utm_source,utm_medium,utm_campaign,application_reason,sales_pipeline(stage,initial_channel),contracts(confirmed_amount)")
+    .select("id,name,application_date,attribute,utm_source,utm_medium,utm_campaign,application_reason,sales_pipeline(stage,initial_channel),contracts(confirmed_amount,contract_total,plan_name,subsidy_amount),agent_records(expected_referral_fee)")
     .ilike("application_reason", "%youtube%")
     .order("application_date", { ascending: false });
   for (const row of reasonData || []) {
@@ -461,7 +469,7 @@ export async function fetchYouTubeFunnelData(): Promise<YouTubeFunnelCustomer[]>
   // 3. initial_channel = YouTube（ネストフィルタ不可のためクライアント側フィルタ）
   const { data: channelData } = await supabase()
     .from("customers")
-    .select("id,name,application_date,attribute,utm_source,utm_medium,utm_campaign,application_reason,sales_pipeline(stage,initial_channel),contracts(confirmed_amount)")
+    .select("id,name,application_date,attribute,utm_source,utm_medium,utm_campaign,application_reason,sales_pipeline(stage,initial_channel),contracts(confirmed_amount,contract_total,plan_name,subsidy_amount),agent_records(expected_referral_fee)")
     .order("application_date", { ascending: false });
   for (const row of channelData || []) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

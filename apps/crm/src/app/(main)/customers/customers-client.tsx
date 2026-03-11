@@ -177,7 +177,7 @@ function InlineStageSelect({ customerId, currentStage, onUpdate }: { customerId:
     <div ref={ref} className="relative">
       <button
         onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
-        className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium cursor-pointer hover:ring-1 hover:ring-brand/50 ${getStageColor(currentStage)}`}
+        className={`px-2 py-px rounded-full text-[10px] leading-none font-medium cursor-pointer hover:ring-1 hover:ring-brand/50 ${getStageColor(currentStage)}`}
       >
         {currentStage}
       </button>
@@ -360,7 +360,7 @@ export function CustomersClient() {
       // ─── 属性 ───
       { key: "attribute", label: "属性", width: 52, stickyLeft: 202, category: "base",
         render: (c) => (
-          <span className={`inline-block px-1.5 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap ${getAttributeColor(c.attribute)}`}>{c.attribute.includes("既卒") ? "既卒" : "新卒"}</span>
+          <span className={`inline-block px-2 py-px rounded-full text-[10px] leading-none font-medium whitespace-nowrap ${getAttributeColor(c.attribute)}`}>{c.attribute.includes("既卒") ? "既卒" : "新卒"}</span>
         ), sortValue: (c) => c.attribute,
         filterValue: (c) => c.attribute?.includes("既卒") ? "既卒" : "新卒" },
 
@@ -428,7 +428,7 @@ export function CustomersClient() {
       { key: "marketing_channel", label: "帰属チャネル", width: 110, category: "base",
         render: (c) => {
           const attr = attributionMap[c.id];
-          return attr ? <span className={`inline-block px-1.5 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap ${getChannelColor(attr.marketing_channel)}`}>{attr.marketing_channel}</span> : <span className="text-gray-600 text-xs">-</span>;
+          return attr ? <span className={`inline-block px-2 py-px rounded-full text-[10px] leading-none font-medium whitespace-nowrap ${getChannelColor(attr.marketing_channel)}`}>{attr.marketing_channel}</span> : <span className="text-gray-600 text-xs">-</span>;
         }, sortValue: (c) => attributionMap[c.id]?.marketing_channel || "" },
 
       // ═══ マーケティング（タブ内） ═══
@@ -465,7 +465,7 @@ export function CustomersClient() {
       { key: "probability", label: "確度", width: 60, align: "center" as const, category: "sales",
         render: (c) => {
           const p = c.pipeline?.probability;
-          return p != null ? <span className={`inline-block px-1.5 py-0.5 rounded-full text-[10px] font-medium ${getProbabilityColor(p)}`}>{formatPercent(p)}</span> : <span className="text-gray-600 text-xs">-</span>;
+          return p != null ? <span className={`inline-block px-2 py-px rounded-full text-[10px] leading-none font-medium ${getProbabilityColor(p)}`}>{formatPercent(p)}</span> : <span className="text-gray-600 text-xs">-</span>;
         },
         sortValue: (c) => c.pipeline?.probability || 0 },
 
@@ -487,7 +487,7 @@ export function CustomersClient() {
       { key: "sales_person", label: "営業担当", width: 90, category: "sales",
         render: (c) => {
           const sp = c.pipeline?.sales_person;
-          return sp ? <span className={`inline-block px-1.5 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap ${getSalesPersonColor(sp)}`}>{sp}</span> : <span className="text-gray-600 text-xs">-</span>;
+          return sp ? <span className={`inline-block px-2 py-px rounded-full text-[10px] leading-none font-medium whitespace-nowrap ${getSalesPersonColor(sp)}`}>{sp}</span> : <span className="text-gray-600 text-xs">-</span>;
         },
         filterValue: (c) => c.pipeline?.sales_person || "" },
 
@@ -525,7 +525,7 @@ export function CustomersClient() {
       { key: "referral_category", label: "人材紹介区分", width: 100, category: "agent",
         render: (c) => {
           const rc = c.contract?.referral_category;
-          return rc ? <span className={`inline-block px-1.5 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap ${getReferralCategoryColor(rc)}`}>{rc}</span> : <span className="text-gray-600 text-xs">-</span>;
+          return rc ? <span className={`inline-block px-2 py-px rounded-full text-[10px] leading-none font-medium whitespace-nowrap ${getReferralCategoryColor(rc)}`}>{rc}</span> : <span className="text-gray-600 text-xs">-</span>;
         } },
       { key: "referral_status", label: "紹介ステータス", width: 100, category: "agent",
         render: (c) => <span className="text-xs">{c.contract?.referral_status || "-"}</span> },
@@ -569,7 +569,7 @@ export function CustomersClient() {
       { key: "plan_name", label: "プラン名", width: 150, category: "education",
         render: (c) => {
           const p = c.contract?.plan_name;
-          return p ? <span className={`inline-block px-1.5 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap ${getPlanColor(p)}`}>{p}</span> : <span className="text-gray-600 text-xs">-</span>;
+          return p ? <span className={`inline-block px-2 py-px rounded-full text-[10px] leading-none font-medium whitespace-nowrap ${getPlanColor(p)}`}>{p}</span> : <span className="text-gray-600 text-xs">-</span>;
         },
         filterValue: (c) => c.contract?.plan_name || "" },
       { key: "mentor_name", label: "メンター", width: 80, category: "education",
