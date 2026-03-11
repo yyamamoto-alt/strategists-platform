@@ -4,11 +4,11 @@ import { NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
-  const { token, password } = await request.json();
+  const { token, email, password } = await request.json();
 
-  if (!token || !password) {
+  if (!token || !email || !password) {
     return NextResponse.json(
-      { error: "トークンとパスワードは必須です" },
+      { error: "トークン、メールアドレス、パスワードは必須です" },
       { status: 400 }
     );
   }
@@ -30,12 +30,16 @@ export async function POST(request: Request) {
     .single() as {
       data: {
         id: string;
-        email: string;
+        email: string | null;
         display_name: string | null;
         role: string;
         token: string;
         expires_at: string;
         used_at: string | null;
+        allowed_pages: string[] | null;
+        data_months_limit: number | null;
+        mask_pii: boolean;
+        can_edit_customers: boolean;
       } | null;
     };
 
@@ -64,7 +68,7 @@ export async function POST(request: Request) {
   let userId: string;
 
   const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-    email: invitation.email,
+    email,
     password,
     email_confirm: true,
   });
@@ -72,14 +76,13 @@ export async function POST(request: Request) {
   if (authError) {
     // 既にユーザーが存在する場合 → パスワード更新で対応
     if (authError.message.includes("already") || authError.message.includes("exists")) {
-      // ページネーションで全ユーザーを走査（デフォルト50件制限の回避）
       let existingUser: { id: string; email?: string } | undefined;
       let page = 1;
       const perPage = 1000;
       while (!existingUser) {
         const { data: users } = await supabase.auth.admin.listUsers({ page, perPage });
         if (!users?.users?.length) break;
-        existingUser = users.users.find((u) => u.email === invitation.email);
+        existingUser = users.users.find((u) => u.email === email);
         if (users.users.length < perPage) break;
         page++;
       }
@@ -89,7 +92,6 @@ export async function POST(request: Request) {
           { status: 400 }
         );
       }
-      // パスワードを更新
       const { error: updateError } = await supabase.auth.admin.updateUserById(existingUser.id, {
         password,
       });
@@ -116,6 +118,9 @@ export async function POST(request: Request) {
   }
 
   // 2. user_roles にロールを挿入（既存なら更新）
+  // 表示名: 招待時の display_name があればそれ、なければメール@前
+  const displayName = invitation.display_name || email.split("@")[0];
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as any;
   const { data: existingRole } = await db
@@ -124,22 +129,26 @@ export async function POST(request: Request) {
     .eq("user_id", userId)
     .single();
 
+  const roleData = {
+    role: invitation.role,
+    display_name: displayName,
+    allowed_pages: invitation.allowed_pages || [],
+    data_months_limit: invitation.data_months_limit ?? null,
+    mask_pii: invitation.mask_pii ?? false,
+    can_edit_customers: invitation.can_edit_customers ?? true,
+    is_active: true,
+  };
+
   let roleError;
   if (existingRole) {
-    // 既存ロールを更新
     ({ error: roleError } = await db
       .from("user_roles")
-      .update({
-        role: invitation.role,
-        display_name: invitation.display_name || null,
-      })
+      .update(roleData)
       .eq("user_id", userId));
   } else {
-    // 新規挿入
     ({ error: roleError } = await db.from("user_roles").insert({
       user_id: userId,
-      role: invitation.role,
-      display_name: invitation.display_name || null,
+      ...roleData,
     }));
   }
 
@@ -150,17 +159,17 @@ export async function POST(request: Request) {
     );
   }
 
-  // 3. 招待を使用済みにマーク
+  // 3. 招待を使用済みにマーク（emailも記録）
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await (supabase.from("invitations") as any)
-    .update({ used_at: new Date().toISOString() })
+    .update({ used_at: new Date().toISOString(), email })
     .eq("id", invitation.id);
 
   return NextResponse.json({
     message: "アカウントが作成されました",
     user: {
       id: userId,
-      email: invitation.email,
+      email,
       role: invitation.role,
     },
   });

@@ -19,7 +19,7 @@ export default async function InvitePage({ params }: InvitePageProps) {
     .single() as {
       data: {
         id: string;
-        email: string;
+        email: string | null;
         display_name: string | null;
         role: string;
         token: string;
@@ -83,7 +83,6 @@ export default async function InvitePage({ params }: InvitePageProps) {
   return (
     <InviteClient
       token={token}
-      email={invitation.email}
       displayName={invitation.display_name}
       role={invitation.role}
     />

@@ -31,7 +31,7 @@ const navGroups: NavGroup[] = [
   {
     title: "営業",
     items: [
-      { name: "パイプライン", href: "/pipeline", roles: ["admin", "mentor"] },
+      { name: "パイプライン", href: "/pipeline", roles: ["admin", "member", "mentor"] },
     ],
   },
   {
@@ -43,12 +43,12 @@ const navGroups: NavGroup[] = [
   {
     title: "データ",
     items: [
-      { name: "顧客DB", href: "/customers", roles: ["admin", "mentor"] },
-      { name: "フォームDB", href: "/form-data", roles: ["admin", "mentor"] },
+      { name: "顧客DB", href: "/customers", roles: ["admin", "member", "mentor"] },
+      { name: "フォームDB", href: "/form-data", roles: ["admin", "member", "mentor"] },
       { name: "注文管理", href: "/orders", roles: ["admin"] },
       { name: "その他売上", href: "/other-revenues", roles: ["admin"] },
       { name: "note購入", href: "/note-sales", roles: ["admin"] },
-      { name: "エージェント", href: "/agents", roles: ["admin", "mentor"] },
+      { name: "エージェント", href: "/agents", roles: ["admin", "member", "mentor"] },
       { name: "補助金", href: "/subsidy", roles: ["admin"] },
     ],
     collapsible: true,
@@ -175,8 +175,8 @@ function SearchBox() {
 export function Sidebar() {
   const { user, role, signOut } = useAuth();
 
-  const roleLabel = role === "admin" ? "管理者" : role === "mentor" ? "メンター" : "受講生";
-  const roleInitial = role === "admin" ? "管" : role === "mentor" ? "メ" : "生";
+  const roleLabel = role === "admin" ? "管理者" : (role === "member" || role === "mentor") ? "一般" : "受講生";
+  const roleInitial = role === "admin" ? "管" : (role === "member" || role === "mentor") ? "般" : "生";
 
   return (
     <aside className="w-56 bg-surface-raised text-white flex flex-col shrink-0 border-r border-white/10">

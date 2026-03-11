@@ -4,7 +4,6 @@ import { useState } from "react";
 
 interface InviteClientProps {
   token: string;
-  email: string;
   displayName: string | null;
   role: string;
 }
@@ -12,12 +11,13 @@ interface InviteClientProps {
 function roleLabel(role: string): string {
   switch (role) {
     case "admin": return "管理者";
-    case "mentor": return "メンター";
+    case "member": return "一般";
     default: return role;
   }
 }
 
-export function InviteClient({ token, email, displayName, role }: InviteClientProps) {
+export function InviteClient({ token, displayName, role }: InviteClientProps) {
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -27,6 +27,11 @@ export function InviteClient({ token, email, displayName, role }: InviteClientPr
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    if (!email) {
+      setError("メールアドレスを入力してください");
+      return;
+    }
 
     if (password.length < 8) {
       setError("パスワードは8文字以上にしてください");
@@ -44,7 +49,7 @@ export function InviteClient({ token, email, displayName, role }: InviteClientPr
       const res = await fetch("/api/users/accept-invite", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, password }),
+        body: JSON.stringify({ token, email, password }),
       });
       const data = await res.json();
 
@@ -91,16 +96,12 @@ export function InviteClient({ token, email, displayName, role }: InviteClientPr
         <div className="text-center mb-6">
           <h1 className="text-xl font-bold text-white mb-2">Strategists CRM に参加</h1>
           <p className="text-sm text-gray-400">
-            パスワードを設定してアカウントを作成してください。
+            メールアドレスとパスワードを入力してアカウントを作成してください。
           </p>
         </div>
 
         <div className="mb-6 p-4 bg-surface-elevated rounded-lg border border-white/10">
           <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-gray-400">メール</span>
-              <span className="text-white">{email}</span>
-            </div>
             {displayName && (
               <div className="flex justify-between">
                 <span className="text-gray-400">表示名</span>
@@ -115,6 +116,22 @@ export function InviteClient({ token, email, displayName, role }: InviteClientPr
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">
+              メールアドレス <span className="text-red-400">*</span>
+            </label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="user@example.com"
+              required
+              className="w-full px-3 py-2 bg-surface-elevated border border-white/10 rounded-lg text-white placeholder-gray-500 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+            />
+            <p className="text-[10px] text-gray-600 mt-1">
+              @より前の部分がニックネームとして表示されます
+            </p>
+          </div>
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-1">
               パスワード <span className="text-red-400">*</span>

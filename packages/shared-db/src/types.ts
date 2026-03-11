@@ -65,7 +65,7 @@ export type ActivityType =
   | "ステータス変更"
   | "その他";
 
-export type UserRole = "admin" | "mentor" | "student";
+export type UserRole = "admin" | "member" | "mentor" | "student";
 
 export type ApplicationStatus = "pending" | "slack_notified" | "approved" | "invited" | "rejected";
 export type AnnouncementPriority = "low" | "normal" | "high" | "urgent";

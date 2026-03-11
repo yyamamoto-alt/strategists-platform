@@ -1,23 +1,22 @@
 import { createServiceClient } from "@/lib/supabase/server";
-import { sendInviteEmail } from "@/lib/email";
 import { NextResponse } from "next/server";
 import { headers } from "next/headers";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
-  const { email, display_name, role, sendEmail } = await request.json();
+  const {
+    role,
+    display_name,
+    allowed_pages,
+    data_months_limit,
+    mask_pii,
+    can_edit_customers,
+  } = await request.json();
 
-  if (!email) {
+  if (!role || !["admin", "member"].includes(role)) {
     return NextResponse.json(
-      { error: "メールアドレスは必須です" },
-      { status: 400 }
-    );
-  }
-
-  if (!role || !["admin", "mentor"].includes(role)) {
-    return NextResponse.json(
-      { error: "ロールは admin または mentor を指定してください" },
+      { error: "ロールは admin または member を指定してください" },
       { status: 400 }
     );
   }
@@ -31,15 +30,19 @@ export async function POST(request: Request) {
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + 7);
 
-  // 招待レコード作成
+  // 招待レコード作成（emailなし、権限設定を含む）
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (supabase.from("invitations") as any).insert({
-    email,
+    email: null,
     display_name: display_name || null,
     role,
     token,
     expires_at: expiresAt.toISOString(),
     source: "crm",
+    allowed_pages: role === "admin" ? [] : (allowed_pages || []),
+    data_months_limit: role === "admin" ? null : (data_months_limit ?? null),
+    mask_pii: role === "admin" ? false : (mask_pii ?? false),
+    can_edit_customers: role === "admin" ? true : (can_edit_customers ?? true),
   });
 
   if (error) {
@@ -55,32 +58,10 @@ export async function POST(request: Request) {
   const protocol = headersList.get("x-forwarded-proto") || "http";
   const inviteUrl = `${protocol}://${host}/invite/${token}`;
 
-  let emailSent = false;
-  let emailError: string | null = null;
-
-  if (sendEmail) {
-    try {
-      await sendInviteEmail({
-        to: email,
-        displayName: display_name || null,
-        role,
-        inviteUrl,
-        appName: "CRM",
-      });
-      emailSent = true;
-    } catch (err) {
-      emailError = err instanceof Error ? err.message : "メール送信に失敗しました";
-    }
-  }
-
   return NextResponse.json({
-    message: emailSent
-      ? "招待リンクを作成し、メールを送信しました"
-      : "招待リンクを作成しました",
+    message: "招待リンクを作成しました",
     invite_url: inviteUrl,
     token,
     expires_at: expiresAt.toISOString(),
-    email_sent: emailSent,
-    email_error: emailError,
   });
 }

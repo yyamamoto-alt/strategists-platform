@@ -17,6 +17,7 @@ export async function PATCH(request: Request, { params }: Props) {
   if ("allowed_pages" in body) updateFields.allowed_pages = body.allowed_pages;
   if ("data_months_limit" in body) updateFields.data_months_limit = body.data_months_limit;
   if ("mask_pii" in body) updateFields.mask_pii = body.mask_pii;
+  if ("can_edit_customers" in body) updateFields.can_edit_customers = body.can_edit_customers;
   if ("is_active" in body) updateFields.is_active = body.is_active;
 
   if (Object.keys(updateFields).length === 0) {
