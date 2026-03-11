@@ -46,7 +46,7 @@ export async function fetchSubsidyCompletionData(
     .from("application_history")
     .select("id, customer_id, source, raw_data, applied_at")
     .in("customer_id", customerIds)
-    .in("source", ["メンター指導報告", "入塾フォーム", "課題提出"])
+    .in("source", ["メンター指導報告", "入塾フォーム", "教材アウトプット"])
     .order("applied_at", { ascending: true });
 
   const result: Record<string, SubsidyCompletionData> = {};
@@ -112,9 +112,10 @@ export async function fetchSubsidyCompletionData(
       result[cid].contractSigned = contract === "締結済み";
       result[cid].enrollmentDate = rd["タイムスタンプ"] || h.applied_at || null;
     }
-    // 課題提出 - this is homework, not 教材アウトプット
-    // 教材アウトプット will be synced from a separate Google Sheet
-    // For now, we'll mark it if there's a matching record
+    if (h.source === "教材アウトプット") {
+      result[cid].hasOutputForm = true;
+      result[cid].outputFormDate = rd["タイムスタンプ"] || h.applied_at || null;
+    }
   }
 
   // Compute derived conditions
