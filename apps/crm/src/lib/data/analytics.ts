@@ -324,6 +324,44 @@ export async function fetchAdsFunnelData(): Promise<AdsFunnelCustomer[]> {
 
 export { adsFunnelIsClosed, adsFunnelIsConducted, adsFunnelIsScheduled };
 
+/* ───── Meta (Facebook) Ads データ ───── */
+
+export interface MetaCampaignDaily {
+  date: string;
+  campaign_name: string;
+  impressions: number;
+  clicks: number;
+  ctr: number;
+  cpc: number;
+  spend: number;
+  link_clicks: number;
+  landing_page_views: number;
+  cv_custom: number;
+}
+
+/** Meta Ads キャンペーン別日次データ */
+export async function fetchMetaCampaignDaily(days: number = 90): Promise<MetaCampaignDaily[]> {
+  const { from, to } = dateRange(days);
+  const all: MetaCampaignDaily[] = [];
+  let offset = 0;
+  const PAGE_SIZE = 1000;
+  while (true) {
+    const { data, error } = await supabase()
+      .from("analytics_meta_campaign_daily")
+      .select("*")
+      .gte("date", from)
+      .lte("date", to)
+      .order("date", { ascending: true })
+      .range(offset, offset + PAGE_SIZE - 1);
+    if (error) { console.error("Meta campaign fetch error:", error.message); break; }
+    if (!data || data.length === 0) break;
+    all.push(...data);
+    if (data.length < PAGE_SIZE) break;
+    offset += PAGE_SIZE;
+  }
+  return all;
+}
+
 /* ───── YouTube Analytics ───── */
 
 export interface YouTubeVideo {

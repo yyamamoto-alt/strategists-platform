@@ -10,6 +10,7 @@ import type {
   AdsCampaignDaily,
   AdsKeywordDaily,
   AdsFunnelCustomer,
+  MetaCampaignDaily,
   YouTubeVideo,
   YouTubeDaily,
   YouTubeChannelDaily,
@@ -26,6 +27,7 @@ export type {
   AdsCampaignDaily,
   AdsKeywordDaily,
   AdsFunnelCustomer,
+  MetaCampaignDaily,
   YouTubeVideo,
   YouTubeDaily,
   YouTubeChannelDaily,
@@ -33,7 +35,7 @@ export type {
 };
 
 /* ───────── Types ───────── */
-export type MainTab = "seo" | "lp" | "ads" | "youtube";
+export type MainTab = "seo" | "lp" | "ads" | "meta_ads" | "youtube";
 export type SeoSub = "pages" | "ctr" | "cannibalization" | "decay" | "keywords" | "hourly";
 export type Period = "week" | "month";
 export type Metric = "pageviews" | "sessions" | "users";
@@ -62,6 +64,7 @@ export interface AnalyticsProps {
   adsCampaigns: AdsCampaignDaily[];
   adsKeywords: AdsKeywordDaily[];
   adsFunnel: AdsFunnelCustomer[];
+  metaCampaigns: MetaCampaignDaily[];
   youtubeVideos: YouTubeVideo[];
   youtubeDaily: YouTubeDaily[];
   youtubeChannelDaily: YouTubeChannelDaily[];

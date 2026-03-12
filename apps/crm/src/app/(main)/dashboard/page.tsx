@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { HeaderSection } from "./sections/header-section";
 import { ChartsSection } from "./sections/charts-section";
 import { AdsSection } from "./sections/ads-section";
+import { MetaAdsSection } from "./sections/meta-ads-section";
 import { ReceivableSection } from "./sections/receivable-section";
 import { ChannelSection } from "./sections/channel-section";
 import { InsightsSection } from "./sections/insights-section";
@@ -12,6 +13,7 @@ import {
   HeaderSkeleton,
   ChartsSkeleton,
   AdsSummarySkeleton,
+  MetaAdsSkeleton,
   ReceivableSkeleton,
   ChannelSkeleton,
   InsightsSkeleton,
@@ -32,6 +34,11 @@ export default async function DashboardPage() {
         </Suspense>
         <Suspense fallback={<ChannelSkeleton />}>
           <ChannelSection />
+        </Suspense>
+      </div>
+      <div className="px-6">
+        <Suspense fallback={<MetaAdsSkeleton />}>
+          <MetaAdsSection />
         </Suspense>
       </div>
       <Suspense fallback={<InsightsSkeleton />}>

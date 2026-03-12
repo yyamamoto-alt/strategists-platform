@@ -458,6 +458,76 @@ async function syncOneDay(
     }
   }
 
+  // 6. Meta (Facebook) Ads
+  const META_ACCESS_TOKEN = process.env.META_ADS_ACCESS_TOKEN;
+  const META_ACCOUNT_ID = process.env.META_ADS_ACCOUNT_ID || "1246885725997282";
+  if (META_ACCESS_TOKEN) {
+    try {
+      const metaFields = "campaign_name,impressions,clicks,ctr,cpc,spend,actions";
+      let metaUrl: string | null =
+        `https://graph.facebook.com/v25.0/act_${META_ACCOUNT_ID}/insights?` +
+        new URLSearchParams({
+          fields: metaFields,
+          time_increment: "1",
+          level: "campaign",
+          time_range: JSON.stringify({ since: dateStr, until: dateStr }),
+          limit: "500",
+          access_token: META_ACCESS_TOKEN,
+        }).toString();
+
+      const metaRows: AnyRow[] = [];
+
+      while (metaUrl) {
+        const metaRes: Response = await fetch(metaUrl);
+        if (!metaRes.ok) {
+          console.error("Meta Ads API error:", metaRes.status, await metaRes.text().catch(() => ""));
+          break;
+        }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const metaJson: any = await metaRes.json();
+
+        for (const row of metaJson.data || []) {
+          // Extract action values
+          let linkClicks = 0;
+          let landingPageViews = 0;
+          let cvCustom = 0;
+          for (const action of row.actions || []) {
+            if (action.action_type === "link_click") linkClicks += parseFloat(action.value || "0");
+            else if (action.action_type === "landing_page_view") landingPageViews += parseFloat(action.value || "0");
+            else if (action.action_type === "offsite_conversion.fb_pixel_custom") cvCustom += parseFloat(action.value || "0");
+          }
+
+          metaRows.push({
+            date: dateStr,
+            campaign_name: row.campaign_name || "Unknown",
+            impressions: parseInt(row.impressions || "0"),
+            clicks: parseInt(row.clicks || "0"),
+            ctr: parseFloat(row.ctr || "0") * 100,
+            cpc: parseFloat(row.cpc || "0"),
+            spend: parseFloat(row.spend || "0"),
+            link_clicks: linkClicks,
+            landing_page_views: landingPageViews,
+            cv_custom: cvCustom,
+          });
+        }
+
+        // Cursor-based pagination
+        metaUrl = metaJson.paging?.next || null;
+      }
+
+      if (metaRows.length > 0) {
+        const { error } = await supabase
+          .from("analytics_meta_campaign_daily")
+          .upsert(metaRows, { onConflict: "date,campaign_name" });
+        if (error) console.error("Meta campaign upsert error:", error.message);
+      }
+      dayResult.meta_campaigns = metaRows.length;
+    } catch (metaError) {
+      console.error("Meta Ads sync error:", metaError);
+      dayResult.meta_error = metaError instanceof Error ? metaError.message : "Unknown";
+    }
+  }
+
   return dayResult;
 }
 
