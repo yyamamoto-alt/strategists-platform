@@ -1,4 +1,9 @@
-import { fetchMetaCampaignDaily } from "@/lib/data/analytics";
+import {
+  fetchMetaCampaignDaily,
+  fetchMetaFunnelData,
+  adsFunnelIsClosed,
+  adsFunnelIsScheduled,
+} from "@/lib/data/analytics";
 import { MetaAdsSummaryClient, type MetaAdsRow } from "./meta-ads-client";
 
 /** 週キーを算出（月曜始まり） */
@@ -18,75 +23,135 @@ function monthKey(dateStr: string): string {
 const ADS_START = "2025-08";
 
 export async function MetaAdsSection() {
-  const campaigns = await fetchMetaCampaignDaily(180);
+  const [campaigns, funnel] = await Promise.all([
+    fetchMetaCampaignDaily(180),
+    fetchMetaFunnelData(),
+  ]);
 
-  // --- 週次集計 ---
-  const weeklyMap = new Map<string, {
-    spend: number; impressions: number; clicks: number;
-    link_clicks: number; landing_page_views: number; cv_custom: number;
-  }>();
+  // --- 広告データの週次/月次集計 ---
+  const weeklyAds = new Map<string, { spend: number }>();
   for (const r of campaigns) {
     const wk = weekKey(r.date);
-    const ex = weeklyMap.get(wk);
-    if (ex) {
-      ex.spend += r.spend;
-      ex.impressions += r.impressions;
-      ex.clicks += r.clicks;
-      ex.link_clicks += r.link_clicks;
-      ex.landing_page_views += r.landing_page_views;
-      ex.cv_custom += r.cv_custom;
-    } else {
-      weeklyMap.set(wk, {
-        spend: r.spend, impressions: r.impressions, clicks: r.clicks,
-        link_clicks: r.link_clicks, landing_page_views: r.landing_page_views, cv_custom: r.cv_custom,
-      });
-    }
+    const ex = weeklyAds.get(wk);
+    if (ex) { ex.spend += r.spend; }
+    else { weeklyAds.set(wk, { spend: r.spend }); }
   }
 
-  // --- 月次集計 ---
-  const monthlyMap = new Map<string, {
-    spend: number; impressions: number; clicks: number;
-    link_clicks: number; landing_page_views: number; cv_custom: number;
-  }>();
+  const monthlyAds = new Map<string, { spend: number }>();
   for (const r of campaigns) {
     const mk = monthKey(r.date);
-    const ex = monthlyMap.get(mk);
-    if (ex) {
-      ex.spend += r.spend;
-      ex.impressions += r.impressions;
-      ex.clicks += r.clicks;
-      ex.link_clicks += r.link_clicks;
-      ex.landing_page_views += r.landing_page_views;
-      ex.cv_custom += r.cv_custom;
-    } else {
-      monthlyMap.set(mk, {
-        spend: r.spend, impressions: r.impressions, clicks: r.clicks,
-        link_clicks: r.link_clicks, landing_page_views: r.landing_page_views, cv_custom: r.cv_custom,
-      });
-    }
+    const ex = monthlyAds.get(mk);
+    if (ex) { ex.spend += r.spend; }
+    else { monthlyAds.set(mk, { spend: r.spend }); }
   }
 
-  function toRows(map: Map<string, { spend: number; impressions: number; clicks: number; link_clicks: number; landing_page_views: number; cv_custom: number }>): MetaAdsRow[] {
-    return Array.from(map.entries())
-      .filter(([k]) => k >= ADS_START)
-      .sort(([a], [b]) => b.localeCompare(a))
-      .map(([period, v]) => ({
-        period,
-        spend: Math.round(v.spend),
-        impressions: v.impressions,
-        clicks: v.clicks,
-        ctr: v.impressions > 0 ? (v.clicks / v.impressions) * 100 : 0,
-        cpc: v.clicks > 0 ? v.spend / v.clicks : 0,
-        link_clicks: v.link_clicks,
-        landing_page_views: v.landing_page_views,
-        cv_custom: v.cv_custom,
-      }));
+  // --- ファネルデータ: 顧客の application_date ベースで週/月に振り分け ---
+  type FunnelAgg = { scheduled: number; closed: number; revenue: number };
+
+  const weeklyFunnel = new Map<string, FunnelAgg>();
+  const monthlyFunnel = new Map<string, FunnelAgg>();
+  const zero = (): FunnelAgg => ({ scheduled: 0, closed: 0, revenue: 0 });
+
+  for (const c of funnel) {
+    if (!c.application_date) continue;
+    const wk = weekKey(c.application_date);
+    const mk = monthKey(c.application_date);
+    const isScheduled = adsFunnelIsScheduled(c.stage) ? 1 : 0;
+    const isClosed = adsFunnelIsClosed(c.stage) ? 1 : 0;
+    const rev = isClosed ? c.confirmed_amount : 0;
+
+    const wf = weeklyFunnel.get(wk) || zero();
+    wf.scheduled += isScheduled;
+    wf.closed += isClosed;
+    wf.revenue += rev;
+    weeklyFunnel.set(wk, wf);
+
+    const mf = monthlyFunnel.get(mk) || zero();
+    mf.scheduled += isScheduled;
+    mf.closed += isClosed;
+    mf.revenue += rev;
+    monthlyFunnel.set(mk, mf);
   }
+
+  // --- ローリングLTV計算（2ヶ月遡り） ---
+  function calcRollingLtv(periodEnd: string): number {
+    const endDate = new Date(periodEnd + (periodEnd.length === 7 ? "-28" : ""));
+    endDate.setDate(endDate.getDate() + 6);
+    const startDate = new Date(endDate);
+    startDate.setMonth(startDate.getMonth() - 2);
+    const startStr = startDate.toISOString().slice(0, 10);
+    const endStr = endDate.toISOString().slice(0, 10);
+
+    let scheduled = 0, revenue = 0;
+    for (const c of funnel) {
+      if (!c.application_date || c.application_date < startStr || c.application_date > endStr) continue;
+      if (adsFunnelIsScheduled(c.stage)) scheduled++;
+      if (adsFunnelIsClosed(c.stage)) {
+        revenue += c.confirmed_amount;
+      }
+    }
+    return scheduled > 0 ? Math.round(revenue / scheduled) : 0;
+  }
+
+  // --- ローリングCPA計算（2ヶ月遡り） ---
+  function calcRollingCpa(periodEnd: string): number {
+    const endDate = new Date(periodEnd + (periodEnd.length === 7 ? "-28" : ""));
+    endDate.setDate(endDate.getDate() + 6);
+    const startDate = new Date(endDate);
+    startDate.setMonth(startDate.getMonth() - 2);
+    const startStr = startDate.toISOString().slice(0, 10);
+    const endStr = endDate.toISOString().slice(0, 10);
+
+    let totalCost = 0;
+    for (const r of campaigns) {
+      if (r.date >= startStr && r.date <= endStr) {
+        totalCost += r.spend;
+      }
+    }
+    let scheduled = 0;
+    for (const c of funnel) {
+      if (!c.application_date || c.application_date < startStr || c.application_date > endStr) continue;
+      if (adsFunnelIsScheduled(c.stage)) scheduled++;
+    }
+    return scheduled > 0 ? Math.round(totalCost / scheduled) : 0;
+  }
+
+  // --- 週次行を組み立て ---
+  const allWeekKeys = new Set([...weeklyAds.keys(), ...weeklyFunnel.keys()]);
+  const weeklyRows: MetaAdsRow[] = Array.from(allWeekKeys).filter(wk => wk >= ADS_START).sort().reverse().map(wk => {
+    const ads = weeklyAds.get(wk) || { spend: 0 };
+    const fnl = weeklyFunnel.get(wk) || zero();
+    return {
+      period: wk,
+      spend: Math.round(ads.spend),
+      scheduled: fnl.scheduled,
+      closed: fnl.closed,
+      revenue: Math.round(fnl.revenue),
+      cpa_scheduled: calcRollingCpa(wk),
+      rolling_ltv: calcRollingLtv(wk),
+    };
+  });
+
+  // --- 月次行を組み立て ---
+  const allMonthKeys = new Set([...monthlyAds.keys(), ...monthlyFunnel.keys()]);
+  const monthlyRows: MetaAdsRow[] = Array.from(allMonthKeys).filter(mk => mk >= ADS_START).sort().reverse().map(mk => {
+    const ads = monthlyAds.get(mk) || { spend: 0 };
+    const fnl = monthlyFunnel.get(mk) || zero();
+    return {
+      period: mk,
+      spend: Math.round(ads.spend),
+      scheduled: fnl.scheduled,
+      closed: fnl.closed,
+      revenue: Math.round(fnl.revenue),
+      cpa_scheduled: calcRollingCpa(mk),
+      rolling_ltv: calcRollingLtv(mk),
+    };
+  });
 
   return (
     <MetaAdsSummaryClient
-      weeklyRows={toRows(weeklyMap)}
-      monthlyRows={toRows(monthlyMap)}
+      weeklyRows={weeklyRows}
+      monthlyRows={monthlyRows}
     />
   );
 }

@@ -32,13 +32,13 @@ export default async function DashboardPage() {
         <Suspense fallback={<AdsSummarySkeleton />}>
           <AdsSection />
         </Suspense>
-        <Suspense fallback={<ChannelSkeleton />}>
-          <ChannelSection />
+        <Suspense fallback={<MetaAdsSkeleton />}>
+          <MetaAdsSection />
         </Suspense>
       </div>
       <div className="px-6">
-        <Suspense fallback={<MetaAdsSkeleton />}>
-          <MetaAdsSection />
+        <Suspense fallback={<ChannelSkeleton />}>
+          <ChannelSection />
         </Suspense>
       </div>
       <Suspense fallback={<InsightsSkeleton />}>

@@ -2,19 +2,17 @@
 
 import { useState, useMemo } from "react";
 import {
-  XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend, ComposedChart, Bar,
+  XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend, Line, ComposedChart, Bar,
 } from "recharts";
 
 export interface MetaAdsRow {
   period: string;
   spend: number;
-  impressions: number;
-  clicks: number;
-  ctr: number;
-  cpc: number;
-  link_clicks: number;
-  landing_page_views: number;
-  cv_custom: number;
+  scheduled: number;
+  closed: number;
+  revenue: number;
+  cpa_scheduled: number;
+  rolling_ltv: number;
 }
 
 interface Props {
@@ -45,15 +43,12 @@ export function MetaAdsSummaryClient({ weeklyRows, monthlyRows }: Props) {
   // Period totals
   const totals = rows.reduce((acc, r) => ({
     spend: acc.spend + r.spend,
-    impressions: acc.impressions + r.impressions,
-    clicks: acc.clicks + r.clicks,
-    link_clicks: acc.link_clicks + r.link_clicks,
-    landing_page_views: acc.landing_page_views + r.landing_page_views,
-    cv_custom: acc.cv_custom + r.cv_custom,
-  }), { spend: 0, impressions: 0, clicks: 0, link_clicks: 0, landing_page_views: 0, cv_custom: 0 });
+    scheduled: acc.scheduled + r.scheduled,
+    closed: acc.closed + r.closed,
+    revenue: acc.revenue + r.revenue,
+  }), { spend: 0, scheduled: 0, closed: 0, revenue: 0 });
 
-  const totalCtr = totals.impressions > 0 ? (totals.clicks / totals.impressions) * 100 : 0;
-  const totalCpc = totals.clicks > 0 ? totals.spend / totals.clicks : 0;
+  const totalCpaScheduled = totals.scheduled > 0 ? Math.round(totals.spend / totals.scheduled) : 0;
 
   return (
     <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 overflow-hidden">
@@ -62,7 +57,7 @@ export function MetaAdsSummaryClient({ weeklyRows, monthlyRows }: Props) {
           <div className="flex items-center justify-between mb-3">
             <div>
               <h2 className="text-sm font-semibold text-white">Meta広告パフォーマンス</h2>
-              <p className="text-[10px] text-gray-500 mt-0.5">Meta Ads 経由の広告費・クリック・CV</p>
+              <p className="text-[10px] text-gray-500 mt-0.5">Meta Ads 経由の広告費・CPA・確定LTV</p>
             </div>
             <div className="flex items-center gap-2">
               {/* View mode toggle */}
@@ -109,6 +104,8 @@ export function MetaAdsSummaryClient({ weeklyRows, monthlyRows }: Props) {
                 />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
                 <Bar dataKey="spend" name="広告費" fill="#8b5cf6" radius={[2, 2, 0, 0]} />
+                <Line type="monotone" dataKey="cpa_scheduled" name="CPA(2ヶ月移動)" stroke="#ef4444" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="rolling_ltv" name="確定LTV(2ヶ月移動)" stroke="#10b981" strokeWidth={2} dot={false} strokeDasharray="6 3" />
               </ComposedChart>
             </ResponsiveContainer>
           </div>
@@ -124,13 +121,11 @@ export function MetaAdsSummaryClient({ weeklyRows, monthlyRows }: Props) {
                     {granularity === "weekly" ? "週" : "月"}
                   </th>
                   <th className="text-right py-2.5 px-3">広告費</th>
-                  <th className="text-right py-2.5 px-3">imp</th>
-                  <th className="text-right py-2.5 px-3">click</th>
-                  <th className="text-right py-2.5 px-3">CTR</th>
-                  <th className="text-right py-2.5 px-3">CPC</th>
-                  <th className="text-right py-2.5 px-3">link click</th>
-                  <th className="text-right py-2.5 px-3">LP view</th>
-                  <th className="text-right py-2.5 px-3">CV</th>
+                  <th className="text-right py-2.5 px-3">日程確定</th>
+                  <th className="text-right py-2.5 px-3">成約</th>
+                  <th className="text-right py-2.5 px-3">CPA(2ヶ月移動)</th>
+                  <th className="text-right py-2.5 px-3">確定LTV</th>
+                  <th className="text-right py-2.5 px-3">売上</th>
                 </tr>
               </thead>
               <tbody>
@@ -142,49 +137,43 @@ export function MetaAdsSummaryClient({ weeklyRows, monthlyRows }: Props) {
                     <td className="text-right py-2.5 px-3 text-white">
                       {r.spend > 0 ? `¥${r.spend.toLocaleString()}` : "—"}
                     </td>
-                    <td className="text-right py-2.5 px-3 text-gray-300">
-                      {r.impressions > 0 ? r.impressions.toLocaleString() : "—"}
-                    </td>
-                    <td className="text-right py-2.5 px-3 text-gray-300">
-                      {r.clicks > 0 ? r.clicks.toLocaleString() : "—"}
-                    </td>
-                    <td className="text-right py-2.5 px-3 text-gray-400">
-                      {r.ctr > 0 ? `${r.ctr.toFixed(2)}%` : "—"}
-                    </td>
-                    <td className="text-right py-2.5 px-3 text-gray-400">
-                      {r.cpc > 0 ? `¥${Math.round(r.cpc).toLocaleString()}` : "—"}
-                    </td>
                     <td className="text-right py-2.5 px-3">
-                      <span className={r.link_clicks > 0 ? "text-blue-400" : "text-gray-600"}>
-                        {r.link_clicks > 0 ? r.link_clicks.toLocaleString() : "—"}
+                      <span className={r.scheduled > 0 ? "text-blue-400 font-medium" : "text-gray-600"}>
+                        {r.scheduled > 0 ? r.scheduled : "—"}
                       </span>
                     </td>
                     <td className="text-right py-2.5 px-3">
-                      <span className={r.landing_page_views > 0 ? "text-cyan-400" : "text-gray-600"}>
-                        {r.landing_page_views > 0 ? r.landing_page_views.toLocaleString() : "—"}
+                      <span className={r.closed > 0 ? "text-amber-400 font-medium" : "text-gray-600"}>
+                        {r.closed > 0 ? r.closed : "—"}
+                      </span>
+                    </td>
+                    <td className="text-right py-2.5 px-3 text-gray-300">
+                      {r.cpa_scheduled > 0 ? `¥${r.cpa_scheduled.toLocaleString()}` : "—"}
+                    </td>
+                    <td className="text-right py-2.5 px-3">
+                      <span className={r.rolling_ltv > 0 ? "text-green-400" : "text-gray-600"}>
+                        {r.rolling_ltv > 0 ? `¥${r.rolling_ltv.toLocaleString()}` : "—"}
                       </span>
                     </td>
                     <td className="text-right py-2.5 px-3">
-                      <span className={r.cv_custom > 0 ? "text-green-400 font-medium" : "text-gray-600"}>
-                        {r.cv_custom > 0 ? r.cv_custom.toFixed(1) : "—"}
+                      <span className={r.revenue > 0 ? "text-white" : "text-gray-600"}>
+                        {r.revenue > 0 ? `¥${r.revenue.toLocaleString()}` : "—"}
                       </span>
                     </td>
                   </tr>
                 ))}
                 {rows.length === 0 && (
-                  <tr><td colSpan={9} className="py-8 text-center text-gray-500">データなし</td></tr>
+                  <tr><td colSpan={7} className="py-8 text-center text-gray-500">データなし</td></tr>
                 )}
                 {rows.length > 0 && (
                   <tr className="border-t border-white/20 bg-white/5 font-medium sticky bottom-0">
                     <td className="py-2.5 px-4 text-white">合計</td>
                     <td className="text-right py-2.5 px-3 text-white">¥{totals.spend.toLocaleString()}</td>
-                    <td className="text-right py-2.5 px-3 text-white">{totals.impressions.toLocaleString()}</td>
-                    <td className="text-right py-2.5 px-3 text-white">{totals.clicks.toLocaleString()}</td>
-                    <td className="text-right py-2.5 px-3 text-white">{totalCtr.toFixed(2)}%</td>
-                    <td className="text-right py-2.5 px-3 text-white">{totalCpc > 0 ? `¥${Math.round(totalCpc).toLocaleString()}` : "—"}</td>
-                    <td className="text-right py-2.5 px-3 text-blue-400">{totals.link_clicks.toLocaleString()}</td>
-                    <td className="text-right py-2.5 px-3 text-cyan-400">{totals.landing_page_views.toLocaleString()}</td>
-                    <td className="text-right py-2.5 px-3 text-green-400">{totals.cv_custom.toFixed(1)}</td>
+                    <td className="text-right py-2.5 px-3 text-blue-400">{totals.scheduled}</td>
+                    <td className="text-right py-2.5 px-3 text-amber-400">{totals.closed}</td>
+                    <td className="text-right py-2.5 px-3 text-white">{totalCpaScheduled > 0 ? `¥${totalCpaScheduled.toLocaleString()}` : "—"}</td>
+                    <td className="text-right py-2.5 px-3 text-gray-500">—</td>
+                    <td className="text-right py-2.5 px-3 text-white">¥{totals.revenue.toLocaleString()}</td>
                   </tr>
                 )}
               </tbody>
