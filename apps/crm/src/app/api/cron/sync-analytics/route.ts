@@ -298,7 +298,7 @@ async function syncOneDay(
     try {
       async function adsSearchStream(query: string) {
         const res = await fetch(
-          `https://googleads.googleapis.com/v19/customers/${GOOGLE_ADS_CUSTOMER_ID}/googleAds:searchStream`,
+          `https://googleads.googleapis.com/v23/customers/${GOOGLE_ADS_CUSTOMER_ID}/googleAds:searchStream`,
           {
             method: "POST",
             headers: {
