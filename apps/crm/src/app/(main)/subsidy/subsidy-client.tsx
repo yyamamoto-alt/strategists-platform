@@ -20,6 +20,7 @@ interface SubsidyCompletionData {
   caseConditionMet: boolean;
   caseConditionViaOr: boolean;
   behaviorSessionCount: number;
+  additionalCoachingCount: number;
   behaviorConditionMet: boolean;
   hasPassingEvaluation: boolean;
   evaluations: string[];
@@ -37,11 +38,17 @@ interface DocumentData {
   certificateNumber: string | null;
 }
 
+interface SubsidyCheckData {
+  identityDocVerified: boolean;
+  bankDocVerified: boolean;
+}
+
 interface Props {
   customers: CustomerWithRelations[];
   firstPaidMap: Record<string, string>;
   completionData: Record<string, SubsidyCompletionData>;
   documentData: Record<string, DocumentData>;
+  checksData: Record<string, SubsidyCheckData>;
 }
 
 // ================================================================
@@ -538,14 +545,18 @@ function CustomerDetailModal({
   customer,
   completion,
   documents,
+  checks,
   onClose,
   onOpenDoc,
+  onToggleCheck,
 }: {
   customer: CustomerWithRelations;
   completion: SubsidyCompletionData | undefined;
   documents: DocumentData | undefined;
+  checks: SubsidyCheckData | undefined;
   onClose: () => void;
   onOpenDoc: (type: DocType) => void;
+  onToggleCheck?: (field: "identity_doc_verified" | "bank_doc_verified") => void;
 }) {
   const alerts = getAlerts(completion);
   const d = completion;
@@ -585,20 +596,55 @@ function CustomerDetailModal({
               {d?.outputFormDate && <p className="text-[10px] text-gray-400 mt-0.5">提出日: {d.outputFormDate}</p>}
             </div>
 
-            {/* Condition 2: ケース面接4回以上 */}
+            {/* Condition 2: ケース面接4回以上 — circle progress */}
             <div className={`p-3 rounded-lg border ${d?.caseConditionMet ? "border-green-500/30 bg-green-900/10" : "border-red-500/30 bg-red-900/10"}`}>
-              <ConditionBadge
-                label={`ケース面接 ${d?.caseSessionCount || 0}/4回`}
-                met={d?.caseConditionMet || false}
-                warning={d?.caseConditionViaOr ? "回次=4のレコードで条件達成（データ不整合の可能性）" : undefined}
-              />
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-300">ケース面接</span>
+                <div className="flex gap-1">
+                  {[1, 2, 3, 4].map((n) => (
+                    <span
+                      key={n}
+                      className={`w-4 h-4 rounded-full border-2 ${
+                        n <= (d?.caseSessionCount || 0)
+                          ? "bg-green-500 border-green-400"
+                          : "bg-transparent border-gray-600"
+                      }`}
+                    />
+                  ))}
+                </div>
+                <span className="text-[10px] text-gray-500">{d?.caseSessionCount || 0}/4</span>
+                {d?.caseConditionViaOr && (
+                  <span className="text-[10px] text-amber-400 bg-amber-400/10 px-1 rounded" title="回次=4のレコードで条件達成">!</span>
+                )}
+              </div>
               <p className="text-[10px] text-gray-500 mt-1">マンツーマン指導4時間以上</p>
             </div>
 
-            {/* Condition 3: ビヘイビア1回以上 */}
+            {/* Condition 3: ビヘイビア OR 追加指導 */}
             <div className={`p-3 rounded-lg border ${d?.behaviorConditionMet ? "border-green-500/30 bg-green-900/10" : "border-red-500/30 bg-red-900/10"}`}>
-              <ConditionBadge label={`ビヘイビア ${d?.behaviorSessionCount || 0}/1回`} met={d?.behaviorConditionMet || false} />
-              <p className="text-[10px] text-gray-500 mt-1">ビヘイビア面接指導1時間以上</p>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-300">Behavior面接</span>
+                <span
+                  className={`w-4 h-4 rounded-full border-2 ${
+                    (d?.behaviorSessionCount || 0) >= 1
+                      ? "bg-green-500 border-green-400"
+                      : "bg-transparent border-gray-600"
+                  }`}
+                />
+                <span className="text-[10px] text-gray-500">{d?.behaviorSessionCount || 0}回</span>
+              </div>
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-xs text-gray-300">追加指導</span>
+                <span
+                  className={`w-4 h-4 rounded-full border-2 ${
+                    (d?.additionalCoachingCount || 0) >= 1
+                      ? "bg-green-500 border-green-400"
+                      : "bg-transparent border-gray-600"
+                  }`}
+                />
+                <span className="text-[10px] text-gray-500">{d?.additionalCoachingCount || 0}回</span>
+              </div>
+              <p className="text-[10px] text-gray-500 mt-1">どちらか1回以上で条件達成</p>
             </div>
 
             {/* Condition 4: 総合評価 */}
@@ -628,30 +674,58 @@ function CustomerDetailModal({
         {/* Documents status */}
         <div className="px-6 py-4 border-t border-white/10">
           <h4 className="text-sm font-bold text-white mb-3">提出書類</h4>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex items-center gap-2">
-              <span className={`text-xs ${d?.identityDocUrl ? "text-green-400" : "text-red-400"}`}>
-                {d?.identityDocUrl ? "✅" : "❌"} 本人確認書類
-              </span>
-              {d?.identityDocUrl && (
-                <a href={d.identityDocUrl.split(",")[0].trim()} target="_blank" rel="noopener" className="text-[10px] text-brand hover:underline">
-                  確認
-                </a>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between p-2 rounded-lg bg-white/[0.02]">
+              <div className="flex items-center gap-2">
+                <span className={`text-xs ${d?.identityDocUrl ? "text-green-400" : "text-red-400"}`}>
+                  {d?.identityDocUrl ? "✅" : "❌"} 本人確認書類
+                </span>
+                {d?.identityDocUrl && (
+                  <a href={d.identityDocUrl.split(",")[0].trim()} target="_blank" rel="noopener" className="text-[10px] text-brand hover:underline">
+                    確認
+                  </a>
+                )}
+              </div>
+              {checks && (
+                <button
+                  onClick={() => onToggleCheck?.("identity_doc_verified")}
+                  className={`text-[10px] px-2 py-1 rounded border transition-colors ${
+                    checks.identityDocVerified
+                      ? "bg-green-900/40 text-green-300 border-green-500/30"
+                      : "bg-gray-800 text-gray-500 border-gray-600 hover:border-gray-400"
+                  }`}
+                >
+                  {checks.identityDocVerified ? "✓ 目視確認済み" : "目視未確認"}
+                </button>
               )}
             </div>
-            <div className="flex items-center gap-2">
-              <span className={`text-xs ${d?.bankDocUrl ? "text-green-400" : "text-red-400"}`}>
-                {d?.bankDocUrl ? "✅" : "❌"} 振込先書類
-              </span>
-              {d?.bankDocUrl && (
-                <a href={d.bankDocUrl.split(",")[0].trim()} target="_blank" rel="noopener" className="text-[10px] text-brand hover:underline">
-                  確認
-                </a>
+            <div className="flex items-center justify-between p-2 rounded-lg bg-white/[0.02]">
+              <div className="flex items-center gap-2">
+                <span className={`text-xs ${d?.bankDocUrl ? "text-green-400" : "text-red-400"}`}>
+                  {d?.bankDocUrl ? "✅" : "❌"} 振込先書類
+                </span>
+                {d?.bankDocUrl && (
+                  <a href={d.bankDocUrl.split(",")[0].trim()} target="_blank" rel="noopener" className="text-[10px] text-brand hover:underline">
+                    確認
+                  </a>
+                )}
+              </div>
+              {checks && (
+                <button
+                  onClick={() => onToggleCheck?.("bank_doc_verified")}
+                  className={`text-[10px] px-2 py-1 rounded border transition-colors ${
+                    checks.bankDocVerified
+                      ? "bg-green-900/40 text-green-300 border-green-500/30"
+                      : "bg-gray-800 text-gray-500 border-gray-600 hover:border-gray-400"
+                  }`}
+                >
+                  {checks.bankDocVerified ? "✓ 目視確認済み" : "目視未確認"}
+                </button>
               )}
             </div>
-            <div>
+            <div className="p-2 rounded-lg bg-white/[0.02]">
               <span className={`text-xs ${d?.contractSigned ? "text-green-400" : "text-red-400"}`}>
-                {d?.contractSigned ? "✅" : "❌"} 契約書締結
+                {d?.contractSigned ? "✅" : "❌"} 契約書締結（入塾フォーム自己申告）
               </span>
             </div>
           </div>
@@ -709,7 +783,9 @@ function buildColumns(
   paidMap: Record<string, string>,
   completionData: Record<string, SubsidyCompletionData>,
   documentData: Record<string, DocumentData>,
+  checksData: Record<string, SubsidyCheckData>,
   onRowClick: (c: CustomerWithRelations) => void,
+  onToggleCheck: (customerId: string, field: "identity_doc_verified" | "bank_doc_verified") => void,
 ): SpreadsheetColumn<CustomerWithRelations>[] {
   return [
     {
@@ -748,24 +824,34 @@ function buildColumns(
     {
       key: "conditions",
       label: "修了条件",
-      width: 100,
+      width: 240,
       render: (c) => {
         const d = completionData[c.id];
-        const { met, total } = getConditionScore(d);
         const alerts = getAlerts(d);
-        const allMet = met === total;
+        const conditions = [
+          { met: d?.hasOutputForm || false, label: "教材" },
+          { met: d?.caseConditionMet || false, label: "ケース面接" },
+          { met: d?.behaviorConditionMet || false, label: "BH/追加指導" },
+          { met: d?.hasPassingEvaluation || false, label: "総合評価" },
+        ];
         return (
           <div className="flex items-center gap-1.5">
-            <span className={`text-xs font-bold ${allMet ? "text-green-400" : met > 0 ? "text-amber-400" : "text-red-400"}`}>
-              {met}/{total}
-            </span>
-            <div className="flex gap-0.5">
-              {[d?.hasOutputForm, d?.caseConditionMet, d?.behaviorConditionMet, d?.hasPassingEvaluation].map((v, i) => (
-                <span key={i} className={`w-2 h-2 rounded-full ${v ? "bg-green-500" : "bg-red-500/60"}`} />
-              ))}
-            </div>
+            {conditions.map((cond, i) => (
+              <div key={i} className="flex items-center gap-0.5">
+                <span
+                  className={`w-3.5 h-3.5 flex items-center justify-center rounded text-[8px] font-bold ${
+                    cond.met ? "bg-green-600 text-white" : "bg-gray-700 text-gray-500"
+                  }`}
+                >
+                  {cond.met ? "✓" : "✗"}
+                </span>
+                <span className={`text-[10px] ${cond.met ? "text-green-400" : "text-gray-500"}`}>
+                  {cond.label}
+                </span>
+              </div>
+            ))}
             {alerts.length > 0 && (
-              <span className="text-amber-400 text-[10px]" title={alerts.join(", ")}>⚠️</span>
+              <span className="text-amber-400 text-[10px] ml-0.5" title={alerts.join(", ")}>⚠️</span>
             )}
           </div>
         );
@@ -774,27 +860,64 @@ function buildColumns(
     {
       key: "case_sessions",
       label: "ケース",
-      width: 60,
+      width: 70,
       render: (c) => {
         const d = completionData[c.id];
+        const count = d?.caseSessionCount || 0;
         return (
-          <span className={`text-xs ${d?.caseConditionMet ? "text-green-400" : "text-gray-400"}`}>
-            {d?.caseSessionCount || 0}回
-            {d?.caseConditionViaOr && <span className="text-amber-400 ml-0.5" title="OR条件で達成">!</span>}
-          </span>
+          <div className="flex items-center gap-0.5" title={`${count}/4回${d?.caseConditionViaOr ? " (OR条件)" : ""}`}>
+            {[1, 2, 3, 4].map((n) => (
+              <span
+                key={n}
+                className={`w-3.5 h-3.5 rounded-full border ${
+                  n <= count
+                    ? "bg-green-500 border-green-400"
+                    : "bg-gray-700/50 border-gray-600"
+                }`}
+              />
+            ))}
+            {d?.caseConditionViaOr && <span className="text-amber-400 text-[9px] ml-0.5">!</span>}
+          </div>
         );
       },
     },
     {
       key: "behavior_sessions",
-      label: "ビヘイビア",
-      width: 70,
+      label: "Behavior",
+      width: 50,
       render: (c) => {
         const d = completionData[c.id];
+        const count = d?.behaviorSessionCount || 0;
         return (
-          <span className={`text-xs ${d?.behaviorConditionMet ? "text-green-400" : "text-gray-400"}`}>
-            {d?.behaviorSessionCount || 0}回
-          </span>
+          <div className="flex items-center" title={`ビヘイビア ${count}/1回`}>
+            <span
+              className={`w-3.5 h-3.5 rounded-full border ${
+                count >= 1
+                  ? "bg-green-500 border-green-400"
+                  : "bg-gray-700/50 border-gray-600"
+              }`}
+            />
+          </div>
+        );
+      },
+    },
+    {
+      key: "additional_coaching",
+      label: "追加指導",
+      width: 50,
+      render: (c) => {
+        const d = completionData[c.id];
+        const count = d?.additionalCoachingCount || 0;
+        return (
+          <div className="flex items-center" title={`追加指導 ${count}回`}>
+            <span
+              className={`w-3.5 h-3.5 rounded-full border ${
+                count >= 1
+                  ? "bg-green-500 border-green-400"
+                  : "bg-gray-700/50 border-gray-600"
+              }`}
+            />
+          </div>
         );
       },
     },
@@ -819,8 +942,8 @@ function buildColumns(
     },
     {
       key: "documents",
-      label: "書類",
-      width: 80,
+      label: "書類提出",
+      width: 70,
       render: (c) => {
         const d = completionData[c.id];
         return (
@@ -831,6 +954,40 @@ function buildColumns(
             <span title="振込先書類" className={`text-[10px] ${d?.bankDocUrl ? "text-green-400" : "text-red-400"}`}>
               {d?.bankDocUrl ? "✅" : "❌"}口
             </span>
+          </div>
+        );
+      },
+    },
+    {
+      key: "doc_verified",
+      label: "目視確認",
+      width: 90,
+      render: (c) => {
+        const chk = checksData[c.id];
+        return (
+          <div className="flex gap-1.5">
+            <button
+              onClick={(e) => { e.stopPropagation(); onToggleCheck(c.id, "identity_doc_verified"); }}
+              title="本人確認書類 目視確認"
+              className={`text-[10px] px-1 py-0.5 rounded border transition-colors ${
+                chk?.identityDocVerified
+                  ? "bg-green-900/40 text-green-300 border-green-500/30"
+                  : "bg-gray-800 text-gray-500 border-gray-600 hover:border-gray-400"
+              }`}
+            >
+              {chk?.identityDocVerified ? "✓" : "○"}ID
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); onToggleCheck(c.id, "bank_doc_verified"); }}
+              title="振込先書類 目視確認"
+              className={`text-[10px] px-1 py-0.5 rounded border transition-colors ${
+                chk?.bankDocVerified
+                  ? "bg-green-900/40 text-green-300 border-green-500/30"
+                  : "bg-gray-800 text-gray-500 border-gray-600 hover:border-gray-400"
+              }`}
+            >
+              {chk?.bankDocVerified ? "✓" : "○"}口
+            </button>
           </div>
         );
       },
@@ -894,19 +1051,42 @@ interface MonthlyStats {
   reskillingExpense: number;
 }
 
-export function SubsidyClient({ customers, firstPaidMap, completionData, documentData }: Props) {
+export function SubsidyClient({ customers, firstPaidMap, completionData, documentData, checksData: initialChecksData }: Props) {
   const [activeTab, setActiveTab] = useState<TabKey>("list");
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerWithRelations | null>(null);
   const [docModal, setDocModal] = useState<DocModalState>({ open: false, type: "invoice", customer: null, completion: null });
+  const [checksData, setChecksData] = useState(initialChecksData);
 
   const weekEnds = useMemo(() => generateWeekEnds(), []);
   const months = useMemo(() => generateMonths(), []);
 
   const subsidyCustomers = useMemo(() => customers.filter(isSubsidyTarget), [customers]);
 
+  const handleToggleCheck = useCallback(async (customerId: string, field: "identity_doc_verified" | "bank_doc_verified") => {
+    try {
+      const res = await fetch("/api/subsidy/update-check", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ customerId, field }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setChecksData((prev) => ({
+          ...prev,
+          [customerId]: {
+            ...prev[customerId],
+            [field === "identity_doc_verified" ? "identityDocVerified" : "bankDocVerified"]: data[field],
+          },
+        }));
+      }
+    } catch (e) {
+      console.error("Toggle check failed:", e);
+    }
+  }, []);
+
   const columns = useMemo(
-    () => buildColumns(firstPaidMap, completionData, documentData, setSelectedCustomer),
-    [firstPaidMap, completionData, documentData]
+    () => buildColumns(firstPaidMap, completionData, documentData, checksData, setSelectedCustomer, handleToggleCheck),
+    [firstPaidMap, completionData, documentData, checksData, handleToggleCheck]
   );
 
   // Summary stats
@@ -921,37 +1101,44 @@ export function SubsidyClient({ customers, firstPaidMap, completionData, documen
     }).length;
   }, [subsidyCustomers, completionData]);
 
-  // Weekly stats
+  // Weekly stats — 推移は全顧客ベース（対象者リストのみsubsidyCustomers）
   const weeklyStats: WeeklyStats[] = useMemo(() => {
     return weekEnds.map((weekEnd) => {
-      const collected = subsidyCustomers.filter((c) => {
-        const d = getSubsidyDate(c);
+      // 集客人数 = 交付決定日以降に申し込みまたは営業実施した全顧客
+      const collected = customers.filter((c) => {
+        const appDate = normalizeDate(c.application_date);
+        const salesDate = normalizeDate(c.pipeline?.sales_date);
+        const d = (appDate > SUBSIDY_START ? appDate : "") || (salesDate > SUBSIDY_START ? salesDate : "");
         return d > SUBSIDY_START && d <= weekEnd;
       }).length;
-      const supported = subsidyCustomers.filter((c) => {
+      // 支援開始人数 = 営業実施済み（日程未確/未実施以外）
+      const supported = customers.filter((c) => {
         if (!isSupportStarted(c)) return false;
-        const d = normalizeDate(c.pipeline?.sales_date);
+        const appDate = normalizeDate(c.application_date);
+        const salesDate = normalizeDate(c.pipeline?.sales_date);
+        const d = (appDate > SUBSIDY_START ? appDate : "") || (salesDate > SUBSIDY_START ? salesDate : "");
         return d > SUBSIDY_START && d <= weekEnd;
       }).length;
-      const courseStarted = subsidyCustomers.filter((c) => {
+      // 講座受講開始人数 = 成約かつ支払い済み
+      const courseStarted = customers.filter((c) => {
         if (!isCourseStarted(c)) return false;
         const d = normalizeDate(firstPaidMap[c.id]) || normalizeDate(c.contract?.payment_date) || normalizeDate(c.pipeline?.sales_date);
         return d > SUBSIDY_START && d <= weekEnd;
       }).length;
       return { weekEnd, label: formatWeekLabel(weekEnd), collected, supported, courseStarted };
     });
-  }, [weekEnds, subsidyCustomers, firstPaidMap]);
+  }, [weekEnds, customers, firstPaidMap]);
 
   const monthlyStats: MonthlyStats[] = useMemo(() => {
     return months.map((month) => {
-      const courseStarted = subsidyCustomers.filter((c) => {
+      const courseStarted = customers.filter((c) => {
         if (!isCourseStarted(c)) return false;
         const d = normalizeDate(firstPaidMap[c.id]) || normalizeDate(c.contract?.payment_date) || normalizeDate(c.pipeline?.sales_date);
         return d.startsWith(month);
       }).length;
       return { month, label: formatMonthLabel(month), courseStarted, reskillingExpense: courseStarted * RESKILLING_UNIT };
     });
-  }, [months, subsidyCustomers, firstPaidMap]);
+  }, [months, customers, firstPaidMap]);
 
   const monthlyTotal = useMemo(() => monthlyStats.reduce((s, m) => s + m.reskillingExpense, 0), [monthlyStats]);
   const latest = weeklyStats[weeklyStats.length - 1];
@@ -1109,8 +1296,10 @@ export function SubsidyClient({ customers, firstPaidMap, completionData, documen
           customer={selectedCustomer}
           completion={completionData[selectedCustomer.id]}
           documents={documentData[selectedCustomer.id]}
+          checks={checksData[selectedCustomer.id]}
           onClose={() => setSelectedCustomer(null)}
           onOpenDoc={handleOpenDoc}
+          onToggleCheck={(field) => handleToggleCheck(selectedCustomer.id, field)}
         />
       )}
 

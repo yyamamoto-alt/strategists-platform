@@ -16,19 +16,9 @@ export interface AdsWeeklyRow {
   rolling_ltv: number;
 }
 
-export interface LtvTier {
-  months: number;
-  label: string;
-  scheduled: number;
-  closed: number;
-  revenue: number;
-  ltvPerScheduled: number;
-}
-
 interface Props {
   weeklyRows: AdsWeeklyRow[];
   monthlyRows: AdsWeeklyRow[];
-  ltvTiers: LtvTier[];
 }
 
 type Granularity = "weekly" | "monthly";
@@ -45,7 +35,7 @@ function yAxisFmt(v: number): string {
   return String(v);
 }
 
-export function AdsSummaryClient({ weeklyRows, monthlyRows, ltvTiers }: Props) {
+export function AdsSummaryClient({ weeklyRows, monthlyRows }: Props) {
   const [granularity, setGranularity] = useState<Granularity>("weekly");
   const [viewMode, setViewMode] = useState<ViewMode>("chart");
   const rows = granularity === "weekly" ? weeklyRows : monthlyRows;
@@ -101,20 +91,6 @@ export function AdsSummaryClient({ weeklyRows, monthlyRows, ltvTiers }: Props) {
             </div>
           </div>
 
-          {/* LTV Tiers */}
-          <div className="grid grid-cols-4 gap-2">
-            {ltvTiers.map(t => (
-              <div key={t.months} className="bg-white/[0.03] border border-white/5 rounded-lg px-3 py-2">
-                <p className="text-[10px] text-gray-500">確定LTV（直近{t.label}）</p>
-                <p className="text-sm font-bold text-amber-400 mt-0.5">
-                  {t.ltvPerScheduled > 0 ? formatCurrency(t.ltvPerScheduled) : "—"}
-                </p>
-                <p className="text-[10px] text-gray-600">
-                  {t.scheduled}確定 / {t.closed}成約 / {formatCurrency(t.revenue)}
-                </p>
-              </div>
-            ))}
-          </div>
         </div>
 
         {/* Chart view */}
@@ -144,7 +120,7 @@ export function AdsSummaryClient({ weeklyRows, monthlyRows, ltvTiers }: Props) {
                 />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
                 <Bar yAxisId="left" dataKey="cost" name="広告費" fill="#f59e0b" radius={[2, 2, 0, 0]} />
-                <Line yAxisId="right" type="monotone" dataKey="cpa_scheduled" name="CPA(確定)" stroke="#ef4444" strokeWidth={2} dot={false} />
+                <Line yAxisId="right" type="monotone" dataKey="cpa_scheduled" name="CPA(2ヶ月移動)" stroke="#ef4444" strokeWidth={2} dot={false} />
                 <Line yAxisId="right" type="monotone" dataKey="rolling_ltv" name="確定LTV(2ヶ月移動)" stroke="#10b981" strokeWidth={2} dot={false} strokeDasharray="6 3" />
               </ComposedChart>
             </ResponsiveContainer>
@@ -164,7 +140,7 @@ export function AdsSummaryClient({ weeklyRows, monthlyRows, ltvTiers }: Props) {
                   <th className="text-right py-2.5 px-3">申し込み</th>
                   <th className="text-right py-2.5 px-3">日程確定</th>
                   <th className="text-right py-2.5 px-3">成約</th>
-                  <th className="text-right py-2.5 px-3">CPA（確定）</th>
+                  <th className="text-right py-2.5 px-3">CPA(2ヶ月移動)</th>
                   <th className="text-right py-2.5 px-3">確定LTV</th>
                   <th className="text-right py-2.5 px-3">売上</th>
                 </tr>

@@ -4,7 +4,7 @@ import {
   adsFunnelIsClosed,
   adsFunnelIsScheduled,
 } from "@/lib/data/analytics";
-import { AdsSummaryClient, type AdsWeeklyRow, type LtvTier } from "./ads-client";
+import { AdsSummaryClient, type AdsWeeklyRow } from "./ads-client";
 
 /** 週キーを算出（月曜始まり） */
 function weekKey(dateStr: string): string {
@@ -65,7 +65,7 @@ export async function AdsSection() {
     const mk = monthKey(c.application_date);
     const isScheduled = adsFunnelIsScheduled(c.stage) ? 1 : 0;
     const isClosed = adsFunnelIsClosed(c.stage) ? 1 : 0;
-    const rev = isClosed ? (c.confirmed_amount + c.expected_referral_fee) : 0;
+    const rev = isClosed ? (c.confirmed_amount) : 0;
 
     const wf = weeklyFunnel.get(wk) || zero();
     wf.scheduled += isScheduled;
@@ -79,30 +79,6 @@ export async function AdsSection() {
     mf.revenue += rev;
     monthlyFunnel.set(mk, mf);
   }
-
-  // --- ローリングLTV計算（4段階: 1ヶ月, 2ヶ月, 3ヶ月, 半年） ---
-  const ltvTiers = [1, 2, 3, 6].map(months => {
-    const cutoff = new Date();
-    cutoff.setMonth(cutoff.getMonth() - months);
-    const cutoffStr = cutoff.toISOString().slice(0, 10);
-    let scheduled = 0, revenue = 0, closed = 0;
-    for (const c of funnel) {
-      if (!c.application_date || c.application_date < cutoffStr) continue;
-      if (adsFunnelIsScheduled(c.stage)) scheduled++;
-      if (adsFunnelIsClosed(c.stage)) {
-        closed++;
-        revenue += c.confirmed_amount + c.expected_referral_fee;
-      }
-    }
-    return {
-      months,
-      label: months === 6 ? "半年" : `${months}ヶ月`,
-      scheduled,
-      closed,
-      revenue: Math.round(revenue),
-      ltvPerScheduled: scheduled > 0 ? Math.round(revenue / scheduled) : 0,
-    };
-  });
 
   // --- ローリングLTV計算（各期間時点から2ヶ月遡り） ---
   function calcRollingLtv(periodEnd: string): number {
@@ -118,10 +94,33 @@ export async function AdsSection() {
       if (!c.application_date || c.application_date < startStr || c.application_date > endStr) continue;
       if (adsFunnelIsScheduled(c.stage)) scheduled++;
       if (adsFunnelIsClosed(c.stage)) {
-        revenue += c.confirmed_amount + c.expected_referral_fee;
+        revenue += c.confirmed_amount;
       }
     }
     return scheduled > 0 ? Math.round(revenue / scheduled) : 0;
+  }
+
+  // --- ローリングCPA計算（各期間時点から2ヶ月遡り） ---
+  function calcRollingCpa(periodEnd: string): number {
+    const endDate = new Date(periodEnd + (periodEnd.length === 7 ? "-28" : ""));
+    endDate.setDate(endDate.getDate() + 6);
+    const startDate = new Date(endDate);
+    startDate.setMonth(startDate.getMonth() - 2);
+    const startStr = startDate.toISOString().slice(0, 10);
+    const endStr = endDate.toISOString().slice(0, 10);
+
+    let totalCost = 0;
+    for (const r of campaigns) {
+      if (r.date >= startStr && r.date <= endStr) {
+        totalCost += r.cost;
+      }
+    }
+    let scheduled = 0;
+    for (const c of funnel) {
+      if (!c.application_date || c.application_date < startStr || c.application_date > endStr) continue;
+      if (adsFunnelIsScheduled(c.stage)) scheduled++;
+    }
+    return scheduled > 0 ? Math.round(totalCost / scheduled) : 0;
   }
 
   // --- 週次行を組み立て ---
@@ -129,7 +128,6 @@ export async function AdsSection() {
   const weeklyRows: AdsWeeklyRow[] = Array.from(allWeekKeys).sort().reverse().map(wk => {
     const ads = weeklyAds.get(wk) || { cost: 0, cv_application: 0 };
     const fnl = weeklyFunnel.get(wk) || zero();
-    const cpaScheduled = fnl.scheduled > 0 ? ads.cost / fnl.scheduled : 0;
     return {
       period: wk,
       cost: Math.round(ads.cost),
@@ -137,7 +135,7 @@ export async function AdsSection() {
       scheduled: fnl.scheduled,
       closed: fnl.closed,
       revenue: Math.round(fnl.revenue),
-      cpa_scheduled: Math.round(cpaScheduled),
+      cpa_scheduled: calcRollingCpa(wk),
       rolling_ltv: calcRollingLtv(wk),
     };
   });
@@ -147,7 +145,6 @@ export async function AdsSection() {
   const monthlyRows: AdsWeeklyRow[] = Array.from(allMonthKeys).sort().reverse().map(mk => {
     const ads = monthlyAds.get(mk) || { cost: 0, cv_application: 0 };
     const fnl = monthlyFunnel.get(mk) || zero();
-    const cpaScheduled = fnl.scheduled > 0 ? ads.cost / fnl.scheduled : 0;
     return {
       period: mk,
       cost: Math.round(ads.cost),
@@ -155,7 +152,7 @@ export async function AdsSection() {
       scheduled: fnl.scheduled,
       closed: fnl.closed,
       revenue: Math.round(fnl.revenue),
-      cpa_scheduled: Math.round(cpaScheduled),
+      cpa_scheduled: calcRollingCpa(mk),
       rolling_ltv: calcRollingLtv(mk),
     };
   });
@@ -164,7 +161,6 @@ export async function AdsSection() {
     <AdsSummaryClient
       weeklyRows={weeklyRows}
       monthlyRows={monthlyRows}
-      ltvTiers={ltvTiers}
     />
   );
 }
