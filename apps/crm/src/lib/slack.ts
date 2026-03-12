@@ -68,6 +68,18 @@ export async function notifyStageTransition(text: string) {
 }
 
 // ================================================================
+// 広告週次レポート
+// ================================================================
+
+export async function notifyAdsWeeklyReport(text: string) {
+  const enabled = await getSetting("slack_notify_ads_weekly");
+  if (enabled !== "true") return;
+  const channel = await getSetting("slack_channel_ads_weekly");
+  if (!channel) return;
+  await sendSlackMessage(channel, text, { username: "Google Ads Report" });
+}
+
+// ================================================================
 // Zapier移管: イベント通知（app_settings で ON/OFF・チャンネル管理）
 // ================================================================
 

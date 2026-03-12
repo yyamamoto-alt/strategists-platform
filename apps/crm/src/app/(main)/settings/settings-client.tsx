@@ -254,6 +254,23 @@ const SECTIONS: SettingsSectionConfig[] = [
     ],
   },
   {
+    title: "Google Ads 週次レポート",
+    description: "毎週月曜にGoogle Adsの週次サマリーをSlackへ自動配信します。詳細HTMLレポートへのリンク付き。",
+    fields: [
+      {
+        key: "slack_notify_ads_weekly",
+        label: "週次レポート通知",
+        type: "toggle",
+      },
+      {
+        key: "slack_channel_ads_weekly",
+        label: "└ 通知先チャンネル",
+        type: "slack_channel",
+        placeholder: "チャンネルを選択...",
+      },
+    ],
+  },
+  {
     title: "表示設定",
     description: "日付・通貨などの表示フォーマットを設定します。",
     fields: [
