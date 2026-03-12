@@ -203,6 +203,25 @@ export async function fetchColumnDataStatus(
 // ================================================================
 
 const PROGRESS_SHEET_TEMPLATE_ID = "1Xs0dNiMdN6teIMnlmNsMuBEXitrbFiPkD5h3I_Dlr6A";
+const PROGRESS_SHEET_FOLDER_ID = "1yZqhDyDa_ixkQKYxj4-dBelNnfjGbzzF";
+
+/**
+ * Drive操作用OAuth認証（caseinlogic@gmail.com）
+ * サービスアカウントにはDriveストレージがないため、OAuth認証でファイルを作成する
+ */
+function getDriveAuth() {
+  const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID || process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_OAUTH_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET;
+  const refreshToken = process.env.GOOGLE_DRIVE_REFRESH_TOKEN;
+
+  if (!clientId || !clientSecret || !refreshToken) {
+    throw new Error("Missing GOOGLE_DRIVE_REFRESH_TOKEN or OAuth client credentials");
+  }
+
+  const oauth2 = new google.auth.OAuth2(clientId, clientSecret);
+  oauth2.setCredentials({ refresh_token: refreshToken });
+  return oauth2;
+}
 
 /**
  * ProgressSheetテンプレートをコピーし、カルテ情報を書き込む
@@ -230,15 +249,15 @@ export async function createProgressSheet(data: {
   agentUsage?: string;
 }): Promise<{ url: string; spreadsheetId: string } | null> {
   try {
-    const auth = getAuth(false); // read-write scope
+    const auth = getDriveAuth(); // OAuth認証（caseinlogic@gmail.com）
 
-    // 1. テンプレートをコピー
+    // 1. テンプレートをコピー（指定フォルダに作成）
     const drive = google.drive({ version: "v3", auth });
     const title = `ProgressSheet_${data.name}_${data.email}`;
 
     const copyRes = await drive.files.copy({
       fileId: PROGRESS_SHEET_TEMPLATE_ID,
-      requestBody: { name: title },
+      requestBody: { name: title, parents: [PROGRESS_SHEET_FOLDER_ID] },
     });
 
     const newId = copyRes.data.id;
