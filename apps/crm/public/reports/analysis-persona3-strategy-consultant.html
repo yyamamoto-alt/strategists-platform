@@ -1,0 +1,1186 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Google広告投資分析 | 戦略的意思決定レポート</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700;900&display=swap');
+
+  :root {
+    --navy: #1B2A4A;
+    --dark-navy: #0F1A2E;
+    --accent-blue: #2563EB;
+    --accent-teal: #0D9488;
+    --red: #DC2626;
+    --orange: #EA580C;
+    --green: #16A34A;
+    --light-gray: #F8FAFC;
+    --mid-gray: #E2E8F0;
+    --text-primary: #1E293B;
+    --text-secondary: #64748B;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Noto Sans JP', -apple-system, sans-serif;
+    background: #F1F5F9;
+    color: var(--text-primary);
+    line-height: 1.7;
+    font-size: 15px;
+  }
+
+  /* ===== Cover Page ===== */
+  .cover {
+    background: linear-gradient(135deg, var(--dark-navy) 0%, var(--navy) 100%);
+    color: white;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 80px 10%;
+    position: relative;
+    overflow: hidden;
+  }
+  .cover::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -20%;
+    width: 800px;
+    height: 800px;
+    border-radius: 50%;
+    background: rgba(37, 99, 235, 0.08);
+  }
+  .cover-label {
+    font-size: 13px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.5);
+    margin-bottom: 24px;
+  }
+  .cover h1 {
+    font-size: 42px;
+    font-weight: 900;
+    line-height: 1.3;
+    margin-bottom: 16px;
+  }
+  .cover h1 span { color: #60A5FA; }
+  .cover .subtitle {
+    font-size: 20px;
+    font-weight: 300;
+    color: rgba(255,255,255,0.7);
+    margin-bottom: 48px;
+  }
+  .cover-meta {
+    display: flex;
+    gap: 48px;
+    font-size: 13px;
+    color: rgba(255,255,255,0.5);
+  }
+  .cover-meta strong { color: rgba(255,255,255,0.8); display: block; }
+
+  /* ===== Section wrapper ===== */
+  .section {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 64px 40px;
+    page-break-inside: avoid;
+  }
+
+  /* ===== Slide-style page ===== */
+  .slide {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    padding: 48px 56px;
+    margin-bottom: 32px;
+    position: relative;
+  }
+  .slide::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 4px;
+    height: 100%;
+    background: var(--accent-blue);
+    border-radius: 12px 0 0 12px;
+  }
+
+  .slide-number {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--accent-blue);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .slide h2 {
+    font-size: 26px;
+    font-weight: 900;
+    color: var(--navy);
+    margin-bottom: 8px;
+    line-height: 1.4;
+  }
+
+  .slide h3 {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--navy);
+    margin: 28px 0 12px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--mid-gray);
+  }
+
+  .key-message {
+    font-size: 17px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-bottom: 32px;
+    padding-left: 16px;
+    border-left: 3px solid var(--accent-blue);
+  }
+
+  /* ===== Executive Summary Box ===== */
+  .exec-box {
+    background: linear-gradient(135deg, #EFF6FF, #F0FDF4);
+    border: 1px solid #BFDBFE;
+    border-radius: 8px;
+    padding: 32px;
+    margin: 24px 0;
+  }
+  .exec-box h4 {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--accent-blue);
+    letter-spacing: 1px;
+    margin-bottom: 16px;
+  }
+
+  /* ===== KPI Cards ===== */
+  .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin: 24px 0;
+  }
+  .kpi-card {
+    background: var(--light-gray);
+    border-radius: 8px;
+    padding: 20px 24px;
+    text-align: center;
+  }
+  .kpi-card .label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .kpi-card .value {
+    font-size: 32px;
+    font-weight: 900;
+    color: var(--navy);
+  }
+  .kpi-card .sub {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-top: 2px;
+  }
+  .kpi-card.red .value { color: var(--red); }
+  .kpi-card.green .value { color: var(--green); }
+  .kpi-card.orange .value { color: var(--orange); }
+  .kpi-card.blue .value { color: var(--accent-blue); }
+
+  /* ===== Verdict Badge ===== */
+  .verdict {
+    display: inline-block;
+    padding: 6px 20px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 1px;
+  }
+  .verdict.negative { background: #FEE2E2; color: var(--red); }
+  .verdict.caution { background: #FEF3C7; color: #B45309; }
+  .verdict.positive { background: #DCFCE7; color: var(--green); }
+
+  /* ===== Comparison Table ===== */
+  .comp-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+    font-size: 14px;
+  }
+  .comp-table th {
+    background: var(--navy);
+    color: white;
+    padding: 12px 16px;
+    text-align: left;
+    font-weight: 500;
+    font-size: 12px;
+    letter-spacing: 0.5px;
+  }
+  .comp-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--mid-gray);
+  }
+  .comp-table tr:nth-child(even) { background: #F8FAFC; }
+  .comp-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .comp-table .highlight { background: #FEF9C3; font-weight: 700; }
+
+  /* ===== Funnel Visual ===== */
+  .funnel {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin: 24px 0;
+    justify-content: center;
+  }
+  .funnel-step {
+    text-align: center;
+    padding: 16px 24px;
+    position: relative;
+  }
+  .funnel-step .num {
+    font-size: 36px;
+    font-weight: 900;
+    color: var(--navy);
+  }
+  .funnel-step .desc {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-top: 4px;
+  }
+  .funnel-arrow {
+    font-size: 24px;
+    color: var(--mid-gray);
+    padding: 0 4px;
+  }
+  .funnel-rate {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--accent-blue);
+    background: #EFF6FF;
+    padding: 2px 8px;
+    border-radius: 10px;
+    position: absolute;
+    top: -8px;
+    right: -20px;
+  }
+
+  /* ===== Insight Block ===== */
+  .insight {
+    background: #FFFBEB;
+    border-left: 4px solid #F59E0B;
+    padding: 16px 20px;
+    margin: 20px 0;
+    border-radius: 0 8px 8px 0;
+    font-size: 14px;
+  }
+  .insight strong { color: #B45309; }
+
+  .alert {
+    background: #FEF2F2;
+    border-left: 4px solid var(--red);
+    padding: 16px 20px;
+    margin: 20px 0;
+    border-radius: 0 8px 8px 0;
+    font-size: 14px;
+  }
+  .alert strong { color: var(--red); }
+
+  .positive-block {
+    background: #F0FDF4;
+    border-left: 4px solid var(--green);
+    padding: 16px 20px;
+    margin: 20px 0;
+    border-radius: 0 8px 8px 0;
+    font-size: 14px;
+  }
+  .positive-block strong { color: var(--green); }
+
+  /* ===== Waterfall / Bar Viz ===== */
+  .bar-viz {
+    margin: 20px 0;
+  }
+  .bar-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+    font-size: 13px;
+  }
+  .bar-label {
+    width: 200px;
+    text-align: right;
+    padding-right: 12px;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+  }
+  .bar-track {
+    flex: 1;
+    background: #F1F5F9;
+    height: 28px;
+    border-radius: 4px;
+    position: relative;
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    padding-left: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    color: white;
+    min-width: fit-content;
+  }
+  .bar-fill.blue { background: var(--accent-blue); }
+  .bar-fill.red { background: var(--red); }
+  .bar-fill.green { background: var(--green); }
+  .bar-fill.orange { background: var(--orange); }
+  .bar-fill.teal { background: var(--accent-teal); }
+  .bar-fill.gray { background: #94A3B8; }
+
+  /* ===== Two Column Layout ===== */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+    margin: 20px 0;
+  }
+  @media (max-width: 768px) {
+    .two-col { grid-template-columns: 1fr; }
+    .cover h1 { font-size: 28px; }
+    .slide { padding: 32px 24px; }
+  }
+
+  /* ===== Scenario Block ===== */
+  .scenario {
+    border: 2px solid var(--mid-gray);
+    border-radius: 8px;
+    padding: 24px;
+    margin: 16px 0;
+  }
+  .scenario.recommended {
+    border-color: var(--accent-blue);
+    background: #F8FAFF;
+  }
+  .scenario h4 {
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+  .scenario .tag {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+  .scenario .tag.rec { background: var(--accent-blue); color: white; }
+
+  /* ===== Month Trend Viz ===== */
+  .trend-grid {
+    display: grid;
+    grid-template-columns: 80px repeat(13, 1fr);
+    gap: 2px;
+    font-size: 11px;
+    margin: 20px 0;
+  }
+  .trend-grid .header { font-weight: 700; color: var(--text-secondary); text-align: center; padding: 6px 2px; }
+  .trend-grid .cell {
+    text-align: center;
+    padding: 8px 2px;
+    border-radius: 4px;
+    font-weight: 500;
+  }
+  .trend-grid .label { text-align: right; padding-right: 8px; color: var(--text-secondary); font-weight: 500; display: flex; align-items: center; justify-content: flex-end; }
+
+  .heat-high { background: #1E40AF; color: white; }
+  .heat-mid { background: #60A5FA; color: white; }
+  .heat-low { background: #BFDBFE; color: var(--navy); }
+  .heat-min { background: #EFF6FF; color: var(--text-secondary); }
+  .heat-zero { background: #FEE2E2; color: var(--red); }
+
+  /* ===== Divider ===== */
+  .divider {
+    height: 1px;
+    background: var(--mid-gray);
+    margin: 32px 0;
+  }
+
+  /* ===== Footer ===== */
+  .footer-note {
+    text-align: center;
+    font-size: 12px;
+    color: var(--text-secondary);
+    padding: 40px 0;
+  }
+
+  ul, ol { padding-left: 20px; margin: 12px 0; }
+  li { margin-bottom: 6px; }
+
+  .tag-inline {
+    display: inline-block;
+    padding: 1px 8px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .tag-inline.red { background: #FEE2E2; color: var(--red); }
+  .tag-inline.green { background: #DCFCE7; color: var(--green); }
+  .tag-inline.blue { background: #DBEAFE; color: var(--accent-blue); }
+</style>
+</head>
+<body>
+
+<!-- ============================================================ -->
+<!-- COVER -->
+<!-- ============================================================ -->
+<div class="cover">
+  <div class="cover-label">Confidential &mdash; Strategic Analysis</div>
+  <h1>Google広告投資の<span>構造的診断</span><br>と事業インパクト評価</h1>
+  <p class="subtitle">コンサル転職スクール事業 / 2025年3月〜2026年3月</p>
+  <div class="cover-meta">
+    <div>
+      <strong>Prepared by</strong>
+      高橋 亮介（戦略コンサルタント）
+    </div>
+    <div>
+      <strong>Date</strong>
+      2026年3月13日
+    </div>
+    <div>
+      <strong>Classification</strong>
+      経営判断資料
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- EXECUTIVE SUMMARY -->
+<!-- ============================================================ -->
+<div class="section">
+<div class="slide">
+  <div class="slide-number">Executive Summary</div>
+  <h2>結論: Google広告は「投資対効果は出ている」が、事業全体での位置づけは限定的</h2>
+
+  <div class="exec-box">
+    <h4>3つのキーファインディング</h4>
+    <ol style="font-size: 15px; line-height: 2;">
+      <li><strong>ユニットエコノミクスは成立している。</strong> CAC ¥66.9万に対し、確定売上+期待紹介料ベースのLTVは¥97.4万。紹介料が実現すれば投資回収は可能。ただし紹介料確定ゼロの現状ではROAS 0.34倍で赤字。</li>
+      <li><strong>事業全体への貢献度は2.2%。</strong> 全317成約のうちGoogle広告経由は7件。「あれば嬉しい」チャネルであって「事業の柱」ではない。他チャネル（紹介・SEO等）が圧倒的に主力。</li>
+      <li><strong>9月以降のCV急増はデータの信頼性問題。</strong> CPA ¥1,400まで改善したように見えるが、マイクロCVの混入が原因の可能性が高い。実質CVは月2-3件ペースで変わっていない。</li>
+    </ol>
+  </div>
+
+  <div class="kpi-row">
+    <div class="kpi-card orange">
+      <div class="label">広告投資総額</div>
+      <div class="value">¥468万</div>
+      <div class="sub">12ヶ月累計</div>
+    </div>
+    <div class="kpi-card">
+      <div class="label">CRM確認済み顧客</div>
+      <div class="value">34名</div>
+      <div class="sub">全体の2.9%</div>
+    </div>
+    <div class="kpi-card green">
+      <div class="label">成約</div>
+      <div class="value">7件</div>
+      <div class="sub">成約率20.6%</div>
+    </div>
+    <div class="kpi-card red">
+      <div class="label">確定ROAS</div>
+      <div class="value">0.34x</div>
+      <div class="sub">目標3.0xに対し未達</div>
+    </div>
+  </div>
+
+  <div class="two-col">
+    <div>
+      <h3>So What?（だから何なのか）</h3>
+      <ul>
+        <li>Google広告は現状の月4万円予算なら「低リスクの実験枠」として許容範囲</li>
+        <li>ただし月100万円に戻す判断は、紹介料の実現可能性が見えてからで十分</li>
+        <li>事業成長のレバーはGoogle広告ではなく、既存チャネルの最適化にある</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Now What?（次に何をすべきか）</h3>
+      <ul>
+        <li><strong>即時:</strong> コンバージョン計測の正常化（マイクロCVを分離）</li>
+        <li><strong>短期:</strong> 紹介料パイプライン¥521万の実現状況を追跡</li>
+        <li><strong>中期:</strong> 月40万円規模で「ケース面接 対策 講座」系KWに集中投資</li>
+      </ul>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 1: ユニットエコノミクス -->
+<!-- ============================================================ -->
+<div class="section">
+<div class="slide">
+  <div class="slide-number">Analysis 01</div>
+  <h2>ユニットエコノミクス: 投資回収は「紹介料次第」の構造</h2>
+  <p class="key-message">CAC ¥66.9万は高額だが、紹介料が実現すればLTV ¥97.4万で回収可能。問題は紹介料確定ゼロという現実。</p>
+
+  <h3>ファネル全体像</h3>
+  <div class="funnel">
+    <div class="funnel-step">
+      <div class="num">¥468万</div>
+      <div class="desc">広告投資</div>
+    </div>
+    <div class="funnel-arrow">&rarr;</div>
+    <div class="funnel-step" style="position:relative;">
+      <div class="num">34</div>
+      <div class="desc">顧客獲得</div>
+      <div class="funnel-rate">CPA ¥13.8万</div>
+    </div>
+    <div class="funnel-arrow">&rarr;</div>
+    <div class="funnel-step" style="position:relative;">
+      <div class="num">7</div>
+      <div class="desc">成約</div>
+      <div class="funnel-rate">20.6%</div>
+    </div>
+    <div class="funnel-arrow">&rarr;</div>
+    <div class="funnel-step">
+      <div class="num">¥160万</div>
+      <div class="desc">確定売上</div>
+    </div>
+    <div class="funnel-arrow">+</div>
+    <div class="funnel-step">
+      <div class="num">¥521万</div>
+      <div class="desc">期待紹介料</div>
+    </div>
+  </div>
+
+  <div class="two-col">
+    <div>
+      <h3>投資回収シナリオ</h3>
+      <table class="comp-table">
+        <tr><th>シナリオ</th><th class="num">LTV/顧客</th><th class="num">ROAS</th><th>判定</th></tr>
+        <tr>
+          <td>確定売上のみ</td>
+          <td class="num">¥22.9万</td>
+          <td class="num">0.34x</td>
+          <td><span class="verdict negative">赤字</span></td>
+        </tr>
+        <tr class="highlight">
+          <td>確定+紹介料50%実現</td>
+          <td class="num">¥60.2万</td>
+          <td class="num">0.90x</td>
+          <td><span class="verdict caution">損益分岐付近</span></td>
+        </tr>
+        <tr>
+          <td>確定+紹介料100%実現</td>
+          <td class="num">¥97.4万</td>
+          <td class="num">1.45x</td>
+          <td><span class="verdict caution">黒字だが目標未達</span></td>
+        </tr>
+        <tr>
+          <td>目標（ROAS 3.0x）達成</td>
+          <td class="num">¥200.7万</td>
+          <td class="num">3.00x</td>
+          <td><span class="verdict positive">目標達成</span></td>
+        </tr>
+      </table>
+    </div>
+    <div>
+      <h3>構造的課題</h3>
+      <div class="alert">
+        <strong>紹介料確定ゼロの意味:</strong> 34件のエージェントレコードがあるが、確定件数ゼロ。期待紹介料¥521万は「絵に描いた餅」の状態。紹介料ビジネスの転換率をまず把握すべき。
+      </div>
+      <div class="insight">
+        <strong>CAC計算の補正:</strong> 広告費¥468万 / CRM顧客34名 = 顧客獲得単価¥13.8万。しかし成約ベースでは ¥468万 / 7成約 = <strong>¥66.9万/成約</strong>。ROAS目標3.0xの場合、成約あたりLTV ¥200万が必要だが、現在の平均成約単価は¥22.9万。<strong>約9倍のギャップ</strong>がある。
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 2: 事業全体での位置づけ -->
+<!-- ============================================================ -->
+<div class="section">
+<div class="slide">
+  <div class="slide-number">Analysis 02</div>
+  <h2>事業ポートフォリオ: Google広告は全体の2.2%、主力ではない</h2>
+  <p class="key-message">全成約317件中Google広告経由はわずか7件。事業成長のドライバーは別にある。</p>
+
+  <div class="two-col">
+    <div>
+      <h3>成約構成比</h3>
+      <div class="bar-viz">
+        <div class="bar-row">
+          <div class="bar-label">他チャネル（推定）</div>
+          <div class="bar-track">
+            <div class="bar-fill blue" style="width: 97.8%;">310件 / 97.8%</div>
+          </div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">Google広告経由</div>
+          <div class="bar-track">
+            <div class="bar-fill red" style="width: 4%;">&nbsp;7件 / 2.2%</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="insight">
+        <strong>問い:</strong> Google広告に¥468万を投じて得た7成約は、他チャネルでは獲得できなかった「増分」なのか？ それとも、SEOやブランド検索で自然に来ていた層を広告で拾っただけか？
+      </div>
+    </div>
+    <div>
+      <h3>成約率の比較</h3>
+      <table class="comp-table">
+        <tr><th>指標</th><th class="num">Google広告</th><th class="num">全体</th><th class="num">差分</th></tr>
+        <tr>
+          <td>成約率</td>
+          <td class="num">20.6%</td>
+          <td class="num">27.4%</td>
+          <td class="num" style="color: var(--red);">-6.8pt</td>
+        </tr>
+        <tr>
+          <td>失注率</td>
+          <td class="num">35.3%</td>
+          <td class="num">34.1%</td>
+          <td class="num">+1.2pt</td>
+        </tr>
+        <tr>
+          <td>NoShow率</td>
+          <td class="num">8.8%</td>
+          <td class="num">6.5%</td>
+          <td class="num" style="color: var(--red);">+2.3pt</td>
+        </tr>
+        <tr>
+          <td>実施不可率</td>
+          <td class="num">14.7%</td>
+          <td class="num">8.4%</td>
+          <td class="num" style="color: var(--red);">+6.3pt</td>
+        </tr>
+      </table>
+
+      <div class="alert">
+        <strong>質の問題:</strong> Google広告経由は「実施不可」が全体比+6.3pt高い。広告で集めたリードの中に、そもそもサービス対象外の層（経験不足等）が多く含まれている可能性。
+      </div>
+    </div>
+  </div>
+
+  <h3>Google広告の「役割」はどこにあるか？</h3>
+  <div class="two-col">
+    <div class="scenario">
+      <h4>仮説A: 量のチャネル</h4>
+      <p>大量リードを安く獲得し、その中から成約を絞り込む。</p>
+      <p style="margin-top: 8px; color: var(--red); font-weight: 700;">→ 否定。年間34名では量とは言えない。全1,157名の3%。</p>
+    </div>
+    <div class="scenario">
+      <h4>仮説B: 質のチャネル</h4>
+      <p>他では取れない高LTV顧客を獲得する。</p>
+      <p style="margin-top: 8px; color: var(--red); font-weight: 700;">→ 否定。成約率・実施不可率とも全体平均を下回る。</p>
+    </div>
+  </div>
+
+  <div class="positive-block">
+    <strong>現実的な位置づけ:</strong> Google広告は「ブランド認知が届かない層（ケース面接対策を能動的に検索する層）」への接点。量も質も主力には及ばないが、<strong>オーガニックでは取りこぼす"能動検索層"</strong>へのリーチとしては一定の意味がある。月4万円規模なら維持する合理性あり。
+  </div>
+</div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 3: 月次トレンド構造変化 -->
+<!-- ============================================================ -->
+<div class="section">
+<div class="slide">
+  <div class="slide-number">Analysis 03</div>
+  <h2>月次トレンド: 2025年9月に「構造変化」が起きたのか？</h2>
+  <p class="key-message">9月以降のCPA急落は、実力改善ではなくコンバージョン定義の変更が主因と推定される。</p>
+
+  <h3>月次データの「見え方」と「実態」</h3>
+  <table class="comp-table">
+    <tr>
+      <th>期間</th>
+      <th class="num">月平均費用</th>
+      <th class="num">月平均CV</th>
+      <th class="num">CPA</th>
+      <th class="num">月平均クリック</th>
+      <th>フェーズ</th>
+    </tr>
+    <tr class="highlight">
+      <td>Phase 1: 3-8月</td>
+      <td class="num">¥644,225</td>
+      <td class="num">8.1</td>
+      <td class="num">¥79,534</td>
+      <td class="num">1,359</td>
+      <td><span class="tag-inline red">高コスト期</span></td>
+    </tr>
+    <tr class="highlight">
+      <td>Phase 2: 9-11月</td>
+      <td class="num">¥239,976</td>
+      <td class="num">25.8</td>
+      <td class="num">¥9,301</td>
+      <td class="num">373</td>
+      <td><span class="tag-inline blue">CV急増期</span></td>
+    </tr>
+    <tr class="highlight">
+      <td>Phase 3: 12-3月</td>
+      <td class="num">¥25,641</td>
+      <td class="num">12.8</td>
+      <td class="num">¥2,003</td>
+      <td class="num">177</td>
+      <td><span class="tag-inline green">低予算維持期</span></td>
+    </tr>
+  </table>
+
+  <div class="alert">
+    <strong>データの整合性に重大な疑念:</strong><br>
+    Phase 2以降、クリック数が1/4以下に減少したにも関わらず、CVが3倍に増加している。これは「btn_click」「マイクロCV」の計測追加によるCV水増しの可能性が極めて高い。<br><br>
+    <strong>根拠:</strong>
+    <ul style="margin-top: 8px;">
+      <li>コンバージョンアクション内訳: btn_click 164件 + マイクロCV 117件 = 281件（全CVの72%）</li>
+      <li>実質的な申込CV（既卒遷移39件 + 新卒遷移18件 + thanks13件）= 70件が「本物」</li>
+      <li>9月以降のCV急増タイミングとbtn_click導入時期が一致</li>
+    </ul>
+  </div>
+
+  <h3>「実質CV」で再計算した場合</h3>
+  <div class="kpi-row">
+    <div class="kpi-card">
+      <div class="label">見かけのCPA</div>
+      <div class="value">¥26,464</div>
+      <div class="sub">全CV 177件ベース</div>
+    </div>
+    <div class="kpi-card red">
+      <div class="label">実質CPA（推定）</div>
+      <div class="value">¥66,969</div>
+      <div class="sub">実質CV 70件ベース</div>
+    </div>
+    <div class="kpi-card">
+      <div class="label">CRM実績CPA</div>
+      <div class="value">¥137,878</div>
+      <div class="sub">CRM顧客34名ベース</div>
+    </div>
+  </div>
+
+  <div class="insight">
+    <strong>示唆:</strong> 見かけのCPAと実績CPAには<strong>約5倍の乖離</strong>がある。Google Ads管理画面のCPAだけを見て投資判断すると、大きく見誤る。CRMデータとの突合が不可欠。
+  </div>
+</div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 4: キーワード戦略 -->
+<!-- ============================================================ -->
+<div class="section">
+<div class="slide">
+  <div class="slide-number">Analysis 04</div>
+  <h2>キーワード戦略: ¥273万が「CV=0」のキーワード群に消えている</h2>
+  <p class="key-message">「フェルミ推定」系と「転職エージェント」系は投資対効果ゼロ。即座にネガティブ化すべき。</p>
+
+  <h3>キーワード群の投資効率マトリクス</h3>
+  <table class="comp-table">
+    <tr>
+      <th>キーワード群</th>
+      <th class="num">費用</th>
+      <th class="num">CV</th>
+      <th class="num">CPA</th>
+      <th>投資判断</th>
+    </tr>
+    <tr style="background: #F0FDF4;">
+      <td><strong>戦略コンサル 対策/面接</strong></td>
+      <td class="num">¥130,488</td>
+      <td class="num">26.5</td>
+      <td class="num">¥4,924</td>
+      <td><span class="verdict positive">最優先投資</span></td>
+    </tr>
+    <tr style="background: #F0FDF4;">
+      <td><strong>ケース面接 講座/対策講座</strong></td>
+      <td class="num">¥52,063</td>
+      <td class="num">3.1</td>
+      <td class="num">¥16,980</td>
+      <td><span class="verdict positive">拡大</span></td>
+    </tr>
+    <tr>
+      <td><strong>ケース面接 対策 (EXACT)</strong></td>
+      <td class="num">¥286,806</td>
+      <td class="num">8.3</td>
+      <td class="num">¥34,417</td>
+      <td><span class="verdict caution">維持・最適化</span></td>
+    </tr>
+    <tr>
+      <td><strong>ケース面接 (BROAD系)</strong></td>
+      <td class="num">¥450,893</td>
+      <td class="num">5.0</td>
+      <td class="num">¥90,179</td>
+      <td><span class="verdict negative">縮小・精査</span></td>
+    </tr>
+    <tr style="background: #FEF2F2;">
+      <td><strong>フェルミ推定 系</strong></td>
+      <td class="num">¥160,236+</td>
+      <td class="num">7.0</td>
+      <td class="num">¥22,891</td>
+      <td><span class="verdict caution">要精査</span></td>
+    </tr>
+    <tr style="background: #FEF2F2;">
+      <td><strong>コンサル転職エージェント</strong></td>
+      <td class="num">¥144,095</td>
+      <td class="num">0.0</td>
+      <td class="num">N/A</td>
+      <td><span class="verdict negative">即停止</span></td>
+    </tr>
+    <tr style="background: #FEF2F2;">
+      <td><strong>BCG転職</strong></td>
+      <td class="num">¥103,014</td>
+      <td class="num">1.0</td>
+      <td class="num">¥103,014</td>
+      <td><span class="verdict negative">停止</span></td>
+    </tr>
+  </table>
+
+  <div class="two-col">
+    <div>
+      <h3>無駄遣いの構造</h3>
+      <p>検索クエリデータから、CV=0で費用上位のクエリを集計:</p>
+      <div class="bar-viz">
+        <div class="bar-row">
+          <div class="bar-label">フェルミ推定（汎用）</div>
+          <div class="bar-track"><div class="bar-fill red" style="width: 80%;">¥148,793</div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">フェルミ推定 例題</div>
+          <div class="bar-track"><div class="bar-fill red" style="width: 42%;">¥77,526</div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">フェルミ推定 基礎知識</div>
+          <div class="bar-track"><div class="bar-fill red" style="width: 25%;">¥46,562</div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">コンサル転職エージェント</div>
+          <div class="bar-track"><div class="bar-fill red" style="width: 21%;">¥38,638</div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">コンサル転職</div>
+          <div class="bar-track"><div class="bar-fill red" style="width: 18%;">¥33,873</div></div>
+        </div>
+      </div>
+      <p style="font-weight: 700; color: var(--red); margin-top: 8px;">合計 ¥345,392がCV=0のクエリに消失</p>
+    </div>
+    <div>
+      <h3>高効率キーワードの共通点</h3>
+      <div class="positive-block">
+        <strong>パターン:</strong> CV効率の高いキーワードは全て「対策」「講座」「塾」等の<strong>ソリューション志向</strong>の語を含む。
+        <ul style="margin-top: 8px;">
+          <li>「ケース面接 対策 講座」CPA ¥3,343</li>
+          <li>「戦略コンサル 内定 塾」CPA ¥3,778</li>
+          <li>「strategy bootcamp」CPA ¥3,093</li>
+          <li>「strategists」CPA ¥3,378（指名検索）</li>
+        </ul>
+        <p style="margin-top: 12px;"><strong>共通点: 「学びたい」「対策したい」という購買意欲の高い検索意図。</strong></p>
+      </div>
+    </div>
+  </div>
+
+  <h3>競合キーワードの示唆</h3>
+  <div class="insight">
+    <strong>「コンコード コンサル」「ムービン」系のKW:</strong> 競合の転職エージェント名での検索。CPA ¥7,330と悪くないが、これは<strong>「転職エージェントを探している人」に「スクール」を訴求する</strong>構造。ファネルの段階が異なるため成約率は低いはず。ただし「エージェント不満層」の取り込みには使える可能性あり。
+  </div>
+</div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 5: 検索IS分析 -->
+<!-- ============================================================ -->
+<div class="section">
+<div class="slide">
+  <div class="slide-number">Analysis 05</div>
+  <h2>機会損失分析: 検索IS 10%は「9倍の市場が見えていない」ということ</h2>
+  <p class="key-message">ただし、IS向上=売上向上ではない。追加投資のROIを冷静に試算する。</p>
+
+  <h3>追加投資シナリオのNPV分析</h3>
+
+  <div class="two-col">
+    <div class="scenario">
+      <h4>シナリオ1: 現状維持（月4万円）</h4>
+      <table class="comp-table" style="font-size: 13px;">
+        <tr><td>年間広告費</td><td class="num">¥48万</td></tr>
+        <tr><td>予想顧客数</td><td class="num">3-5名</td></tr>
+        <tr><td>予想成約</td><td class="num">1件</td></tr>
+        <tr><td>予想売上</td><td class="num">¥23万（確定）</td></tr>
+        <tr><td>ROAS</td><td class="num">0.48x</td></tr>
+        <tr><td>リスク</td><td>低い</td></tr>
+      </table>
+    </div>
+    <div class="scenario">
+      <h4>シナリオ2: 月40万円（効率集中型）</h4>
+      <table class="comp-table" style="font-size: 13px;">
+        <tr><td>年間広告費</td><td class="num">¥480万</td></tr>
+        <tr><td>予想顧客数</td><td class="num">34名（現状同等）</td></tr>
+        <tr><td>予想成約</td><td class="num">7件</td></tr>
+        <tr><td>予想売上</td><td class="num">¥160万（確定）</td></tr>
+        <tr><td>ROAS</td><td class="num">0.33x（確定ベース）</td></tr>
+        <tr><td>ポイント</td><td>KW最適化で効率改善余地あり</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="two-col">
+    <div class="scenario recommended">
+      <span class="tag rec">推奨</span>
+      <h4>シナリオ3: 月20万円（最適化テスト）</h4>
+      <table class="comp-table" style="font-size: 13px;">
+        <tr><td>年間広告費</td><td class="num">¥240万</td></tr>
+        <tr><td>KW戦略</td><td>高効率KWのみ集中</td></tr>
+        <tr><td>予想顧客数</td><td class="num">15-20名</td></tr>
+        <tr><td>予想成約</td><td class="num">3-4件</td></tr>
+        <tr><td>条件付きROAS</td><td class="num">0.7-1.0x（紹介料込み）</td></tr>
+        <tr><td>ポイント</td><td>CV計測正常化後に効果検証</td></tr>
+      </table>
+    </div>
+    <div class="scenario">
+      <h4>シナリオ4: 月100万円（IS回復型）</h4>
+      <table class="comp-table" style="font-size: 13px;">
+        <tr><td>年間広告費</td><td class="num">¥1,200万</td></tr>
+        <tr><td>想定IS</td><td class="num">25-30%</td></tr>
+        <tr><td>予想顧客数</td><td class="num">85-100名</td></tr>
+        <tr><td>予想成約</td><td class="num">17-21件</td></tr>
+        <tr><td>ROAS</td><td class="num">0.33-0.40x（確定ベース）</td></tr>
+        <tr><td>リスク</td><td style="color: var(--red); font-weight: 700;">高い。紹介料未確定での大型投資</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="alert">
+    <strong>IS向上の罠:</strong> 検索IS 10% → 30%にするために約3倍の予算が必要。しかし、追加でリーチする90%の検索はより汎用的（=CV率が低い）クエリである可能性が高い。IS向上に比例してCVが増えるとは限らない。<strong>限界効用は逓減する。</strong>
+  </div>
+</div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 6: セグメント分析 -->
+<!-- ============================================================ -->
+<div class="section">
+<div class="slide">
+  <div class="slide-number">Analysis 06</div>
+  <h2>セグメント分析: 投資効率を最大化するターゲティング</h2>
+  <p class="key-message">25-34歳・デスクトップ・木曜日が最効率。ただしモバイルは量で稼ぐ構造。</p>
+
+  <div class="two-col">
+    <div>
+      <h3>年齢別効率</h3>
+      <div class="bar-viz">
+        <div class="bar-row">
+          <div class="bar-label">35-44歳</div>
+          <div class="bar-track"><div class="bar-fill green" style="width: 30%;">CPA ¥9,828</div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">25-34歳</div>
+          <div class="bar-track"><div class="bar-fill blue" style="width: 60%;">CPA ¥24,689</div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">45-54歳</div>
+          <div class="bar-track"><div class="bar-fill orange" style="width: 62%;">CPA ¥25,201</div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">18-24歳</div>
+          <div class="bar-track"><div class="bar-fill red" style="width: 100%;">CPA ¥80,014</div></div>
+        </div>
+      </div>
+      <div class="insight">
+        <strong>注目:</strong> 35-44歳のCPAが¥9,828と最も低い。転職経験者は意思決定が速い可能性。25-34歳はボリュームゾーン（CV 118件、費用の62%）だが効率は中程度。
+      </div>
+    </div>
+    <div>
+      <h3>デバイス別効率</h3>
+      <table class="comp-table">
+        <tr><th>デバイス</th><th class="num">CV</th><th class="num">CPA</th><th class="num">費用シェア</th></tr>
+        <tr>
+          <td>デスクトップ</td>
+          <td class="num">73.1</td>
+          <td class="num">¥22,234</td>
+          <td class="num">34.7%</td>
+        </tr>
+        <tr>
+          <td>モバイル</td>
+          <td class="num">102.0</td>
+          <td class="num">¥29,453</td>
+          <td class="num">64.1%</td>
+        </tr>
+        <tr>
+          <td>タブレット</td>
+          <td class="num">2.0</td>
+          <td class="num">¥28,694</td>
+          <td class="num">1.2%</td>
+        </tr>
+      </table>
+      <p style="margin-top: 12px;">デスクトップはCPAが<strong>¥7,219安い</strong>（モバイル比）。費用の64%がモバイルに流れているが、効率はデスクトップが上。</p>
+    </div>
+  </div>
+
+  <h3>曜日別効率</h3>
+  <div class="bar-viz">
+    <div class="bar-row">
+      <div class="bar-label">木曜日</div>
+      <div class="bar-track"><div class="bar-fill green" style="width: 36%;">CPA ¥16,633 / CV 42.7</div></div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-label">金曜日</div>
+      <div class="bar-track"><div class="bar-fill teal" style="width: 47%;">CPA ¥21,499 / CV 27.5</div></div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-label">水曜日</div>
+      <div class="bar-track"><div class="bar-fill teal" style="width: 47%;">CPA ¥21,573 / CV 32.0</div></div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-label">日曜日</div>
+      <div class="bar-track"><div class="bar-fill blue" style="width: 63%;">CPA ¥29,000 / CV 22.7</div></div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-label">土曜日</div>
+      <div class="bar-track"><div class="bar-fill orange" style="width: 67%;">CPA ¥30,894 / CV 17.5</div></div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-label">火曜日</div>
+      <div class="bar-track"><div class="bar-fill red" style="width: 88%;">CPA ¥40,218 / CV 17.5</div></div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-label">月曜日</div>
+      <div class="bar-track"><div class="bar-fill red" style="width: 100%;">CPA ¥45,860 / CV 17.3</div></div>
+    </div>
+  </div>
+
+  <div class="positive-block">
+    <strong>最適化余地:</strong> 木曜CPAは月曜の<strong>1/2.8</strong>。入札調整で木・水・金に予算を寄せるだけでも、同予算でCV 15-20%増が見込める。
+  </div>
+</div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 7: 投資判断フレームワーク -->
+<!-- ============================================================ -->
+<div class="section">
+<div class="slide">
+  <div class="slide-number">Analysis 07</div>
+  <h2>投資判断: 3段階のアクションプラン</h2>
+  <p class="key-message">まず「測定を正す」、次に「効率を上げる」、最後に「規模を拡大する」。順序を間違えてはならない。</p>
+
+  <div style="margin: 32px 0;">
+
+    <!-- Phase 1 -->
+    <div style="display: flex; margin-bottom: 24px;">
+      <div style="flex-shrink: 0; width: 120px; text-align: center;">
+        <div style="background: var(--red); color: white; border-radius: 50%; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 20px; margin: 0 auto;">1</div>
+        <div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">即時（今週中）</div>
+      </div>
+      <div style="flex: 1; background: #FEF2F2; border-radius: 8px; padding: 20px 24px;">
+        <h4 style="color: var(--red); margin-bottom: 8px;">計測基盤の正常化</h4>
+        <ul>
+          <li><strong>マイクロCV・btn_clickをコンバージョン列から除外</strong>（レポート用に残すのは可だが、入札最適化には使わない）</li>
+          <li>「既卒遷移」「新卒遷移」「thanks遷移」のみを主CVとして設定</li>
+          <li>CRMとの月次突合プロセスを確立（Google Ads CV vs CRM流入数の差異管理）</li>
+        </ul>
+        <p style="margin-top: 8px; font-weight: 700;">これをやらないと、以降の全ての最適化判断が歪む。</p>
+      </div>
+    </div>
+
+    <!-- Phase 2 -->
+    <div style="display: flex; margin-bottom: 24px;">
+      <div style="flex-shrink: 0; width: 120px; text-align: center;">
+        <div style="background: var(--orange); color: white; border-radius: 50%; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 20px; margin: 0 auto;">2</div>
+        <div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">短期（1ヶ月以内）</div>
+      </div>
+      <div style="flex: 1; background: #FFF7ED; border-radius: 8px; padding: 20px 24px;">
+        <h4 style="color: var(--orange); margin-bottom: 8px;">投資効率の最大化</h4>
+        <ul>
+          <li><strong>CV=0キーワードの即時停止/除外:</strong> 「コンサル転職エージェント」「BCG転職」等 → 年間¥25万の節約</li>
+          <li><strong>高効率KWへの集中:</strong> 「戦略コンサル 対策」「ケース面接 講座」系</li>
+          <li><strong>曜日入札調整:</strong> 木・水・金に+20%、月・火に-20%</li>
+          <li><strong>デスクトップ入札調整:</strong> +15%</li>
+          <li><strong>予算を月20万円に引き上げ</strong>（Phase 1完了後）</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Phase 3 -->
+    <div style="display: flex; margin-bottom: 24px;">
+      <div style="flex-shrink: 0; width: 120px; text-align: center;">
+        <div style="background: var(--green); color: white; border-radius: 50%; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 20px; margin: 0 auto;">3</div>
+        <div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">中期（3ヶ月後）</div>
+      </div>
+      <div style="flex: 1; background: #F0FDF4; border-radius: 8px; padding: 20px 24px;">
+        <h4 style="color: var(--green); margin-bottom: 8px;">スケール判断</h4>
+        <ul>
+          <li>Phase 2の実質CPA（CRM突合ベース）が¥10万以下なら、月40万円に増額</li>
+          <li>紹介料の実現率が50%以上なら、月100万円への復帰を検討</li>
+          <li><strong>判断基準: 確定売上+実現紹介料ベースのROAS 1.5x以上</strong></li>
+        </ul>
+        <p style="margin-top: 8px; font-weight: 700;">データが揃わないうちの増額は「賭け」であり「投資」ではない。</p>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="divider"></div>
+
+  <h3>経営者への最終メッセージ</h3>
+  <div class="exec-box">
+    <div class="two-col">
+      <div>
+        <h4 style="color: var(--navy); font-size: 16px;">Google広告に期待しすぎてはいけない</h4>
+        <p>現状、事業の97.8%は広告以外のチャネルで成り立っている。Google広告は「補完チャネル」であり、ここに事業の命運を賭けるべきではない。主力チャネル（紹介・SEO等）の強化が最優先。</p>
+      </div>
+      <div>
+        <h4 style="color: var(--navy); font-size: 16px;">ただし、捨てる必要もない</h4>
+        <p>月20万円規模で効率的に運用すれば、年間数十名の「能動検索層」にリーチできる。紹介料ビジネスが軌道に乗れば、Google広告経由の顧客もLTV ¥97万以上になり得る。<strong>紹介料の実現がこのチャネルの命運を握る。</strong></p>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- ============================================================ -->
+<!-- APPENDIX -->
+<!-- ============================================================ -->
+<div class="section">
+<div class="slide" style="border-left-color: #94A3B8;">
+  <div class="slide-number" style="color: #94A3B8;">Appendix</div>
+  <h2>補足: 主要な前提と留意事項</h2>
+
+  <h3>データの制約</h3>
+  <ul>
+    <li>Google Ads上のCV数（177件）とCRM上の顧客数（34名）には大きな乖離がある。本レポートでは事業判断にはCRMデータを優先的に使用。</li>
+    <li>紹介料¥521万は「期待値」であり確定ゼロ。紹介料ビジネスのパイプライン管理データが不足しているため、実現確率の推定は行っていない。</li>
+    <li>2025年9月前後でコンバージョン計測定義が変更された可能性が高く、月次トレンドの前後比較は単純にはできない。</li>
+    <li>Google広告以外のチャネル別データがないため、チャネル間の比較は全体平均との対比にとどまる。</li>
+  </ul>
+
+  <h3>分析で使用した計算式</h3>
+  <table class="comp-table" style="font-size: 13px;">
+    <tr><th>指標</th><th>計算式</th><th class="num">算出値</th></tr>
+    <tr><td>顧客獲得単価（CPA）</td><td>¥4,687,840 / 34名</td><td class="num">¥137,878</td></tr>
+    <tr><td>成約単価（CAC）</td><td>¥4,687,840 / 7件</td><td class="num">¥669,691</td></tr>
+    <tr><td>確定LTV/成約</td><td>¥1,603,900 / 7件</td><td class="num">¥229,129</td></tr>
+    <tr><td>期待LTV/成約（紹介料込）</td><td>(¥1,603,900 + ¥5,211,000) / 7件</td><td class="num">¥973,557</td></tr>
+    <tr><td>確定ROAS</td><td>¥1,603,900 / ¥4,687,840</td><td class="num">0.342</td></tr>
+    <tr><td>期待ROAS（紹介料100%実現）</td><td>¥6,814,900 / ¥4,687,840</td><td class="num">1.454</td></tr>
+    <tr><td>Google広告成約率</td><td>7 / 34</td><td class="num">20.6%</td></tr>
+    <tr><td>全体成約率</td><td>317 / 1,157</td><td class="num">27.4%</td></tr>
+  </table>
+
+</div>
+</div>
+
+<div class="footer-note">
+  Prepared by 高橋亮介 | Strategic Advisory | 2026年3月13日<br>
+  本資料は提供データに基づく分析であり、将来の成果を保証するものではありません。
+</div>
+
+</body>
+</html>

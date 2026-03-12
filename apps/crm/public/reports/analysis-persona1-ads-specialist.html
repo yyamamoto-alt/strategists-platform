@@ -1,0 +1,1192 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Google広告運用分析レポート | 田中慎太郎</title>
+<style>
+  :root {
+    --primary: #1a2332;
+    --accent: #2563eb;
+    --accent-light: #dbeafe;
+    --danger: #dc2626;
+    --danger-light: #fef2f2;
+    --success: #059669;
+    --success-light: #ecfdf5;
+    --warning: #d97706;
+    --warning-light: #fffbeb;
+    --gray-50: #f9fafb;
+    --gray-100: #f3f4f6;
+    --gray-200: #e5e7eb;
+    --gray-300: #d1d5db;
+    --gray-500: #6b7280;
+    --gray-700: #374151;
+    --gray-900: #111827;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Helvetica Neue', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif;
+    background: var(--gray-50);
+    color: var(--gray-900);
+    line-height: 1.7;
+    font-size: 15px;
+  }
+
+  .report-container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 40px 24px;
+  }
+
+  /* Header */
+  .report-header {
+    background: linear-gradient(135deg, var(--primary) 0%, #2d3f56 100%);
+    color: white;
+    padding: 48px 40px;
+    border-radius: 16px;
+    margin-bottom: 32px;
+    position: relative;
+    overflow: hidden;
+  }
+  .report-header::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -10%;
+    width: 400px;
+    height: 400px;
+    background: rgba(37, 99, 235, 0.08);
+    border-radius: 50%;
+  }
+  .report-header h1 {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    letter-spacing: -0.5px;
+  }
+  .report-header .subtitle {
+    font-size: 15px;
+    opacity: 0.8;
+    margin-bottom: 20px;
+  }
+  .report-header .meta {
+    display: flex;
+    gap: 24px;
+    font-size: 13px;
+    opacity: 0.7;
+    flex-wrap: wrap;
+  }
+  .report-header .meta span {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* Author card */
+  .author-card {
+    background: white;
+    border: 1px solid var(--gray-200);
+    border-radius: 12px;
+    padding: 20px 28px;
+    margin-bottom: 32px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+  .author-avatar {
+    width: 56px;
+    height: 56px;
+    background: var(--accent);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 22px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .author-info h3 { font-size: 16px; margin-bottom: 2px; }
+  .author-info p { font-size: 13px; color: var(--gray-500); }
+
+  /* Section */
+  .section {
+    background: white;
+    border: 1px solid var(--gray-200);
+    border-radius: 12px;
+    padding: 32px;
+    margin-bottom: 24px;
+  }
+  .section-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--primary);
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid var(--accent);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .section-title .num {
+    background: var(--accent);
+    color: white;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+
+  /* Executive Summary Cards */
+  .exec-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .exec-card {
+    background: var(--gray-50);
+    border-radius: 10px;
+    padding: 20px;
+    text-align: center;
+    border: 1px solid var(--gray-200);
+  }
+  .exec-card .label {
+    font-size: 12px;
+    color: var(--gray-500);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+  }
+  .exec-card .value {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--primary);
+  }
+  .exec-card .sub {
+    font-size: 12px;
+    color: var(--gray-500);
+    margin-top: 4px;
+  }
+  .exec-card.good { border-left: 4px solid var(--success); }
+  .exec-card.bad { border-left: 4px solid var(--danger); }
+  .exec-card.neutral { border-left: 4px solid var(--accent); }
+
+  /* Tables */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    margin-top: 16px;
+  }
+  thead th {
+    background: var(--gray-100);
+    padding: 10px 12px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 12px;
+    color: var(--gray-700);
+    border-bottom: 2px solid var(--gray-200);
+    white-space: nowrap;
+  }
+  tbody td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--gray-100);
+    white-space: nowrap;
+  }
+  tbody tr:hover { background: var(--gray-50); }
+  .text-right { text-align: right; }
+  .text-center { text-align: center; }
+
+  /* Bar charts (CSS) */
+  .bar-chart {
+    margin: 16px 0;
+  }
+  .bar-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+    gap: 10px;
+  }
+  .bar-label {
+    width: 100px;
+    font-size: 12px;
+    text-align: right;
+    flex-shrink: 0;
+    color: var(--gray-700);
+  }
+  .bar-track {
+    flex: 1;
+    height: 24px;
+    background: var(--gray-100);
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+  }
+  .bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.5s ease;
+    display: flex;
+    align-items: center;
+    padding-left: 8px;
+    font-size: 11px;
+    color: white;
+    font-weight: 600;
+    min-width: fit-content;
+  }
+  .bar-fill.blue { background: var(--accent); }
+  .bar-fill.green { background: var(--success); }
+  .bar-fill.red { background: var(--danger); }
+  .bar-fill.orange { background: var(--warning); }
+  .bar-value {
+    font-size: 12px;
+    width: 80px;
+    text-align: right;
+    flex-shrink: 0;
+    color: var(--gray-700);
+  }
+
+  /* Highlight boxes */
+  .highlight {
+    padding: 16px 20px;
+    border-radius: 8px;
+    margin: 16px 0;
+    font-size: 14px;
+  }
+  .highlight.success { background: var(--success-light); border-left: 4px solid var(--success); }
+  .highlight.danger { background: var(--danger-light); border-left: 4px solid var(--danger); }
+  .highlight.warning { background: var(--warning-light); border-left: 4px solid var(--warning); }
+  .highlight.info { background: var(--accent-light); border-left: 4px solid var(--accent); }
+  .highlight strong { display: block; margin-bottom: 4px; }
+
+  /* Trend chart (CSS sparkline) */
+  .trend-table { margin-top: 0; }
+  .trend-table td { padding: 6px 10px; font-size: 12px; }
+  .trend-bar {
+    display: inline-block;
+    height: 18px;
+    border-radius: 3px;
+    vertical-align: middle;
+  }
+
+  /* Tags */
+  .tag {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .tag.good { background: var(--success-light); color: var(--success); }
+  .tag.bad { background: var(--danger-light); color: var(--danger); }
+  .tag.warn { background: var(--warning-light); color: var(--warning); }
+
+  /* List */
+  .action-list {
+    list-style: none;
+    padding: 0;
+  }
+  .action-list li {
+    padding: 14px 18px;
+    border: 1px solid var(--gray-200);
+    border-radius: 8px;
+    margin-bottom: 10px;
+    font-size: 14px;
+    position: relative;
+    padding-left: 48px;
+  }
+  .action-list li::before {
+    content: attr(data-num);
+    position: absolute;
+    left: 14px;
+    top: 14px;
+    background: var(--accent);
+    color: white;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    font-size: 12px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .action-list li strong { color: var(--primary); }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .report-container { padding: 16px 12px; }
+    .section { padding: 20px 16px; }
+    .report-header { padding: 32px 20px; }
+    .report-header h1 { font-size: 22px; }
+    .exec-grid { grid-template-columns: 1fr 1fr; }
+    table { font-size: 11px; }
+    .bar-label { width: 70px; font-size: 11px; }
+  }
+
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  @media (max-width: 768px) {
+    .two-col { grid-template-columns: 1fr; }
+  }
+
+  .footnote {
+    font-size: 12px;
+    color: var(--gray-500);
+    margin-top: 8px;
+  }
+
+  p { margin-bottom: 12px; }
+  h4 { font-size: 15px; margin: 20px 0 10px; color: var(--primary); }
+</style>
+</head>
+<body>
+
+<div class="report-container">
+
+<!-- ===== HEADER ===== -->
+<div class="report-header">
+  <h1>Google広告 運用分析レポート</h1>
+  <div class="subtitle">Strategists（コンサル転職スクール）SEARCHキャンペーン精密分析</div>
+  <div class="meta">
+    <span>分析対象期間: 2025年3月 - 2026年3月13日</span>
+    <span>作成日: 2026年3月13日</span>
+    <span>Google Ads ID: 9777096652</span>
+  </div>
+</div>
+
+<!-- ===== AUTHOR ===== -->
+<div class="author-card">
+  <div class="author-avatar">田</div>
+  <div class="author-info">
+    <h3>田中 慎太郎</h3>
+    <p>Google広告運用スペシャリスト / 元大手代理店運用チームリーダー / BtoC・教育系広告10年超</p>
+  </div>
+</div>
+
+<!-- ===== EXECUTIVE SUMMARY ===== -->
+<div class="section">
+  <div class="section-title"><span class="num">0</span>エグゼクティブサマリー</div>
+
+  <div class="exec-grid">
+    <div class="exec-card neutral">
+      <div class="label">総費用（12ヶ月）</div>
+      <div class="value">468.8万</div>
+      <div class="sub">月平均 39.1万円</div>
+    </div>
+    <div class="exec-card neutral">
+      <div class="label">総CV（申込基準）</div>
+      <div class="value">177.1件</div>
+      <div class="sub">CPA ¥26,464</div>
+    </div>
+    <div class="exec-card good">
+      <div class="label">直近3ヶ月CPA</div>
+      <div class="value">¥1,909</div>
+      <div class="sub">前半期比 -93%</div>
+    </div>
+    <div class="exec-card good">
+      <div class="label">CRM経由 成約</div>
+      <div class="value">7件</div>
+      <div class="sub">確定売上 ¥160.4万</div>
+    </div>
+  </div>
+
+  <div class="highlight success">
+    <strong>総合評価: キャンペーンは大きな構造転換を経て、極めて効率的な状態に到達</strong>
+    2025年8月を境にキャンペーン構造が劇的に変化しています。3月-8月の「拡大期」ではCPA ¥26,000-¥324,000と不安定でしたが、9月以降の「最適化期」ではCPA ¥1,400-¥21,000と安定。特に2026年2-3月はCPA ¥1,400-¥1,600と驚異的な効率を達成しています。ただし、これはCV定義の変更（マイクロCV含む計測の見直し）やインプレッション急減（配信量の大幅絞り込み）を伴っているため、「効率の改善」と「規模の縮小」を切り分けて評価する必要があります。
+  </div>
+
+  <div class="highlight warning">
+    <strong>最大の論点: 効率は良いが規模が足りない</strong>
+    直近3ヶ月の費用合計は約10万円。月間予算上限100万円に対して消化率はわずか3%。CPA効率は素晴らしいですが、このままでは事業成長に必要な顧客獲得ボリュームを確保できません。「効率を維持しながら規模を拡大する」フェーズへの転換が急務です。
+  </div>
+</div>
+
+<!-- ===== 1. 月次トレンド深掘り ===== -->
+<div class="section">
+  <div class="section-title"><span class="num">1</span>月次トレンド分析 - 2つの時代</div>
+
+  <p>このキャンペーンの12ヶ月を俯瞰すると、明確に「2つの時代」が存在します。それぞれの特徴を整理します。</p>
+
+  <h4>CPA推移（月次）</h4>
+  <div class="bar-chart">
+    <div class="bar-row">
+      <div class="bar-label">2025-03</div>
+      <div class="bar-track"><div class="bar-fill red" style="width:100%"></div></div>
+      <div class="bar-value">¥324,316</div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-label">2025-04</div>
+      <div class="bar-track"><div class="bar-fill red" style="width:64.6%"></div></div>
+      <div class="bar-value">¥209,643</div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-label">2025-05</div>
+      <div class="bar-track"><div class="bar-fill orange" style="width:23.2%"></div></div>
+      <div class="bar-value">¥75,109</div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-label">2025-06</div>
+      <div class="bar-track"><div class="bar-fill orange" style="width:13.6%"></div></div>
+      <div class="bar-value">¥43,961</div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-label">2025-07</div>
+      <div class="bar-track"><div class="bar-fill orange" style="width:11.7%"></div></div>
+      <div class="bar-value">¥37,867</div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-label" style="color:var(--danger);font-weight:700">2025-08</div>
+      <div class="bar-track"><div class="bar-fill red" style="width:52.2%"></div></div>
+      <div class="bar-value" style="color:var(--danger);font-weight:700">¥169,387</div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-label">2025-09</div>
+      <div class="bar-track"><div class="bar-fill green" style="width:6.5%"></div></div>
+      <div class="bar-value">¥20,940</div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-label">2025-10</div>
+      <div class="bar-track"><div class="bar-fill green" style="width:2.8%"></div></div>
+      <div class="bar-value">¥8,965</div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-label">2025-11</div>
+      <div class="bar-track"><div class="bar-fill green" style="width:1.5%"></div></div>
+      <div class="bar-value">¥4,893</div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-label" style="color:var(--gray-300)">2025-12</div>
+      <div class="bar-track"><div class="bar-fill" style="width:0%;background:var(--gray-300)"></div></div>
+      <div class="bar-value" style="color:var(--gray-300)">N/A (停止)</div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-label">2026-01</div>
+      <div class="bar-track"><div class="bar-fill green" style="width:1.1%"></div></div>
+      <div class="bar-value">¥3,595</div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-label">2026-02</div>
+      <div class="bar-track"><div class="bar-fill green" style="width:0.5%"></div></div>
+      <div class="bar-value" style="color:var(--success);font-weight:700">¥1,592</div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-label">2026-03</div>
+      <div class="bar-track"><div class="bar-fill green" style="width:0.4%"></div></div>
+      <div class="bar-value" style="color:var(--success);font-weight:700">¥1,431</div>
+    </div>
+  </div>
+
+  <div class="two-col">
+    <div class="highlight danger">
+      <strong>第1期: 拡大探索期（2025年3月-8月）</strong>
+      月間費用 ¥41万-¥97万、表示回数1.6万-18.8万と大きく変動。CTRが5.28%→0.87%へ急落しており、ターゲティングの拡散（特にBROADマッチの過度な拡大）が原因と推定。8月のCPA ¥169,387は、表示18.8万回に対しCV 4.1件と、完全にインプレッション過多・CV過少の状態。
+    </div>
+    <div class="highlight success">
+      <strong>第2期: 効率最適化期（2025年9月-2026年3月）</strong>
+      月間費用 ¥1,749-¥30.7万と大幅抑制。表示回数を5,000-7,000前後に絞り込んだ結果、CTRが4.91%→16.31%へ劇的改善。CVもマイクロCV含め安定。キャンペーン名「0821変更」が示す通り、8月21日前後に大規模な構造変更が行われたと推定。
+    </div>
+  </div>
+
+  <h4>2025年8月のCPA急騰 - 何が起きたか</h4>
+  <p>データから推測される8月の問題構造:</p>
+  <table>
+    <thead>
+      <tr><th>指標</th><th>7月</th><th>8月</th><th>変化</th><th>解釈</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>表示回数</td><td>127,582</td><td>188,490</td><td>+47.8%</td><td>配信が過度に拡大</td></tr>
+      <tr><td>CTR</td><td>1.07%</td><td>0.87%</td><td>-0.20pt</td><td>ターゲット外への表示増</td></tr>
+      <tr><td>CV（申込）</td><td>13.5</td><td>4.1</td><td>-69.6%</td><td>質の低いトラフィック流入</td></tr>
+      <tr><td>CPA</td><td>¥37,867</td><td>¥169,387</td><td>+347%</td><td>費用対効果の崩壊</td></tr>
+    </tbody>
+  </table>
+  <p style="margin-top:12px;">BROADマッチの「ケース面接」「フェルミ推定」系のキーワードが情報収集系の検索クエリ（例題、やり方、解説など）に大量マッチし、CVに繋がらないクリックを大量に発生させたと考えられます。これは教育系広告でよく見る典型的な失敗パターンです。「学びたい人」と「実際にサービスに申し込む人」の間には大きなギャップがあり、情報系クエリはCVしません。</p>
+
+  <h4>9月以降の劇的改善 - 何が効いたか</h4>
+  <p>8月21日の変更により、以下が推定されます:</p>
+  <ul style="margin-left:20px; margin-bottom:12px;">
+    <li>BROADマッチの大幅縮小またはEXACT/PHRASEへの切り替え</li>
+    <li>CV定義の再構成（btn_click、マイクロCVの追加計測開始）</li>
+    <li>除外キーワードの大量追加</li>
+    <li>日予算の引き下げによる配信量の意図的制限</li>
+  </ul>
+  <p>結果として表示回数は97%減（188,490→7,002）となりましたが、これにより本当に購買意欲の高いユーザーだけに配信が絞られ、CPAが劇的に改善しました。</p>
+</div>
+
+<!-- ===== 2. キーワード戦略 ===== -->
+<div class="section">
+  <div class="section-title"><span class="num">2</span>キーワード戦略の評価</div>
+
+  <h4>マッチタイプ別パフォーマンス</h4>
+  <table>
+    <thead>
+      <tr><th>マッチタイプ</th><th>KW数</th><th>費用</th><th>CV</th><th>CPA</th><th>CTR</th><th>評価</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>EXACT</strong></td>
+        <td>18</td>
+        <td>¥1,503,580</td>
+        <td>105.1</td>
+        <td>¥14,306</td>
+        <td>5.53%</td>
+        <td><span class="tag good">主力・効率良</span></td>
+      </tr>
+      <tr>
+        <td><strong>PHRASE</strong></td>
+        <td>11</td>
+        <td>¥739,834</td>
+        <td>37.5</td>
+        <td>¥19,729</td>
+        <td>5.49%</td>
+        <td><span class="tag good">概ね良好</span></td>
+      </tr>
+      <tr>
+        <td><strong>BROAD</strong></td>
+        <td>10</td>
+        <td>¥1,098,499</td>
+        <td>5.7</td>
+        <td>¥192,719</td>
+        <td>4.73%</td>
+        <td><span class="tag bad">即時見直し</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="highlight danger">
+    <strong>BROAD マッチの費用対効果は壊滅的</strong>
+    BROADマッチに約110万円を投下してCV 5.7件（CPA ¥192,719）。EXACT の13.5倍のCPAです。特に「ケース 面接 回答 例」（¥146,586 / CV 0）「ケース 面接 フェルミ 推定」（¥98,552 / CV 0）「フェルミ 推定 勉強 方法」（¥96,533 / CV 0）は完全な無駄遣いです。BROADの全停止、またはEXACT/PHRASEへの切り替えを強く推奨します。
+  </div>
+
+  <h4>キーワード別 費用対効果ランキング（CV発生KW、CPA順）</h4>
+  <table>
+    <thead>
+      <tr><th>#</th><th>キーワード</th><th>マッチ</th><th>費用</th><th>CV</th><th>CPA</th><th>判定</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>1</td><td>戦略コンサル 対策</td><td>PHRASE</td><td>¥66,453</td><td>18.5</td><td class="text-right"><strong>¥3,588</strong></td><td><span class="tag good">最優秀</span></td></tr>
+      <tr><td>2</td><td>コンコード コンサル</td><td>EXACT</td><td>¥26,732</td><td>3.6</td><td class="text-right">¥7,330</td><td><span class="tag good">優秀</span></td></tr>
+      <tr><td>3</td><td>戦略コンサル 面接</td><td>PHRASE</td><td>¥64,035</td><td>8.0</td><td class="text-right">¥8,004</td><td><span class="tag good">優秀</span></td></tr>
+      <tr><td>4</td><td>ケース面接 本</td><td>EXACT</td><td>¥29,209</td><td>3.5</td><td class="text-right">¥8,345</td><td><span class="tag good">優秀</span></td></tr>
+      <tr><td>5</td><td>S& 面接</td><td>EXACT</td><td>¥28,828</td><td>3.0</td><td class="text-right">¥9,609</td><td><span class="tag good">優秀</span></td></tr>
+      <tr><td>6</td><td>ケース 面接</td><td>EXACT</td><td>¥76,839</td><td>7.0</td><td class="text-right">¥10,977</td><td><span class="tag good">良好</span></td></tr>
+      <tr><td>7</td><td>ケース 面接 対策</td><td>PHRASE</td><td>¥65,335</td><td>5.0</td><td class="text-right">¥13,067</td><td><span class="tag good">良好</span></td></tr>
+      <tr><td>8</td><td>ケース面接 中途</td><td>EXACT</td><td>¥230,320</td><td>14.9</td><td class="text-right">¥15,457</td><td><span class="tag good">主力KW</span></td></tr>
+      <tr><td>9</td><td>ケース面接 講座</td><td>EXACT</td><td>¥52,063</td><td>3.1</td><td class="text-right">¥16,980</td><td><span class="tag good">良好</span></td></tr>
+      <tr><td>10</td><td>フェルミ推定 対策</td><td>EXACT</td><td>¥160,236</td><td>7.0</td><td class="text-right">¥22,891</td><td><span class="tag warn">要改善</span></td></tr>
+    </tbody>
+  </table>
+
+  <h4>即時停止すべきキーワード（CV 0、費用 ¥45,000超）</h4>
+  <table>
+    <thead>
+      <tr><th>キーワード</th><th>マッチ</th><th>費用</th><th>CV</th><th>理由</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>コンサルティング 転職 エージェント</td><td>PHRASE</td><td>¥144,095</td><td>0</td><td>エージェント探しユーザー。スクールCVしない</td></tr>
+      <tr><td>ケース 面接 回答 例</td><td>BROAD</td><td>¥146,586</td><td>0</td><td>情報収集。例題探し≠申込意欲</td></tr>
+      <tr><td>BCG 転職</td><td>EXACT</td><td>¥103,014</td><td>1.0</td><td>CPA ¥103,014。エージェント系ニーズ</td></tr>
+      <tr><td>ケース 面接 フェルミ 推定</td><td>BROAD</td><td>¥98,552</td><td>0</td><td>情報収集クエリに過剰マッチ</td></tr>
+      <tr><td>フェルミ 推定 勉強 方法</td><td>BROAD</td><td>¥96,533</td><td>0</td><td>自学自習層。サービス購入意欲低</td></tr>
+      <tr><td>S& 転職</td><td>EXACT</td><td>¥90,673</td><td>0.5</td><td>CPA ¥181,347。転職エージェント意図</td></tr>
+      <tr><td>戦略 コンサル 転職 エージェント</td><td>PHRASE</td><td>¥81,256</td><td>1.0</td><td>CPA ¥81,256。エージェント意図</td></tr>
+      <tr><td>S& ケース面接</td><td>EXACT</td><td>¥76,163</td><td>1.0</td><td>CPA ¥76,163。費用対効果低</td></tr>
+      <tr><td>ケース 面接 解説</td><td>BROAD</td><td>¥75,374</td><td>0</td><td>情報収集</td></tr>
+    </tbody>
+  </table>
+  <p class="footnote">上記キーワードの停止だけで約91万円/年の無駄を削減可能（過去実績ベース）。</p>
+
+  <h4>除外キーワード候補（検索クエリ分析より）</h4>
+  <table>
+    <thead>
+      <tr><th>除外候補</th><th>理由</th><th>該当クエリ例</th><th>推定削減費用</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>例題 / 回答例 / 解答</td><td>情報収集。例題をググる層は無料情報で満足する</td><td>ケース面接 例題、フェルミ推定 例題 解答</td><td>¥248,000+</td></tr>
+      <tr><td>やり方 / 方法 / 勉強</td><td>DIY層。スクールに金を払う意思が薄い</td><td>フェルミ推定 やり方、フェルミ推定 勉強方法</td><td>¥88,000+</td></tr>
+      <tr><td>とは / 基礎知識</td><td>情報検索。購買ファネル最上部</td><td>ケース面接 とは、フェルミ推定 とは</td><td>¥67,000+</td></tr>
+      <tr><td>フレームワーク</td><td>知識検索系</td><td>ケース面接 フレームワーク</td><td>¥23,000+</td></tr>
+      <tr><td>覚える / 数字</td><td>自学自習</td><td>フェルミ推定 覚える数字</td><td>¥17,000+</td></tr>
+      <tr><td>過去問</td><td>無料過去問を探している</td><td>アクセンチュア ケース面接 過去問</td><td>¥54,000+</td></tr>
+      <tr><td>中途採用（社名+）</td><td>求人情報を探している（≠対策講座）</td><td>BCG 中途採用、ボスコン 中途採用</td><td>¥40,000+</td></tr>
+    </tbody>
+  </table>
+  <p class="footnote">除外キーワードの適用で年間推定 ¥537,000以上の無駄クリック削減が見込めます。</p>
+</div>
+
+<!-- ===== 3. 検索クエリ質的分析 ===== -->
+<div class="section">
+  <div class="section-title"><span class="num">3</span>検索クエリの質的分析</div>
+
+  <p>検索クエリTOP50を「ユーザーの意図」で分類し、CVとの相関を分析しました。</p>
+
+  <h4>意図別クエリ分類</h4>
+  <table>
+    <thead>
+      <tr><th>意図カテゴリ</th><th>費用</th><th>CV</th><th>CPA</th><th>代表クエリ</th></tr>
+    </thead>
+    <tbody>
+      <tr style="background:var(--success-light);">
+        <td><strong>対策・講座系</strong><br><span style="font-size:11px;color:var(--success)">「お金を払って対策したい」</span></td>
+        <td>¥208,706</td>
+        <td>17.0</td>
+        <td>¥12,277</td>
+        <td>ケース面接 対策、ケース面接 講座、対策 講座</td>
+      </tr>
+      <tr style="background:var(--success-light);">
+        <td><strong>ブランド指名系</strong><br><span style="font-size:11px;color:var(--success)">「Strategistsを知っている」</span></td>
+        <td>¥41,388</td>
+        <td>11.1</td>
+        <td>¥3,729</td>
+        <td>strategists、strategy bootcamp、対策塾 strategists</td>
+      </tr>
+      <tr>
+        <td><strong>中途面接系</strong><br><span style="font-size:11px">「中途でコンサルを目指す」</span></td>
+        <td>¥203,301</td>
+        <td>4.8</td>
+        <td>¥42,062</td>
+        <td>ケース面接（単体）</td>
+      </tr>
+      <tr style="background:var(--danger-light);">
+        <td><strong>情報収集系</strong><br><span style="font-size:11px;color:var(--danger)">「自分で勉強したい・知りたい」</span></td>
+        <td>¥448,000+</td>
+        <td>0</td>
+        <td>N/A</td>
+        <td>フェルミ推定（単体）、例題、やり方、基礎知識、フレームワーク</td>
+      </tr>
+      <tr style="background:var(--danger-light);">
+        <td><strong>エージェント検索系</strong><br><span style="font-size:11px;color:var(--danger)">「転職エージェントを探している」</span></td>
+        <td>¥85,000+</td>
+        <td>0</td>
+        <td>N/A</td>
+        <td>コンサル転職エージェント、ムービン転職、ボスコン転職</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="highlight info">
+    <strong>重要な発見: 「フェルミ推定」単体クエリは¥148,793でCV 0</strong>
+    検索クエリ費用第2位の「フェルミ推定」（¥148,793）はCV 0件です。このクエリは情報検索意図が極めて強く、「フェルミ推定とは何か」「やり方を知りたい」というニーズです。LPがいかに良くても、この層はスクールへの申込みには至りません。フェルミ推定系は「対策」「講座」と組み合わせたEXACTのみに限定すべきです。
+  </div>
+
+  <h4>CVに繋がるクエリの共通パターン</h4>
+  <p>CV発生クエリを分析すると、以下の3パターンが浮かび上がります:</p>
+  <table>
+    <thead>
+      <tr><th>パターン</th><th>例</th><th>平均CPA</th><th>特徴</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>1. 「対策」+面接系</strong></td>
+        <td>ケース面接 対策、戦略コンサル 対策</td>
+        <td>¥10,700</td>
+        <td>最も高CVR。「対策が必要」と認識しており購買意欲が高い</td>
+      </tr>
+      <tr>
+        <td><strong>2. ブランド指名</strong></td>
+        <td>strategists、strategy bootcamp</td>
+        <td>¥3,378</td>
+        <td>最安CPA。認知済みユーザー。増加施策が鍵</td>
+      </tr>
+      <tr>
+        <td><strong>3. 「講座」「塾」系</strong></td>
+        <td>ケース面接 講座、内定塾</td>
+        <td>¥5,300</td>
+        <td>有料サービスを探している層。CV率が非常に高い</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ===== 4. 入札戦略評価 ===== -->
+<div class="section">
+  <div class="section-title"><span class="num">4</span>入札戦略の評価</div>
+
+  <h4>現状の入札設定</h4>
+  <table>
+    <thead>
+      <tr><th>項目</th><th>現在の設定</th><th>評価</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>入札戦略</td><td>TARGET_CPA（目標CPA自動入札）</td><td><span class="tag warn">要調整</span></td></tr>
+      <tr><td>日予算</td><td>¥5,000（推定）</td><td><span class="tag bad">少なすぎ</span></td></tr>
+      <tr><td>月間予算消化</td><td>直近3ヶ月平均 ¥33,605</td><td><span class="tag bad">予算上限の3.4%</span></td></tr>
+    </tbody>
+  </table>
+
+  <div class="highlight warning">
+    <strong>TARGET_CPAの自動入札が過度に保守的になっている可能性</strong>
+    直近のCPAが¥1,400-¥3,600と極めて低いにもかかわらず、月間¥3-4万円しか消化できていません。TARGET_CPAの目標値が低すぎるか、または学習データが少なすぎて自動入札が積極的にオークションに参加できていない状態と推定されます。<br><br>
+    日予算¥5,000は、1クリック¥94-¥241（直近CPC）の環境では20-50クリック/日を確保できる計算ですが、実際のクリック数は月228件（=約7.6件/日）に留まっています。これはTARGET_CPAが入札を制限しているためです。
+  </div>
+
+  <h4>入札戦略の推奨変更</h4>
+  <div class="two-col">
+    <div>
+      <p><strong>短期（即日可能）:</strong></p>
+      <ul style="margin-left:20px;">
+        <li>TARGET_CPAの目標を現在の2-3倍に引き上げ（¥10,000-¥15,000程度）</li>
+        <li>既卒LTV ¥427,636を考えると、CPA ¥15,000でもROAS 28倍</li>
+        <li>日予算を¥10,000-¥15,000に引き上げ</li>
+      </ul>
+    </div>
+    <div>
+      <p><strong>中期（2-4週間で検証）:</strong></p>
+      <ul style="margin-left:20px;">
+        <li>クリック数最大化+上限CPC設定への一時的な切り替えも検討</li>
+        <li>学習データを蓄積してからTARGET_CPAに戻す</li>
+        <li>コンバージョン値最大化（tROAS）への移行テスト</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 5. デバイス・曜日分析 ===== -->
+<div class="section">
+  <div class="section-title"><span class="num">5</span>デバイス・曜日の最適化</div>
+
+  <div class="two-col">
+    <div>
+      <h4>デバイス別パフォーマンス</h4>
+      <table>
+        <thead>
+          <tr><th>デバイス</th><th>費用</th><th>CV</th><th>CPA</th><th>CTR</th></tr>
+        </thead>
+        <tbody>
+          <tr style="background:var(--success-light);">
+            <td><strong>DESKTOP</strong></td>
+            <td>¥1,626,216</td>
+            <td>73.1</td>
+            <td><strong>¥22,234</strong></td>
+            <td>2.47%</td>
+          </tr>
+          <tr>
+            <td>MOBILE</td>
+            <td>¥3,004,237</td>
+            <td>102.0</td>
+            <td>¥29,453</td>
+            <td>1.75%</td>
+          </tr>
+          <tr>
+            <td>TABLET</td>
+            <td>¥57,387</td>
+            <td>2.0</td>
+            <td>¥28,694</td>
+            <td>1.43%</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="highlight info">
+        <strong>デスクトップのCPAがモバイルより32%低い</strong>
+        デスクトップ CPA ¥22,234 vs モバイル ¥29,453。コンサル転職の検討はPCで行う傾向が強く、これは業界の一般的な傾向と一致します。モバイルの入札調整比率を-10%〜-15%、デスクトップを+10%〜+15%に設定することを推奨。タブレットは費用が小さいため現状維持で可。
+      </div>
+    </div>
+
+    <div>
+      <h4>曜日別パフォーマンス</h4>
+      <table>
+        <thead>
+          <tr><th>曜日</th><th>費用</th><th>CV</th><th>CPA</th></tr>
+        </thead>
+        <tbody>
+          <tr style="background:var(--success-light);">
+            <td><strong>木曜</strong></td>
+            <td>¥710,256</td>
+            <td>42.7</td>
+            <td><strong>¥16,633</strong></td>
+          </tr>
+          <tr style="background:var(--success-light);">
+            <td><strong>水曜</strong></td>
+            <td>¥690,336</td>
+            <td>32.0</td>
+            <td><strong>¥21,573</strong></td>
+          </tr>
+          <tr>
+            <td>金曜</td>
+            <td>¥591,227</td>
+            <td>27.5</td>
+            <td>¥21,499</td>
+          </tr>
+          <tr>
+            <td>日曜</td>
+            <td>¥658,200</td>
+            <td>22.7</td>
+            <td>¥28,996</td>
+          </tr>
+          <tr>
+            <td>土曜</td>
+            <td>¥540,645</td>
+            <td>17.5</td>
+            <td>¥30,894</td>
+          </tr>
+          <tr style="background:var(--danger-light);">
+            <td>火曜</td>
+            <td>¥703,811</td>
+            <td>17.5</td>
+            <td><strong>¥40,218</strong></td>
+          </tr>
+          <tr style="background:var(--danger-light);">
+            <td>月曜</td>
+            <td>¥793,364</td>
+            <td>17.3</td>
+            <td><strong>¥45,859</strong></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <h4>曜日別CPA（視覚化）</h4>
+  <div class="bar-chart">
+    <div class="bar-row">
+      <div class="bar-label">月曜</div>
+      <div class="bar-track"><div class="bar-fill red" style="width:100%">¥45,859</div></div>
+      <div class="bar-value"><span class="tag bad">最悪</span></div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-label">火曜</div>
+      <div class="bar-track"><div class="bar-fill orange" style="width:87.7%">¥40,218</div></div>
+      <div class="bar-value"><span class="tag warn">要注意</span></div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-label">水曜</div>
+      <div class="bar-track"><div class="bar-fill green" style="width:47.0%">¥21,573</div></div>
+      <div class="bar-value"><span class="tag good">良好</span></div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-label">木曜</div>
+      <div class="bar-track"><div class="bar-fill green" style="width:36.3%">¥16,633</div></div>
+      <div class="bar-value"><span class="tag good">最優秀</span></div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-label">金曜</div>
+      <div class="bar-track"><div class="bar-fill green" style="width:46.9%">¥21,499</div></div>
+      <div class="bar-value"><span class="tag good">良好</span></div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-label">土曜</div>
+      <div class="bar-track"><div class="bar-fill orange" style="width:67.4%">¥30,894</div></div>
+      <div class="bar-value"><span class="tag warn">やや高</span></div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-label">日曜</div>
+      <div class="bar-track"><div class="bar-fill orange" style="width:63.2%">¥28,996</div></div>
+      <div class="bar-value"><span class="tag warn">やや高</span></div>
+    </div>
+  </div>
+
+  <div class="highlight info">
+    <strong>推奨: 水〜金曜に予算を集中配分</strong>
+    木曜のCPA ¥16,633は月曜 ¥45,859の約1/3。水〜金を「攻めの曜日」として入札調整+10-20%、月〜火を「守りの曜日」として入札調整-15-20%を推奨します。週末はCV数が少ないため様子見。コンサル転職検討者は平日の業務中〜夕方に真剣に検索する傾向があり、このデータはその仮説と一致します。
+  </div>
+</div>
+
+<!-- ===== 6. 年齢・ターゲット分析 ===== -->
+<div class="section">
+  <div class="section-title"><span class="num">6</span>年齢別ターゲティング評価</div>
+
+  <table>
+    <thead>
+      <tr><th>年齢層</th><th>費用</th><th>CV</th><th>CPA</th><th>費用構成比</th><th>判定</th></tr>
+    </thead>
+    <tbody>
+      <tr style="background:var(--success-light);">
+        <td><strong>25-34歳</strong></td>
+        <td>¥2,913,326</td>
+        <td>118.0</td>
+        <td>¥24,689</td>
+        <td>62.2%</td>
+        <td><span class="tag good">コアターゲット</span></td>
+      </tr>
+      <tr style="background:var(--success-light);">
+        <td><strong>35-44歳</strong></td>
+        <td>¥49,083</td>
+        <td>5.0</td>
+        <td>¥9,828</td>
+        <td>1.0%</td>
+        <td><span class="tag good">費用効率最良</span></td>
+      </tr>
+      <tr>
+        <td>不明</td>
+        <td>¥1,508,242</td>
+        <td>49.1</td>
+        <td>¥30,688</td>
+        <td>32.2%</td>
+        <td><span class="tag warn">制御不能</span></td>
+      </tr>
+      <tr style="background:var(--danger-light);">
+        <td>18-24歳</td>
+        <td>¥160,028</td>
+        <td>2.0</td>
+        <td>¥80,014</td>
+        <td>3.4%</td>
+        <td><span class="tag bad">要縮小</span></td>
+      </tr>
+      <tr>
+        <td>45-54歳</td>
+        <td>¥25,201</td>
+        <td>1.0</td>
+        <td>¥25,201</td>
+        <td>0.5%</td>
+        <td>少量のため保留</td>
+      </tr>
+      <tr>
+        <td>55-64歳</td>
+        <td>¥10,105</td>
+        <td>0</td>
+        <td>N/A</td>
+        <td>0.2%</td>
+        <td>少量のため保留</td>
+      </tr>
+      <tr>
+        <td>65歳以上</td>
+        <td>¥21,856</td>
+        <td>2.0</td>
+        <td>¥10,928</td>
+        <td>0.5%</td>
+        <td>異常値（誤クリックの可能性）</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="highlight info">
+    <strong>注目: 35-44歳のCPA ¥9,828は全年齢層で最良</strong>
+    現在の費用構成比はわずか1.0%ですが、CPA ¥9,828と極めて効率的です。中途転職でコンサルを目指す30代後半〜40代前半のマネージャー層は、LTV（既卒 ¥427,636）も高い傾向にあります。この年齢層への入札を+20%引き上げ、配信量を増やすことを強く推奨します。
+  </div>
+</div>
+
+<!-- ===== 7. CRM連携分析 ===== -->
+<div class="section">
+  <div class="section-title"><span class="num">7</span>CRM連携 - 広告費からROASまで</div>
+
+  <div class="exec-grid">
+    <div class="exec-card neutral">
+      <div class="label">広告経由 リード数</div>
+      <div class="value">34名</div>
+    </div>
+    <div class="exec-card neutral">
+      <div class="label">成約数</div>
+      <div class="value">7件</div>
+      <div class="sub">成約率 20.6%</div>
+    </div>
+    <div class="exec-card neutral">
+      <div class="label">確定売上</div>
+      <div class="value">¥160.4万</div>
+    </div>
+    <div class="exec-card neutral">
+      <div class="label">期待紹介料</div>
+      <div class="value">¥521.1万</div>
+      <div class="sub">確定0件（未実現）</div>
+    </div>
+  </div>
+
+  <h4>ROAS試算</h4>
+  <table>
+    <thead>
+      <tr><th>シナリオ</th><th>売上</th><th>広告費</th><th>ROAS</th><th>判定</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>確定売上のみ</td>
+        <td>¥1,603,900</td>
+        <td>¥4,687,840</td>
+        <td><strong>0.34倍</strong></td>
+        <td><span class="tag bad">目標未達</span></td>
+      </tr>
+      <tr>
+        <td>確定 + 紹介料期待値50%</td>
+        <td>¥4,209,400</td>
+        <td>¥4,687,840</td>
+        <td><strong>0.90倍</strong></td>
+        <td><span class="tag warn">損益分岐近辺</span></td>
+      </tr>
+      <tr>
+        <td>確定 + 紹介料100%実現</td>
+        <td>¥6,814,900</td>
+        <td>¥4,687,840</td>
+        <td><strong>1.45倍</strong></td>
+        <td><span class="tag warn">目標3倍に未達</span></td>
+      </tr>
+      <tr style="background:var(--success-light);">
+        <td>直近効率（CPA¥1,900）で継続した場合の年間LTV試算</td>
+        <td colspan="3">CPA¥1,900 × 月50CV × 成約率20% × LTV¥427,636 = <strong>年間 ¥5,131万 / 広告費 ¥114万 = ROAS 45倍</strong></td>
+        <td><span class="tag good">理想形</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="highlight warning">
+    <strong>過去12ヶ月の累計ROASは目標3倍に大きく未達</strong>
+    ただしこれは第1期（3-8月）の非効率な運用が大きく足を引っ張っています。第2期の効率が維持できるなら、今後は十分に目標ROAS 3倍を達成可能です。重要なのは「効率を維持しながら規模を拡大すること」です。
+  </div>
+
+  <h4>パイプライン改善の余地</h4>
+  <p>34リードのうち失注12件、NoShow 3件、実施不可5件。特に<strong>NoShow率 8.8%</strong>は改善の余地があります。リマインドメール・SMS自動配信の導入で面談実施率を5-10%改善できれば、成約率は25%近くに引き上げ可能です。</p>
+</div>
+
+<!-- ===== 8. CV定義の問題提起 ===== -->
+<div class="section">
+  <div class="section-title"><span class="num">8</span>コンバージョン計測の整理</div>
+
+  <p>現在のCV計測には複数のアクションが混在しており、正確なCPA評価を困難にしています。</p>
+
+  <table>
+    <thead>
+      <tr><th>CVアクション</th><th>計測区分</th><th>全CV数</th><th>実際の申込との距離</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>btn_click（ボタンクリック）</td><td>全CVのみ</td><td>164.2</td><td style="color:var(--danger);">遠い（マイクロ）</td></tr>
+      <tr><td>マイクロCV</td><td>主CV</td><td>117.1</td><td style="color:var(--warning);">中間</td></tr>
+      <tr><td>既卒 /schedule/ 遷移</td><td>主CV</td><td>44.0</td><td style="color:var(--success);">近い（スケジュール遷移）</td></tr>
+      <tr><td>conversion_main</td><td>全CVのみ</td><td>25.0</td><td>不明</td></tr>
+      <tr><td>新卒 schedule 遷移</td><td>主CV</td><td>19.0</td><td style="color:var(--success);">近い</td></tr>
+      <tr><td>/thanks 遷移</td><td>全CVのみ</td><td>13.0</td><td style="color:var(--success);">最も近い（申込完了）</td></tr>
+    </tbody>
+  </table>
+
+  <div class="highlight warning">
+    <strong>推奨: 「主CV」の定義を厳格化</strong>
+    現在「主CV」にマイクロCV（117.1件）が含まれているため、CPA ¥26,464は実態より良く見えています。真の申込CV（/thanks遷移 + schedule遷移）= 約76件とすると、真のCPA は約¥61,682です。入札戦略の目標CPA設定は、この「真のCPA」ベースで行うべきです。マイクロCVは別途モニタリング指標として管理することを推奨します。
+  </div>
+</div>
+
+<!-- ===== 9. 具体的改善アクション ===== -->
+<div class="section">
+  <div class="section-title"><span class="num">9</span>具体的改善アクション（優先度順）</div>
+
+  <ul class="action-list">
+    <li data-num="1">
+      <strong>BROADマッチの全停止またはEXACTへの移行</strong><br>
+      推定効果: 年間 ¥110万の無駄削減。CPA ¥192,719→ゼロ。現在BROADで少量でもCVしているキーワード（「ケース対策」CV3.0、「ケース面接 解答例」CV2.7）はEXACTに移行して継続。
+    </li>
+    <li data-num="2">
+      <strong>除外キーワード一括登録</strong><br>
+      「例題」「回答例」「やり方」「方法」「とは」「基礎知識」「フレームワーク」「過去問」「覚える」「数字」「中途採用」をアカウントレベルで除外。推定年間削減: ¥53万+。
+    </li>
+    <li data-num="3">
+      <strong>日予算を¥5,000→¥15,000に引き上げ</strong><br>
+      現在のCPA ¥1,400-¥3,600なら、¥15,000/日で4-10件/日のCVが見込める。月間予算は約¥45万で予算上限100万の45%に留まる。まず2週間テストし、CPAが¥20,000以内なら継続。
+    </li>
+    <li data-num="4">
+      <strong>TARGET_CPAの目標値を¥15,000に設定</strong><br>
+      既卒LTV ¥427,636に対してCPA ¥15,000はROAS 28.5倍。十分すぎるマージンを持った設定で、自動入札の配信量を増やす。
+    </li>
+    <li data-num="5">
+      <strong>高効率KWの入札強化</strong><br>
+      「戦略コンサル 対策」(CPA¥3,588)、「戦略コンサル 面接」(CPA¥8,004)、「ケース面接 中途」(CPA¥15,457) の3キーワードで全CVの23%を占める。これらの表示機会を最大化する。
+    </li>
+    <li data-num="6">
+      <strong>曜日別入札調整の導入</strong><br>
+      水・木・金曜: +15% / 月・火曜: -15% / 土・日曜: ±0%。CPA差分（木¥16,633 vs 月¥45,859）を活用して費用効率を改善。推定CPA改善幅: -8%〜-12%。
+    </li>
+    <li data-num="7">
+      <strong>デバイス別入札調整</strong><br>
+      デスクトップ: +15% / モバイル: -10% / タブレット: 現状維持。デスクトップCPA ¥22,234 vs モバイル ¥29,453の差を活用。
+    </li>
+    <li data-num="8">
+      <strong>35-44歳の年齢層への入札強化（+20%）</strong><br>
+      CPA ¥9,828と全年齢で最良。費用構成比1.0%→5%への引き上げを目指す。逆に18-24歳は-25%の入札調整。
+    </li>
+    <li data-num="9">
+      <strong>新規キーワードの追加テスト（EXACT限定）</strong><br>
+      CVデータから「講座」「塾」「対策」系の需要が確認できるため、以下をEXACTで追加テスト:<br>
+      「コンサル面接 対策 講座」「ケース面接 スクール」「コンサル転職 対策」「戦略コンサル 内定 対策」「MBB 面接対策」
+    </li>
+    <li data-num="10">
+      <strong>コンバージョン定義の整理</strong><br>
+      主CVから「マイクロCV」を除外し、/thanks遷移 + schedule遷移のみを主CVとする。自動入札は真のCV（申込）を最適化対象とすべき。これにより入札エンジンの学習精度が向上する。
+    </li>
+  </ul>
+</div>
+
+<!-- ===== 10. 改善シミュレーション ===== -->
+<div class="section">
+  <div class="section-title"><span class="num">10</span>改善シミュレーション</div>
+
+  <p>上記アクションを実行した場合の3ヶ月後の想定効果:</p>
+
+  <table>
+    <thead>
+      <tr><th>指標</th><th>現状（直近3ヶ月平均）</th><th>改善後（想定）</th><th>変化</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>月間費用</td>
+        <td>¥33,605</td>
+        <td>¥300,000-¥450,000</td>
+        <td>×9-13倍</td>
+      </tr>
+      <tr>
+        <td>月間CV（真のCV）</td>
+        <td>約5件（schedule遷移ベース推定）</td>
+        <td>20-30件</td>
+        <td>×4-6倍</td>
+      </tr>
+      <tr>
+        <td>CPA（真のCV基準）</td>
+        <td>¥6,700（推定）</td>
+        <td>¥10,000-¥15,000</td>
+        <td>効率は落ちるが許容範囲</td>
+      </tr>
+      <tr>
+        <td>月間成約数（成約率20%想定）</td>
+        <td>1件</td>
+        <td>4-6件</td>
+        <td>×4-6倍</td>
+      </tr>
+      <tr>
+        <td>月間売上（LTV¥427,636ベース）</td>
+        <td>約¥42万</td>
+        <td>¥170-¥256万</td>
+        <td>ROAS 3.8-8.5倍</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="highlight success">
+    <strong>規模拡大してもROAS 3倍は十分に達成可能</strong>
+    CPAが¥15,000に上昇しても、LTV ¥427,636に対するROASは28.5倍です。目標の3倍を大きく上回ります。現在は効率が良すぎるがゆえに機会損失が発生している状態です。「効率を少し犠牲にして規模を取る」戦略への転換が、事業成長の最大のレバーになります。
+  </div>
+</div>
+
+<!-- ===== CONCLUSION ===== -->
+<div class="section" style="border-left: 4px solid var(--accent);">
+  <div class="section-title" style="border-bottom: none;"><span class="num">!</span>結論</div>
+
+  <p>このキャンペーンは「第1期の失敗から学び、第2期で劇的に効率化した」という成功ストーリーの途中にあります。8月21日の構造変更は明らかに正しい判断でした。</p>
+
+  <p>ただし、現在は<strong>「効率の罠」</strong>に陥っています。CPA ¥1,431は素晴らしい数字ですが、月間¥2万円の広告費では事業インパクトがありません。</p>
+
+  <p>次のフェーズは<strong>「制御されたスケールアップ」</strong>です。具体的には:</p>
+
+  <ol style="margin-left:20px; margin-bottom: 16px;">
+    <li>不要なキーワード・クエリを除外して「漏れ」を塞ぐ（アクション1-2）</li>
+    <li>日予算とTARGET_CPAを引き上げて配信量を増やす（アクション3-4）</li>
+    <li>高効率キーワード・曜日・デバイスに予算を集中する（アクション5-8）</li>
+    <li>CV定義を整理して自動入札の精度を上げる（アクション10）</li>
+  </ol>
+
+  <p>これらを2-4週間単位で段階的に実行し、CPAが¥20,000を超えないことを確認しながら進めることを推奨します。</p>
+
+  <p style="margin-top:20px; padding-top:16px; border-top:1px solid var(--gray-200); font-size:13px; color:var(--gray-500);">
+    本レポートは田中慎太郎が提供されたrawデータのみに基づいて独自に分析・作成したものです。<br>
+    次回レポートでは、改善アクション実施後の効果検証を行う予定です。
+  </p>
+</div>
+
+</div><!-- /report-container -->
+
+</body>
+</html>
