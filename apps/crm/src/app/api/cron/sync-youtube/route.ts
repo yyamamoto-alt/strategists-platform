@@ -417,8 +417,18 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     console.error("YouTube sync error:", error);
+    const rt = process.env.GOOGLE_REFRESH_TOKEN || "";
+    const ci = process.env.GOOGLE_CLIENT_ID || "";
+    const cs = process.env.GOOGLE_CLIENT_SECRET || "";
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Unknown error" },
+      {
+        error: error instanceof Error ? error.message : "Unknown error",
+        debug: {
+          refresh_token_prefix: rt.slice(0, 8),
+          client_id_prefix: ci.slice(0, 15),
+          client_secret_prefix: cs.slice(0, 10),
+        },
+      },
       { status: 500 }
     );
   }
