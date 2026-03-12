@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import {
-  XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend, Line, ComposedChart, Bar,
+  XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, BarChart, Bar,
 } from "recharts";
 
 export interface AdsWeeklyRow {
@@ -23,11 +23,6 @@ interface Props {
 
 type Granularity = "weekly" | "monthly";
 type ViewMode = "chart" | "table";
-
-function formatCurrency(v: number): string {
-  if (v >= 10000) return `¥${(v / 10000).toFixed(1)}万`;
-  return `¥${v.toLocaleString()}`;
-}
 
 function yAxisFmt(v: number): string {
   if (v >= 10000) return `${(v / 10000).toFixed(0)}万`;
@@ -58,14 +53,13 @@ export function AdsSummaryClient({ weeklyRows, monthlyRows }: Props) {
   const totalCpaScheduled = totals.scheduled > 0 ? Math.round(totals.cost / totals.scheduled) : 0;
 
   return (
-    <div className="px-6">
-      <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 overflow-hidden">
+    <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 overflow-hidden">
         {/* Header */}
         <div className="px-5 py-4 border-b border-white/10">
           <div className="flex items-center justify-between mb-3">
             <div>
               <h2 className="text-sm font-semibold text-white">広告パフォーマンス</h2>
-              <p className="text-[10px] text-gray-500 mt-0.5">Google Ads 経由の広告費・CPA・確定LTV</p>
+              <p className="text-[10px] text-gray-500 mt-0.5">Google Ads 経由の広告費推移</p>
             </div>
             <div className="flex items-center gap-2">
               {/* View mode toggle */}
@@ -96,33 +90,23 @@ export function AdsSummaryClient({ weeklyRows, monthlyRows }: Props) {
         {/* Chart view */}
         {viewMode === "chart" && chartData.length > 0 && (
           <div className="p-5">
-            <div className="flex items-center gap-4 mb-2 text-[10px] text-gray-500">
-              <span>左軸 (棒): 広告費</span>
-              <span>右軸 (線): CPA / 確定LTV</span>
-            </div>
             <ResponsiveContainer width="100%" height={280}>
-              <ComposedChart data={chartData}>
+              <BarChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                 <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#6b7280" }}
                   interval={Math.max(Math.floor(chartData.length / 10), 0)} />
-                <YAxis yAxisId="left" tick={{ fontSize: 10, fill: "#6b7280" }}
-                  tickFormatter={yAxisFmt} label={{ value: "広告費", angle: -90, position: "insideLeft", style: { fontSize: 10, fill: "#6b7280" }, offset: 10 }} />
-                <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10, fill: "#6b7280" }}
-                  tickFormatter={yAxisFmt} label={{ value: "CPA / LTV", angle: 90, position: "insideRight", style: { fontSize: 10, fill: "#6b7280" }, offset: 10 }} />
+                <YAxis tick={{ fontSize: 10, fill: "#6b7280" }} tickFormatter={yAxisFmt} />
                 <Tooltip
                   contentStyle={{ backgroundColor: "#1f2937", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 12 }}
                   labelStyle={{ color: "#9ca3af" }}
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  formatter={(value: any, name: any) => {
+                  formatter={(value: any) => {
                     const v = Number(value);
-                    return [v > 0 ? `¥${Math.round(v).toLocaleString()}` : "—", name];
+                    return [v > 0 ? `¥${Math.round(v).toLocaleString()}` : "—", "広告費"];
                   }}
                 />
-                <Legend wrapperStyle={{ fontSize: 11 }} />
-                <Bar yAxisId="left" dataKey="cost" name="広告費" fill="#f59e0b" radius={[2, 2, 0, 0]} />
-                <Line yAxisId="right" type="monotone" dataKey="cpa_scheduled" name="CPA(2ヶ月移動)" stroke="#ef4444" strokeWidth={2} dot={false} />
-                <Line yAxisId="right" type="monotone" dataKey="rolling_ltv" name="確定LTV(2ヶ月移動)" stroke="#10b981" strokeWidth={2} dot={false} strokeDasharray="6 3" />
-              </ComposedChart>
+                <Bar dataKey="cost" name="広告費" fill="#f59e0b" radius={[2, 2, 0, 0]} />
+              </BarChart>
             </ResponsiveContainer>
           </div>
         )}
@@ -203,7 +187,6 @@ export function AdsSummaryClient({ weeklyRows, monthlyRows }: Props) {
             </table>
           </div>
         )}
-      </div>
     </div>
   );
 }

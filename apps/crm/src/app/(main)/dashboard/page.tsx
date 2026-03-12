@@ -26,12 +26,14 @@ export default async function DashboardPage() {
       <Suspense fallback={<ChartsSkeleton />}>
         <ChartsSection />
       </Suspense>
-      <Suspense fallback={<ChannelSkeleton />}>
-        <ChannelSection />
-      </Suspense>
-      <Suspense fallback={<AdsSummarySkeleton />}>
-        <AdsSection />
-      </Suspense>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 px-6">
+        <Suspense fallback={<AdsSummarySkeleton />}>
+          <AdsSection />
+        </Suspense>
+        <Suspense fallback={<ChannelSkeleton />}>
+          <ChannelSection />
+        </Suspense>
+      </div>
       <Suspense fallback={<InsightsSkeleton />}>
         <InsightsSection />
       </Suspense>

@@ -8,8 +8,7 @@ interface ChannelClientProps {
 
 export function ChannelClient({ channelTrends }: ChannelClientProps) {
   return (
-    <div className="px-6">
-      <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-4">
+    <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-4">
         <div className="mb-2">
           <h2 className="text-sm font-semibold text-white">チャネル別申込推移</h2>
           <p className="text-[10px] text-gray-500">直近1ヶ月 vs 前2ヶ月（月平均）</p>
@@ -40,6 +39,5 @@ export function ChannelClient({ channelTrends }: ChannelClientProps) {
           ))}
         </div>
       </div>
-    </div>
   );
 }
