@@ -52,9 +52,10 @@ export async function GET(request: Request) {
     const calendar = google.calendar({ version: "v3", auth });
 
     const now = new Date();
-    // 3分後〜8分後のイベントを検索（5分のcron間隔と一致、重複なし）
-    const timeMin = new Date(now.getTime() + 3 * 60 * 1000);
-    const timeMax = new Date(now.getTime() + 8 * 60 * 1000);
+    // 1〜4分後のイベントを検索（3分のcron間隔と一致、重複なし）
+    // → 通知はイベント開始の1〜4分前に届く
+    const timeMin = new Date(now.getTime() + 1 * 60 * 1000);
+    const timeMax = new Date(now.getTime() + 4 * 60 * 1000);
 
     const res = await calendar.events.list({
       calendarId: CALENDAR_ID,
@@ -74,8 +75,9 @@ export async function GET(request: Request) {
 
     for (const event of events) {
       const title = event.summary || "（タイトルなし）";
-      const startStr = event.start?.dateTime || event.start?.date;
-      if (!startStr) continue;
+      // 終日イベントはスキップ（dateTimeがなくdateのみ）
+      if (!event.start?.dateTime) continue;
+      const startStr = event.start.dateTime;
 
       const startDate = new Date(startStr);
       const timeStr = startDate.toLocaleString("ja-JP", {

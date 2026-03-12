@@ -41,7 +41,7 @@ deploy_app() {
     { "path": "/api/cron/coaching-consumption-alert", "schedule": "0 0 1 * *" },
     { "path": "/api/cron/student-reminder", "schedule": "0 0 * * *" },
     { "path": "/api/cron/coaching-start-notification", "schedule": "0 0 * * *" },
-    { "path": "/api/cron/calendar-notify", "schedule": "*/5 * * * *" }
+    { "path": "/api/cron/calendar-notify", "schedule": "*/3 * * * *" }
   ]
 }
 EOF
