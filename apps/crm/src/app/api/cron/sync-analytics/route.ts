@@ -452,6 +452,120 @@ async function syncOneDay(
         }
         dayResult.ads_keywords = keywordRows.length;
       }
+      // 5e. Search Terms (実際の検索語句レポート)
+      const searchTermData = await adsSearchStream(`
+        SELECT segments.date, campaign.name,
+          search_term_view.search_term,
+          ad_group_criterion.keyword.text, ad_group_criterion.keyword.match_type,
+          metrics.impressions, metrics.clicks, metrics.cost_micros, metrics.conversions
+        FROM search_term_view
+        WHERE segments.date = '${dateStr}'
+          AND campaign.status != 'REMOVED'
+          AND metrics.impressions > 0
+        ORDER BY metrics.clicks DESC LIMIT 200
+      `);
+
+      // 5f. Search Terms CV breakdown
+      const searchTermCvData = await adsSearchStream(`
+        SELECT segments.date, campaign.name,
+          search_term_view.search_term,
+          segments.conversion_action_name, metrics.conversions
+        FROM search_term_view
+        WHERE segments.date = '${dateStr}'
+          AND campaign.status != 'REMOVED'
+          AND metrics.conversions > 0
+      `);
+
+      const stCvLookup: Record<string, { cv_application: number; cv_micro: number }> = {};
+      if (searchTermCvData) {
+        for (const batch of searchTermCvData) {
+          for (const result of batch.results || []) {
+            const st = result.searchTermView?.searchTerm || "";
+            const campName = result.campaign?.name || "";
+            const action = result.segments?.conversionActionName || "";
+            const cv = parseFloat(result.metrics?.conversions || "0");
+            const key = `${campName}|${st}`;
+            if (!stCvLookup[key]) stCvLookup[key] = { cv_application: 0, cv_micro: 0 };
+            if (APPLICATION_CV_ACTIONS.includes(action)) stCvLookup[key].cv_application += cv;
+            else if (action === MICRO_CV_ACTION) stCvLookup[key].cv_micro += cv;
+          }
+        }
+      }
+
+      if (searchTermData) {
+        const searchTermRows: AnyRow[] = [];
+        for (const batch of searchTermData) {
+          for (const result of batch.results || []) {
+            const m = result.metrics;
+            const searchTerm = result.searchTermView?.searchTerm || "";
+            const campName = result.campaign?.name || "Unknown";
+            const kwText = result.adGroupCriterion?.keyword?.text || null;
+            const matchType = result.adGroupCriterion?.keyword?.matchType || null;
+            const key = `${campName}|${searchTerm}`;
+            const cvBreakdown = stCvLookup[key] || { cv_application: 0, cv_micro: 0 };
+            searchTermRows.push({
+              date: dateStr,
+              campaign_name: campName,
+              search_term: searchTerm,
+              keyword_text: kwText,
+              match_type: matchType,
+              impressions: parseInt(m?.impressions || "0"),
+              clicks: parseInt(m?.clicks || "0"),
+              cost: parseInt(m?.costMicros || "0") / 1_000_000,
+              conversions: parseFloat(m?.conversions || "0"),
+              cv_application: cvBreakdown.cv_application,
+              cv_micro: cvBreakdown.cv_micro,
+            });
+          }
+        }
+        if (searchTermRows.length > 0) {
+          const { error } = await supabase
+            .from("analytics_ads_search_terms_daily")
+            .upsert(searchTermRows, { onConflict: "date,campaign_name,search_term" });
+          if (error) console.error("Ads search terms upsert error:", error.message);
+        }
+        dayResult.ads_search_terms = searchTermRows.length;
+      }
+
+      // 5g. Campaign Settings (予算・入札戦略・学習ステータス)
+      const campaignSettingsData = await adsSearchStream(`
+        SELECT campaign.name, campaign.status,
+          campaign_budget.amount_micros,
+          campaign.bidding_strategy_type,
+          campaign.target_cpa.target_cpa_micros,
+          campaign.maximize_conversions.target_cpa_micros
+        FROM campaign
+        WHERE campaign.status != 'REMOVED'
+      `);
+
+      if (campaignSettingsData) {
+        const settingsRows: AnyRow[] = [];
+        for (const batch of campaignSettingsData) {
+          for (const result of batch.results || []) {
+            const campName = result.campaign?.name || "Unknown";
+            const budgetMicros = result.campaignBudget?.amountMicros;
+            const biddingType = result.campaign?.biddingStrategyType || null;
+            const targetCpaMicros = result.campaign?.targetCpa?.targetCpaMicros
+              || result.campaign?.maximizeConversions?.targetCpaMicros
+              || null;
+            settingsRows.push({
+              date: dateStr,
+              campaign_name: campName,
+              campaign_status: result.campaign?.status || "UNKNOWN",
+              daily_budget: budgetMicros ? parseInt(budgetMicros) / 1_000_000 : null,
+              bidding_strategy_type: biddingType,
+              target_cpa: targetCpaMicros ? parseInt(targetCpaMicros) / 1_000_000 : null,
+            });
+          }
+        }
+        if (settingsRows.length > 0) {
+          const { error } = await supabase
+            .from("analytics_ads_campaign_settings")
+            .upsert(settingsRows, { onConflict: "date,campaign_name" });
+          if (error) console.error("Ads campaign settings upsert error:", error.message);
+        }
+        dayResult.ads_campaign_settings = settingsRows.length;
+      }
     } catch (adsError) {
       console.error("Google Ads sync error:", adsError);
       dayResult.ads_error = adsError instanceof Error ? adsError.message : "Unknown";

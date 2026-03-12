@@ -29,6 +29,10 @@ export interface WeeklyAdsMetrics {
   prevSearchCvs: number;
   // キーワードTOP5
   topKeywords: { keyword: string; matchType: string; clicks: number; cost: number; cpc: number; cvs: number }[];
+  // 検索語句TOP10
+  topSearchTerms: { searchTerm: string; keywordText: string | null; clicks: number; cost: number; cvs: number }[];
+  // キャンペーン設定
+  campaignSettings: { name: string; dailyBudget: number | null; biddingType: string | null; targetCpa: number | null }[];
   // 累計売上
   confirmedRevenue: number;
   projectedRevenue: number;
@@ -116,6 +120,32 @@ async function fetchKeywordData(from: string, to: string) {
   return all;
 }
 
+async function fetchSearchTermData(from: string, to: string) {
+  const all: { search_term: string; keyword_text: string | null; clicks: number; cost: number; conversions: number }[] = [];
+  let offset = 0;
+  while (true) {
+    const { data } = await supabase()
+      .from("analytics_ads_search_terms_daily")
+      .select("search_term,keyword_text,clicks,cost,conversions")
+      .gte("date", from)
+      .lte("date", to)
+      .range(offset, offset + 999);
+    if (!data || data.length === 0) break;
+    all.push(...data);
+    if (data.length < 1000) break;
+    offset += 1000;
+  }
+  return all;
+}
+
+async function fetchCampaignSettings(date: string) {
+  const { data } = await supabase()
+    .from("analytics_ads_campaign_settings")
+    .select("campaign_name,daily_budget,bidding_strategy_type,target_cpa")
+    .eq("date", date);
+  return data || [];
+}
+
 async function fetchGoogleAdsRevenue() {
   // 確定売上: contracts
   const { data: customers } = await supabase()
@@ -189,10 +219,12 @@ export async function computeWeeklyAdsMetrics(year: number, week: number): Promi
   const prevRange = getWeekRange(year, week - 1);
 
   // 並行取得
-  const [campaigns, prevCampaigns, keywords, revenue] = await Promise.all([
+  const [campaigns, prevCampaigns, keywords, searchTerms, settings, revenue] = await Promise.all([
     fetchCampaignData(start, end),
     fetchCampaignData(prevRange.start, prevRange.end),
     fetchKeywordData(start, end),
+    fetchSearchTermData(start, end),
+    fetchCampaignSettings(end),
     fetchGoogleAdsRevenue(),
   ]);
 
@@ -245,6 +277,36 @@ export async function computeWeeklyAdsMetrics(year: number, week: number): Promi
     prevSearchCpc: prevSearch.clicks > 0 ? Math.round(prevSearch.cost / prevSearch.clicks) : 0,
     prevSearchCvs: prevSearch.cvs,
     topKeywords,
+    // 検索語句TOP10
+    topSearchTerms: aggregateSearchTerms(searchTerms),
+    // キャンペーン設定
+    campaignSettings: (settings || []).map((s: { campaign_name: string; daily_budget: number | null; bidding_strategy_type: string | null; target_cpa: number | null }) => ({
+      name: s.campaign_name,
+      dailyBudget: s.daily_budget ? Number(s.daily_budget) : null,
+      biddingType: s.bidding_strategy_type,
+      targetCpa: s.target_cpa ? Number(s.target_cpa) : null,
+    })),
     ...revenue,
   };
+}
+
+function aggregateSearchTerms(data: { search_term: string; keyword_text: string | null; clicks: number; cost: number; conversions: number }[]) {
+  const map = new Map<string, { searchTerm: string; keywordText: string | null; clicks: number; cost: number; cvs: number }>();
+  for (const r of data) {
+    const existing = map.get(r.search_term);
+    if (existing) {
+      existing.clicks += r.clicks || 0;
+      existing.cost += r.cost || 0;
+      existing.cvs += r.conversions || 0;
+    } else {
+      map.set(r.search_term, {
+        searchTerm: r.search_term,
+        keywordText: r.keyword_text,
+        clicks: r.clicks || 0,
+        cost: r.cost || 0,
+        cvs: r.conversions || 0,
+      });
+    }
+  }
+  return [...map.values()].sort((a, b) => b.clicks - a.clicks).slice(0, 10);
 }
