@@ -437,8 +437,8 @@
       <div class="card">
         <div class="card-label">3月の申し込み</div>
         <div class="card-value">0件</div>
-        <div class="card-change negative">P-Max停止 + 予算縮小</div>
-        <div class="card-desc">3/6のP-Max停止でImp 99%減</div>
+        <div class="card-change negative">完全一致キャンペーンの予算縮小</div>
+        <div class="card-desc">唯一CVを生む完全一致KWの日予算が¥400に。P-MaxはそもそもCV=0で無関係</div>
       </div>
       <div class="card">
         <div class="card-label">未カバー検索クエリ</div>
@@ -449,8 +449,8 @@
     </div>
 
     <div class="alert alert-danger">
-      <div class="alert-title">根本原因: P-Max ターゲットCPA引き上げによる学習リセット</div>
-      <p>ROAS 282%の好実績を受け、ボリューム拡大のためターゲットCPAを引き上げたところ、P-Maxの機械学習が完全にリセット。43日間CV=0となり、3/6に停止。残った完全一致キャンペーンも日予算¥400に絞られ、事実上の広告停止状態に。</p>
+      <div class="alert-title">根本原因: 唯一CVを生む「完全一致」キャンペーンの予算縮小</div>
+      <p>申し込みCVを生んでいたのは100%「完全一致_オリジナル」キャンペーン。P-Max「1/22A」は43日間CV=0で、その停止自体は申し込み減少と無関係。問題は完全一致キャンペーンの日予算が¥400まで絞られ、事実上の広告停止状態になったこと。</p>
     </div>
 
     <div class="alert alert-success">
@@ -489,11 +489,11 @@
       </div>
       <div class="timeline-item critical">
         <div class="timeline-date">2026年2月下旬</div>
-        <div class="timeline-text"><strong>ターゲットCPA引き上げ</strong> → 学習リセット発生。P-MaxのCV取得がゼロに。</div>
+        <div class="timeline-text">P-MaxのターゲットCPA引き上げ → 学習リセット発生。ただしP-MaxはそもそもCV=0で申し込みに無関係。</div>
       </div>
       <div class="timeline-item critical">
         <div class="timeline-date">2026年3月6日</div>
-        <div class="timeline-text"><strong>P-Max「1/22A」停止</strong>。インプレッション99%減。完全一致のみ残るが日予算¥400。</div>
+        <div class="timeline-text">P-Max「1/22A」停止（CVゼロのため当然の判断）。完全一致キャンペーンの日予算も<strong>¥400に縮小</strong>。これが申し込み停止の直接原因。</div>
       </div>
       <div class="timeline-item critical">
         <div class="timeline-date">2026年3月7日〜現在</div>
@@ -850,15 +850,15 @@
       </li>
     </ul>
 
-    <h3>再発防止: CPA変更の安全ルール</h3>
+    <h3>再発防止: 運用ルール</h3>
     <div class="table-wrap">
       <table>
         <thead><tr><th>ルール</th><th>詳細</th></tr></thead>
         <tbody>
-          <tr><td><strong>1回の変更幅</strong></td><td>最大 <strong>10-20%</strong> 以内</td></tr>
-          <tr><td><strong>変更後の待機</strong></td><td>最低 <strong>7-14日</strong> は一切触らない</td></tr>
-          <tr><td><strong>変更条件</strong></td><td>直近30日で <strong>30件以上のCV</strong> がある状態で変更</td></tr>
-          <tr><td><strong>予算変更</strong></td><td>1回 <strong>20%以内</strong>。学習リセットを防止</td></tr>
+          <tr><td><strong>完全一致の日予算下限</strong></td><td><strong>¥1,500以上</strong> を維持。¥400では配信がほぼ停止する</td></tr>
+          <tr><td><strong>予算変更の幅</strong></td><td>1回 <strong>20%以内</strong>。急激な変更は自動入札の学習を阻害</td></tr>
+          <tr><td><strong>P-Maxの位置づけ</strong></td><td>P-Maxは認知拡大用。CVを期待せず、完全一致との役割分担を明確に</td></tr>
+          <tr><td><strong>週次チェック</strong></td><td>完全一致KWのImp・Click・CVを毎週モニタリング。異常時は即対応</td></tr>
         </tbody>
       </table>
     </div>
