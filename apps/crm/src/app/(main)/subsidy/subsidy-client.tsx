@@ -74,11 +74,26 @@ function formatDateJP(d: string | null | undefined): string {
   return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`;
 }
 
-/** 補助金対象判定: contracts.subsidy_eligible=true かつ 成約済み */
+/** 補助金対象判定（対象者リスト用）: contracts.subsidy_eligible=true かつ 成約済み */
 function isSubsidyTarget(c: CustomerWithRelations): boolean {
   if (!c.contract?.subsidy_eligible) return false;
   if (c.pipeline?.stage !== "成約") return false;
   return true;
+}
+
+/** 補助金推移用の集客対象判定（元の日付ベース定義）:
+ *  既卒で、申し込み日が2/10以降 OR 営業日が2/10以降（未実施/日程未確/NoShow除く） */
+function isSubsidyCollectionTarget(c: CustomerWithRelations): boolean {
+  if (isShinsotsu(c.attribute)) return false;
+  const appDate = normalizeDate(c.application_date);
+  const salesDate = normalizeDate(c.pipeline?.sales_date);
+  if (appDate > SUBSIDY_START) return true;
+  if (salesDate > SUBSIDY_START) {
+    const stage = c.pipeline?.stage;
+    if (stage === "未実施" || stage === "日程未確" || stage === "NoShow") return false;
+    return true;
+  }
+  return false;
 }
 
 function getSubsidyDate(c: CustomerWithRelations): string {
@@ -1101,37 +1116,36 @@ export function SubsidyClient({ customers, firstPaidMap, completionData, documen
     }).length;
   }, [subsidyCustomers, completionData]);
 
-  // Weekly stats — 推移は全顧客ベース（対象者リストのみsubsidyCustomers）
+  // 推移用の対象者（元の日付ベース定義）
+  const collectionTargets = useMemo(() => customers.filter(isSubsidyCollectionTarget), [customers]);
+
+  // Weekly stats — 推移は日付ベース定義（対象者リストのみsubsidyCustomers）
   const weeklyStats: WeeklyStats[] = useMemo(() => {
     return weekEnds.map((weekEnd) => {
-      // 集客人数 = 交付決定日以降に申し込みまたは営業実施した全顧客
-      const collected = customers.filter((c) => {
-        const appDate = normalizeDate(c.application_date);
-        const salesDate = normalizeDate(c.pipeline?.sales_date);
-        const d = (appDate > SUBSIDY_START ? appDate : "") || (salesDate > SUBSIDY_START ? salesDate : "");
+      // 集客人数 = 既卒で交付決定日以降に申し込みまたは営業実施
+      const collected = collectionTargets.filter((c) => {
+        const d = getSubsidyDate(c);
         return d > SUBSIDY_START && d <= weekEnd;
       }).length;
-      // 支援開始人数 = 営業実施済み（日程未確/未実施以外）
-      const supported = customers.filter((c) => {
+      // 支援開始人数 = 営業実施日ベース（日程未確/未実施以外）
+      const supported = collectionTargets.filter((c) => {
         if (!isSupportStarted(c)) return false;
-        const appDate = normalizeDate(c.application_date);
-        const salesDate = normalizeDate(c.pipeline?.sales_date);
-        const d = (appDate > SUBSIDY_START ? appDate : "") || (salesDate > SUBSIDY_START ? salesDate : "");
+        const d = normalizeDate(c.pipeline?.sales_date);
         return d > SUBSIDY_START && d <= weekEnd;
       }).length;
       // 講座受講開始人数 = 成約かつ支払い済み
-      const courseStarted = customers.filter((c) => {
+      const courseStarted = collectionTargets.filter((c) => {
         if (!isCourseStarted(c)) return false;
         const d = normalizeDate(firstPaidMap[c.id]) || normalizeDate(c.contract?.payment_date) || normalizeDate(c.pipeline?.sales_date);
         return d > SUBSIDY_START && d <= weekEnd;
       }).length;
       return { weekEnd, label: formatWeekLabel(weekEnd), collected, supported, courseStarted };
     });
-  }, [weekEnds, customers, firstPaidMap]);
+  }, [weekEnds, collectionTargets, firstPaidMap]);
 
   const monthlyStats: MonthlyStats[] = useMemo(() => {
     return months.map((month) => {
-      const courseStarted = customers.filter((c) => {
+      const courseStarted = collectionTargets.filter((c) => {
         if (!isCourseStarted(c)) return false;
         const d = normalizeDate(firstPaidMap[c.id]) || normalizeDate(c.contract?.payment_date) || normalizeDate(c.pipeline?.sales_date);
         return d.startsWith(month);
