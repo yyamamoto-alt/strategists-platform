@@ -237,7 +237,7 @@ function PermissionsModal({
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-xs text-gray-500 font-medium">アクセス可能ページ</label>
                   <button
-                    onClick={() => setAllowedPages(allPagesSelected ? ["/dashboard"] : [])}
+                    onClick={() => setAllowedPages(allPagesSelected ? ALL_PAGES.map(p => p.key) : [])}
                     className="text-[10px] text-brand hover:text-brand/80"
                   >
                     {allPagesSelected ? "カスタム" : "全ページ許可"}
@@ -488,7 +488,7 @@ function InviteModal({
                   <div className="flex items-center justify-between mb-2">
                     <label className="text-xs text-gray-500">アクセス可能ページ</label>
                     <button type="button"
-                      onClick={() => setAllowedPages(allPagesSelected ? ["/dashboard"] : [])}
+                      onClick={() => setAllowedPages(allPagesSelected ? ALL_PAGES.map(p => p.key) : [])}
                       className="text-[10px] text-brand hover:text-brand/80"
                     >
                       {allPagesSelected ? "カスタム" : "全ページ許可"}
