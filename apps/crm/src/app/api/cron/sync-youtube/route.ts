@@ -367,6 +367,12 @@ export async function GET(request: Request) {
   const supabase = createServiceClient() as any;
 
   try {
+    // Debug: log env var prefixes to verify correct values
+    const rt = process.env.GOOGLE_REFRESH_TOKEN || "";
+    const ci = process.env.GOOGLE_CLIENT_ID || "";
+    const cs = process.env.GOOGLE_CLIENT_SECRET || "";
+    console.log(`ENV CHECK: REFRESH_TOKEN starts with "${rt.slice(0,10)}", CLIENT_ID starts with "${ci.slice(0,10)}", CLIENT_SECRET starts with "${cs.slice(0,10)}"`);
+
     const accessToken = await refreshAccessToken();
     console.log(`YouTube sync: ${start} ~ ${end}`);
 
