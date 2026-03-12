@@ -185,42 +185,50 @@ export interface AdsKeywordDaily {
   cv_micro: number;
 }
 
-/** Google Ads キャンペーン別日次データ（90日） */
+/** Google Ads キャンペーン別日次データ */
 export async function fetchAdsCampaignDaily(days: number = 90): Promise<AdsCampaignDaily[]> {
   const { from, to } = dateRange(days);
-
-  const { data, error } = await supabase()
-    .from("analytics_ads_campaign_daily")
-    .select("*")
-    .gte("date", from)
-    .lte("date", to)
-    .order("date", { ascending: true })
-    .limit(5000);
-
-  if (error) {
-    console.error("Ads campaign fetch error:", error.message);
-    return [];
+  const all: AdsCampaignDaily[] = [];
+  let offset = 0;
+  const PAGE_SIZE = 1000;
+  while (true) {
+    const { data, error } = await supabase()
+      .from("analytics_ads_campaign_daily")
+      .select("*")
+      .gte("date", from)
+      .lte("date", to)
+      .order("date", { ascending: true })
+      .range(offset, offset + PAGE_SIZE - 1);
+    if (error) { console.error("Ads campaign fetch error:", error.message); break; }
+    if (!data || data.length === 0) break;
+    all.push(...data);
+    if (data.length < PAGE_SIZE) break;
+    offset += PAGE_SIZE;
   }
-  return data || [];
+  return all;
 }
 
-/** Google Ads キーワード別日次データ（90日） */
+/** Google Ads キーワード別日次データ */
 export async function fetchAdsKeywordDaily(days: number = 90): Promise<AdsKeywordDaily[]> {
   const { from, to } = dateRange(days);
-
-  const { data, error } = await supabase()
-    .from("analytics_ads_keyword_daily")
-    .select("*")
-    .gte("date", from)
-    .lte("date", to)
-    .order("date", { ascending: true })
-    .limit(5000);
-
-  if (error) {
-    console.error("Ads keyword fetch error:", error.message);
-    return [];
+  const all: AdsKeywordDaily[] = [];
+  let offset = 0;
+  const PAGE_SIZE = 1000;
+  while (true) {
+    const { data, error } = await supabase()
+      .from("analytics_ads_keyword_daily")
+      .select("*")
+      .gte("date", from)
+      .lte("date", to)
+      .order("date", { ascending: true })
+      .range(offset, offset + PAGE_SIZE - 1);
+    if (error) { console.error("Ads keyword fetch error:", error.message); break; }
+    if (!data || data.length === 0) break;
+    all.push(...data);
+    if (data.length < PAGE_SIZE) break;
+    offset += PAGE_SIZE;
   }
-  return data || [];
+  return all;
 }
 
 /** 時間帯別データ（90日） */
