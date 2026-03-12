@@ -1,6 +1,7 @@
 import { createServiceClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
+import { generateInvoicePdf, generateReceiptPdf, generateCertificatePdf } from "@/lib/pdf/generate-subsidy-pdf";
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 const FROM_ADDRESS = process.env.EMAIL_FROM || "Strategists <noreply@akagiconsulting.com>";
@@ -21,7 +22,6 @@ export async function POST(request: Request) {
   let certificateNumber: string | null = null;
 
   if (docType === "certificate") {
-    // Count existing certificates + 1 for the next number
     const { count } = await db
       .from("subsidy_documents")
       .select("id", { count: "exact", head: true })
@@ -52,7 +52,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "書類の登録に失敗しました" }, { status: 500 });
   }
 
-  // Send email if requested
+  // Send email with PDF attachment if requested
   let emailSentAt: string | null = null;
   if (sendEmail && customerEmail && resend) {
     try {
@@ -70,13 +70,33 @@ export async function POST(request: Request) {
       };
       const htmlBody = htmlBodyMap[docType] || "";
 
+      // Generate PDF
+      const pdfParams = { customerName, paymentDate, startDate, endDate, certNumber: certificateNumber || undefined };
+      let pdfBuffer: Buffer;
+      let pdfFilename: string;
+      if (docType === "invoice") {
+        pdfBuffer = await generateInvoicePdf(pdfParams);
+        pdfFilename = `請求書_${customerName}.pdf`;
+      } else if (docType === "receipt") {
+        pdfBuffer = await generateReceiptPdf(pdfParams);
+        pdfFilename = `領収書_${customerName}.pdf`;
+      } else {
+        pdfBuffer = await generateCertificatePdf(pdfParams);
+        pdfFilename = `修了証明書_${customerName}.pdf`;
+      }
+
       await resend.emails.send({
         from: FROM_ADDRESS,
         to: customerEmail,
         cc: CC_ADDRESS,
         subject,
         html: htmlBody,
-        attachments: [], // PDF would be attached here in future
+        attachments: [
+          {
+            filename: pdfFilename,
+            content: pdfBuffer,
+          },
+        ],
       });
 
       emailSentAt = new Date().toISOString();
@@ -86,7 +106,14 @@ export async function POST(request: Request) {
         .eq("id", doc.id);
     } catch (e) {
       console.error("Failed to send email:", e);
-      // Don't fail the whole request - document was still issued
+      return NextResponse.json({
+        success: true,
+        documentId: doc.id,
+        certificateNumber,
+        issuedAt: doc.issued_at,
+        emailSentAt: null,
+        emailError: "メール送信に失敗しました。書類の登録は完了しています。",
+      });
     }
   }
 
@@ -105,7 +132,7 @@ function generateInvoiceEmailHtml(customerName: string, paymentDate: string | nu
       <h2 style="color: #C13028;">請求書/受講料明細書のご送付</h2>
       <p>${customerName} 様</p>
       <p>いつもお世話になっております。<br>株式会社トップティアでございます。</p>
-      <p>リスキリングを通じたキャリアアップ支援事業に関する請求書/受講料明細書をお送りいたします。</p>
+      <p>リスキリングを通じたキャリアアップ支援事業に関する請求書/受講料明細書をお送りいたします。<br>添付のPDFをご確認ください。</p>
       <p>ご不明点がございましたら、お気軽にお問い合わせください。</p>
       <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
       <p style="font-size: 12px; color: #888;">
@@ -123,7 +150,7 @@ function generateReceiptEmailHtml(customerName: string, paymentDate: string | nu
       <h2 style="color: #C13028;">領収書のご送付</h2>
       <p>${customerName} 様</p>
       <p>いつもお世話になっております。<br>株式会社トップティアでございます。</p>
-      <p>コンサルタント養成講座受講料の領収書をお送りいたします。</p>
+      <p>コンサルタント養成講座受講料の領収書をお送りいたします。<br>添付のPDFをご確認ください。</p>
       <p>ご不明点がございましたら、お気軽にお問い合わせください。</p>
       <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
       <p style="font-size: 12px; color: #888;">
@@ -141,7 +168,7 @@ function generateCertificateEmailHtml(customerName: string, certNumber: string |
       <h2 style="color: #C13028;">修了証明書のご送付</h2>
       <p>${customerName} 様</p>
       <p>いつもお世話になっております。<br>株式会社トップティアでございます。</p>
-      <p>経済産業省「リスキリングを通じたキャリアアップ支援事業」に関する修了証明書${certNumber ? `（通し番号: ${certNumber}）` : ""}をお送りいたします。</p>
+      <p>経済産業省「リスキリングを通じたキャリアアップ支援事業」に関する修了証明書${certNumber ? `（通し番号: ${certNumber}）` : ""}をお送りいたします。<br>添付のPDFをご確認ください。</p>
       <p>ご不明点がございましたら、お気軽にお問い合わせください。</p>
       <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
       <p style="font-size: 12px; color: #888;">
