@@ -35,9 +35,9 @@ const navGroups: NavGroup[] = [
     ],
   },
   {
-    title: "分析",
+    title: "マーケティング分析",
     items: [
-      { name: "マーケ分析", href: "/analytics", roles: ["admin"] },
+      { name: "マーケティング分析", href: "/analytics", roles: ["admin"] },
     ],
   },
   {
@@ -47,8 +47,6 @@ const navGroups: NavGroup[] = [
       { name: "フォームDB", href: "/form-data", roles: ["admin", "member", "mentor"] },
       { name: "注文管理", href: "/orders", roles: ["admin"] },
       { name: "その他売上", href: "/other-revenues", roles: ["admin"] },
-      { name: "note購入", href: "/note-sales", roles: ["admin"] },
-      { name: "エージェント", href: "/agents", roles: ["admin", "member", "mentor"] },
       { name: "補助金", href: "/subsidy", roles: ["admin"] },
     ],
     collapsible: true,

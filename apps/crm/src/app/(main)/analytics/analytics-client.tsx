@@ -1506,7 +1506,7 @@ function AdsFunnelTab({ adsFunnel }: { adsFunnel: AdsFunnelCustomer[] }) {
 
   const kpis = useMemo(() => {
     const count = closedCustomers.length;
-    const revenue = closedCustomers.reduce((s, c) => s + c.confirmed_amount, 0);
+    const revenue = closedCustomers.reduce((s, c) => s + c.confirmed_amount + c.expected_referral_fee, 0);
     const kisotsu = closedCustomers.filter(c => isKisotsu(c.attribute)).length;
     const shinsotsu = count - kisotsu;
     return { count, revenue, kisotsu, shinsotsu };
@@ -1525,7 +1525,7 @@ function AdsFunnelTab({ adsFunnel }: { adsFunnel: AdsFunnelCustomer[] }) {
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <KpiCard title="成約顧客数" value={String(kpis.count)} sub={<span className="text-gray-500 text-[10px]">広告経由</span>} />
-        <KpiCard title="確定売上合計" value={`¥${Math.round(kpis.revenue).toLocaleString()}`} sub={<span className="text-gray-500 text-[10px]">{kpis.count > 0 ? `平均: ¥${Math.round(kpis.revenue / kpis.count).toLocaleString()}` : "—"}</span>} />
+        <KpiCard title="見込含売上合計" value={`¥${Math.round(kpis.revenue).toLocaleString()}`} sub={<span className="text-gray-500 text-[10px]">{kpis.count > 0 ? `平均: ¥${Math.round(kpis.revenue / kpis.count).toLocaleString()}` : "—"}</span>} />
         <KpiCard title="既卒系" value={String(kpis.kisotsu)} sub={<span className="text-gray-500 text-[10px]">{kpis.count > 0 ? `${((kpis.kisotsu / kpis.count) * 100).toFixed(0)}%` : "—"}</span>} />
         <KpiCard title="新卒系" value={String(kpis.shinsotsu)} sub={<span className="text-gray-500 text-[10px]">{kpis.count > 0 ? `${((kpis.shinsotsu / kpis.count) * 100).toFixed(0)}%` : "—"}</span>} />
       </div>
@@ -1546,7 +1546,7 @@ function AdsFunnelTab({ adsFunnel }: { adsFunnel: AdsFunnelCustomer[] }) {
                 <th className="text-left py-2.5 px-3">ステージ</th>
                 <th className="text-left py-2.5 px-3">キャンペーン</th>
                 <th className="text-left py-2.5 px-3">メディア</th>
-                <th className="text-right py-2.5 px-3">確定売上</th>
+                <th className="text-right py-2.5 px-3">見込含売上</th>
               </tr>
             </thead>
             <tbody>
@@ -1564,7 +1564,7 @@ function AdsFunnelTab({ adsFunnel }: { adsFunnel: AdsFunnelCustomer[] }) {
                   </td>
                   <td className="py-2.5 px-3 text-gray-400 truncate max-w-[150px]">{c.utm_campaign || "—"}</td>
                   <td className="py-2.5 px-3 text-gray-400 truncate max-w-[150px]">{c.utm_medium || "—"}</td>
-                  <td className="text-right py-2.5 px-3 text-white">{c.confirmed_amount > 0 ? `¥${Math.round(c.confirmed_amount).toLocaleString()}` : "—"}</td>
+                  <td className="text-right py-2.5 px-3 text-white">{(c.confirmed_amount + c.expected_referral_fee) > 0 ? `¥${Math.round(c.confirmed_amount + c.expected_referral_fee).toLocaleString()}` : "—"}</td>
                 </tr>
               ))}
               {closedCustomers.length === 0 && (

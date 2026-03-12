@@ -262,6 +262,7 @@ export interface AdsFunnelCustomer {
   utm_campaign: string | null;
   stage: string | null;
   confirmed_amount: number;
+  expected_referral_fee: number;
 }
 
 const NOT_CONDUCTED_STAGES = new Set([
@@ -287,7 +288,7 @@ function adsFunnelIsScheduled(stage: string | null | undefined): boolean {
 export async function fetchAdsFunnelData(): Promise<AdsFunnelCustomer[]> {
   const { data, error } = await supabase()
     .from("customers")
-    .select("id,name,application_date,attribute,utm_source,utm_medium,utm_campaign,sales_pipeline(stage),contracts(confirmed_amount)")
+    .select("id,name,application_date,attribute,utm_source,utm_medium,utm_campaign,sales_pipeline(stage),contracts(confirmed_amount),agent_records(expected_referral_fee)")
     .eq("utm_source", "googleads")
     .order("application_date", { ascending: false });
 
@@ -309,6 +310,7 @@ export async function fetchAdsFunnelData(): Promise<AdsFunnelCustomer[]> {
     utm_campaign: row.utm_campaign,
     stage: r(row.sales_pipeline)?.stage ?? null,
     confirmed_amount: r(row.contracts)?.confirmed_amount ?? 0,
+    expected_referral_fee: r(row.agent_records)?.expected_referral_fee ?? 0,
   }));
 }
 

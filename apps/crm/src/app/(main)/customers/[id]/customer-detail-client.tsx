@@ -561,7 +561,8 @@ function OrdersSection({ orders }: { orders: Order[] }) {
 
 /** 売上見込セクション（構造化表示） */
 function RevenueSection({ customer, orders }: { customer: CustomerWithRelations; orders: Order[] }) {
-  const schoolConfirmed = orders.filter(o => o.status === "paid" || o.status === "partial" || o.status === "scheduled").reduce((s, o) => s + (o.amount || 0), 0);
+  const ordersTotal = orders.filter(o => o.status === "paid" || o.status === "partial" || o.status === "scheduled").reduce((s, o) => s + (o.amount || 0), 0);
+  const schoolConfirmed = ordersTotal > 0 ? ordersTotal : getSchoolRevenue(customer);
   const subsidy = getSubsidyAmount(customer);
   const agentConfirmed = isAgentConfirmed(customer) ? calcExpectedReferralFee(customer) : 0;
   const confirmedTotal = schoolConfirmed + subsidy + agentConfirmed;
