@@ -22,39 +22,22 @@ interface NavGroup {
 
 const navGroups: NavGroup[] = [
   {
-    title: "概要",
+    title: "",
     items: [
       { name: "ダッシュボード", href: "/dashboard" },
       { name: "KPI", href: "/revenue", roles: ["admin"] },
-    ],
-  },
-  {
-    title: "営業",
-    items: [
+      { name: "顧客DB", href: "/customers", roles: ["admin", "member", "mentor"] },
       { name: "パイプライン", href: "/pipeline", roles: ["admin", "member", "mentor"] },
-    ],
-  },
-  {
-    title: "マーケティング分析",
-    items: [
       { name: "マーケティング分析", href: "/analytics", roles: ["admin"] },
     ],
   },
   {
-    title: "データ",
+    title: "システム",
     items: [
-      { name: "顧客DB", href: "/customers", roles: ["admin", "member", "mentor"] },
       { name: "フォームDB", href: "/form-data", roles: ["admin", "member", "mentor"] },
       { name: "注文管理", href: "/orders", roles: ["admin"] },
       { name: "その他売上", href: "/other-revenues", roles: ["admin"] },
       { name: "補助金", href: "/subsidy", roles: ["admin"] },
-    ],
-    collapsible: true,
-    defaultOpen: true,
-  },
-  {
-    title: "システム",
-    items: [
       { name: "ユーザー管理", href: "/users", roles: ["admin"] },
       { name: "データ連携", href: "/data-sync", roles: ["admin"] },
       { name: "自動連携 (旧Zapier)", href: "/automations", roles: ["admin"] },
@@ -106,11 +89,11 @@ function NavGroupSection({ group, role }: { group: NavGroup; role: string | null
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
           </svg>
         </button>
-      ) : (
+      ) : group.title ? (
         <p className="px-3 mb-1 text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
           {group.title}
         </p>
-      )}
+      ) : null}
       {(isOpen || !group.collapsible) && filteredItems.map((item) => {
         const isActive = isItemActive(pathname, item.href);
         return (
