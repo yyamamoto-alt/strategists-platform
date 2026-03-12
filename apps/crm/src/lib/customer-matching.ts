@@ -284,16 +284,10 @@ async function syncFormFieldsToRelatedTables(
     // --- カルテ同期時: プログレスシート作成 + Slack通知 + YouTube通知 ---
     // ★ 初回レコードのみ実行（再処理時はスキップ — スパム防止）
     if (isNewRecord) {
-      // プログレスシートが未作成の場合のみ作成
-      const { data: existingContracts } = await db
-        .from("contracts")
-        .select("progress_sheet_url")
-        .eq("customer_id", customerId)
-        .limit(1);
+      // カルテ送信ごとに新規ProgressSheet作成
+      let progressSheetUrl: string | null = null;
 
-      let progressSheetUrl = existingContracts?.[0]?.progress_sheet_url || null;
-
-      if (!progressSheetUrl && rawData["お名前"] && rawData["メールアドレス"]) {
+      if (rawData["お名前"] && rawData["メールアドレス"]) {
         const result = await createProgressSheet({
           name: rawData["お名前"],
           email: rawData["メールアドレス"],

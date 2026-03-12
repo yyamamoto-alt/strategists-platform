@@ -176,16 +176,8 @@ export async function POST(request: Request) {
     let progressSheetUrl: string | null = null;
 
     if (formName === "カルテ") {
-      // 1. ProgressSheet作成（未作成の場合のみ）
-      const { data: existingContracts } = await db
-        .from("contracts")
-        .select("progress_sheet_url")
-        .eq("customer_id", customerId)
-        .limit(1);
-
-      progressSheetUrl = existingContracts?.[0]?.progress_sheet_url || null;
-
-      if (!progressSheetUrl && rawData["お名前"] && rawData["メールアドレス"]) {
+      // 1. ProgressSheet作成（カルテ送信ごとに新規作成）
+      if (rawData["お名前"] && rawData["メールアドレス"]) {
         const result = await createProgressSheet({
           name: rawData["お名前"],
           email: rawData["メールアドレス"],
