@@ -234,6 +234,7 @@ async function syncFormFieldsToRelatedTables(
   customerId: string,
   sourceName: string,
   rawData: Record<string, string>,
+  isNewRecord = false,
 ): Promise<void> {
 
   // --- カルテ → customers テーブル ---
@@ -322,7 +323,10 @@ async function syncFormFieldsToRelatedTables(
       }
     }
 
-    // Slack通知: #biz-dev（名前/年齢/経歴/志望/プログレスシートURL）
+    // Slack通知: #biz-dev（名前/年齢/経歴/志望/プログレスシートURL）— 初回のみ
+    if (!isNewRecord) {
+      // 再処理時はSlack通知をスキップ（スパム防止）
+    } else {
     const birthDate = rawData["生年月日"];
     const age = birthDate ? calculateAge(birthDate) : null;
 
@@ -354,6 +358,7 @@ async function syncFormFieldsToRelatedTables(
         customerId,
       }).catch(() => {});
     }
+    } // end isNewRecord guard
   }
 
   // --- 営業報告 → sales_pipeline ---
@@ -526,14 +531,16 @@ async function syncFormFieldsToRelatedTables(
         mentoring_satisfaction: rawData["前回メンタリングの満足度"],
       });
 
-      // Slack通知: #指導管理（Zapier「メンター評価レポート」移管）
-      const { data: custData } = await db.from("customers").select("name").eq("id", customerId).single();
-      notifyMentoringEvaluation({
-        mentorName: rawData["担当メンター"] || rawData["メンター名"] || "不明",
-        studentName: custData?.name || rawData["お名前"] || "不明",
-        rating: rawData["前回メンタリングの満足度"],
-        operationsNote: rawData["運営への連絡・依頼事項"] || rawData["運営への要望・連絡事項"] || "",
-      }).catch(() => {});
+      // Slack通知: #指導管理（Zapier「メンター評価レポート」移管）— 初回のみ
+      if (isNewRecord) {
+        const { data: custData } = await db.from("customers").select("name").eq("id", customerId).single();
+        notifyMentoringEvaluation({
+          mentorName: rawData["担当メンター"] || rawData["メンター名"] || "不明",
+          studentName: custData?.name || rawData["お名前"] || "不明",
+          rating: rawData["前回メンタリングの満足度"],
+          operationsNote: rawData["運営への連絡・依頼事項"] || rawData["運営への要望・連絡事項"] || "",
+        }).catch(() => {});
+      }
     }
   }
 }
@@ -617,9 +624,6 @@ export async function upsertFromSpreadsheet(
         );
     }
 
-    // ソース別: 関連テーブルにフィールドを書き込み
-    await syncFormFieldsToRelatedTables(db, match.customer_id, sourceName, rawData);
-
     // application_history に履歴追加（重複チェック付き）
     // raw_data_hash（MD5）で高速に重複判定 + DBユニーク制約で二重防御
     const rawText = stableStringify(rawData);
@@ -632,6 +636,9 @@ export async function upsertFromSpreadsheet(
       .eq("raw_data_hash", rawDataHash)
       .limit(1);
     const isDuplicate = existingByHash && existingByHash.length > 0;
+
+    // ソース別: 関連テーブルにフィールドを書き込み（isNewRecord: 重複でなければ初回）
+    await syncFormFieldsToRelatedTables(db, match.customer_id, sourceName, rawData, !isDuplicate);
 
     if (!isDuplicate) {
       const { error: insertErr } = await db.from("application_history").insert({
