@@ -1050,6 +1050,7 @@ function buildColumns(
 // ================================================================
 
 type TabKey = "list" | "weekly" | "monthly";
+type DrillMetric = "collected" | "supported" | "courseStarted";
 
 interface WeeklyStats {
   weekEnd: string;
@@ -1066,11 +1067,24 @@ interface MonthlyStats {
   reskillingExpense: number;
 }
 
+interface DrillState {
+  weekEnd: string;
+  label: string;
+  metric: DrillMetric;
+}
+
+const METRIC_LABELS: Record<DrillMetric, string> = {
+  collected: "集客人数",
+  supported: "支援開始人数",
+  courseStarted: "講座受講開始人数",
+};
+
 export function SubsidyClient({ customers, firstPaidMap, completionData, documentData, checksData: initialChecksData }: Props) {
   const [activeTab, setActiveTab] = useState<TabKey>("list");
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerWithRelations | null>(null);
   const [docModal, setDocModal] = useState<DocModalState>({ open: false, type: "invoice", customer: null, completion: null });
   const [checksData, setChecksData] = useState(initialChecksData);
+  const [drill, setDrill] = useState<DrillState | null>(null);
 
   const weekEnds = useMemo(() => generateWeekEnds(), []);
   const months = useMemo(() => generateMonths(), []);
@@ -1156,6 +1170,31 @@ export function SubsidyClient({ customers, firstPaidMap, completionData, documen
 
   const monthlyTotal = useMemo(() => monthlyStats.reduce((s, m) => s + m.reskillingExpense, 0), [monthlyStats]);
   const latest = weeklyStats[weeklyStats.length - 1];
+
+  // ドリルダウン: 該当顧客リスト
+  const drillCustomers = useMemo(() => {
+    if (!drill) return [];
+    const { weekEnd, metric } = drill;
+    if (metric === "collected") {
+      return collectionTargets.filter((c) => {
+        const d = getSubsidyDate(c);
+        return d > SUBSIDY_START && d <= weekEnd;
+      });
+    }
+    if (metric === "supported") {
+      return collectionTargets.filter((c) => {
+        if (!isSupportStarted(c)) return false;
+        const d = normalizeDate(c.pipeline?.sales_date);
+        return d > SUBSIDY_START && d <= weekEnd;
+      });
+    }
+    // courseStarted
+    return collectionTargets.filter((c) => {
+      if (!isCourseStarted(c)) return false;
+      const d = normalizeDate(firstPaidMap[c.id]) || normalizeDate(c.contract?.payment_date) || normalizeDate(c.pipeline?.sales_date);
+      return d > SUBSIDY_START && d <= weekEnd;
+    });
+  }, [drill, collectionTargets, firstPaidMap]);
 
   const handleOpenDoc = useCallback((type: DocType) => {
     if (!selectedCustomer) return;
@@ -1245,9 +1284,16 @@ export function SubsidyClient({ customers, firstPaidMap, completionData, documen
                   {[...weeklyStats].reverse().map((w) => (
                     <tr key={w.weekEnd} className="border-b border-white/5">
                       <td className="px-6 py-3 text-gray-300 font-medium whitespace-nowrap">{w.label}</td>
-                      <td className="text-center px-4 py-3 text-white font-semibold">{w.collected}</td>
-                      <td className="text-center px-4 py-3 text-white font-semibold">{w.supported}</td>
-                      <td className="text-center px-4 py-3 text-white font-semibold">{w.courseStarted}</td>
+                      {(["collected", "supported", "courseStarted"] as DrillMetric[]).map((m) => (
+                        <td key={m} className="text-center px-4 py-3">
+                          <button
+                            onClick={() => setDrill({ weekEnd: w.weekEnd, label: w.label, metric: m })}
+                            className="text-white font-semibold hover:text-blue-400 hover:underline transition-colors"
+                          >
+                            {w[m]}
+                          </button>
+                        </td>
+                      ))}
                     </tr>
                   ))}
                 </tbody>
@@ -1323,6 +1369,62 @@ export function SubsidyClient({ customers, firstPaidMap, completionData, documen
         onClose={() => setDocModal({ open: false, type: "invoice", customer: null, completion: null })}
         firstPaidMap={firstPaidMap}
       />
+
+      {/* Drill-down Modal */}
+      {drill && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setDrill(null)}>
+          <div className="bg-surface-card border border-white/10 rounded-xl w-full max-w-lg max-h-[70vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-white">{METRIC_LABELS[drill.metric]}</h3>
+                <p className="text-[10px] text-gray-500 mt-0.5">{drill.label}時点 — {drillCustomers.length}人</p>
+              </div>
+              <button onClick={() => setDrill(null)} className="text-gray-400 hover:text-white text-lg">×</button>
+            </div>
+            <div className="overflow-y-auto flex-1 p-2">
+              {drillCustomers.length === 0 ? (
+                <p className="text-center text-gray-500 py-8 text-sm">該当なし</p>
+              ) : (
+                <table className="w-full text-xs">
+                  <thead className="sticky top-0 bg-surface-card">
+                    <tr className="border-b border-white/10 text-gray-400">
+                      <th className="text-left py-2 px-3">名前</th>
+                      <th className="text-left py-2 px-3">属性</th>
+                      <th className="text-left py-2 px-3">ステージ</th>
+                      <th className="text-left py-2 px-3">
+                        {drill.metric === "collected" ? "申込/営業日" : drill.metric === "supported" ? "営業実施日" : "入金日"}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {drillCustomers.map((c) => {
+                      const dateStr = drill.metric === "collected"
+                        ? getSubsidyDate(c)
+                        : drill.metric === "supported"
+                          ? normalizeDate(c.pipeline?.sales_date)
+                          : normalizeDate(firstPaidMap[c.id]) || normalizeDate(c.contract?.payment_date) || normalizeDate(c.pipeline?.sales_date);
+                      return (
+                        <tr key={c.id} className="border-b border-white/5 hover:bg-white/5">
+                          <td className="py-2 px-3">
+                            <Link href={`/customers/${c.id}`} className="text-blue-400 hover:underline">{c.name}</Link>
+                          </td>
+                          <td className="py-2 px-3 text-gray-300">{c.attribute || "—"}</td>
+                          <td className="py-2 px-3">
+                            <span className={`px-1.5 py-0.5 rounded text-[10px] ${getStageColor(c.pipeline?.stage || "")}`}>
+                              {c.pipeline?.stage || "—"}
+                            </span>
+                          </td>
+                          <td className="py-2 px-3 text-gray-300">{dateStr || "—"}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
