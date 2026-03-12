@@ -104,6 +104,26 @@ export async function AdsSection() {
     };
   });
 
+  // --- ローリングLTV計算（各期間時点から2ヶ月遡り） ---
+  function calcRollingLtv(periodEnd: string): number {
+    const endDate = new Date(periodEnd + (periodEnd.length === 7 ? "-28" : ""));
+    endDate.setDate(endDate.getDate() + 6); // 週末まで含む
+    const startDate = new Date(endDate);
+    startDate.setMonth(startDate.getMonth() - 2);
+    const startStr = startDate.toISOString().slice(0, 10);
+    const endStr = endDate.toISOString().slice(0, 10);
+
+    let scheduled = 0, revenue = 0;
+    for (const c of funnel) {
+      if (!c.application_date || c.application_date < startStr || c.application_date > endStr) continue;
+      if (adsFunnelIsScheduled(c.stage)) scheduled++;
+      if (adsFunnelIsClosed(c.stage)) {
+        revenue += c.confirmed_amount + c.expected_referral_fee;
+      }
+    }
+    return scheduled > 0 ? Math.round(revenue / scheduled) : 0;
+  }
+
   // --- 週次行を組み立て ---
   const allWeekKeys = new Set([...weeklyAds.keys(), ...weeklyFunnel.keys()]);
   const weeklyRows: AdsWeeklyRow[] = Array.from(allWeekKeys).sort().reverse().map(wk => {
@@ -118,6 +138,7 @@ export async function AdsSection() {
       closed: fnl.closed,
       revenue: Math.round(fnl.revenue),
       cpa_scheduled: Math.round(cpaScheduled),
+      rolling_ltv: calcRollingLtv(wk),
     };
   });
 
@@ -135,6 +156,7 @@ export async function AdsSection() {
       closed: fnl.closed,
       revenue: Math.round(fnl.revenue),
       cpa_scheduled: Math.round(cpaScheduled),
+      rolling_ltv: calcRollingLtv(mk),
     };
   });
 

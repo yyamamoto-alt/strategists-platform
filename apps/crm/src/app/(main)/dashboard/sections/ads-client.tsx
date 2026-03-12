@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend, Line, ComposedChart,
+  XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend, Line, ComposedChart, Bar,
 } from "recharts";
 
 export interface AdsWeeklyRow {
@@ -13,6 +13,7 @@ export interface AdsWeeklyRow {
   closed: number;
   revenue: number;
   cpa_scheduled: number;
+  rolling_ltv: number;
 }
 
 export interface LtvTier {
@@ -36,6 +37,12 @@ type ViewMode = "chart" | "table";
 function formatCurrency(v: number): string {
   if (v >= 10000) return `¥${(v / 10000).toFixed(1)}万`;
   return `¥${v.toLocaleString()}`;
+}
+
+function yAxisFmt(v: number): string {
+  if (v >= 10000) return `${(v / 10000).toFixed(0)}万`;
+  if (v >= 1000) return `${(v / 1000).toFixed(0)}千`;
+  return String(v);
 }
 
 export function AdsSummaryClient({ weeklyRows, monthlyRows, ltvTiers }: Props) {
@@ -68,7 +75,7 @@ export function AdsSummaryClient({ weeklyRows, monthlyRows, ltvTiers }: Props) {
           <div className="flex items-center justify-between mb-3">
             <div>
               <h2 className="text-sm font-semibold text-white">広告パフォーマンス</h2>
-              <p className="text-[10px] text-gray-500 mt-0.5">Google Ads 経由の広告費・申し込み・日程確定・成約</p>
+              <p className="text-[10px] text-gray-500 mt-0.5">Google Ads 経由の広告費・CPA・確定LTV</p>
             </div>
             <div className="flex items-center gap-2">
               {/* View mode toggle */}
@@ -112,57 +119,35 @@ export function AdsSummaryClient({ weeklyRows, monthlyRows, ltvTiers }: Props) {
 
         {/* Chart view */}
         {viewMode === "chart" && chartData.length > 0 && (
-          <div className="p-5 space-y-4">
-            {/* Cost + CPA chart */}
-            <div>
-              <h3 className="text-xs font-medium text-gray-400 mb-3">広告費 / CPA（日程確定ベース）</h3>
-              <ResponsiveContainer width="100%" height={220}>
-                <ComposedChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                  <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#6b7280" }}
-                    interval={Math.max(Math.floor(chartData.length / 10), 0)} />
-                  <YAxis yAxisId="left" tick={{ fontSize: 10, fill: "#6b7280" }}
-                    tickFormatter={(v: number) => v >= 1000 ? `${(v/1000).toFixed(0)}k` : String(v)} />
-                  <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10, fill: "#6b7280" }}
-                    tickFormatter={(v: number) => v >= 1000 ? `${(v/1000).toFixed(0)}k` : String(v)} />
-                  <Tooltip
-                    contentStyle={{ backgroundColor: "#1f2937", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 12 }}
-                    labelStyle={{ color: "#9ca3af" }}
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    formatter={(value: any, name: any) => {
-                      const v = Number(value);
-                      if (name === "広告費") return [`¥${Math.round(v).toLocaleString()}`, name];
-                      if (name === "CPA(確定)") return [v > 0 ? `¥${Math.round(v).toLocaleString()}` : "—", name];
-                      return [String(v), name];
-                    }}
-                  />
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Bar yAxisId="left" dataKey="cost" name="広告費" fill="#f59e0b" radius={[2, 2, 0, 0]} />
-                  <Line yAxisId="right" type="monotone" dataKey="cpa_scheduled" name="CPA(確定)" stroke="#ef4444" strokeWidth={2} dot={false} />
-                </ComposedChart>
-              </ResponsiveContainer>
+          <div className="p-5">
+            <div className="flex items-center gap-4 mb-2 text-[10px] text-gray-500">
+              <span>左軸 (棒): 広告費</span>
+              <span>右軸 (線): CPA / 確定LTV</span>
             </div>
-
-            {/* Funnel metrics chart */}
-            <div>
-              <h3 className="text-xs font-medium text-gray-400 mb-3">申し込み / 日程確定 / 成約</h3>
-              <ResponsiveContainer width="100%" height={200}>
-                <BarChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                  <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#6b7280" }}
-                    interval={Math.max(Math.floor(chartData.length / 10), 0)} />
-                  <YAxis tick={{ fontSize: 10, fill: "#6b7280" }} domain={[0, (max: number) => Math.max(max, 3)]} />
-                  <Tooltip
-                    contentStyle={{ backgroundColor: "#1f2937", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 12 }}
-                    labelStyle={{ color: "#9ca3af" }}
-                  />
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Bar dataKey="cv_application" name="申し込み" fill="#10b981" radius={[2, 2, 0, 0]} />
-                  <Bar dataKey="scheduled" name="日程確定" fill="#3b82f6" radius={[2, 2, 0, 0]} />
-                  <Bar dataKey="closed" name="成約" fill="#f59e0b" radius={[2, 2, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+            <ResponsiveContainer width="100%" height={280}>
+              <ComposedChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#6b7280" }}
+                  interval={Math.max(Math.floor(chartData.length / 10), 0)} />
+                <YAxis yAxisId="left" tick={{ fontSize: 10, fill: "#6b7280" }}
+                  tickFormatter={yAxisFmt} label={{ value: "広告費", angle: -90, position: "insideLeft", style: { fontSize: 10, fill: "#6b7280" }, offset: 10 }} />
+                <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10, fill: "#6b7280" }}
+                  tickFormatter={yAxisFmt} label={{ value: "CPA / LTV", angle: 90, position: "insideRight", style: { fontSize: 10, fill: "#6b7280" }, offset: 10 }} />
+                <Tooltip
+                  contentStyle={{ backgroundColor: "#1f2937", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 12 }}
+                  labelStyle={{ color: "#9ca3af" }}
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  formatter={(value: any, name: any) => {
+                    const v = Number(value);
+                    return [v > 0 ? `¥${Math.round(v).toLocaleString()}` : "—", name];
+                  }}
+                />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+                <Bar yAxisId="left" dataKey="cost" name="広告費" fill="#f59e0b" radius={[2, 2, 0, 0]} />
+                <Line yAxisId="right" type="monotone" dataKey="cpa_scheduled" name="CPA(確定)" stroke="#ef4444" strokeWidth={2} dot={false} />
+                <Line yAxisId="right" type="monotone" dataKey="rolling_ltv" name="確定LTV(2ヶ月移動)" stroke="#10b981" strokeWidth={2} dot={false} strokeDasharray="6 3" />
+              </ComposedChart>
+            </ResponsiveContainer>
           </div>
         )}
 
@@ -180,6 +165,7 @@ export function AdsSummaryClient({ weeklyRows, monthlyRows, ltvTiers }: Props) {
                   <th className="text-right py-2.5 px-3">日程確定</th>
                   <th className="text-right py-2.5 px-3">成約</th>
                   <th className="text-right py-2.5 px-3">CPA（確定）</th>
+                  <th className="text-right py-2.5 px-3">確定LTV</th>
                   <th className="text-right py-2.5 px-3">売上</th>
                 </tr>
               </thead>
@@ -211,6 +197,11 @@ export function AdsSummaryClient({ weeklyRows, monthlyRows, ltvTiers }: Props) {
                       {r.cpa_scheduled > 0 ? `¥${r.cpa_scheduled.toLocaleString()}` : "—"}
                     </td>
                     <td className="text-right py-2.5 px-3">
+                      <span className={r.rolling_ltv > 0 ? "text-green-400" : "text-gray-600"}>
+                        {r.rolling_ltv > 0 ? `¥${r.rolling_ltv.toLocaleString()}` : "—"}
+                      </span>
+                    </td>
+                    <td className="text-right py-2.5 px-3">
                       <span className={r.revenue > 0 ? "text-white" : "text-gray-600"}>
                         {r.revenue > 0 ? `¥${r.revenue.toLocaleString()}` : "—"}
                       </span>
@@ -218,7 +209,7 @@ export function AdsSummaryClient({ weeklyRows, monthlyRows, ltvTiers }: Props) {
                   </tr>
                 ))}
                 {rows.length === 0 && (
-                  <tr><td colSpan={7} className="py-8 text-center text-gray-500">データなし</td></tr>
+                  <tr><td colSpan={8} className="py-8 text-center text-gray-500">データなし</td></tr>
                 )}
                 {rows.length > 0 && (
                   <tr className="border-t border-white/20 bg-white/5 font-medium sticky bottom-0">
@@ -228,6 +219,7 @@ export function AdsSummaryClient({ weeklyRows, monthlyRows, ltvTiers }: Props) {
                     <td className="text-right py-2.5 px-3 text-blue-400">{totals.scheduled}</td>
                     <td className="text-right py-2.5 px-3 text-amber-400">{totals.closed}</td>
                     <td className="text-right py-2.5 px-3 text-white">{totalCpaScheduled > 0 ? `¥${totalCpaScheduled.toLocaleString()}` : "—"}</td>
+                    <td className="text-right py-2.5 px-3 text-gray-500">—</td>
                     <td className="text-right py-2.5 px-3 text-white">¥{totals.revenue.toLocaleString()}</td>
                   </tr>
                 )}
