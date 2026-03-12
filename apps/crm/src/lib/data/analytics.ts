@@ -362,6 +362,36 @@ export async function fetchMetaCampaignDaily(days: number = 90): Promise<MetaCam
   return all;
 }
 
+/** Meta Ads 経由の顧客ファネルデータ (utm_source = "fbad" or "facebook") */
+export async function fetchMetaFunnelData(): Promise<AdsFunnelCustomer[]> {
+  const { data, error } = await supabase()
+    .from("customers")
+    .select("id,name,application_date,attribute,utm_source,utm_medium,utm_campaign,sales_pipeline(stage),contracts(confirmed_amount),agent_records(expected_referral_fee)")
+    .in("utm_source", ["fbad", "facebook"])
+    .order("application_date", { ascending: false });
+
+  if (error) {
+    console.error("Meta funnel fetch error:", error.message);
+    return [];
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const r = (obj: any) => Array.isArray(obj) ? obj[0] : obj;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (data || []).map((row: any) => ({
+    id: row.id,
+    name: row.name,
+    application_date: row.application_date,
+    attribute: row.attribute,
+    utm_source: row.utm_source,
+    utm_medium: row.utm_medium,
+    utm_campaign: row.utm_campaign,
+    stage: r(row.sales_pipeline)?.stage ?? null,
+    confirmed_amount: r(row.contracts)?.confirmed_amount ?? 0,
+    expected_referral_fee: r(row.agent_records)?.expected_referral_fee ?? 0,
+  }));
+}
+
 /* ───── YouTube Analytics ───── */
 
 export interface YouTubeVideo {

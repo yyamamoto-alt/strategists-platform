@@ -65,6 +65,7 @@ export interface AnalyticsProps {
   adsKeywords: AdsKeywordDaily[];
   adsFunnel: AdsFunnelCustomer[];
   metaCampaigns: MetaCampaignDaily[];
+  metaFunnel: AdsFunnelCustomer[];
   youtubeVideos: YouTubeVideo[];
   youtubeDaily: YouTubeDaily[];
   youtubeChannelDaily: YouTubeChannelDaily[];

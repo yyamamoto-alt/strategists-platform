@@ -10,6 +10,7 @@ import {
   fetchAdsKeywordDaily,
   fetchAdsFunnelData,
   fetchMetaCampaignDaily,
+  fetchMetaFunnelData,
   fetchYouTubeVideos,
   fetchYouTubeDaily,
   fetchYouTubeChannelDaily,
@@ -20,7 +21,7 @@ import { AnalyticsClient } from "./analytics-client";
 export default async function AnalyticsPage() {
   const [
     pageDailyRows, traffic, searchQueries, searchDailyRows, hourlyRows,
-    adsCampaigns, adsKeywords, adsFunnel, metaCampaigns,
+    adsCampaigns, adsKeywords, adsFunnel, metaCampaigns, metaFunnel,
     youtubeVideos, youtubeDaily, youtubeChannelDaily, youtubeFunnel,
   ] = await Promise.all([
     fetchPageDailyRows(90),
@@ -32,6 +33,7 @@ export default async function AnalyticsPage() {
     fetchAdsKeywordDaily(365),
     fetchAdsFunnelData(),
     fetchMetaCampaignDaily(365),
+    fetchMetaFunnelData(),
     fetchYouTubeVideos(),
     fetchYouTubeDaily(90),
     fetchYouTubeChannelDaily(90),
@@ -49,6 +51,7 @@ export default async function AnalyticsPage() {
       adsKeywords={adsKeywords}
       adsFunnel={adsFunnel}
       metaCampaigns={metaCampaigns}
+      metaFunnel={metaFunnel}
       youtubeVideos={youtubeVideos}
       youtubeDaily={youtubeDaily}
       youtubeChannelDaily={youtubeChannelDaily}
