@@ -90,19 +90,12 @@ export function AdsSummaryClient({ weeklyRows, monthlyRows }: Props) {
         {/* Chart view */}
         {viewMode === "chart" && chartData.length > 0 && (
           <div className="p-5">
-            <div className="flex items-center gap-4 mb-2 text-[10px] text-gray-500">
-              <span>左軸 (棒): 広告費</span>
-              <span>右軸 (線): CPA / 確定LTV</span>
-            </div>
             <ResponsiveContainer width="100%" height={280}>
               <ComposedChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                 <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#6b7280" }}
                   interval={Math.max(Math.floor(chartData.length / 10), 0)} />
-                <YAxis yAxisId="left" tick={{ fontSize: 10, fill: "#6b7280" }}
-                  tickFormatter={yAxisFmt} label={{ value: "広告費", angle: -90, position: "insideLeft", style: { fontSize: 10, fill: "#6b7280" }, offset: 10 }} />
-                <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10, fill: "#6b7280" }}
-                  tickFormatter={yAxisFmt} label={{ value: "CPA / LTV", angle: 90, position: "insideRight", style: { fontSize: 10, fill: "#6b7280" }, offset: 10 }} />
+                <YAxis tick={{ fontSize: 10, fill: "#6b7280" }} tickFormatter={yAxisFmt} />
                 <Tooltip
                   contentStyle={{ backgroundColor: "#1f2937", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 12 }}
                   labelStyle={{ color: "#9ca3af" }}
@@ -113,9 +106,9 @@ export function AdsSummaryClient({ weeklyRows, monthlyRows }: Props) {
                   }}
                 />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
-                <Bar yAxisId="left" dataKey="cost" name="広告費" fill="#f59e0b" radius={[2, 2, 0, 0]} />
-                <Line yAxisId="right" type="monotone" dataKey="cpa_scheduled" name="CPA(2ヶ月移動)" stroke="#ef4444" strokeWidth={2} dot={false} />
-                <Line yAxisId="right" type="monotone" dataKey="rolling_ltv" name="確定LTV(2ヶ月移動)" stroke="#10b981" strokeWidth={2} dot={false} strokeDasharray="6 3" />
+                <Bar dataKey="cost" name="広告費" fill="#f59e0b" radius={[2, 2, 0, 0]} />
+                <Line type="monotone" dataKey="cpa_scheduled" name="CPA(2ヶ月移動)" stroke="#ef4444" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="rolling_ltv" name="確定LTV(2ヶ月移動)" stroke="#10b981" strokeWidth={2} dot={false} strokeDasharray="6 3" />
               </ComposedChart>
             </ResponsiveContainer>
           </div>
