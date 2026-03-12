@@ -11,8 +11,9 @@ export interface SubsidyCompletionData {
   hasExactFourRecord: boolean; // OR condition: 回次="4" exists
   caseConditionMet: boolean;
   caseConditionViaOr: boolean; // met via OR condition (warning)
-  // Condition 3: ビヘイビア面接指導1回以上
+  // Condition 3: ビヘイビア面接指導1回以上 OR 追加指導1回以上
   behaviorSessionCount: number;
+  additionalCoachingCount: number;
   behaviorConditionMet: boolean;
   // Condition 4: 総合評価が不可レベル以外を1回以上
   hasPassingEvaluation: boolean;
@@ -24,6 +25,7 @@ export interface SubsidyCompletionData {
   // Dates
   enrollmentDate: string | null; // 入塾フォーム timestamp
   paymentDate: string | null; // first payment date
+  firstCoachingDate: string | null; // 初回指導日 (回次=1の指導報告日)
 }
 
 const PASSING_EVALUATIONS = [
@@ -62,6 +64,7 @@ export async function fetchSubsidyCompletionData(
       caseConditionMet: false,
       caseConditionViaOr: false,
       behaviorSessionCount: 0,
+      additionalCoachingCount: 0,
       behaviorConditionMet: false,
       hasPassingEvaluation: false,
       evaluations: [],
@@ -70,6 +73,7 @@ export async function fetchSubsidyCompletionData(
       contractSigned: false,
       enrollmentDate: null,
       paymentDate: null,
+      firstCoachingDate: null,
     };
   }
 
@@ -83,9 +87,11 @@ export async function fetchSubsidyCompletionData(
     if (h.source === "メンター指導報告") {
       const kaiji = rd["回次（合計指導回数）"] || "";
 
-      // Check if ビヘイビア
+      // Check if ビヘイビア or 追加指導
       if (typeof kaiji === "string" && kaiji.includes("ビヘイビア")) {
         result[cid].behaviorSessionCount++;
+      } else if (typeof kaiji === "string" && kaiji === "追加指導") {
+        result[cid].additionalCoachingCount++;
       } else {
         // Numeric case sessions
         const num = parseInt(String(kaiji), 10);
@@ -93,6 +99,10 @@ export async function fetchSubsidyCompletionData(
           result[cid].caseSessionCount++;
           if (num === 4) {
             result[cid].hasExactFourRecord = true;
+          }
+          // 初回指導日 = 回次が1のレコードの日付
+          if (num === 1 && !result[cid].firstCoachingDate) {
+            result[cid].firstCoachingDate = rd["タイムスタンプ"] || h.applied_at || null;
           }
         }
       }
@@ -118,6 +128,21 @@ export async function fetchSubsidyCompletionData(
     }
   }
 
+  // 追加指導: パイプラインのステージ/追加指導日も確認
+  const { data: pipelineData } = await db
+    .from("sales_pipeline")
+    .select("customer_id, stage, additional_coaching_date")
+    .in("customer_id", customerIds);
+
+  if (pipelineData) {
+    for (const p of pipelineData) {
+      if (!result[p.customer_id]) continue;
+      if (p.stage === "追加指導" || p.additional_coaching_date) {
+        result[p.customer_id].additionalCoachingCount = Math.max(result[p.customer_id].additionalCoachingCount, 1);
+      }
+    }
+  }
+
   // Compute derived conditions
   for (const cid of customerIds) {
     const d = result[cid];
@@ -130,8 +155,8 @@ export async function fetchSubsidyCompletionData(
       d.caseConditionMet = true;
       d.caseConditionViaOr = true; // warn about potential data issue
     }
-    // Condition 3: behavior
-    d.behaviorConditionMet = d.behaviorSessionCount >= 1;
+    // Condition 3: behavior OR additional coaching
+    d.behaviorConditionMet = d.behaviorSessionCount >= 1 || d.additionalCoachingCount >= 1;
   }
 
   return result;
@@ -178,6 +203,41 @@ export async function fetchSubsidyDocuments(
         result[cid].certificateIssuedAt = row.issued_at;
         result[cid].certificateNumber = row.certificate_number;
       }
+    }
+  }
+
+  return result;
+}
+
+export interface SubsidyCheckData {
+  identityDocVerified: boolean;
+  bankDocVerified: boolean;
+}
+
+export async function fetchSubsidyChecks(
+  customerIds: string[]
+): Promise<Record<string, SubsidyCheckData>> {
+  if (customerIds.length === 0) return {};
+
+  const supabase = createServiceClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db = supabase as any;
+  const { data } = await db
+    .from("subsidy_checks")
+    .select("customer_id, identity_doc_verified, bank_doc_verified")
+    .in("customer_id", customerIds);
+
+  const result: Record<string, SubsidyCheckData> = {};
+  for (const cid of customerIds) {
+    result[cid] = { identityDocVerified: false, bankDocVerified: false };
+  }
+
+  if (data) {
+    for (const row of data) {
+      result[row.customer_id] = {
+        identityDocVerified: row.identity_doc_verified || false,
+        bankDocVerified: row.bank_doc_verified || false,
+      };
     }
   }
 

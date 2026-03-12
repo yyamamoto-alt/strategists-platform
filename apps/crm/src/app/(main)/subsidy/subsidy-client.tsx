@@ -29,6 +29,7 @@ interface SubsidyCompletionData {
   contractSigned: boolean;
   enrollmentDate: string | null;
   paymentDate: string | null;
+  firstCoachingDate: string | null;
 }
 
 interface DocumentData {
@@ -348,6 +349,8 @@ function DocumentModal({
   const handleIssue = async () => {
     setIssuing(true);
     try {
+      // 領収書はメール送付も同時に行う
+      const shouldSendEmail = state.type === "receipt" && !!customerEmail;
       const res = await fetch("/api/subsidy/issue-document", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -359,12 +362,13 @@ function DocumentModal({
           paymentDate,
           startDate,
           endDate,
-          sendEmail: false,
+          sendEmail: shouldSendEmail,
         }),
       });
       const data = await res.json();
       if (data.certificateNumber) setCertNumber(data.certificateNumber);
       setIssued(true);
+      if (shouldSendEmail && data.emailSentAt) setSent(true);
     } catch (e) {
       console.error("Issue failed:", e);
     } finally {
@@ -450,7 +454,7 @@ function DocumentModal({
               振込先書類: {completion.bankDocUrl ? "✅ 提出済み" : "❌ 未提出"}
             </p>
             <p className="text-xs text-blue-300">
-              契約書締結: {completion.contractSigned ? "✅ 済み" : "❌ 未確認"}
+              契約書締結: {completion.contractSigned ? "📋 自己申告済（要目視確認）" : "❌ 未確認"}
             </p>
           </div>
         )}
@@ -523,15 +527,22 @@ function DocumentModal({
             {!issued ? (
               <button
                 onClick={handleIssue}
-                disabled={issuing}
+                disabled={issuing || (state.type === "receipt" && !customerEmail)}
                 className="px-4 py-2 text-sm bg-brand text-white rounded-lg hover:bg-brand/90 disabled:opacity-50 transition-colors"
+                title={state.type === "receipt" && !customerEmail ? "メールアドレス未登録のため送付できません" : undefined}
               >
-                {issuing ? "登録中..." : "発行記録を登録"}
+                {issuing
+                  ? (state.type === "receipt" ? "送付中..." : "登録中...")
+                  : (state.type === "receipt"
+                    ? `${customerEmail} にメール送付`
+                    : "発行記録を登録")}
               </button>
             ) : (
               <>
-                <span className="text-xs text-green-400 self-center mr-2">登録済み</span>
-                {!sent ? (
+                <span className="text-xs text-green-400 self-center mr-2">
+                  {sent ? "送付済み" : "登録済み"}
+                </span>
+                {!sent && state.type !== "receipt" && (
                   <button
                     onClick={handleSendEmail}
                     disabled={sending || !customerEmail}
@@ -540,8 +551,6 @@ function DocumentModal({
                   >
                     {sending ? "送信中..." : `メール送信`}
                   </button>
-                ) : (
-                  <span className="text-xs text-green-400 self-center">送信済み</span>
                 )}
               </>
             )}
@@ -739,8 +748,8 @@ function CustomerDetailModal({
               )}
             </div>
             <div className="p-2 rounded-lg bg-white/[0.02]">
-              <span className={`text-xs ${d?.contractSigned ? "text-green-400" : "text-red-400"}`}>
-                {d?.contractSigned ? "✅" : "❌"} 契約書締結（入塾フォーム自己申告）
+              <span className={`text-xs ${d?.contractSigned ? "text-amber-400" : "text-red-400"}`}>
+                {d?.contractSigned ? "📋 自己申告済（要目視確認）" : "❌ 未確認"} 契約書締結
               </span>
             </div>
           </div>
@@ -837,9 +846,35 @@ function buildColumns(
       },
     },
     {
+      key: "first_coaching",
+      label: "初回指導日",
+      width: 100,
+      render: (c) => {
+        const d = completionData[c.id];
+        const dateStr = d?.firstCoachingDate ? normalizeDate(d.firstCoachingDate) : null;
+        return <span className="text-gray-300 text-xs">{dateStr || "-"}</span>;
+      },
+    },
+    {
+      key: "coaching_end",
+      label: "指導終了日",
+      width: 100,
+      render: (c) => {
+        const d = completionData[c.id];
+        const dateStr = d?.firstCoachingDate ? normalizeDate(d.firstCoachingDate) : null;
+        if (!dateStr) return <span className="text-gray-300 text-xs">-</span>;
+        const start = new Date(dateStr + "T00:00:00");
+        if (isNaN(start.getTime())) return <span className="text-gray-300 text-xs">-</span>;
+        start.setMonth(start.getMonth() + 2);
+        const endStr = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}-${String(start.getDate()).padStart(2, "0")}`;
+        const isPast = endStr < new Date().toISOString().slice(0, 10);
+        return <span className={`text-xs ${isPast ? "text-red-400" : "text-gray-300"}`}>{endStr}</span>;
+      },
+    },
+    {
       key: "conditions",
       label: "修了条件",
-      width: 240,
+      width: 320,
       render: (c) => {
         const d = completionData[c.id];
         const alerts = getAlerts(d);
