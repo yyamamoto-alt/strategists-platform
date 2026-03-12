@@ -1,0 +1,985 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Google Ads Deep Research Report | Strategists 2026.03</title>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --surface2: #1a1a28;
+    --border: #2a2a3d;
+    --text: #e0e0e8;
+    --text-muted: #8888a0;
+    --accent: #6366f1;
+    --accent2: #818cf8;
+    --green: #34d399;
+    --red: #f87171;
+    --yellow: #fbbf24;
+    --orange: #fb923c;
+    --cyan: #22d3ee;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Hero */
+  .hero {
+    position: relative;
+    padding: 80px 40px 60px;
+    text-align: center;
+    overflow: hidden;
+    background: linear-gradient(135deg, #0f0c29 0%, #1a1a3e 50%, #24243e 100%);
+    border-bottom: 1px solid var(--border);
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle at 30% 50%, rgba(99,102,241,0.08) 0%, transparent 50%),
+                radial-gradient(circle at 70% 50%, rgba(34,211,238,0.05) 0%, transparent 50%);
+    animation: pulse 8s ease-in-out infinite alternate;
+  }
+  @keyframes pulse {
+    0% { opacity: 0.5; }
+    100% { opacity: 1; }
+  }
+  .hero-content { position: relative; z-index: 1; max-width: 900px; margin: 0 auto; }
+  .hero-badge {
+    display: inline-block;
+    padding: 6px 16px;
+    background: rgba(99,102,241,0.15);
+    border: 1px solid rgba(99,102,241,0.3);
+    border-radius: 20px;
+    font-size: 13px;
+    color: var(--accent2);
+    letter-spacing: 0.5px;
+    margin-bottom: 24px;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 4vw, 48px);
+    font-weight: 800;
+    letter-spacing: -1px;
+    line-height: 1.2;
+    margin-bottom: 16px;
+    background: linear-gradient(135deg, #fff 0%, #a5b4fc 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .hero p { color: var(--text-muted); font-size: 16px; max-width: 600px; margin: 0 auto; }
+  .hero-meta { margin-top: 32px; display: flex; gap: 32px; justify-content: center; flex-wrap: wrap; }
+  .hero-meta-item { text-align: center; }
+  .hero-meta-item .label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
+  .hero-meta-item .value { font-size: 20px; font-weight: 700; color: #fff; margin-top: 4px; }
+
+  /* Layout */
+  .container { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+
+  /* Nav */
+  .toc {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(10,10,15,0.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 0;
+    overflow-x: auto;
+  }
+  .toc-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 24px;
+    display: flex;
+    gap: 8px;
+    white-space: nowrap;
+  }
+  .toc a {
+    font-size: 13px;
+    color: var(--text-muted);
+    text-decoration: none;
+    padding: 6px 14px;
+    border-radius: 6px;
+    transition: all 0.2s;
+  }
+  .toc a:hover { background: var(--surface2); color: var(--text); }
+
+  /* Section */
+  section { padding: 64px 0; border-bottom: 1px solid var(--border); }
+  section:last-child { border-bottom: none; }
+  .section-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--accent2);
+    margin-bottom: 8px;
+  }
+  h2 {
+    font-size: clamp(22px, 3vw, 32px);
+    font-weight: 700;
+    margin-bottom: 32px;
+    letter-spacing: -0.5px;
+  }
+  h3 {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 32px 0 16px;
+    color: #fff;
+  }
+  h4 {
+    font-size: 15px;
+    font-weight: 600;
+    margin: 24px 0 12px;
+    color: var(--accent2);
+  }
+  p { margin-bottom: 16px; color: var(--text-muted); }
+  p.lead { font-size: 17px; color: var(--text); }
+  strong { color: #fff; font-weight: 600; }
+
+  /* Cards */
+  .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin: 24px 0; }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    transition: border-color 0.2s;
+  }
+  .card:hover { border-color: var(--accent); }
+  .card .card-label { font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
+  .card .card-value { font-size: 28px; font-weight: 800; color: #fff; margin: 8px 0 4px; }
+  .card .card-change { font-size: 13px; }
+  .card .card-change.positive { color: var(--green); }
+  .card .card-change.negative { color: var(--red); }
+  .card .card-desc { font-size: 13px; color: var(--text-muted); margin-top: 8px; }
+
+  /* Tables */
+  .table-wrap { overflow-x: auto; margin: 24px 0; border-radius: 12px; border: 1px solid var(--border); }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th {
+    text-align: left;
+    padding: 12px 16px;
+    background: var(--surface2);
+    font-weight: 600;
+    color: var(--text-muted);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+  }
+  td {
+    padding: 12px 16px;
+    border-top: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  tr:hover td { background: rgba(99,102,241,0.03); }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .highlight-row td { background: rgba(99,102,241,0.08); }
+  .tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .tag-red { background: rgba(248,113,113,0.15); color: var(--red); }
+  .tag-green { background: rgba(52,211,153,0.15); color: var(--green); }
+  .tag-yellow { background: rgba(251,191,36,0.15); color: var(--yellow); }
+  .tag-accent { background: rgba(99,102,241,0.15); color: var(--accent2); }
+
+  /* Alert boxes */
+  .alert {
+    padding: 20px 24px;
+    border-radius: 12px;
+    margin: 24px 0;
+    border-left: 4px solid;
+  }
+  .alert-danger { background: rgba(248,113,113,0.08); border-color: var(--red); }
+  .alert-success { background: rgba(52,211,153,0.08); border-color: var(--green); }
+  .alert-warning { background: rgba(251,191,36,0.08); border-color: var(--yellow); }
+  .alert-info { background: rgba(99,102,241,0.08); border-color: var(--accent); }
+  .alert-title { font-weight: 700; color: #fff; margin-bottom: 8px; font-size: 15px; }
+  .alert p { margin-bottom: 0; font-size: 14px; }
+
+  /* Timeline */
+  .timeline { position: relative; padding-left: 32px; margin: 24px 0; }
+  .timeline::before { content: ''; position: absolute; left: 8px; top: 0; bottom: 0; width: 2px; background: var(--border); }
+  .timeline-item { position: relative; margin-bottom: 24px; }
+  .timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -28px;
+    top: 6px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 2px solid var(--bg);
+  }
+  .timeline-item.critical::before { background: var(--red); }
+  .timeline-item.success::before { background: var(--green); }
+  .timeline-date { font-size: 12px; color: var(--accent2); font-weight: 600; }
+  .timeline-text { font-size: 14px; color: var(--text-muted); margin-top: 4px; }
+
+  /* Funnel Chart */
+  .funnel { max-width: 500px; margin: 32px auto; }
+  .funnel-step {
+    position: relative;
+    margin: 0 auto 8px;
+    padding: 14px 20px;
+    text-align: center;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 14px;
+    color: #fff;
+  }
+  .funnel-step .funnel-num { font-size: 22px; font-weight: 800; }
+  .funnel-arrow { text-align: center; color: var(--text-muted); font-size: 12px; margin: 4px 0; }
+
+  /* Priority list */
+  .priority-list { list-style: none; margin: 24px 0; }
+  .priority-list li {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 16px 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 8px;
+    transition: border-color 0.2s;
+  }
+  .priority-list li:hover { border-color: var(--accent); }
+  .priority-num {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    font-weight: 800;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+  .priority-num.p1 { background: rgba(248,113,113,0.2); color: var(--red); }
+  .priority-num.p2 { background: rgba(251,191,36,0.2); color: var(--yellow); }
+  .priority-num.p3 { background: rgba(52,211,153,0.2); color: var(--green); }
+  .priority-content { flex: 1; }
+  .priority-title { font-weight: 700; color: #fff; font-size: 15px; }
+  .priority-desc { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+
+  /* Bar chart */
+  .bar-chart { margin: 24px 0; }
+  .bar-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+  .bar-label { width: 200px; font-size: 13px; color: var(--text-muted); text-align: right; flex-shrink: 0; }
+  .bar-track { flex: 1; height: 28px; background: var(--surface2); border-radius: 6px; overflow: hidden; position: relative; }
+  .bar-fill { height: 100%; border-radius: 6px; display: flex; align-items: center; padding-left: 10px; font-size: 12px; font-weight: 700; color: #fff; min-width: 40px; transition: width 1s ease; }
+  .bar-fill.blue { background: linear-gradient(90deg, var(--accent), var(--accent2)); }
+  .bar-fill.green { background: linear-gradient(90deg, #059669, var(--green)); }
+  .bar-fill.red { background: linear-gradient(90deg, #dc2626, var(--red)); }
+  .bar-fill.orange { background: linear-gradient(90deg, #ea580c, var(--orange)); }
+  .bar-fill.cyan { background: linear-gradient(90deg, #0891b2, var(--cyan)); }
+  .bar-value { font-size: 13px; color: var(--text-muted); width: 60px; text-align: right; flex-shrink: 0; }
+
+  /* Columns */
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin: 24px 0; }
+  @media (max-width: 768px) { .cols { grid-template-columns: 1fr; } }
+
+  /* Quote */
+  .insight {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    margin: 24px 0;
+    position: relative;
+  }
+  .insight::before {
+    content: 'INSIGHT';
+    position: absolute;
+    top: -10px;
+    left: 20px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 10px;
+    border-radius: 4px;
+    letter-spacing: 1px;
+  }
+  .insight p { color: var(--text); font-size: 15px; margin: 0; }
+
+  /* Footer */
+  footer {
+    padding: 48px 24px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 13px;
+    border-top: 1px solid var(--border);
+  }
+  footer a { color: var(--accent2); text-decoration: none; }
+
+  /* Keyword coverage */
+  .kw-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; margin: 16px 0; }
+  .kw-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 13px;
+  }
+  .kw-item .kw-status { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .kw-item .kw-status.covered { background: var(--green); }
+  .kw-item .kw-status.uncovered { background: var(--red); }
+  .kw-item .kw-clicks { margin-left: auto; color: var(--text-muted); font-size: 12px; }
+
+  /* AI Section */
+  .ai-card {
+    background: linear-gradient(135deg, rgba(99,102,241,0.1), rgba(34,211,238,0.05));
+    border: 1px solid rgba(99,102,241,0.3);
+    border-radius: 16px;
+    padding: 32px;
+    margin: 24px 0;
+  }
+  .ai-card h4 { color: var(--cyan); margin-top: 0; }
+  .ai-flow {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin: 16px 0;
+  }
+  .ai-flow-step {
+    padding: 10px 18px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 13px;
+    color: var(--text);
+  }
+  .ai-flow-arrow { color: var(--accent2); font-size: 18px; }
+</style>
+</head>
+<body>
+
+<!-- ============ HERO ============ -->
+<div class="hero">
+  <div class="hero-content">
+    <div class="hero-badge">DEEP RESEARCH REPORT</div>
+    <h1>Google Ads 申し込み減少<br>原因分析と打ち手</h1>
+    <p>Strategists CRMデータ + Google Ads API + GA4 + Search Console + 外部市場調査に基づくDeep Research</p>
+    <div class="hero-meta">
+      <div class="hero-meta-item">
+        <div class="label">分析期間</div>
+        <div class="value">2025.09 - 2026.03</div>
+      </div>
+      <div class="hero-meta-item">
+        <div class="label">データソース</div>
+        <div class="value">6種類</div>
+      </div>
+      <div class="hero-meta-item">
+        <div class="label">分析対象顧客</div>
+        <div class="value">55名</div>
+      </div>
+      <div class="hero-meta-item">
+        <div class="label">レポート日</div>
+        <div class="value">2026.03.12</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ TOC ============ -->
+<nav class="toc">
+  <div class="toc-inner">
+    <a href="#executive">Executive Summary</a>
+    <a href="#timeline">何が起きたか</a>
+    <a href="#cpa">CPA改善の分析</a>
+    <a href="#funnel">ファネル分析</a>
+    <a href="#keywords">検索クエリ占有</a>
+    <a href="#market">外部環境</a>
+    <a href="#actions">打ち手</a>
+    <a href="#ai-ops">AI運営体制</a>
+  </div>
+</nav>
+
+<!-- ============ EXECUTIVE SUMMARY ============ -->
+<section id="executive">
+  <div class="container">
+    <div class="section-label">Section 01</div>
+    <h2>Executive Summary</h2>
+
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-label">直近CPA（成約）</div>
+        <div class="card-value">&#165;76,309</div>
+        <div class="card-change positive">&#9660; 76% 改善 (vs 9-12月)</div>
+        <div class="card-desc">2026/1-2月実績。¥318,152から劇的改善</div>
+      </div>
+      <div class="card">
+        <div class="card-label">直近ROAS</div>
+        <div class="card-value">282%</div>
+        <div class="card-change positive">&#9650; 2.8x 投資回収</div>
+        <div class="card-desc">広告費¥228,926 → 売上¥646,000</div>
+      </div>
+      <div class="card">
+        <div class="card-label">3月の申し込み</div>
+        <div class="card-value">0件</div>
+        <div class="card-change negative">P-Max停止 + 予算縮小</div>
+        <div class="card-desc">3/6のP-Max停止でImp 99%減</div>
+      </div>
+      <div class="card">
+        <div class="card-label">未カバー検索クエリ</div>
+        <div class="card-value">34件</div>
+        <div class="card-change" style="color: var(--cyan);">月1,314クリックの機会損失</div>
+        <div class="card-desc">企業名+ケース面接系が完全未カバー</div>
+      </div>
+    </div>
+
+    <div class="alert alert-danger">
+      <div class="alert-title">根本原因: P-Max ターゲットCPA引き上げによる学習リセット</div>
+      <p>ROAS 282%の好実績を受け、ボリューム拡大のためターゲットCPAを引き上げたところ、P-Maxの機械学習が完全にリセット。43日間CV=0となり、3/6に停止。残った完全一致キャンペーンも日予算¥400に絞られ、事実上の広告停止状態に。</p>
+    </div>
+
+    <div class="alert alert-success">
+      <div class="alert-title">ポジティブな発見: CPA 1/4改善 + 巨大な未開拓クエリ</div>
+      <p>BROADマッチ整理とPHRASEへの切替でCPC -70%を実現。さらに「企業名+ケース面接」系（月680+クリック）が完全に広告未カバーであり、大きなアップサイドが存在する。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ TIMELINE ============ -->
+<section id="timeline">
+  <div class="container">
+    <div class="section-label">Section 02</div>
+    <h2>何が起きたか &mdash; タイムライン</h2>
+
+    <div class="timeline">
+      <div class="timeline-item">
+        <div class="timeline-date">2025年9月</div>
+        <div class="timeline-text">Google Ads運用開始。BROADマッチ中心、CPC ¥716。田代さん・イムさんが成約。</div>
+      </div>
+      <div class="timeline-item success">
+        <div class="timeline-date">2025年10-11月</div>
+        <div class="timeline-text">P-Max「Pmax_adlp」を並行運用。町元さん成約。11月にBROADマッチを大幅整理 → CPC -70%の劇的改善。</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-date">2025年12月</div>
+        <div class="timeline-text">広告ほぼ休止期間。週¥1,749のみ。</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-date">2026年1月</div>
+        <div class="timeline-text">Facebook広告 → Google広告に切替。P-Max「1/22A」を新規作成。完全一致キャンペーンもPHRASE中心に再編。</div>
+      </div>
+      <div class="timeline-item success">
+        <div class="timeline-date">2026年2月</div>
+        <div class="timeline-text"><strong>ピーク到達</strong>: 週2,000セッション、成約3件（鈴木さん・松本さん・小嶋さん）、CPA ¥76,309、ROAS 282%。</div>
+      </div>
+      <div class="timeline-item critical">
+        <div class="timeline-date">2026年2月下旬</div>
+        <div class="timeline-text"><strong>ターゲットCPA引き上げ</strong> → 学習リセット発生。P-MaxのCV取得がゼロに。</div>
+      </div>
+      <div class="timeline-item critical">
+        <div class="timeline-date">2026年3月6日</div>
+        <div class="timeline-text"><strong>P-Max「1/22A」停止</strong>。インプレッション99%減。完全一致のみ残るが日予算¥400。</div>
+      </div>
+      <div class="timeline-item critical">
+        <div class="timeline-date">2026年3月7日〜現在</div>
+        <div class="timeline-text">日100 Imp程度。申込CV 0件。事実上の広告停止状態。</div>
+      </div>
+    </div>
+
+    <h3>週別パフォーマンス推移</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>週</th><th class="num">Imp</th><th class="num">Clicks</th><th class="num">CTR</th><th class="num">広告費</th><th class="num">申込CV</th><th>キャンペーン</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>W39 (9月下旬)</td><td class="num">59,768</td><td class="num">1,086</td><td class="num">1.8%</td><td class="num">&#165;102,010</td><td class="num">0</td><td>完全一致 + Pmax_adlp</td></tr>
+          <tr><td>W42 (10月中旬)</td><td class="num">68,614</td><td class="num">2,673</td><td class="num">3.9%</td><td class="num">&#165;84,340</td><td class="num">2</td><td>完全一致 + Pmax_adlp</td></tr>
+          <tr><td>W44 (10月下旬)</td><td class="num">45,641</td><td class="num">1,121</td><td class="num">2.5%</td><td class="num">&#165;87,585</td><td class="num">3</td><td>完全一致 + Pmax_adlp</td></tr>
+          <tr class="highlight-row"><td>W06 (2月上旬)</td><td class="num">95,811</td><td class="num">2,808</td><td class="num">2.9%</td><td class="num">&#165;46,346</td><td class="num">2.3</td><td>完全一致 + 1/22A</td></tr>
+          <tr class="highlight-row"><td>W07 (2月中旬)</td><td class="num">103,158</td><td class="num">2,407</td><td class="num">2.3%</td><td class="num">&#165;38,179</td><td class="num">0</td><td>完全一致 + 1/22A</td></tr>
+          <tr><td>W09 (2月下旬)</td><td class="num">59,607</td><td class="num">1,709</td><td class="num">2.9%</td><td class="num">&#165;31,010</td><td class="num">0</td><td>完全一致 + 1/22A</td></tr>
+          <tr style="background: rgba(248,113,113,0.06);"><td>W10 (3月上旬)</td><td class="num">363</td><td class="num">35</td><td class="num">9.6%</td><td class="num">&#165;2,896</td><td class="num">0</td><td>完全一致のみ</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CPA IMPROVEMENT ============ -->
+<section id="cpa">
+  <div class="container">
+    <div class="section-label">Section 03</div>
+    <h2>なぜCPAが1/4に改善したか</h2>
+
+    <p class="lead">2025年9-12月の成約CPA ¥318,152 → 2026年1-2月 ¥76,309。<strong>76%改善</strong>の要因を分解する。</p>
+
+    <div class="cols">
+      <div>
+        <h3>要因1: マッチタイプ最適化</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>マッチタイプ</th><th class="num">CTR</th><th class="num">CPC</th><th class="num">CV</th></tr></thead>
+            <tbody>
+              <tr class="highlight-row"><td><span class="tag tag-green">PHRASE</span></td><td class="num">10.2%</td><td class="num">&#165;215</td><td class="num">4.3</td></tr>
+              <tr><td><span class="tag tag-accent">EXACT</span></td><td class="num">6.6%</td><td class="num">&#165;404</td><td class="num">3.0</td></tr>
+              <tr><td><span class="tag tag-red">BROAD</span></td><td class="num">6.4%</td><td class="num">&#165;679</td><td class="num">5.6</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>BROADマッチのCPC ¥679を廃止し、PHRASE（¥215）に切替えたことでCPCが<strong>70%低下</strong>。</p>
+      </div>
+      <div>
+        <h3>要因2: 低効率KWの停止</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>停止KW</th><th class="num">CPA</th><th>判定</th></tr></thead>
+            <tbody>
+              <tr><td>ケース面接 中途</td><td class="num">&#165;72,224</td><td><span class="tag tag-red">停止</span></td></tr>
+              <tr><td>ムービン コンサル</td><td class="num">&#8734;</td><td><span class="tag tag-red">CV0</span></td></tr>
+              <tr><td>コンコード コンサル</td><td class="num">&#8734;</td><td><span class="tag tag-red">CV0</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>エージェント系の競合KW（CPC ¥1,000超、CVゼロ）を11月に一掃。</p>
+      </div>
+    </div>
+
+    <h3>CVを生んだキーワード Top 9（効率順）</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>キーワード</th><th class="num">CV数</th><th class="num">CPA</th><th class="num">CPC</th><th>マッチ</th><th>最終CV日</th></tr></thead>
+        <tbody>
+          <tr class="highlight-row"><td>ケース面接 講座</td><td class="num">1.0</td><td class="num" style="color: var(--green);">&#165;3,039</td><td class="num">&#165;507</td><td>BROAD</td><td>2025-10</td></tr>
+          <tr class="highlight-row"><td>マッキンゼー 対策</td><td class="num">1.0</td><td class="num" style="color: var(--green);">&#165;4,336</td><td class="num">&#165;368</td><td>EXACT</td><td>2025-11</td></tr>
+          <tr class="highlight-row"><td>戦略コンサル 内定</td><td class="num">1.0</td><td class="num" style="color: var(--green);">&#165;4,890</td><td class="num">&#165;349</td><td>PHRASE</td><td>2026-01</td></tr>
+          <tr class="highlight-row"><td>戦コン 面接</td><td class="num">1.0</td><td class="num" style="color: var(--green);">&#165;5,231</td><td class="num">&#165;308</td><td>PHRASE</td><td>2026-02</td></tr>
+          <tr><td>戦略コンサル 対策</td><td class="num">2.0</td><td class="num">&#165;22,268</td><td class="num">&#165;241</td><td>PHRASE</td><td>2026-02</td></tr>
+          <tr><td>フェルミ推定 対策</td><td class="num">1.0</td><td class="num">&#165;30,625</td><td class="num">&#165;195</td><td>EXACT</td><td>2026-02</td></tr>
+          <tr><td>ケース 面接 対策</td><td class="num">1.5</td><td class="num">&#165;43,556</td><td class="num">&#165;1,210</td><td>BROAD</td><td>2025-10</td></tr>
+          <tr><td>戦略コンサル 面接</td><td class="num">1.0</td><td class="num">&#165;54,122</td><td class="num">&#165;229</td><td>EXACT</td><td>2025-11</td></tr>
+          <tr><td>ケース面接 中途</td><td class="num">2.0</td><td class="num" style="color: var(--red);">&#165;72,224</td><td class="num">&#165;679</td><td>BROAD</td><td>2025-11</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="insight">
+      <p><strong>CPA ¥3,000〜5,000のキーワードが複数存在する。</strong>「ケース面接 講座」「マッキンゼー 対策」「戦コン 面接」は超高効率。これらへの予算集中投下と、同系統KWの拡張がアップサイドの源泉。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FUNNEL ============ -->
+<section id="funnel">
+  <div class="container">
+    <div class="section-label">Section 04</div>
+    <h2>ファネル分析</h2>
+
+    <h3>Google Ads経由 55名の月別ファネル</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>月</th><th class="num">申込</th><th class="num">日程確定+</th><th class="num">成約</th><th class="num">確定率</th><th class="num">成約率</th><th class="num">売上</th><th class="num">広告費</th><th class="num">ROAS</th></tr></thead>
+        <tbody>
+          <tr><td>2025/04</td><td class="num">6</td><td class="num">3</td><td class="num">3</td><td class="num">50%</td><td class="num" style="color:var(--green);">50%</td><td class="num">&#165;421,500</td><td class="num">-</td><td class="num">-</td></tr>
+          <tr><td>2025/05</td><td class="num">8</td><td class="num">1</td><td class="num">1</td><td class="num">12%</td><td class="num">12%</td><td class="num">&#165;171,000</td><td class="num">-</td><td class="num">-</td></tr>
+          <tr><td>2025/06</td><td class="num" style="color:var(--cyan);">13</td><td class="num">0</td><td class="num" style="color:var(--red);">0</td><td class="num">0%</td><td class="num" style="color:var(--red);">0%</td><td class="num">&#165;0</td><td class="num">-</td><td class="num">-</td></tr>
+          <tr><td>2025/07</td><td class="num">7</td><td class="num">0</td><td class="num">0</td><td class="num">0%</td><td class="num">0%</td><td class="num">&#165;0</td><td class="num">-</td><td class="num">-</td></tr>
+          <tr><td>2025/08</td><td class="num">4</td><td class="num">0</td><td class="num">0</td><td class="num">0%</td><td class="num">0%</td><td class="num">&#165;0</td><td class="num">-</td><td class="num">-</td></tr>
+          <tr class="highlight-row"><td>2025/09</td><td class="num">4</td><td class="num">2</td><td class="num">2</td><td class="num">50%</td><td class="num" style="color:var(--green);">50%</td><td class="num">&#165;296,000</td><td class="num">&#165;322,378</td><td class="num">92%</td></tr>
+          <tr><td>2025/10</td><td class="num">2</td><td class="num">1</td><td class="num">1</td><td class="num">50%</td><td class="num">50%</td><td class="num">&#165;197,800</td><td class="num">&#165;384,480</td><td class="num">51%</td></tr>
+          <tr><td>2025/11</td><td class="num">2</td><td class="num">0</td><td class="num">0</td><td class="num">0%</td><td class="num">0%</td><td class="num">&#165;0</td><td class="num">&#165;245,848</td><td class="num">0%</td></tr>
+          <tr><td>2025/12</td><td class="num">1</td><td class="num">0</td><td class="num">0</td><td class="num">0%</td><td class="num">0%</td><td class="num">&#165;0</td><td class="num">&#165;1,749</td><td class="num">0%</td></tr>
+          <tr><td>2026/01</td><td class="num">1</td><td class="num">0</td><td class="num">0</td><td class="num">0%</td><td class="num">0%</td><td class="num">&#165;0</td><td class="num">&#165;73,600</td><td class="num">0%</td></tr>
+          <tr class="highlight-row"><td>2026/02</td><td class="num">5</td><td class="num">3</td><td class="num" style="color:var(--green);">3</td><td class="num" style="color:var(--green);">60%</td><td class="num" style="color:var(--green);">60%</td><td class="num" style="color:var(--green);">&#165;646,000</td><td class="num">&#165;155,326</td><td class="num" style="color:var(--green);">416%</td></tr>
+          <tr style="background:rgba(248,113,113,0.06);"><td>2026/03</td><td class="num" style="color:var(--red);">0</td><td class="num">0</td><td class="num">0</td><td class="num">-</td><td class="num">-</td><td class="num">&#165;0</td><td class="num">&#165;33,906</td><td class="num">0%</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="alert alert-warning">
+      <div class="alert-title">2025年6月: 申込13件なのに成約0件</div>
+      <p>申込数のピーク月だが成約率0%。この時期はBROADマッチ中心で「質の低いリード」が多かった。量より質の運用に転換した9月以降、少数でも成約率50-60%に改善。</p>
+    </div>
+
+    <h3>チャネル別成約率の比較</h3>
+    <div class="bar-chart">
+      <div class="bar-row">
+        <div class="bar-label">note経由</div>
+        <div class="bar-track"><div class="bar-fill green" style="width:71.4%;">71.4%</div></div>
+        <div class="bar-value">7名</div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-label">Direct/未設定</div>
+        <div class="bar-track"><div class="bar-fill cyan" style="width:32.5%;">32.5%</div></div>
+        <div class="bar-value">631名</div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-label">YouTube</div>
+        <div class="bar-track"><div class="bar-fill blue" style="width:31.6%;">31.6%</div></div>
+        <div class="bar-value">19名</div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-label"><strong>Google Ads</strong></div>
+        <div class="bar-track"><div class="bar-fill orange" style="width:18.2%;">18.2%</div></div>
+        <div class="bar-value">55名</div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-label">X (Twitter)</div>
+        <div class="bar-track"><div class="bar-fill blue" style="width:13.9%;">13.9%</div></div>
+        <div class="bar-value">36名</div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-label">Facebook Ads</div>
+        <div class="bar-track"><div class="bar-fill red" style="width:7.8%;">7.8%</div></div>
+        <div class="bar-value">129名</div>
+      </div>
+    </div>
+
+    <div class="insight">
+      <p><strong>Google Ads成約率はFacebook Adsの2.3倍（18.2% vs 7.8%）。</strong>Google重視への切替は正解。さらに既卒・中途層のCV率は85-89%と突出しており、新卒向け広告（成約率ほぼ0%）は除外すべき。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ KEYWORDS ============ -->
+<section id="keywords">
+  <div class="container">
+    <div class="section-label">Section 05</div>
+    <h2>検索クエリ占有状況 &mdash; 巨大な機会損失</h2>
+
+    <p class="lead">オーガニック検索でクリックが多い「企業名+ケース面接」系クエリに、<strong>広告を1本も出していない</strong>。</p>
+
+    <h3>企業名+ケース面接: 全て広告未カバー</h3>
+    <p>これらは「特定のコンサルファームのケース面接を近々受ける人」= Strategistsの最重要ターゲット。</p>
+
+    <div class="kw-grid">
+      <div class="kw-item"><span class="kw-status uncovered"></span>アビーム ケース面接<span class="kw-clicks">116 clicks</span></div>
+      <div class="kw-item"><span class="kw-status uncovered"></span>ベイカレント ケース面接<span class="kw-clicks">115 clicks</span></div>
+      <div class="kw-item"><span class="kw-status uncovered"></span>pwc ケース面接<span class="kw-clicks">89 clicks</span></div>
+      <div class="kw-item"><span class="kw-status uncovered"></span>デロイト ケース面接<span class="kw-clicks">87 clicks</span></div>
+      <div class="kw-item"><span class="kw-status uncovered"></span>アクセンチュア ケース面接<span class="kw-clicks">152 clicks</span></div>
+      <div class="kw-item"><span class="kw-status uncovered"></span>BCG ケース面接<span class="kw-clicks">56 clicks</span></div>
+      <div class="kw-item"><span class="kw-status uncovered"></span>ベイン ケース面接<span class="kw-clicks">40 clicks</span></div>
+      <div class="kw-item"><span class="kw-status uncovered"></span>ローランドベルガー ケース面接<span class="kw-clicks">14 clicks</span></div>
+      <div class="kw-item"><span class="kw-status uncovered"></span>ATカーニー ケース面接<span class="kw-clicks">13 clicks</span></div>
+      <div class="kw-item"><span class="kw-status uncovered"></span>アクセンチュア フェルミ推定<span class="kw-clicks">13 clicks</span></div>
+    </div>
+    <p style="text-align:center; margin-top:8px;"><span class="kw-status uncovered" style="display:inline-block; width:8px; height:8px; border-radius:50; background:var(--red);"></span> = 広告未カバー &nbsp;&nbsp; 合計: <strong>月680+クリック</strong>の機会損失</p>
+
+    <h3>広告カバー済みのキーワード</h3>
+    <div class="kw-grid">
+      <div class="kw-item"><span class="kw-status covered"></span>戦略コンサル 面接<span class="kw-clicks">CV 1.0</span></div>
+      <div class="kw-item"><span class="kw-status covered"></span>戦略コンサル 対策<span class="kw-clicks">CV 2.0</span></div>
+      <div class="kw-item"><span class="kw-status covered"></span>フェルミ推定 対策<span class="kw-clicks">CV 1.0</span></div>
+      <div class="kw-item"><span class="kw-status covered"></span>ケース面接 対策<span class="kw-clicks">CV 1.5</span></div>
+      <div class="kw-item"><span class="kw-status covered"></span>戦コン 面接<span class="kw-clicks">CV 1.0</span></div>
+      <div class="kw-item"><span class="kw-status covered"></span>戦略コンサル 内定<span class="kw-clicks">CV 1.0</span></div>
+    </div>
+
+    <h3>広告で取る必要がないキーワード（オーガニック優位）</h3>
+    <div class="kw-grid">
+      <div class="kw-item"><span class="kw-status covered"></span>strategists（ブランド）<span class="kw-clicks">CTR 55%</span></div>
+      <div class="kw-item"><span class="kw-status covered"></span>ケース面接 フレームワーク<span class="kw-clicks">Org 25 clicks</span></div>
+    </div>
+
+    <div class="alert alert-info">
+      <div class="alert-title">アップサイド推計</div>
+      <p>未カバーの企業名系KW（月680+クリック）をフレーズ一致で追加した場合、想定CVR 1-3%で<strong>月7-20件の追加申込CV</strong>が見込める。CPAは完全一致実績から¥5,000〜30,000と推定。</p>
+    </div>
+
+    <h3>オーガニック検索の注意点</h3>
+    <div class="alert alert-warning">
+      <div class="alert-title">「ケース面接」完全一致の掲載順位が悪化中</div>
+      <p>Search Consoleデータによると、「ケース面接」の平均掲載順位が 1.5位（12月）→ 20.7位（3月）に大幅悪化。コンテンツ更新やSEO対策が必要。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ MARKET ============ -->
+<section id="market">
+  <div class="container">
+    <div class="section-label">Section 06</div>
+    <h2>外部環境分析</h2>
+
+    <div class="cols">
+      <div>
+        <h3>コンサル転職市場</h3>
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-label">市場規模成長率</div>
+          <div class="card-value">+10.8%</div>
+          <div class="card-desc">2024年 7,987億円。年平均8.8%成長中</div>
+        </div>
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-label">転職求人倍率（コンサル）</div>
+          <div class="card-value">7.77x</div>
+          <div class="card-desc">高水準だが「厳選採用」へシフト中</div>
+        </div>
+        <div class="card">
+          <div class="card-label">大手ファーム動向</div>
+          <div class="card-value" style="font-size:20px;">二極化</div>
+          <div class="card-desc">マッキンゼー数千人削減・アクセンチュア1,300億円リストラ。ただし日本法人への影響は限定的</div>
+        </div>
+      </div>
+      <div>
+        <h3>広告CPC相場</h3>
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-label">教育業界CPC変化率</div>
+          <div class="card-value" style="color:var(--red);">+42%</div>
+          <div class="card-desc">$4.39→$6.23。全23業界中2位の上昇幅</div>
+        </div>
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-label">CPL(リード獲得単価)</div>
+          <div class="card-value" style="color:var(--red);">+26%</div>
+          <div class="card-desc">$71.52→$90.02。同予算で取れるリード数が減少</div>
+        </div>
+        <div class="card">
+          <div class="card-label">CPC上昇業界比率</div>
+          <div class="card-value">87%</div>
+          <div class="card-desc">ほぼ全業界でCPCが上昇するトレンド</div>
+        </div>
+      </div>
+    </div>
+
+    <h3>競合環境</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>競合</th><th>タイプ</th><th>価格</th><th>脅威度</th></tr></thead>
+        <tbody>
+          <tr><td><strong>MyVision</strong></td><td>転職エージェント（無料ケース対策あり）</td><td>無料</td><td><span class="tag tag-red">高</span></td></tr>
+          <tr><td>ムービン</td><td>コンサル特化エージェント（30年実績）</td><td>無料</td><td><span class="tag tag-yellow">中</span></td></tr>
+          <tr><td>Reverse</td><td>マンツーマンケース対策塾</td><td>有料</td><td><span class="tag tag-yellow">中</span></td></tr>
+          <tr><td>Strategy Academy</td><td>3ヶ月集中対策</td><td>有料</td><td><span class="tag tag-green">低</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>季節性</h3>
+    <div class="alert alert-info">
+      <div class="alert-title">3月は「谷間」の可能性</div>
+      <p>4月入社を目指す人はすでに対策済み。7-10月入社を目指す人はまだ動き出していない。ただし転職市場自体は活況（有効求人倍率1.18倍）なので、4月以降の回復が見込める。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ ACTIONS ============ -->
+<section id="actions">
+  <div class="container">
+    <div class="section-label">Section 07</div>
+    <h2>打ち手: 優先順位付きアクションプラン</h2>
+
+    <h3>最優先（今すぐ実行）</h3>
+    <ul class="priority-list">
+      <li>
+        <div class="priority-num p1">1</div>
+        <div class="priority-content">
+          <div class="priority-title">完全一致キャンペーンの日予算を ¥400 → ¥1,500-2,000 に増額</div>
+          <div class="priority-desc">唯一CVを生むキャンペーンが事実上停止している。この復旧が最優先。ROAS 282%の実績があり、予算増加のリスクは低い。</div>
+        </div>
+      </li>
+      <li>
+        <div class="priority-num p1">2</div>
+        <div class="priority-content">
+          <div class="priority-title">「企業名+ケース面接」キーワードをフレーズ一致で追加</div>
+          <div class="priority-desc">アビーム/ベイカレント/PWC/デロイト/アクセンチュア/BCG/ベイン + ケース面接。月680+クリックの高CV意図クエリ。Strategistsのブログが既に上位表示されているため、広告との相乗効果が高い。</div>
+        </div>
+      </li>
+      <li>
+        <div class="priority-num p1">3</div>
+        <div class="priority-content">
+          <div class="priority-title">新卒向けKWの除外設定</div>
+          <div class="priority-desc">Google Ads経由の新卒は成約率ほぼ0%。「新卒」「就活」「インターン」を除外キーワードに設定し、予算を既卒・中途に集中。</div>
+        </div>
+      </li>
+    </ul>
+
+    <h3>高優先（1-2週間以内）</h3>
+    <ul class="priority-list">
+      <li>
+        <div class="priority-num p2">4</div>
+        <div class="priority-content">
+          <div class="priority-title">広告専用LPの作成（CVR 1% → 5-7%目標）</div>
+          <div class="priority-desc">現在はトップページに着地。教育業界の平均CVR 8%に対し1%は低すぎる。ファーストビューに合格実績、埋め込みフォーム、CTA3箇所以上。CVRが3%に改善するだけでCPAが1/3に。</div>
+        </div>
+      </li>
+      <li>
+        <div class="priority-num p2">5</div>
+        <div class="priority-content">
+          <div class="priority-title">悩み系キーワードの追加テスト</div>
+          <div class="priority-desc">「ケース面接 受からない」「コンサル転職 難しい」「ケース面接 練習」「ケース面接 スクール」等。フレーズ一致で少額テスト。</div>
+        </div>
+      </li>
+      <li>
+        <div class="priority-num p2">6</div>
+        <div class="priority-content">
+          <div class="priority-title">ヒートマップ（Microsoft Clarity）導入</div>
+          <div class="priority-desc">無料。LP上のクリック位置・スクロール深度を可視化し、データに基づく改善を開始。</div>
+        </div>
+      </li>
+    </ul>
+
+    <h3>中優先（月予算20万円以上になったら）</h3>
+    <ul class="priority-list">
+      <li>
+        <div class="priority-num p3">7</div>
+        <div class="priority-content">
+          <div class="priority-title">P-Max を新規作成（旧キャンペーンは再開しない）</div>
+          <div class="priority-desc">学習崩壊データが残る旧キャンペーンより新規作成を推奨。「CV最大化」入札（目標CPAなし）で開始。P-Maxの推奨最低日予算 ¥7,500-15,000（月22-45万円）なので、予算確保が前提。</div>
+        </div>
+      </li>
+      <li>
+        <div class="priority-num p3">8</div>
+        <div class="priority-content">
+          <div class="priority-title">Meta広告リマーケティング（月1-2万円）</div>
+          <div class="priority-desc">LP訪問者へのリマケ専用。CPC 30-60円と安く、Facebook/Instagramフィードで繰り返し想起させる。新規獲得ではなく離脱者の回収に限定。</div>
+        </div>
+      </li>
+    </ul>
+
+    <h3>再発防止: CPA変更の安全ルール</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>ルール</th><th>詳細</th></tr></thead>
+        <tbody>
+          <tr><td><strong>1回の変更幅</strong></td><td>最大 <strong>10-20%</strong> 以内</td></tr>
+          <tr><td><strong>変更後の待機</strong></td><td>最低 <strong>7-14日</strong> は一切触らない</td></tr>
+          <tr><td><strong>変更条件</strong></td><td>直近30日で <strong>30件以上のCV</strong> がある状態で変更</td></tr>
+          <tr><td><strong>予算変更</strong></td><td>1回 <strong>20%以内</strong>。学習リセットを防止</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>推奨予算配分（月10-15万円の場合）</h3>
+    <div class="bar-chart">
+      <div class="bar-row">
+        <div class="bar-label">完全一致+フレーズ一致</div>
+        <div class="bar-track"><div class="bar-fill blue" style="width:70%;">70%</div></div>
+        <div class="bar-value">7-10万</div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-label">企業名KW テスト</div>
+        <div class="bar-track"><div class="bar-fill cyan" style="width:20%;">20%</div></div>
+        <div class="bar-value">2-3万</div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-label">Meta リマケ</div>
+        <div class="bar-track"><div class="bar-fill orange" style="width:10%;">10%</div></div>
+        <div class="bar-value">1-1.5万</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ AI OPS ============ -->
+<section id="ai-ops">
+  <div class="container">
+    <div class="section-label">Section 08</div>
+    <h2>AI運営体制 &mdash; Claudeを継続的に活用する</h2>
+
+    <p class="lead">今回の分析はClaude Code（Opus 4.6）で実施した。6つのエージェントを並列起動し、CRMデータベース直接クエリ + Web検索を組み合わせたDeep Research。<br>これを<strong>臨時ではなく継続的な分析基盤</strong>にする方法を提案する。</p>
+
+    <h3>現在の分析アーキテクチャ</h3>
+    <div class="ai-card">
+      <h4>今回のDeep Research構成</h4>
+      <div class="ai-flow">
+        <div class="ai-flow-step">Supabase<br><small>CRM DB直接クエリ</small></div>
+        <div class="ai-flow-arrow">&rarr;</div>
+        <div class="ai-flow-step">Claude Code<br><small>6エージェント並列</small></div>
+        <div class="ai-flow-arrow">&rarr;</div>
+        <div class="ai-flow-step">Web Search<br><small>市場/競合調査</small></div>
+        <div class="ai-flow-arrow">&rarr;</div>
+        <div class="ai-flow-step">統合レポート<br><small>HTML自動生成</small></div>
+      </div>
+      <p style="margin-top:16px;">
+        <strong>データソース:</strong> Google Ads API → Supabase (analytics_ads_campaign_daily, analytics_ads_keyword_daily) / GA4 → Supabase (analytics_page_daily, analytics_traffic_daily) / Search Console → Supabase (analytics_search_daily) / 顧客DB (customers + sales_pipeline + contracts)
+      </p>
+    </div>
+
+    <h3>継続運用の3パターン</h3>
+
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-label">Pattern A: 週次レビュー</div>
+        <div class="card-value" style="font-size:20px;">手動 &times; Claude</div>
+        <div class="card-desc">
+          <p style="font-size:13px; margin:8px 0;">毎週月曜にClaude Codeで「先週のGoogle Ads実績を分析して」と依頼。Supabaseから自動でデータ取得し、週次レポートを生成。</p>
+          <p style="font-size:13px;"><strong>所要時間:</strong> 5分（プロンプト入力のみ）<br><strong>コスト:</strong> Claude Code利用料のみ</p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-label">Pattern B: CRMダッシュボード強化</div>
+        <div class="card-value" style="font-size:20px;">自動 &times; CRM</div>
+        <div class="card-desc">
+          <p style="font-size:13px; margin:8px 0;">Strategists CRMの分析タブ（既に実装済み）にアラート機能を追加。CVR低下・CPC急騰・インプレッション消失を自動検知しSlack通知。</p>
+          <p style="font-size:13px;"><strong>開発工数:</strong> 2-3日<br><strong>メリット:</strong> 常時監視、異常の早期発見</p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-label">Pattern C: AI定期分析</div>
+        <div class="card-value" style="font-size:20px;">自動 &times; Claude</div>
+        <div class="card-desc">
+          <p style="font-size:13px; margin:8px 0;">Claude Code の cron/loop機能で月次Deep Researchを自動実行。今回と同じレベルの分析を毎月自動生成し、HTMLレポートとして公開。</p>
+          <p style="font-size:13px;"><strong>セットアップ:</strong> 1日<br><strong>メリット:</strong> 完全自動、人間の介入不要</p>
+        </div>
+      </div>
+    </div>
+
+    <h3>推奨: Pattern A + B のハイブリッド</h3>
+    <div class="insight">
+      <p><strong>日常監視はCRMダッシュボード（Pattern B）で自動化</strong>し、異常検知時やキャンペーン変更前の深堀り分析は<strong>Claude Codeに依頼（Pattern A）</strong>する。今回の「ターゲットCPA変更前に影響をシミュレーション」のような判断支援が最もAIの価値が高い。</p>
+    </div>
+
+    <h3>Claudeに依頼すると効果が高いタスク</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>タスク</th><th>頻度</th><th>所要時間</th><th>バリュー</th></tr></thead>
+        <tbody>
+          <tr><td><strong>キャンペーン変更前の影響分析</strong><br><small>CPA変更・予算変更・KW追加の事前シミュレーション</small></td><td>随時</td><td>5-10分</td><td><span class="tag tag-red">最高</span></td></tr>
+          <tr><td><strong>月次パフォーマンスレビュー</strong><br><small>KPI推移、異常検知、改善提案</small></td><td>月1回</td><td>10-15分</td><td><span class="tag tag-red">最高</span></td></tr>
+          <tr><td><strong>競合・市場トレンド調査</strong><br><small>CPC相場、競合サービス、季節性分析</small></td><td>四半期</td><td>15-20分</td><td><span class="tag tag-yellow">高</span></td></tr>
+          <tr><td><strong>新KW発掘・占有分析</strong><br><small>Search Console vs 広告KWの突合</small></td><td>月1回</td><td>5-10分</td><td><span class="tag tag-yellow">高</span></td></tr>
+          <tr><td><strong>LP改善分析</strong><br><small>ヒートマップデータ連携、A/B結果分析</small></td><td>随時</td><td>10-15分</td><td><span class="tag tag-yellow">高</span></td></tr>
+          <tr><td><strong>HTMLレポート自動生成</strong><br><small>経営会議・共有用のビジュアルレポート</small></td><td>随時</td><td>5分</td><td><span class="tag tag-green">中</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>プロンプトテンプレート例</h3>
+    <div class="card" style="font-family: monospace; font-size: 13px; line-height: 1.8;">
+      <p style="color: var(--cyan); margin-bottom:4px;">// 週次レビュー</p>
+      <p style="color: var(--text);">「CRMのSupabaseから直近7日のGoogle Adsデータを取得して、<br>先週との比較を含めた週次レポートを作って。<br>異常値があればアラートして。」</p>
+      <br>
+      <p style="color: var(--cyan); margin-bottom:4px;">// KW占有分析</p>
+      <p style="color: var(--text);">「Search Consoleのオーガニッククエリと<br>Google Adsのキーワードを突合して、<br>広告で取りこぼしている高CV意図のクエリを特定して。」</p>
+      <br>
+      <p style="color: var(--cyan); margin-bottom:4px;">// 変更前シミュレーション</p>
+      <p style="color: var(--text);">「P-MaxのターゲットCPAを¥80,000から¥100,000に<br>変更した場合の影響をシミュレーションして。<br>過去の学習リセット事例も踏まえてリスクを評価して。」</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FOOTER ============ -->
+<footer>
+  <div class="container">
+    <p>Generated by <strong>Claude Code (Opus 4.6)</strong> &mdash; 6 parallel agents, Supabase direct query + Web Search</p>
+    <p style="margin-top:8px;">Data Sources: Google Ads API v19 / GA4 / Search Console / Strategists CRM (Supabase) / WordStream Benchmarks / JAC Recruitment / MyVision / IDC Japan</p>
+    <p style="margin-top:16px; font-size:11px; color: #555;">&copy; 2026 Strategists by Top Tier Inc. &mdash; Internal Analysis Report</p>
+  </div>
+</footer>
+
+</body>
+</html>
