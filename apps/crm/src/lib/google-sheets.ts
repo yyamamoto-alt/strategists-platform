@@ -307,7 +307,7 @@ export async function createProgressSheet(data: {
       },
     });
 
-    const url = `https://docs.google.com/spreadsheets/d/${newId}/edit`;
+    const url = `https://docs.google.com/spreadsheets/d/${newId}/edit#gid=2127431131`;
     return { url, spreadsheetId: newId };
   } catch (e) {
     console.error("[createProgressSheet] Failed:", e);
