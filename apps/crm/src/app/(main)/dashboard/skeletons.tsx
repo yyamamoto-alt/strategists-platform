@@ -114,6 +114,38 @@ export function ChannelSkeleton() {
   );
 }
 
+export function AdsSummarySkeleton() {
+  return (
+    <div className="px-6 animate-pulse">
+      <div className="bg-surface-card rounded-xl border border-white/10 overflow-hidden">
+        <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between">
+          <div>
+            <div className="h-4 bg-white/10 rounded w-32 mb-1" />
+            <div className="h-3 bg-white/5 rounded w-52" />
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="h-10 bg-white/5 rounded w-32" />
+            <div className="h-8 bg-white/5 rounded w-24" />
+          </div>
+        </div>
+        <div className="p-4 space-y-3">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="flex justify-between">
+              <div className="h-4 bg-white/5 rounded w-16" />
+              <div className="h-4 bg-white/5 rounded w-20" />
+              <div className="h-4 bg-white/5 rounded w-12" />
+              <div className="h-4 bg-white/5 rounded w-12" />
+              <div className="h-4 bg-white/5 rounded w-12" />
+              <div className="h-4 bg-white/5 rounded w-16" />
+              <div className="h-4 bg-white/5 rounded w-16" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function InsightsSkeleton() {
   return (
     <div className="px-6 pb-6 animate-pulse">
