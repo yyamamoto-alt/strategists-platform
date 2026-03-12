@@ -124,8 +124,9 @@ export async function AdsSection() {
   }
 
   // --- 週次行を組み立て ---
+  const ADS_START = "2025-08";
   const allWeekKeys = new Set([...weeklyAds.keys(), ...weeklyFunnel.keys()]);
-  const weeklyRows: AdsWeeklyRow[] = Array.from(allWeekKeys).sort().reverse().map(wk => {
+  const weeklyRows: AdsWeeklyRow[] = Array.from(allWeekKeys).filter(wk => wk >= ADS_START).sort().reverse().map(wk => {
     const ads = weeklyAds.get(wk) || { cost: 0, cv_application: 0 };
     const fnl = weeklyFunnel.get(wk) || zero();
     return {
@@ -142,7 +143,7 @@ export async function AdsSection() {
 
   // --- 月次行を組み立て ---
   const allMonthKeys = new Set([...monthlyAds.keys(), ...monthlyFunnel.keys()]);
-  const monthlyRows: AdsWeeklyRow[] = Array.from(allMonthKeys).sort().reverse().map(mk => {
+  const monthlyRows: AdsWeeklyRow[] = Array.from(allMonthKeys).filter(mk => mk >= ADS_START).sort().reverse().map(mk => {
     const ads = monthlyAds.get(mk) || { cost: 0, cv_application: 0 };
     const fnl = monthlyFunnel.get(mk) || zero();
     return {
