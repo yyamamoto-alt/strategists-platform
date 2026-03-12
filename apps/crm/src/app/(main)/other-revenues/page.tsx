@@ -8,10 +8,10 @@ export default async function OtherRevenuesPage() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as any;
 
-  const { data: revenues } = await db
-    .from("other_revenues")
-    .select("*")
-    .order("revenue_date", { ascending: false });
+  const [{ data: revenues }, { data: noteOrders }] = await Promise.all([
+    db.from("other_revenues").select("*").order("revenue_date", { ascending: false }),
+    db.from("orders").select("id, amount, paid_at, contact_name, product_name, order_type, source_record_id, created_at").eq("source", "note").order("paid_at", { ascending: false }),
+  ]);
 
-  return <OtherRevenuesClient initialData={revenues || []} />;
+  return <OtherRevenuesClient initialData={revenues || []} noteOrders={noteOrders || []} />;
 }

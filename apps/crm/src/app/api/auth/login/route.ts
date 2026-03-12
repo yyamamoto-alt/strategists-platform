@@ -46,7 +46,7 @@ export async function POST(request: Request) {
     );
   }
 
-  // ロール検証: admin または mentor のみ CRM アクセス可
+  // ロール検証: admin, member, mentor のみ CRM アクセス可
   const { data: roleData } = await supabase
     .from("user_roles")
     .select("role")
@@ -54,7 +54,7 @@ export async function POST(request: Request) {
     .single() as { data: { role: string } | null };
 
   const role = roleData?.role;
-  if (role !== "admin" && role !== "mentor") {
+  if (role !== "admin" && role !== "member" && role !== "mentor") {
     await supabase.auth.signOut();
     return NextResponse.json(
       { error: "CRMへのアクセス権限がありません" },

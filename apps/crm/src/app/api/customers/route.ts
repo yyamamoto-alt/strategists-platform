@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { fetchCustomersWithRelations, fetchFirstPaidDates } from "@/lib/data/customers";
 import { fetchChannelAttributions } from "@/lib/data/marketing-settings";
+import { computeAttributionForCustomer } from "@/lib/compute-attribution-for-customer";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
@@ -88,6 +89,11 @@ export async function POST(request: Request) {
       { status: 201 }
     );
   }
+
+  // 帰属チャネル自動計算
+  computeAttributionForCustomer(customerId).catch((err) => {
+    console.error(`Attribution calculation failed for customer ${customerId}:`, err);
+  });
 
   revalidateTag("customers");
   revalidateTag("dashboard");

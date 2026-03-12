@@ -334,6 +334,16 @@ export async function notifyEnrollmentFormReceived(data: {
     crmUrl,
   ].filter(Boolean);
 
+  if (data.subsidyEligible) {
+    lines.push(
+      ``,
+      `──────────────────`,
+      `:warning: *【注意：本受講生は補助金適用プランです】*`,
+      `ケース面接指導を4回以上受講いただかないと補助金の半額負担（20万円超）をお客様に請求しないといけなくなるので、きちんと予約を継続的に取っていただいているかを、メンターの方でも注意していただけると幸いです。受講が滞っている場合は早めに山本までお知らせください。`,
+      `よろしくお願いします。山本`,
+    );
+  }
+
   await sendSlackMessage(channel, lines.join("\n"));
 }
 
