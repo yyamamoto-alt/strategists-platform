@@ -327,6 +327,8 @@ export function SpreadsheetTable<T>({
     getScrollElement: () => scrollContainerRef.current,
     estimateSize: () => ROW_H,
     overscan: 20,
+    // SSR/初期レンダリング時に高さ0で行が表示されない問題を回避
+    initialRect: { width: 800, height: 600 },
   });
 
   const handleSort = useCallback((key: string) => {
