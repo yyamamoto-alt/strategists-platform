@@ -282,82 +282,81 @@ async function syncFormFieldsToRelatedTables(
     }
 
     // --- カルテ同期時: プログレスシート作成 + Slack通知 + YouTube通知 ---
-    // プログレスシートが未作成の場合のみ作成
-    const { data: existingContracts } = await db
-      .from("contracts")
-      .select("progress_sheet_url")
-      .eq("customer_id", customerId)
-      .limit(1);
+    // ★ 初回レコードのみ実行（再処理時はスキップ — スパム防止）
+    if (isNewRecord) {
+      // プログレスシートが未作成の場合のみ作成
+      const { data: existingContracts } = await db
+        .from("contracts")
+        .select("progress_sheet_url")
+        .eq("customer_id", customerId)
+        .limit(1);
 
-    let progressSheetUrl = existingContracts?.[0]?.progress_sheet_url || null;
+      let progressSheetUrl = existingContracts?.[0]?.progress_sheet_url || null;
 
-    if (!progressSheetUrl && rawData["お名前"] && rawData["メールアドレス"]) {
-      const result = await createProgressSheet({
-        name: rawData["お名前"],
-        email: rawData["メールアドレス"],
-        nameKana: rawData["フリガナ"],
-        attribute: rawData["属性"],
-        birthDate: rawData["生年月日"],
-        careerHistory: rawData["経歴詳細（学歴＋職歴）"],
-        caseStatus: rawData["ケース面接対策の状況"],
-        targetCompanies: rawData["志望企業"],
-        transferIntent: rawData["転職意向"],
-        university: custUpdate.university || undefined,
-        prefecture: rawData["居住地（都道府県）"],
-        gender: rawData["性別"],
-        utmSource: rawData["弊塾を最初に知った場所"],
-        enrollmentReason: rawData["弊塾を選んだ決め手"],
-        interviewTiming: rawData["面接予定時期"],
-        desiredStartDate: rawData["転職先への入社希望日"],
-        currentAgent: rawData["利用中のエージェント"],
-        planName: rawData["申込プラン"],
-        agentUsage: rawData["エージェント利用"],
-      });
-
-      if (result) {
-        progressSheetUrl = result.url;
-        // contracts テーブルに progress_sheet_url を書き込み
-        await upsertRelated(db, "contracts", customerId, {
-          progress_sheet_url: result.url,
+      if (!progressSheetUrl && rawData["お名前"] && rawData["メールアドレス"]) {
+        const result = await createProgressSheet({
+          name: rawData["お名前"],
+          email: rawData["メールアドレス"],
+          nameKana: rawData["フリガナ"],
+          attribute: rawData["属性"],
+          birthDate: rawData["生年月日"],
+          careerHistory: rawData["経歴詳細（学歴＋職歴）"],
+          caseStatus: rawData["ケース面接対策の状況"],
+          targetCompanies: rawData["志望企業"],
+          transferIntent: rawData["転職意向"],
+          university: custUpdate.university || undefined,
+          prefecture: rawData["居住地（都道府県）"],
+          gender: rawData["性別"],
+          utmSource: rawData["弊塾を最初に知った場所"],
+          enrollmentReason: rawData["弊塾を選んだ決め手"],
+          interviewTiming: rawData["面接予定時期"],
+          desiredStartDate: rawData["転職先への入社希望日"],
+          currentAgent: rawData["利用中のエージェント"],
+          planName: rawData["申込プラン"],
+          agentUsage: rawData["エージェント利用"],
         });
+
+        if (result) {
+          progressSheetUrl = result.url;
+          // contracts テーブルに progress_sheet_url を書き込み
+          await upsertRelated(db, "contracts", customerId, {
+            progress_sheet_url: result.url,
+          });
+        }
       }
-    }
 
-    // Slack通知: #biz-dev（名前/年齢/経歴/志望/プログレスシートURL）— 初回のみ
-    if (!isNewRecord) {
-      // 再処理時はSlack通知をスキップ（スパム防止）
-    } else {
-    const birthDate = rawData["生年月日"];
-    const age = birthDate ? calculateAge(birthDate) : null;
+      // Slack通知: #biz-dev（名前/年齢/経歴/志望/プログレスシートURL）
+      const birthDate = rawData["生年月日"];
+      const age = birthDate ? calculateAge(birthDate) : null;
 
-    notifyKarteSubmission({
-      name: rawData["お名前"] || "不明",
-      attribute: rawData["属性"],
-      age,
-      xAccount: rawData["Xアカウント"],
-      careerHistory: rawData["経歴詳細（学歴＋職歴）"],
-      targetCompanies: rawData["志望企業"],
-      caseStatus: rawData["ケース面接対策の状況"],
-      interviewLevel: rawData["ケース面接のレベル"],
-      transferIntent: rawData["転職意向"],
-      desiredStartDate: rawData["転職先への入社希望日"],
-      utmSource: rawData["弊塾を最初に知った場所"],
-      progressSheetUrl: progressSheetUrl || undefined,
-      customerId,
-    }).catch(() => {}); // エラーで同期を止めない
-
-    // YouTube経由の場合、#youtubeにも通知
-    const utmSource = rawData["弊塾を最初に知った場所"] || "";
-    const enrollmentReason = rawData["弊塾を選んだ決め手"] || "";
-    if (utmSource.toLowerCase().includes("youtube") || enrollmentReason.toLowerCase().includes("youtube")) {
-      notifyYouTubeReferral({
+      notifyKarteSubmission({
         name: rawData["お名前"] || "不明",
         attribute: rawData["属性"],
+        age,
+        xAccount: rawData["Xアカウント"],
         careerHistory: rawData["経歴詳細（学歴＋職歴）"],
-        prefecture: rawData["居住地（都道府県）"],
+        targetCompanies: rawData["志望企業"],
+        caseStatus: rawData["ケース面接対策の状況"],
+        interviewLevel: rawData["ケース面接のレベル"],
+        transferIntent: rawData["転職意向"],
+        desiredStartDate: rawData["転職先への入社希望日"],
+        utmSource: rawData["弊塾を最初に知った場所"],
+        progressSheetUrl: progressSheetUrl || undefined,
         customerId,
-      }).catch(() => {});
-    }
+      }).catch(() => {}); // エラーで同期を止めない
+
+      // YouTube経由の場合、#youtubeにも通知
+      const utmSource = rawData["弊塾を最初に知った場所"] || "";
+      const enrollmentReason = rawData["弊塾を選んだ決め手"] || "";
+      if (utmSource.toLowerCase().includes("youtube") || enrollmentReason.toLowerCase().includes("youtube")) {
+        notifyYouTubeReferral({
+          name: rawData["お名前"] || "不明",
+          attribute: rawData["属性"],
+          careerHistory: rawData["経歴詳細（学歴＋職歴）"],
+          prefecture: rawData["居住地（都道府県）"],
+          customerId,
+        }).catch(() => {});
+      }
     } // end isNewRecord guard
   }
 

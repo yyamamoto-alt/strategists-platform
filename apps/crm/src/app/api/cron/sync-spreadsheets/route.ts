@@ -248,6 +248,18 @@ export async function GET(request: Request) {
               rowsSkipped++;
               continue;
             }
+            // ハッシュ未知の場合、DB再確認（knownHashesクエリ失敗のフォールバック）
+            const { data: hashCheck } = await db
+              .from("application_history")
+              .select("id")
+              .eq("raw_data_hash", rawHash)
+              .limit(1);
+            if (hashCheck && hashCheck.length > 0) {
+              console.log(`[sync] Hash found in DB fallback check for ${connection.name}, skipping. Hash: ${rawHash}`);
+              knownHashes.add(rawHash);
+              rowsSkipped++;
+              continue;
+            }
             knownHashes.add(rawHash);
 
             const result = await upsertFromSpreadsheet(
