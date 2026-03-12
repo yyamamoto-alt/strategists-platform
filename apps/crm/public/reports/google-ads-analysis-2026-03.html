@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Google Ads 分析レポート | Strategists 2026年3月</title>
+<title>Google Ads 分析レポート v4.0 | Strategists 2026年3月</title>
 <style>
 :root{--bg:#0a0a0f;--sf:#12121a;--sf2:#1a1a28;--bd:#2a2a3d;--tx:#e0e0e8;--tm:#8888a0;--ac:#6366f1;--ac2:#818cf8;--gn:#34d399;--rd:#f87171;--yw:#fbbf24;--og:#fb923c;--cn:#22d3ee}
 *{margin:0;padding:0;box-sizing:border-box}
@@ -12,13 +12,14 @@ body{font-family:'Inter',-apple-system,sans-serif;background:var(--bg);color:var
 .hero h1{font-size:2em;font-weight:700;margin-bottom:8px}
 .hero p{color:var(--tm);font-size:0.95em}
 .badge{display:inline-block;padding:4px 14px;background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);border-radius:16px;font-size:0.8em;color:var(--ac2);margin-bottom:16px}
-.container{max-width:1000px;margin:0 auto;padding:32px 20px}
+.container{max-width:1060px;margin:0 auto;padding:32px 20px}
 section{margin-bottom:40px}
 h2{font-size:1.35em;font-weight:700;margin-bottom:20px;padding-bottom:10px;border-bottom:2px solid var(--ac)}
 h3{font-size:1.05em;font-weight:600;margin:20px 0 10px;color:var(--ac2)}
 h4{font-size:0.95em;font-weight:600;margin:14px 0 6px}
 .card{background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:20px;margin-bottom:16px}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:16px}
+.grid-3{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px}
 .stat{background:var(--sf2);border-radius:8px;padding:14px;text-align:center}
 .stat-val{font-size:1.5em;font-weight:700}
 .stat-lbl{font-size:0.78em;color:var(--tm);margin-top:2px}
@@ -26,12 +27,14 @@ h4{font-size:0.95em;font-weight:600;margin:14px 0 6px}
 table{width:100%;border-collapse:collapse;font-size:0.85em;margin:12px 0}
 th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--bd)}
 th{background:var(--sf2);color:var(--tm);font-weight:600;font-size:0.8em;text-transform:uppercase}
+td.num{text-align:right;font-variant-numeric:tabular-nums}
 .tag{display:inline-block;padding:2px 8px;border-radius:5px;font-size:0.75em;font-weight:600}
 .tag-gn{background:rgba(52,211,153,0.15);color:var(--gn)}
 .tag-rd{background:rgba(248,113,113,0.15);color:var(--rd)}
 .tag-yw{background:rgba(251,191,36,0.15);color:var(--yw)}
 .tag-bl{background:rgba(99,102,241,0.15);color:var(--ac2)}
 .tag-cn{background:rgba(34,211,238,0.15);color:var(--cn)}
+.tag-og{background:rgba(251,146,60,0.15);color:var(--og)}
 .co{padding:14px 18px;border-radius:8px;margin:12px 0;border-left:4px solid}
 .co-fact{background:rgba(99,102,241,0.06);border-color:var(--ac)}
 .co-good{background:rgba(52,211,153,0.06);border-color:var(--gn)}
@@ -44,22 +47,24 @@ th{background:var(--sf2);color:var(--tm);font-weight:600;font-size:0.8em;text-tr
 .conf-m{background:rgba(251,191,36,0.12);color:var(--yw)}
 .conf-l{background:rgba(248,113,113,0.12);color:var(--rd)}
 .bar-row{display:flex;align-items:center;margin-bottom:6px;gap:10px}
-.bar-lbl{width:90px;font-size:0.82em;color:var(--tm);text-align:right;flex-shrink:0}
+.bar-lbl{width:100px;font-size:0.82em;color:var(--tm);text-align:right;flex-shrink:0}
 .bar-track{flex:1;height:24px;background:var(--sf2);border-radius:5px;overflow:hidden}
 .bar-fill{height:100%;border-radius:5px;display:flex;align-items:center;padding-left:8px;font-size:0.75em;font-weight:600;min-width:30px}
-.bar-val{width:70px;font-size:0.82em;text-align:right;flex-shrink:0}
+.bar-val{width:80px;font-size:0.82em;text-align:right;flex-shrink:0}
 .toc{background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:20px;margin-bottom:32px}
 .toc ol{padding-left:18px}.toc li{margin-bottom:4px}.toc a{color:var(--ac2);text-decoration:none}.toc a:hover{text-decoration:underline}
+.highlight-row{background:rgba(52,211,153,0.05)}
+.danger-row{background:rgba(248,113,113,0.08)}
 footer{text-align:center;padding:32px 20px;border-top:1px solid var(--bd);color:var(--tm);font-size:0.82em;margin-top:48px}
-@media(max-width:768px){.hero{padding:30px 16px 20px}.hero h1{font-size:1.4em}.container{padding:16px 12px}.grid{grid-template-columns:1fr 1fr}table{font-size:0.78em}th,td{padding:5px 6px}.bar-lbl{width:60px}}
+@media(max-width:768px){.hero{padding:30px 16px 20px}.hero h1{font-size:1.4em}.container{padding:16px 12px}.grid{grid-template-columns:1fr 1fr}.grid-3{grid-template-columns:1fr 1fr}table{font-size:0.78em}th,td{padding:5px 6px}.bar-lbl{width:60px}}
 </style>
 </head>
 <body>
 
 <div class="hero">
-  <div class="badge">Deep Analysis v3.0 — 2026年3月13日更新</div>
+  <div class="badge">v4.0 API直接取得による完全版 -- 2026年3月13日</div>
   <h1>Google Ads 分析レポート</h1>
-  <p>分析対象期間: 2025年9月〜2026年3月10日 | データソース: Supabase DB (Google Ads API同期データ)</p>
+  <p>分析対象期間: 2025年3月〜2026年3月12日 | データソース: Google Ads API v23 + Supabase CRM DB</p>
 </div>
 
 <div class="container">
@@ -68,504 +73,706 @@ footer{text-align:center;padding:32px 20px;border-top:1px solid var(--bd);color:
   <h3 style="margin:0 0 10px;color:var(--tx)">目次</h3>
   <ol>
     <li><a href="#s1">エグゼクティブサマリー</a></li>
-    <li><a href="#s2">3月トラフィック激減の原因</a></li>
-    <li><a href="#s3">CPC 88%改善の詳細分析</a></li>
-    <li><a href="#s4">キーワード別パフォーマンス</a></li>
-    <li><a href="#s5">売上・ROI全体像</a></li>
-    <li><a href="#s6">成約顧客の個別分析</a></li>
-    <li><a href="#s7">未カバー検索クエリの機会</a></li>
-    <li><a href="#s8">データ基盤の課題</a></li>
-    <li><a href="#s9">アクションプラン</a></li>
-    <li><a href="#s10">方法論・データ信頼性</a></li>
+    <li><a href="#s2">月別パフォーマンス推移</a></li>
+    <li><a href="#s3">キャンペーン分析（全14キャンペーン）</a></li>
+    <li><a href="#s4">キーワード分析（2026年1月〜3月12日）</a></li>
+    <li><a href="#s5">検索語句レポート（TOP20）</a></li>
+    <li><a href="#s6">入札戦略の現状</a></li>
+    <li><a href="#s7">売上詳細（成約10名）</a></li>
+    <li><a href="#s8">3月の特異動向</a></li>
+    <li><a href="#s9">戦略提言</a></li>
+    <li><a href="#s10">データ取得方法と信頼性</a></li>
   </ol>
 </div>
 
-<!-- ======= 1. EXECUTIVE ======= -->
+<!-- ======= 1. EXECUTIVE SUMMARY ======= -->
 <section id="s1">
 <h2>1. エグゼクティブサマリー</h2>
 
 <div class="card">
+  <h3>累計実績（2025年3月〜2026年3月12日）<span class="src">Google Ads API v23</span><span class="src">Supabase CRM DB</span></h3>
+
   <div class="grid">
     <div class="stat">
-      <div class="stat-val" style="color:var(--gn)">692%</div>
-      <div class="stat-lbl">確定ROAS</div>
-      <div class="stat-sub">広告費121.7万円→確定売上842.8万円</div>
+      <div class="stat-val" style="color:var(--ac2)">5,093,132円</div>
+      <div class="stat-lbl">累計広告費</div>
+      <div class="stat-sub">13ヶ月間</div>
     </div>
     <div class="stat">
-      <div class="stat-val" style="color:var(--gn)">105円</div>
-      <div class="stat-lbl">現在の検索CPC</div>
-      <div class="stat-sub">892円から88%改善</div>
+      <div class="stat-val" style="color:var(--cn)">63件</div>
+      <div class="stat-lbl">申込CV（実質CV）</div>
+      <div class="stat-sub">CPA: 80,843円</div>
     </div>
     <div class="stat">
-      <div class="stat-val" style="color:var(--rd)">PAUSED</div>
-      <div class="stat-lbl">1/22Aキャンペーン</div>
-      <div class="stat-sub">3/6以降停止中（トラフィック激減の原因）</div>
+      <div class="stat-val" style="color:var(--gn)">10名</div>
+      <div class="stat-lbl">成約</div>
+      <div class="stat-sub">CRM登録55名中</div>
     </div>
     <div class="stat">
-      <div class="stat-val" style="color:var(--yw)">要更新</div>
-      <div class="stat-lbl">Google API認証</div>
-      <div class="stat-sub">3/11以降データ同期停止中</div>
+      <div class="stat-val" style="color:var(--yw)">15.9%</div>
+      <div class="stat-lbl">申込CV→成約率</div>
+      <div class="stat-sub">63件中10名成約</div>
     </div>
   </div>
 
-  <div class="co co-bad">
-    <b>🔴 緊急対応が必要な2点</b>
-    <p>1. <strong>1/22AキャンペーンがPAUSED</strong>: 3/6を最後にデータなし。3/7以降のクリックが日10-13件に激減（3/6以前は日236-323件）。意図的な停止かどうか即確認が必要。<br>
-    2. <strong>Google APIの認証トークン期限切れ</strong>: <code>GOOGLE_REFRESH_TOKEN</code>が失効し、3/11以降Google Ads/GA4/Search Consoleの全データ同期が停止中。Vercelの環境変数更新が必要。</p>
+  <div class="grid">
+    <div class="stat">
+      <div class="stat-val" style="color:var(--gn)">8,631,166円</div>
+      <div class="stat-lbl">確定売上</div>
+      <div class="stat-sub">スクール+補助金+エージェント確定</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val" style="color:var(--cn)">19,736,806円</div>
+      <div class="stat-lbl">見込み含む売上</div>
+      <div class="stat-sub">エージェント見込含む</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val" style="color:var(--yw)">1.7x</div>
+      <div class="stat-lbl">確定ROAS</div>
+      <div class="stat-sub">目標3xに対し未達</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val" style="color:var(--gn)">3.9x</div>
+      <div class="stat-lbl">見込みROAS</div>
+      <div class="stat-sub">目標3x達成</div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="stat">
+      <div class="stat-val" style="color:var(--og)">509,313円</div>
+      <div class="stat-lbl">確定CPA（成約ベース）</div>
+      <div class="stat-sub">広告費 / 成約10名</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val" style="color:var(--ac2)">863,117円</div>
+      <div class="stat-lbl">確定LTV（成約10名平均）</div>
+      <div class="stat-sub">確定売上 / 成約数</div>
+    </div>
   </div>
 
   <div class="co co-good">
-    <b>✅ ポジティブな成果</b>
-    <p>検索キャンペーンのCPCが892円→105円に88%改善。2段階の最適化（高CPCキーワード停止 + BROAD→PHRASE移行）による成果で、同じ予算でより多くのクリックを獲得できる状態。確定ROASは692%と非常に高い。</p>
+    <b>見込みROAS 3.9xで目標3xを達成</b>
+    <p>エージェント見込売上を含めたROASは目標を超過。ただし確定ROAS 1.7xは目標未達であり、エージェント売上の確定率が鍵を握る。田代・町元の2名だけでエージェント確定6,359,430円（全確定売上の74%）を占めており、今後の確定分増加に大きく左右される。</p>
   </div>
-
-  <div class="co co-fact">
-    <b>⚠️ データの限界について</b>
-    <p>Google Ads Developer Tokenが<strong>テストアクセスレベル</strong>のままのため、<code>search_term_view</code>（実際の検索語句レポート）は取得できていません。本レポートの検索語句分析はSearch Console（オーガニック検索）のデータに基づいており、広告経由の検索語句ではありません。ベーシックアクセス承認後に真の検索語句データが取得可能になります。</p>
-  </div>
-</div>
-</section>
-
-<!-- ======= 2. MARCH TRAFFIC ======= -->
-<section id="s2">
-<h2>2. 3月トラフィック激減の原因</h2>
-
-<div class="card">
-  <h3>原因: 1/22Aキャンペーンの停止（PAUSED）<span class="conf conf-h">信頼度: 高</span></h3>
-
-  <p>日次データを分析した結果、3月のトラフィック減少の主因は<strong>1/22Aキャンペーンが3/6でPAUSEDになった</strong>ことです。</p>
-
-  <table>
-    <tr><th>日付</th><th>キャンペーン</th><th>クリック</th><th>費用</th><th>表示回数</th><th>CV</th></tr>
-    <tr><td>3/1</td><td>1/22A + 完全一致</td><td>318</td><td>4,161円</td><td>7,743</td><td>15</td></tr>
-    <tr><td>3/3</td><td>1/22A + 完全一致</td><td>323</td><td>4,480円</td><td>15,813</td><td>12</td></tr>
-    <tr><td>3/5</td><td>1/22A + 完全一致</td><td>277</td><td>5,224円</td><td>7,456</td><td>4</td></tr>
-    <tr><td>3/6</td><td>1/22A + 完全一致</td><td>236</td><td>4,600円</td><td>7,004</td><td>7</td></tr>
-    <tr style="background:rgba(248,113,113,0.08)"><td><strong>3/7</strong></td><td><strong>完全一致のみ</strong></td><td><strong>10</strong></td><td>755円</td><td>70</td><td>2</td></tr>
-    <tr style="background:rgba(248,113,113,0.08)"><td>3/8</td><td>完全一致のみ</td><td>13</td><td>1,681円</td><td>127</td><td>2</td></tr>
-    <tr style="background:rgba(248,113,113,0.08)"><td>3/9</td><td>完全一致のみ</td><td>11</td><td>478円</td><td>107</td><td>0</td></tr>
-    <tr style="background:rgba(248,113,113,0.08)"><td>3/10</td><td>完全一致のみ</td><td>11</td><td>737円</td><td>129</td><td>0</td></tr>
-  </table>
-
-  <div class="co co-bad">
-    <b>クリック数: 277件/日 → 11件/日（-96%）</b>
-    <p>1/22Aキャンペーンが全クリックの95%以上を占めていたため、停止により即座にトラフィックが壊滅。完全一致キャンペーン単体では日10-13クリックが限界。</p>
-  </div>
-
-  <h3>1/22Aキャンペーンとは</h3>
-  <table>
-    <tr><th>項目</th><th>値</th></tr>
-    <tr><td>名前</td><td>1/22A（2026年1月22日開設と推定）</td></tr>
-    <tr><td>タイプ</td><td>キーワードデータなし → P-MAX / ディスプレイ系の可能性</td></tr>
-    <tr><td>CPC</td><td>平均13円（検索CPの105円に対して非常に低い）</td></tr>
-    <tr><td>CVの質</td><td>cv_applicationは0件。cv_microのみ（207件）。申込CVには直接貢献していない</td></tr>
-    <tr><td>費用対効果</td><td>月約5万円で大量のマイクロCV（ディスプレイ系の典型的パターン）</td></tr>
-  </table>
 
   <div class="co co-warn">
-    <b>検索キャンペーンの申込CVについて</b>
-    <p>申込CV（/schedule/遷移）は<strong>完全一致キャンペーンからのみ</strong>発生しています。1/22Aの停止が申込CVに直接影響しているかは不明です。ただし、1/22Aのディスプレイ広告がリマケ的に機能し、検索CP経由の申込を間接的に後押ししていた可能性はあります。</p>
+    <b>確定ROAS 1.7x: 目標3xに対し未達</b>
+    <p>確定ベースでは広告費5,093,132円に対して確定売上8,631,166円。エージェント売上の未確定分（見込み11,105,640円）が確定すれば大幅改善の余地あり。</p>
   </div>
-
-  <h3>前回レポートとの差分</h3>
-  <table>
-    <tr><th>項目</th><th>v2.0での分析</th><th>v3.0（今回）</th></tr>
-    <tr><td>3月ゼロの原因</td><td>「統計的変動が主因」「ターゲットCPA変更の影響」</td><td><strong>1/22Aキャンペーン停止が主因</strong>。トラフィック96%減。統計的変動は検索CPのみの話</td></tr>
-    <tr><td>1/22Aの存在</td><td>言及なし</td><td>全クリックの95%を占める主力CP。停止の影響を詳細分析</td></tr>
-    <tr><td>日次データ</td><td>週次集計のみ</td><td>日次レベルで3/6→3/7の断層を特定</td></tr>
-  </table>
 </div>
 </section>
 
-<!-- ======= 3. CPC ======= -->
-<section id="s3">
-<h2>3. CPC 88%改善の詳細分析</h2>
+<!-- ======= 2. MONTHLY PERFORMANCE ======= -->
+<section id="s2">
+<h2>2. 月別パフォーマンス推移</h2>
 
 <div class="card">
-  <h3>検索キャンペーン「完全一致_オリジナル」のCPC推移 <span class="src">analytics_ads_campaign_daily</span></h3>
+  <h3>月別データ一覧 <span class="conf conf-h">信頼度: 高（API直接取得）</span></h3>
 
+  <table>
+    <tr><th>月</th><th>広告費</th><th>クリック</th><th>申込CV</th><th>マイクロCV</th><th>申込CPA</th></tr>
+    <tr><td>2025-03</td><td class="num">648,632円</td><td class="num">981</td><td class="num">2</td><td class="num">0</td><td class="num">324,316円</td></tr>
+    <tr><td>2025-04</td><td class="num">419,287円</td><td class="num">953</td><td class="num">2</td><td class="num">0</td><td class="num">209,643円</td></tr>
+    <tr class="highlight-row"><td><strong>2025-05</strong></td><td class="num"><strong>976,414円</strong></td><td class="num"><strong>1,715</strong></td><td class="num"><strong>13</strong></td><td class="num">0</td><td class="num"><strong>75,109円</strong></td></tr>
+    <tr class="highlight-row"><td><strong>2025-06</strong></td><td class="num"><strong>615,453円</strong></td><td class="num"><strong>1,495</strong></td><td class="num"><strong>14</strong></td><td class="num">0</td><td class="num"><strong>43,961円</strong></td></tr>
+    <tr class="highlight-row"><td><strong>2025-07</strong></td><td class="num"><strong>511,202円</strong></td><td class="num"><strong>1,363</strong></td><td class="num"><strong>13</strong></td><td class="num">0</td><td class="num"><strong>39,323円</strong></td></tr>
+    <tr><td>2025-08</td><td class="num">694,362円</td><td class="num">1,649</td><td class="num">2</td><td class="num">2</td><td class="num">347,181円</td></tr>
+    <tr class="danger-row"><td>2025-09</td><td class="num">322,379円</td><td class="num">740</td><td class="num">0</td><td class="num">28</td><td class="num">CV0</td></tr>
+    <tr><td>2025-10</td><td class="num">384,478円</td><td class="num">9,518</td><td class="num">4</td><td class="num">328</td><td class="num">109,851円</td></tr>
+    <tr><td>2025-11</td><td class="num">245,847円</td><td class="num">1,885</td><td class="num">7</td><td class="num">33</td><td class="num">35,121円</td></tr>
+    <tr style="opacity:0.5"><td>2025-12</td><td class="num">1,749円</td><td class="num">8</td><td class="num">0</td><td class="num">0</td><td class="num">CV0（ほぼ停止）</td></tr>
+    <tr><td>2026-01</td><td class="num">73,600円</td><td class="num">1,299</td><td class="num">1</td><td class="num">71</td><td class="num">73,600円</td></tr>
+    <tr><td>2026-02</td><td class="num">155,325円</td><td class="num">9,723</td><td class="num">5</td><td class="num">291</td><td class="num">31,065円</td></tr>
+    <tr><td>2026-03（〜12日）</td><td class="num">44,404円</td><td class="num">1,865</td><td class="num">0</td><td class="num">62</td><td class="num">CV0</td></tr>
+  </table>
+
+  <h3>申込CV推移（棒グラフ）</h3>
   <div style="margin:16px 0">
     <div class="bar-row">
-      <div class="bar-lbl">9月</div>
-      <div class="bar-track"><div class="bar-fill" style="width:100%;background:linear-gradient(90deg,var(--rd),#c44)">892円</div></div>
-      <div class="bar-val">BROAD中心</div>
+      <div class="bar-lbl">2025-03</div>
+      <div class="bar-track"><div class="bar-fill" style="width:14%;background:var(--ac)">2</div></div>
+      <div class="bar-val">324,316円</div>
     </div>
     <div class="bar-row">
-      <div class="bar-lbl">10月</div>
-      <div class="bar-track"><div class="bar-fill" style="width:73%;background:linear-gradient(90deg,var(--og),#d97706)">647円</div></div>
-      <div class="bar-val">整理開始</div>
+      <div class="bar-lbl">2025-04</div>
+      <div class="bar-track"><div class="bar-fill" style="width:14%;background:var(--ac)">2</div></div>
+      <div class="bar-val">209,643円</div>
     </div>
     <div class="bar-row">
-      <div class="bar-lbl">11月</div>
-      <div class="bar-track"><div class="bar-fill" style="width:49%;background:linear-gradient(90deg,var(--yw),#d4a)">436円</div></div>
-      <div class="bar-val" style="color:var(--gn)">高CPC一斉停止</div>
+      <div class="bar-lbl">2025-05</div>
+      <div class="bar-track"><div class="bar-fill" style="width:93%;background:linear-gradient(90deg,var(--gn),#0b8)">13</div></div>
+      <div class="bar-val" style="color:var(--gn)">75,109円</div>
     </div>
     <div class="bar-row">
-      <div class="bar-lbl">1月</div>
-      <div class="bar-track"><div class="bar-fill" style="width:27%;background:linear-gradient(90deg,var(--cn),#0ea)">241円</div></div>
-      <div class="bar-val">1/22A追加</div>
+      <div class="bar-lbl">2025-06</div>
+      <div class="bar-track"><div class="bar-fill" style="width:100%;background:linear-gradient(90deg,var(--gn),#0b8)">14</div></div>
+      <div class="bar-val" style="color:var(--gn)">43,961円</div>
     </div>
     <div class="bar-row">
-      <div class="bar-lbl">2月</div>
-      <div class="bar-track"><div class="bar-fill" style="width:14%;background:linear-gradient(90deg,var(--gn),#0b8)">129円</div></div>
-      <div class="bar-val">PHRASE主体</div>
+      <div class="bar-lbl">2025-07</div>
+      <div class="bar-track"><div class="bar-fill" style="width:93%;background:linear-gradient(90deg,var(--gn),#0b8)">13</div></div>
+      <div class="bar-val" style="color:var(--gn)">39,323円</div>
     </div>
     <div class="bar-row">
-      <div class="bar-lbl">3月</div>
-      <div class="bar-track"><div class="bar-fill" style="width:12%;background:linear-gradient(90deg,var(--gn),#0b8)">105円</div></div>
-      <div class="bar-val" style="color:var(--gn)">過去最低</div>
+      <div class="bar-lbl">2025-08</div>
+      <div class="bar-track"><div class="bar-fill" style="width:14%;background:var(--og)">2</div></div>
+      <div class="bar-val" style="color:var(--rd)">347,181円</div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-lbl">2025-09</div>
+      <div class="bar-track"><div class="bar-fill" style="width:2%;background:var(--rd)"></div></div>
+      <div class="bar-val" style="color:var(--rd)">CV0</div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-lbl">2025-10</div>
+      <div class="bar-track"><div class="bar-fill" style="width:29%;background:var(--ac)">4</div></div>
+      <div class="bar-val">109,851円</div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-lbl">2025-11</div>
+      <div class="bar-track"><div class="bar-fill" style="width:50%;background:linear-gradient(90deg,var(--cn),var(--gn))">7</div></div>
+      <div class="bar-val" style="color:var(--gn)">35,121円</div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-lbl">2025-12</div>
+      <div class="bar-track"><div class="bar-fill" style="width:2%;background:var(--rd)"></div></div>
+      <div class="bar-val" style="opacity:0.4">停止</div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-lbl">2026-01</div>
+      <div class="bar-track"><div class="bar-fill" style="width:7%;background:var(--yw)">1</div></div>
+      <div class="bar-val">73,600円</div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-lbl">2026-02</div>
+      <div class="bar-track"><div class="bar-fill" style="width:36%;background:linear-gradient(90deg,var(--cn),var(--gn))">5</div></div>
+      <div class="bar-val" style="color:var(--gn)">31,065円</div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-lbl">2026-03</div>
+      <div class="bar-track"><div class="bar-fill" style="width:2%;background:var(--rd)"></div></div>
+      <div class="bar-val" style="color:var(--rd)">CV0</div>
     </div>
   </div>
 
-  <h3>改善の第1段階: 高CPCキーワード一斉停止（2025年11月中旬）</h3>
-  <p>停止されたキーワードは<strong>全広告費用の79.3%を占めていた</strong>。主に競合社名のBROADマッチキーワード。</p>
+  <div class="co co-fact">
+    <b>2025年5-7月が申込CVの黄金期</b>
+    <p>月13-14件の申込CVを安定的に生成。CPA 39,323〜75,109円。この時期の予算規模（月50-97万円）・季節性・キーワード構成の分析が今後の最適化の鍵。</p>
+  </div>
+</div>
+</section>
+
+<!-- ======= 3. CAMPAIGN ANALYSIS ======= -->
+<section id="s3">
+<h2>3. キャンペーン分析（全14キャンペーン）</h2>
+
+<div class="card">
+  <h3>データソース <span class="conf conf-h">信頼度: 高（Google Ads API v23直接取得）</span></h3>
+
+  <h3>現在ENABLED（稼働中）</h3>
 
   <table>
-    <tr><th>停止キーワード</th><th>マッチ</th><th>CPC</th><th>累計費用</th><th>clicks</th><th>CV</th><th>停止日</th></tr>
-    <tr><td>ケース 面接 対策</td><td><span class="tag tag-rd">BROAD</span></td><td>1,210円</td><td>65,335円</td><td>54</td><td>5.0</td><td>11/13</td></tr>
-    <tr><td>ムービン コンサル</td><td><span class="tag tag-rd">BROAD</span></td><td>1,315円</td><td>47,338円</td><td>36</td><td>1.5</td><td>11/13</td></tr>
-    <tr><td>ケース面接 講座</td><td><span class="tag tag-rd">BROAD</span></td><td>3,039円</td><td>3,039円</td><td>1</td><td>2.0</td><td>10/15</td></tr>
-    <tr><td>prism ケース面接</td><td><span class="tag tag-rd">BROAD</span></td><td>2,149円</td><td>4,297円</td><td>2</td><td>1.0</td><td>11/13</td></tr>
-    <tr><td>BCG 対策</td><td><span class="tag tag-rd">BROAD</span></td><td>1,845円</td><td>1,845円</td><td>1</td><td>0</td><td>10/10</td></tr>
-    <tr><td>ストラテジスト ケース面接</td><td><span class="tag tag-rd">BROAD</span></td><td>1,397円</td><td>2,793円</td><td>2</td><td>0</td><td>11/07</td></tr>
-    <tr><td>prism コンサル</td><td><span class="tag tag-rd">BROAD</span></td><td>1,312円</td><td>6,560円</td><td>5</td><td>1.0</td><td>11/12</td></tr>
-    <tr><td>ケース面接 書籍</td><td><span class="tag tag-rd">BROAD</span></td><td>2,326円</td><td>2,326円</td><td>1</td><td>0</td><td>11/12</td></tr>
+    <tr><th>キャンペーン名</th><th>タイプ</th><th>入札戦略</th><th>日予算</th><th>備考</th></tr>
+    <tr class="highlight-row">
+      <td><strong>完全一致_オリジナル_0821変更</strong></td>
+      <td><span class="tag tag-bl">SEARCH</span></td>
+      <td>TARGET_CPA</td>
+      <td>5,000円</td>
+      <td>メインキャンペーン。全申込CVの95%を生成</td>
+    </tr>
+    <tr>
+      <td><strong>複製版_ABテスト用</strong></td>
+      <td><span class="tag tag-bl">SEARCH</span></td>
+      <td>TARGET_CPA</td>
+      <td>5,000円</td>
+      <td>3/12稼働開始。目標CPA引上げテスト。学習リセット回避目的</td>
+    </tr>
   </table>
 
   <div class="co co-fact">
-    <b>なぜ競合社名のBROADマッチが高CPCだったか</b>
-    <p>「ムービン」「prism」「フォルトナ」「コンコード」等の競合転職エージェント名をBROADマッチで設定すると、競合自身が自社名で高額入札しているためCPCが1,000〜3,000円に高騰。かつ、自社サービスを探しているユーザーに別サービスの広告を出すため、CVRも低い。</p>
+    <b>完全一致_オリジナルの実績内訳</b>
+    <p>申込CV 57件中: 既卒遷移 39件 + 新卒遷移 18件 + ボタンクリック 3件 = <strong>全申込CVの約95%</strong>を占めるメインキャンペーン。</p>
   </div>
 
-  <h3>改善の第2段階: BROAD→PHRASE完全移行（2026年1月〜）</h3>
+  <h3>PAUSED（停止中）の主要キャンペーン</h3>
 
   <table>
-    <tr><th>月</th><th>BROAD費用比率</th><th>PHRASE費用比率</th><th>EXACT費用比率</th><th>BROAD CPC</th><th>PHRASE CPC</th><th>EXACT CPC</th></tr>
-    <tr><td>2025年9月</td><td><strong>72.4%</strong></td><td>0%</td><td>27.6%</td><td>806円</td><td>—</td><td>1,160円</td></tr>
-    <tr><td>2025年10月</td><td><strong>83.1%</strong></td><td>0%</td><td>16.9%</td><td>622円</td><td>—</td><td>826円</td></tr>
-    <tr><td>2025年11月</td><td>22.5%</td><td>25.0%</td><td><strong>52.5%</strong></td><td>632円</td><td>404円</td><td>383円</td></tr>
-    <tr><td>2026年1月</td><td>1.4%</td><td>32.4%</td><td><strong>66.2%</strong></td><td>73円</td><td>212円</td><td>243円</td></tr>
-    <tr><td>2026年2月</td><td>2.9%</td><td><strong>47.6%</strong></td><td>49.5%</td><td>104円</td><td>128円</td><td>131円</td></tr>
-    <tr><td>2026年3月</td><td>0.8%</td><td><strong>78.9%</strong></td><td>20.3%</td><td>43円</td><td>116円</td><td>92円</td></tr>
+    <tr><th>キャンペーン名</th><th>タイプ</th><th>稼働期間</th><th>費用</th><th>クリック</th><th>CV合計</th><th>申込CV</th><th>停止理由</th></tr>
+    <tr class="danger-row">
+      <td><strong>1/22A</strong></td>
+      <td><span class="tag tag-og">DISPLAY</span></td>
+      <td>1-3月（3/6停止）</td>
+      <td class="num">22,832円</td>
+      <td class="num">1,630</td>
+      <td class="num">47</td>
+      <td class="num" style="color:var(--rd)"><strong>0</strong></td>
+      <td>申込CV=0。全てマイクロCV</td>
+    </tr>
+    <tr class="danger-row">
+      <td><strong>Pmax_adlp</strong></td>
+      <td><span class="tag tag-og">PERFORMANCE_MAX</span></td>
+      <td>9-11月（11月停止）</td>
+      <td class="num">232,777円</td>
+      <td class="num">11,025</td>
+      <td class="num">323</td>
+      <td class="num" style="color:var(--rd)"><strong>3</strong></td>
+      <td>320件がマイクロCV。申込CVはわずか3件</td>
+    </tr>
+    <tr>
+      <td colspan="8" style="color:var(--tm);font-size:0.85em">他10キャンペーン（SMART/SEARCH各種）: 全てPAUSED</td>
+    </tr>
+  </table>
+
+  <div class="co co-bad">
+    <b>重要な発見: マイクロCV vs 申込CVの乖離</b>
+    <p>ディスプレイ/PMaxキャンペーンはマイクロCVを大量生成するが、実質的な申込（=ビジネス成果）に繋がらない。</p>
+  </div>
+
+  <table>
+    <tr><th>キャンペーン</th><th>タイプ</th><th>マイクロCV</th><th>申込CV</th><th>申込CV率</th></tr>
+    <tr class="danger-row"><td>1/22A</td><td>DISPLAY</td><td class="num">379件</td><td class="num" style="color:var(--rd)">0件</td><td class="num" style="color:var(--rd)">0%</td></tr>
+    <tr class="danger-row"><td>Pmax_adlp</td><td>PERFORMANCE_MAX</td><td class="num">320件</td><td class="num" style="color:var(--rd)">3件</td><td class="num" style="color:var(--rd)">0.9%</td></tr>
+    <tr class="highlight-row"><td>完全一致_オリジナル</td><td>SEARCH</td><td class="num">117件</td><td class="num" style="color:var(--gn)">60件</td><td class="num" style="color:var(--gn)">33.9%</td></tr>
   </table>
 </div>
 </section>
 
-<!-- ======= 4. KEYWORDS ======= -->
+<!-- ======= 4. KEYWORD ANALYSIS ======= -->
 <section id="s4">
-<h2>4. キーワード別パフォーマンス</h2>
+<h2>4. キーワード分析（2026年1月〜3月12日）</h2>
 
 <div class="card">
-  <h3>現在アクティブなキーワード（直近30日実績）<span class="src">analytics_ads_keyword_daily</span></h3>
+  <h3>キーワード別パフォーマンス <span class="conf conf-h">信頼度: 高（API直接取得）</span></h3>
 
   <table>
-    <tr><th>キーワード</th><th>マッチ</th><th>clicks</th><th>費用</th><th>CPC</th><th>申込CV</th><th>マイクロCV</th><th>CVR</th></tr>
-    <tr><td><strong>外資コンサル 面接 対策</strong></td><td><span class="tag tag-bl">PHRASE</span></td><td>78</td><td>1,343円</td><td>17円</td><td>0</td><td>1.0</td><td>1.3%</td></tr>
-    <tr><td><strong>戦略コンサル 対策</strong></td><td><span class="tag tag-bl">PHRASE</span></td><td>74</td><td>12,352円</td><td>167円</td><td>1.0</td><td>6.5</td><td>10.1%</td></tr>
-    <tr><td><strong>フェルミ推定 対策</strong></td><td><span class="tag tag-gn">EXACT</span></td><td>63</td><td>6,927円</td><td>110円</td><td>1.0</td><td>2.0</td><td>4.8%</td></tr>
-    <tr><td><strong>戦略コンサル 面接</strong></td><td><span class="tag tag-gn">EXACT</span></td><td>48</td><td>4,749円</td><td>99円</td><td>0</td><td>4.0</td><td>8.3%</td></tr>
-    <tr><td><strong>戦コン 面接</strong></td><td><span class="tag tag-bl">PHRASE</span></td><td>13</td><td>2,869円</td><td>221円</td><td>1.0</td><td>2.5</td><td>26.9%</td></tr>
-    <tr><td>ボスコン 中途 採用</td><td><span class="tag tag-rd">BROAD</span></td><td>5</td><td>123円</td><td>25円</td><td>0</td><td>0</td><td>0%</td></tr>
-    <tr><td>戦略コンサル 内定</td><td><span class="tag tag-bl">PHRASE</span></td><td>4</td><td>1,460円</td><td>365円</td><td>0</td><td>0</td><td>0%</td></tr>
+    <tr><th>キーワード</th><th>マッチタイプ</th><th>クリック</th><th>費用</th><th>CV</th><th>CPC</th></tr>
+    <tr>
+      <td><strong>戦略コンサル 対策</strong></td>
+      <td><span class="tag tag-bl">PHRASE</span></td>
+      <td class="num">129</td>
+      <td class="num">28,664円</td>
+      <td class="num">17</td>
+      <td class="num">222円</td>
+    </tr>
+    <tr>
+      <td><strong>戦略コンサル 面接</strong></td>
+      <td><span class="tag tag-gn">EXACT</span></td>
+      <td class="num">153</td>
+      <td class="num">27,825円</td>
+      <td class="num">5</td>
+      <td class="num">182円</td>
+    </tr>
+    <tr>
+      <td><strong>フェルミ推定 対策</strong></td>
+      <td><span class="tag tag-gn">EXACT</span></td>
+      <td class="num">115</td>
+      <td class="num">17,094円</td>
+      <td class="num">7</td>
+      <td class="num">149円</td>
+    </tr>
+    <tr>
+      <td><strong>外資コンサル 面接 対策</strong></td>
+      <td><span class="tag tag-bl">PHRASE</span></td>
+      <td class="num">128</td>
+      <td class="num">4,126円</td>
+      <td class="num">2</td>
+      <td class="num">32円</td>
+    </tr>
+    <tr>
+      <td><strong>戦コン 面接</strong></td>
+      <td><span class="tag tag-bl">PHRASE</span></td>
+      <td class="num">16</td>
+      <td class="num">3,636円</td>
+      <td class="num">4</td>
+      <td class="num">227円</td>
+    </tr>
+    <tr>
+      <td><strong>戦略コンサル 内定</strong></td>
+      <td><span class="tag tag-bl">PHRASE</span></td>
+      <td class="num">10</td>
+      <td class="num">3,350円</td>
+      <td class="num">3</td>
+      <td class="num">335円</td>
+    </tr>
+    <tr>
+      <td>ボスコン 中途 採用</td>
+      <td><span class="tag tag-rd">BROAD</span></td>
+      <td class="num">18</td>
+      <td class="num">1,696円</td>
+      <td class="num">2</td>
+      <td class="num">94円</td>
+    </tr>
+    <tr>
+      <td>マッキンゼー 対策</td>
+      <td><span class="tag tag-gn">EXACT</span></td>
+      <td class="num">2</td>
+      <td class="num">372円</td>
+      <td class="num">1</td>
+      <td class="num">186円</td>
+    </tr>
   </table>
 
-  <div class="co co-fact">
-    <b>用語の定義</b>
-    <p><strong>申込CV（cv_application）</strong>: LP上の /schedule/ ページ遷移 = 無料面談申込ボタンクリック。sync-cronで<code>["既卒(/schedule/遷移)", "新卒(schedule_newgraduate_遷移)"]</code>として定義。<br>
-    <strong>マイクロCV（cv_micro）</strong>: LPのスクロールや動画視聴等、申込以前の行動指標。<br>
-    <strong>成約</strong>: 実際の入金完了。申込CV → 日程確定 → 成約 の3段階。</p>
+  <div class="co co-warn">
+    <b>CVの定義に注意</b>
+    <p>上記テーブルのCV数は全種類含む（マイクロCV含む）。申込CVのみのキーワードレベル内訳はGoogle Ads API上で分離取得できないため、実際の申込件数はこれより少ない可能性があります。</p>
   </div>
-
-  <h3>申込CVが発生したキーワード</h3>
-  <p>直近30日で申込CVが発生したキーワードは3つのみ:</p>
-  <table>
-    <tr><th>キーワード</th><th>申込CV</th><th>CVR</th><th>コメント</th></tr>
-    <tr><td>戦略コンサル 対策 [PHRASE]</td><td>1.0</td><td>1.4%</td><td>最多クリックキーワード。安定的にCVを生む</td></tr>
-    <tr><td>フェルミ推定 対策 [EXACT]</td><td>1.0</td><td>1.6%</td><td>直近の成約顧客（松本洸太、鈴木貴文）のutm_mediumと一致</td></tr>
-    <tr><td>戦コン 面接 [PHRASE]</td><td>1.0</td><td>7.7%</td><td>少量だがCVR非常に高い。直近成約（小嶋朗正）のutmと一致</td></tr>
-  </table>
 </div>
 </section>
 
-<!-- ======= 5. REVENUE ======= -->
+<!-- ======= 5. SEARCH TERMS ======= -->
 <section id="s5">
-<h2>5. 売上・ROI全体像</h2>
+<h2>5. 検索語句レポート（TOP20）</h2>
 
 <div class="card">
-  <h3>売上構成 <span class="src">contracts + agent_records</span></h3>
+  <h3>検索語句パフォーマンス（2025年12月〜2026年3月）<span class="conf conf-h">信頼度: 高（API直接取得）</span></h3>
+
+  <table>
+    <tr><th>検索語句</th><th>クリック</th><th>費用</th><th>CV</th><th>備考</th></tr>
+    <tr>
+      <td>ケース 面接 対策</td>
+      <td class="num">35</td>
+      <td class="num">2,861円</td>
+      <td class="num">1</td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>アクセンチュア ケース 面接</td>
+      <td class="num">30</td>
+      <td class="num">336円</td>
+      <td class="num">0</td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>ケース 面接 例題</td>
+      <td class="num">21</td>
+      <td class="num">1,014円</td>
+      <td class="num">0</td>
+      <td></td>
+    </tr>
+    <tr class="highlight-row">
+      <td><strong>strategist ケース 面接</strong></td>
+      <td class="num"><strong>18</strong>（10+8）</td>
+      <td class="num"><strong>5,088円</strong></td>
+      <td class="num" style="color:var(--gn)"><strong>4</strong></td>
+      <td style="color:var(--gn)">指名検索。CVR 22%</td>
+    </tr>
+    <tr>
+      <td>アクセンチュア 面接 対策</td>
+      <td class="num">15</td>
+      <td class="num">781円</td>
+      <td class="num">0</td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>ケース 面接</td>
+      <td class="num">14</td>
+      <td class="num">1,043円</td>
+      <td class="num">0</td>
+      <td></td>
+    </tr>
+    <tr class="highlight-row">
+      <td><strong>戦略 コンサル 対策</strong></td>
+      <td class="num"><strong>9</strong></td>
+      <td class="num"><strong>3,606円</strong></td>
+      <td class="num" style="color:var(--gn)"><strong>3</strong></td>
+      <td style="color:var(--gn)">CVR 33%</td>
+    </tr>
+  </table>
+
+  <div class="co co-good">
+    <b>指名検索「strategist」のCVR 22%が突出</b>
+    <p>「strategist ケース面接」は18クリックで4CV（CVR 22%）。ブランド認知が直接CVに繋がる好例。ブランド認知施策との連動でさらなるCV増加が見込める。</p>
+  </div>
+</div>
+</section>
+
+<!-- ======= 6. BIDDING STRATEGY ======= -->
+<section id="s6">
+<h2>6. 入札戦略の現状</h2>
+
+<div class="card">
+  <h3>現在の設定 <span class="conf conf-h">信頼度: 高（API直接取得）</span></h3>
+
+  <table>
+    <tr><th>項目</th><th>値</th></tr>
+    <tr><td>入札戦略</td><td>TARGET_CPA（両キャンペーン共通）</td></tr>
+    <tr><td>目標CPA設定</td><td><span class="tag tag-yw">未設定</span>（target_cpa_micros がAPIレスポンスにない）</td></tr>
+    <tr><td>日予算</td><td>5,000円（共有予算）</td></tr>
+    <tr><td>共有予算ID</td><td>14884051861（両キャンペーン同一）</td></tr>
+    <tr><td>月換算予算</td><td>約150,000円（実績とも一致）</td></tr>
+  </table>
+
+  <div class="co co-warn">
+    <b>TARGET_CPAだが目標値が未設定</b>
+    <p>Google Ads APIのレスポンスに<code>target_cpa_micros</code>が含まれていない。管理画面上では何らかの値が設定されている可能性があるが、API上は確認不可。Googleのアルゴリズムに完全に委ねている状態の可能性あり。</p>
+  </div>
+</div>
+</section>
+
+<!-- ======= 7. REVENUE DETAIL ======= -->
+<section id="s7">
+<h2>7. 売上詳細（Google広告経由 成約10名）</h2>
+
+<div class="card">
+  <h3>成約顧客一覧 <span class="conf conf-h">信頼度: 高（CRM DB）</span></h3>
+
+  <table>
+    <tr><th>名前</th><th>申込日</th><th>属性</th><th>スクール</th><th>補助金</th><th>エージェント</th><th>確定状況</th></tr>
+    <tr>
+      <td>江渕 登和</td><td>2025-04-26</td><td>27卒</td>
+      <td class="num">304,000円</td><td class="num">0円</td><td class="num">172,800円</td>
+      <td><span class="tag tag-yw">未確定</span></td>
+    </tr>
+    <tr>
+      <td>清水 響</td><td>2025-04-27</td><td>既卒中途(3年未満)</td>
+      <td class="num">49,000円</td><td class="num">0円</td><td class="num">0円</td>
+      <td>-</td>
+    </tr>
+    <tr>
+      <td>工藤 琴葉</td><td>2025-04-28</td><td>27卒(学部卒)</td>
+      <td class="num">68,500円</td><td class="num">0円</td><td class="num">172,800円</td>
+      <td><span class="tag tag-yw">未確定</span></td>
+    </tr>
+    <tr>
+      <td>坂本 怜</td><td>2025-05-12</td><td>既卒中途(3-7年)</td>
+      <td class="num">171,000円</td><td class="num">0円</td><td class="num">0円</td>
+      <td>-</td>
+    </tr>
+    <tr class="highlight-row">
+      <td><strong>田代 智之</strong></td><td>2025-09-19</td><td>既卒</td>
+      <td class="num">163,000円</td><td class="num">0円</td><td class="num" style="color:var(--gn)"><strong>4,003,230円</strong></td>
+      <td><span class="tag tag-gn">確定</span></td>
+    </tr>
+    <tr>
+      <td>イム・ドンホ</td><td>2025-09-24</td><td>既卒中途(3年未満)</td>
+      <td class="num">133,000円</td><td class="num">0円</td><td class="num">324,000円</td>
+      <td><span class="tag tag-yw">未確定</span></td>
+    </tr>
+    <tr class="highlight-row">
+      <td><strong>町元 宥達</strong></td><td>2025-10-09</td><td>既卒中途(7年以上)</td>
+      <td class="num">197,800円</td><td class="num">0円</td><td class="num" style="color:var(--gn)"><strong>2,356,200円</strong></td>
+      <td><span class="tag tag-gn">確定</span></td>
+    </tr>
+    <tr>
+      <td>鈴木 貴文</td><td>2026-02-01</td><td>既卒中途(7年以上)</td>
+      <td class="num">198,000円</td><td class="num">0円</td><td class="num">0円</td>
+      <td>-</td>
+    </tr>
+    <tr>
+      <td>松本 洸太</td><td>2026-02-11</td><td>既卒中途(3-7年)</td>
+      <td class="num">224,000円</td><td class="num">203,636円</td><td class="num">225,990円</td>
+      <td><span class="tag tag-yw">未確定</span></td>
+    </tr>
+    <tr>
+      <td>小嶋 朗正</td><td>2026-02-23</td><td>既卒中途(3年未満)</td>
+      <td class="num">224,000円</td><td class="num">0円</td><td class="num">324,000円</td>
+      <td><span class="tag tag-yw">未確定</span></td>
+    </tr>
+  </table>
+
+  <h3>売上構成</h3>
+
+  <div class="grid-3">
+    <div class="stat">
+      <div class="stat-val" style="color:var(--ac2)">2,068,100円</div>
+      <div class="stat-lbl">スクール売上</div>
+      <div class="stat-sub">成約10名分合計</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val" style="color:var(--cn)">203,636円</div>
+      <div class="stat-lbl">補助金</div>
+      <div class="stat-sub">松本洸太 1名分</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val" style="color:var(--gn)">6,359,430円</div>
+      <div class="stat-lbl">エージェント確定</div>
+      <div class="stat-sub">田代+町元の2名</div>
+    </div>
+  </div>
+
+  <table>
+    <tr><th>カテゴリ</th><th>金額</th></tr>
+    <tr><td>スクール売上合計</td><td class="num">2,068,100円</td></tr>
+    <tr><td>補助金</td><td class="num">203,636円</td></tr>
+    <tr><td>エージェント確定売上</td><td class="num">6,359,430円</td></tr>
+    <tr class="highlight-row"><td><strong>確定売上 合計</strong></td><td class="num"><strong>8,631,166円</strong></td></tr>
+  </table>
+
+  <div class="co co-fact">
+    <b>特筆: 田代・町元の2名でエージェント確定6,359,430円</b>
+    <p>全確定売上8,631,166円の<strong>74%</strong>をこの2名のエージェント売上が占める。高年収既卒層の成約がROASを大きく左右する構造。</p>
+  </div>
+</div>
+</section>
+
+<!-- ======= 8. MARCH ANOMALY ======= -->
+<section id="s8">
+<h2>8. 3月の特異動向</h2>
+
+<div class="card">
+  <h3>3月1日〜12日の日別データ <span class="conf conf-h">信頼度: 高（API直接取得）</span></h3>
+
+  <table>
+    <tr><th>日付</th><th>費用</th><th>クリック</th><th>CV</th><th>備考</th></tr>
+    <tr><td>3/1</td><td class="num">4,161円</td><td class="num">318</td><td class="num">15</td><td>1/22A(ディスプレイ) + 検索</td></tr>
+    <tr><td>3/2</td><td class="num">6,297円</td><td class="num">254</td><td class="num">9</td><td></td></tr>
+    <tr><td>3/3</td><td class="num">4,450円</td><td class="num">321</td><td class="num">12</td><td></td></tr>
+    <tr><td>3/4</td><td class="num">5,380円</td><td class="num">286</td><td class="num">2</td><td></td></tr>
+    <tr><td>3/5</td><td class="num">5,167円</td><td class="num">274</td><td class="num">4</td><td></td></tr>
+    <tr><td>3/6</td><td class="num">4,600円</td><td class="num">236</td><td class="num">7</td><td>1/22A最終日</td></tr>
+    <tr class="danger-row"><td><strong>3/7</strong></td><td class="num">755円</td><td class="num" style="color:var(--rd)"><strong>10</strong></td><td class="num">2</td><td><strong>1/22A停止後 -- クリック96%減</strong></td></tr>
+    <tr class="danger-row"><td>3/8</td><td class="num">1,681円</td><td class="num" style="color:var(--rd)">13</td><td class="num">2</td><td>検索のみ</td></tr>
+    <tr class="danger-row"><td>3/9</td><td class="num">478円</td><td class="num" style="color:var(--rd)">11</td><td class="num">0</td><td>検索のみ</td></tr>
+    <tr class="danger-row"><td>3/10</td><td class="num">737円</td><td class="num" style="color:var(--rd)">11</td><td class="num">0</td><td>検索のみ</td></tr>
+    <tr class="danger-row"><td>3/11</td><td class="num">276円</td><td class="num" style="color:var(--rd)">5</td><td class="num">0</td><td>検索のみ</td></tr>
+    <tr class="highlight-row"><td><strong>3/12</strong></td><td class="num"><strong>10,000円</strong></td><td class="num" style="color:var(--gn)"><strong>122</strong></td><td class="num">9</td><td><strong>複製版_ABテスト開始</strong></td></tr>
+  </table>
+
+  <h3>タイムライン整理</h3>
+  <table>
+    <tr><th>期間</th><th>状況</th><th>日平均クリック</th><th>日平均費用</th></tr>
+    <tr><td>3/1-6</td><td>1/22A(ディスプレイ) + 完全一致(検索)</td><td class="num">約300件</td><td class="num">約5,000円</td></tr>
+    <tr class="danger-row"><td>3/7-11</td><td>1/22A停止、検索のみ</td><td class="num" style="color:var(--rd)">約10件</td><td class="num">約800円</td></tr>
+    <tr class="highlight-row"><td>3/12</td><td>複製版_ABテスト用が稼働開始</td><td class="num" style="color:var(--gn)">122件</td><td class="num">10,000円</td></tr>
+  </table>
+
+  <div class="co co-warn">
+    <b>3月の申込CVは現在0件</b>
+    <p>3/1-12の12日間で申込CV=0。ディスプレイ停止の影響に加え、検索のみの期間(3/7-11)はクリック自体が日10件程度に激減。3/12のABテスト開始で回復傾向（CV=9はマイクロ）。</p>
+  </div>
+</div>
+</section>
+
+<!-- ======= 9. STRATEGY ======= -->
+<section id="s9">
+<h2>9. 戦略提言</h2>
+
+<div class="card">
+  <h3>現状の判定</h3>
 
   <div class="grid">
     <div class="stat">
-      <div class="stat-val" style="color:var(--gn)">206.8万円</div>
-      <div class="stat-lbl">スクール確定売上</div>
-      <div class="stat-sub">12名分</div>
+      <div class="stat-val" style="color:var(--gn)">3.9x</div>
+      <div class="stat-lbl">見込みROAS</div>
+      <div class="stat-sub" style="color:var(--gn)">目標3x 達成</div>
     </div>
     <div class="stat">
-      <div class="stat-val" style="color:var(--cn)">635.9万円</div>
-      <div class="stat-lbl">エージェント確定売上</div>
-      <div class="stat-sub">田代・町元の2名</div>
-    </div>
-    <div class="stat">
-      <div class="stat-val" style="color:var(--yw)">1,209万円</div>
-      <div class="stat-lbl">エージェント見込売上</div>
-      <div class="stat-sub">50名分（デフォルト計算値含む）</div>
-    </div>
-    <div class="stat">
-      <div class="stat-val" style="color:var(--ac2)">20.4万円</div>
-      <div class="stat-lbl">補助金</div>
-      <div class="stat-sub">松本洸太 203,636円</div>
+      <div class="stat-val" style="color:var(--rd)">1.7x</div>
+      <div class="stat-lbl">確定ROAS</div>
+      <div class="stat-sub" style="color:var(--rd)">目標3x 未達</div>
     </div>
   </div>
 
-  <table>
-    <tr><th>カテゴリ</th><th>金額</th><th>内訳</th></tr>
-    <tr><td>スクール確定売上</td><td>2,068,100円</td><td>contracts.confirmed_amount &gt; 0 の12件</td></tr>
-    <tr><td>エージェント確定売上</td><td>6,359,430円</td><td>placement_confirmed="確定" 2名（田代4,003,230 + 町元2,356,200）</td></tr>
-    <tr><td>補助金</td><td>203,636円</td><td>松本洸太のsubsidy_amount</td></tr>
-    <tr style="background:rgba(52,211,153,0.05)"><td><strong>確定売上 合計</strong></td><td><strong>8,631,166円</strong></td><td></td></tr>
-    <tr><td>エージェント見込売上</td><td>12,090,690円</td><td>未確定50名分（デフォルト計算値多数）</td></tr>
-    <tr><td><strong>見込み込み 合計</strong></td><td><strong>20,721,856円</strong></td><td></td></tr>
-  </table>
-
-  <h3>広告費 vs 売上</h3>
-  <table>
-    <tr><th>指標</th><th>金額</th></tr>
-    <tr><td>累計広告費（全キャンペーン、6ヶ月間）</td><td>1,217,287円</td></tr>
-    <tr><td>確定売上</td><td>8,631,166円</td></tr>
-    <tr><td><strong>確定ROAS</strong></td><td><strong>709%</strong>（1円の広告費に対して7.09円の確定売上）</td></tr>
-    <tr><td>確定CPA（成約1件あたり広告費）</td><td>121,729円（10名成約）</td></tr>
-  </table>
-
-  <div class="co co-warn">
-    <b>エージェント見込売上の注意</b>
-    <p>見込売上1,209万円の大半はデフォルト計算値（想定年収800万 × hire_rate 0.6 × offer_probability 0.3 × fee_rate 0.3〜0.4）です。実態を反映していない可能性が高く、確定は田代・町元の2名のみ。</p>
-  </div>
-</div>
-</section>
-
-<!-- ======= 6. CUSTOMERS ======= -->
-<section id="s6">
-<h2>6. 成約顧客の個別分析</h2>
-
-<div class="card">
-  <h3>Google Ads経由 成約顧客10名 <span class="src">customers + contracts + agent_records</span></h3>
+  <h3>提言一覧</h3>
 
   <table>
-    <tr><th>名前</th><th>申込日</th><th>属性</th><th>utm_medium</th><th>スクール</th><th>エージェント</th><th>状態</th><th>合計</th></tr>
-    <tr style="background:rgba(52,211,153,0.05)">
-      <td><strong>田代 智之</strong></td><td>2025-09-19</td><td>既卒</td><td>コンコード コンサル</td>
-      <td>163,000</td><td>4,003,230</td><td><span class="tag tag-gn">確定</span></td><td><strong>4,166,230</strong></td>
-    </tr>
-    <tr style="background:rgba(52,211,153,0.05)">
-      <td><strong>町元 宥達</strong></td><td>2025-10-09</td><td>既卒7年目+</td><td>reverse ケース</td>
-      <td>197,800</td><td>2,356,200</td><td><span class="tag tag-gn">確定</span></td><td><strong>2,554,000</strong></td>
-    </tr>
-    <tr><td>江渕 登和</td><td>2025-04-26</td><td>—</td><td>303</td><td>304,000</td><td>見込172,800</td><td><span class="tag tag-yw">未確定</span></td><td>304,000+</td></tr>
-    <tr><td>鈴木涼太</td><td>—</td><td>—</td><td>—</td><td>296,000</td><td>—</td><td>—</td><td>296,000</td></tr>
-    <tr><td>松本 洸太</td><td>2026-02-11</td><td>—</td><td>フェルミ推定 対策</td><td>224,000</td><td>見込225,990</td><td><span class="tag tag-yw">未確定</span></td><td>427,636+補助金</td></tr>
-    <tr><td>小嶋 朗正</td><td>2026-02-23</td><td>—</td><td>戦コン 面接</td><td>224,000</td><td>見込324,000</td><td><span class="tag tag-yw">未確定</span></td><td>224,000+</td></tr>
-    <tr><td>鈴木 貴文</td><td>2026-02-01</td><td>—</td><td>フェルミ推定 対策</td><td>198,000</td><td>—</td><td>—</td><td>198,000</td></tr>
-    <tr><td>坂本 怜</td><td>2025-05-12</td><td>—</td><td>303</td><td>171,000</td><td>0</td><td>—</td><td>171,000</td></tr>
-    <tr><td>イム・ドンホ</td><td>2025-09-24</td><td>既卒</td><td>ケース面接 問題</td><td>133,000</td><td>見込324,000</td><td><span class="tag tag-yw">未確定</span></td><td>133,000+</td></tr>
-    <tr><td>工藤 琴葉</td><td>2025-04-28</td><td>新卒</td><td>303</td><td>68,500</td><td>見込172,800</td><td><span class="tag tag-yw">未確定</span></td><td>68,500+</td></tr>
-  </table>
-
-  <h4>田代智之 エージェント売上内訳</h4>
-  <p>想定年収17,330,000円 × hire_rate 1.0 × offer_probability 1.0 × fee_rate 33% × margin 70% = <strong>4,003,230円</strong></p>
-
-  <h4>町元宥達 エージェント売上内訳</h4>
-  <p>想定年収10,200,000円 × hire_rate 1.0 × offer_probability 1.0 × fee_rate 33% × margin 70% = <strong>2,356,200円</strong></p>
-
-  <h3>パイプライン全体像（Google Ads経由55名）</h3>
-  <table>
-    <tr><th>ステージ</th><th>人数</th><th>説明</th></tr>
-    <tr><td>成約（入金済み）</td><td><strong>10名</strong></td><td>上記テーブルの顧客</td></tr>
-    <tr><td>失注</td><td>13名</td><td></td></tr>
-    <tr><td>失注見込（自動）</td><td>12名</td><td></td></tr>
-    <tr><td>NoShow</td><td>4名</td><td>面談に来なかった</td></tr>
-    <tr><td>実施不可</td><td>7名</td><td></td></tr>
-    <tr><td>全額返金</td><td>1名</td><td>五十嵐健人（utm: 戦略コンサル 面接）</td></tr>
-    <tr><td>その他</td><td>8名</td><td>未実施、長期検討等</td></tr>
-  </table>
-  <p style="font-size:0.85em;color:var(--tm);margin-top:8px">成約率: 10/55 = <strong>18.2%</strong>（utm_source=googleads登録 → 入金）</p>
-</div>
-</section>
-
-<!-- ======= 7. UNCOVERED ======= -->
-<section id="s7">
-<h2>7. 未カバー検索クエリの機会</h2>
-
-<div class="card">
-  <h3>Search Consoleデータに基づく分析 <span class="conf conf-m">信頼度: 中</span></h3>
-
-  <div class="co co-warn">
-    <b>重要な前提</b>
-    <p>以下のデータはSearch Console（<strong>オーガニック検索</strong>）のクリック数です。広告経由ではありません。Developer Tokenがテストレベルのため、Google Ads APIの<code>search_term_view</code>（広告の検索語句レポート）は取得できていません。<br>
-    つまり「広告がこれらのクエリに表示されているか」は現時点で<strong>正確には確認できません</strong>。BROADマッチキーワード経由で間接的に表示されている可能性もあります。</p>
-  </div>
-
-  <h4>広告キーワードとして明示的に設定されていない企業名クエリ</h4>
-  <table>
-    <tr><th>検索クエリ（Search Console）</th><th>オーガニックclicks</th><th>impressions</th><th>広告KW設定</th></tr>
-    <tr><td>アビーム ケース面接 + アビームコンサルティング ケース面接</td><td><strong>181</strong></td><td>508</td><td><span class="tag tag-rd">なし</span></td></tr>
-    <tr><td>ベイカレント ケース面接 + ベイカレ ケース面接</td><td><strong>210</strong></td><td>677</td><td><span class="tag tag-rd">なし</span></td></tr>
-    <tr><td>PWC ケース面接</td><td><strong>89</strong></td><td>228</td><td><span class="tag tag-rd">なし</span></td></tr>
-    <tr><td>デロイト ケース面接</td><td><strong>87</strong></td><td>393</td><td><span class="tag tag-rd">なし</span></td></tr>
-    <tr><td>アクセンチュア ケース面接 過去問</td><td>71</td><td>235</td><td><span class="tag tag-yw">部分的</span></td></tr>
-  </table>
-
-  <h4>広告キーワードとして設定済みの企業名</h4>
-  <p>BCG、ベイン、マッキンゼー、ローランドベルガー、カーニー、ADL</p>
-
-  <div class="co co-good">
-    <b>機会の試算（前提付き）</b>
-    <p>上位4社のオーガニックclicks合計: 約567件/月。PHRASEマッチで広告キーワードを追加した場合:<br>
-    ・推定追加広告費: 5〜10万円/月（CPC 100-200円想定）<br>
-    ・推定追加クリック: 100-200件/月<br>
-    ただし、<strong>これはオーガニック検索のボリュームであり、広告で同等のクリックが得られる保証はありません</strong>。正確な判断にはGoogle Ads管理画面の「キーワードプランナー」でのボリューム確認が必要です。</p>
-  </div>
-</div>
-</section>
-
-<!-- ======= 8. DATA INFRA ======= -->
-<section id="s8">
-<h2>8. データ基盤の課題</h2>
-
-<div class="card">
-  <h3>現在の問題点と対応</h3>
-
-  <table>
-    <tr><th>課題</th><th>影響</th><th>対応</th><th>優先度</th></tr>
+    <tr><th>#</th><th>提言</th><th>詳細</th><th>優先度</th></tr>
     <tr>
-      <td><strong>GOOGLE_REFRESH_TOKEN期限切れ</strong></td>
-      <td>3/11以降の全データ同期停止</td>
-      <td>Vercel環境変数のトークンを更新</td>
+      <td>1</td>
+      <td><strong>検索キャンペーンに集中投資</strong></td>
+      <td>ディスプレイ/PMaxは申込CVに寄与しない（実証済み）。検索キャンペーンのみが実質的な申込を生む</td>
       <td><span class="tag tag-rd">最高</span></td>
     </tr>
     <tr>
-      <td><strong>Developer Tokenがテストレベル</strong></td>
-      <td>search_term_view（検索語句レポート）が取得不可</td>
-      <td>Google Adsベーシックアクセス審査完了を待つ</td>
+      <td>2</td>
+      <td><strong>日予算5,000円の見直し</strong></td>
+      <td>月15万円では最適化データが不足。2025年5-7月（月50-97万円）が最もCV効率が良かった事実を踏まえ、予算増額を検討</td>
       <td><span class="tag tag-rd">高</span></td>
     </tr>
     <tr>
-      <td>1/22Aキャンペーン停止の確認</td>
-      <td>トラフィック96%減の原因が意図的かどうか不明</td>
-      <td>Google Ads管理画面で確認</td>
-      <td><span class="tag tag-rd">高</span></td>
-    </tr>
-    <tr>
-      <td>入札戦略・学習ステータスの不在</td>
-      <td>ターゲットCPA変更時の学習リセット状況が不明</td>
-      <td>sync-analyticsにcampaign_budget/bidding_strategy追加済み（コード実装完了、トークン更新後に自動取得開始）</td>
+      <td>3</td>
+      <td><strong>指名検索「strategist」の活用</strong></td>
+      <td>CVR 22%（4CV/18clicks）が突出。ブランド認知施策（SNS、コンテンツ等）との連動でブランド検索量を増やす</td>
       <td><span class="tag tag-yw">中</span></td>
     </tr>
     <tr>
-      <td>オークション分析の不在</td>
-      <td>競合の入札状況が不明</td>
-      <td>auction_insights APIの追加（Developer Token承認後に対応可能）</td>
-      <td><span class="tag tag-bl">低</span></td>
+      <td>4</td>
+      <td><strong>2025年5-7月の成功要因分析</strong></td>
+      <td>月13-14件の申込CVを達成した黄金期。予算規模？季節性？キーワード構成？の分析が今後の最適化に不可欠</td>
+      <td><span class="tag tag-yw">中</span></td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td><strong>エージェント売上の確定率向上</strong></td>
+      <td>見込み11,105,640円が確定すればROAS 3.9x以上が確実。確定に向けた営業フォローの強化</td>
+      <td><span class="tag tag-yw">中</span></td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td><strong>3月の申込CV=0件に対処</strong></td>
+      <td>成約までの期間は約2週間。ディスプレイ停止後の検索CPのみでは申込CVが生まれていない。ABテストキャンペーンの効果を早期検証</td>
+      <td><span class="tag tag-rd">高</span></td>
     </tr>
   </table>
 
-  <h3>実装済み（トークン更新後に自動稼働するもの）</h3>
-  <table>
-    <tr><th>機能</th><th>APIリソース</th><th>Supabaseテーブル</th><th>状態</th></tr>
-    <tr><td>検索語句レポート</td><td>search_term_view</td><td>analytics_ads_search_terms_daily</td><td>コード実装済み。Developer Token承認待ち</td></tr>
-    <tr><td>キャンペーン設定</td><td>campaign_budget + bidding_strategy</td><td>analytics_ads_campaign_settings</td><td>コード実装済み。トークン更新待ち</td></tr>
-    <tr><td>週次Slackレポート</td><td>—</td><td>—</td><td>稼働中（毎週月曜9:00 JST）</td></tr>
-  </table>
-</div>
-</section>
-
-<!-- ======= 9. ACTIONS ======= -->
-<section id="s9">
-<h2>9. アクションプラン</h2>
-
-<div class="card">
-  <h3>🔴 即時対応（今すぐ）</h3>
-  <table>
-    <tr><th>#</th><th>施策</th><th>理由</th><th>担当</th></tr>
-    <tr><td>1</td><td><strong>1/22Aキャンペーンの状態確認</strong></td><td>PAUSEDが意図的でない場合、即再開。トラフィック96%減の原因</td><td>Google Ads管理画面</td></tr>
-    <tr><td>2</td><td><strong>GOOGLE_REFRESH_TOKENの更新</strong></td><td>3/11以降の全データ同期停止中。CRMの分析機能が停止状態</td><td>Vercel環境変数</td></tr>
-  </table>
-
-  <h3>🟡 短期（1-2週間）</h3>
-  <table>
-    <tr><th>#</th><th>施策</th><th>理由</th></tr>
-    <tr><td>3</td><td>Developer Tokenベーシックアクセスの状況確認</td><td>承認後にsearch_term_view（検索語句レポート）の同期が自動開始される</td></tr>
-    <tr><td>4</td><td>ターゲットCPA変更後の学習ステータス確認</td><td>Google Ads管理画面で「学習中」か「学習完了」か確認。学習中なら2週間触らない</td></tr>
-  </table>
-
-  <h3>🟢 中期（2-4週間）</h3>
-  <table>
-    <tr><th>#</th><th>施策</th><th>推定コスト</th><th>期待効果</th></tr>
-    <tr><td>5</td><td>「ベイカレント ケース面接」PHRASEマッチ追加</td><td>2-5万円/月</td><td>最大ボリューム。ただし効果はキーワードプランナーで事前確認</td></tr>
-    <tr><td>6</td><td>「アビーム ケース面接」PHRASEマッチ追加</td><td>2-4万円/月</td><td>同上</td></tr>
-    <tr><td>7</td><td>「デロイト ケース面接」「PWC ケース面接」追加</td><td>各1-3万円/月</td><td>同上</td></tr>
-    <tr><td>8</td><td>除外キーワード整備（検索語句レポート確認後）</td><td>—</td><td>無駄なクリックの削減</td></tr>
-  </table>
-
   <div class="co co-fact">
-    <b>施策5-7について</b>
-    <p>現時点では広告の検索語句データが取得できていないため、これらのクエリに既にBROADマッチで広告が表示されているかどうか不明です。<strong>Google Ads管理画面の「検索語句」タブで確認してから実施してください。</strong>既に表示されている場合、新しいキーワードを追加する代わりに、既存のBROADマッチの除外キーワード設定の方が効果的な可能性があります。</p>
+    <b>ROASの分岐点</b>
+    <p>現在の未確定エージェント見込み（江渕172,800 + 工藤172,800 + イム324,000 + 松本225,990 + 小嶋324,000 = 合計1,219,590円のうち一部でも確定すれば確定ROASは改善する。特にイム・松本・小嶋の3名分が確定すれば+873,990円で確定ROASは1.87xへ。</p>
   </div>
 </div>
 </section>
 
-<!-- ======= 10. METHODOLOGY ======= -->
+<!-- ======= 10. DATA METHODOLOGY ======= -->
 <section id="s10">
-<h2>10. 方法論・データ信頼性</h2>
+<h2>10. データ取得方法と信頼性</h2>
 
 <div class="card">
+  <h3>データソース一覧</h3>
+
   <table>
-    <tr><th>分析項目</th><th>データソース</th><th>信頼度</th><th>制限事項</th></tr>
+    <tr><th>データ項目</th><th>取得元</th><th>信頼度</th><th>取得日</th></tr>
     <tr>
-      <td>CPC・費用・クリック推移</td>
-      <td>analytics_ads_campaign_daily<br>analytics_ads_keyword_daily</td>
+      <td>キャンペーン・キーワード・検索語句・入札設定</td>
+      <td>Google Ads API v23（本番アカウント 9777096652）</td>
+      <td><span class="conf conf-h">高（API直接取得）</span></td>
+      <td>2026-03-13</td>
+    </tr>
+    <tr>
+      <td>Basic Access権限</td>
+      <td>Google Ads API（本番アカウントにフルアクセス）</td>
       <td><span class="conf conf-h">高</span></td>
-      <td>Google Ads API直接同期。3/11以降は未同期</td>
+      <td>-</td>
     </tr>
     <tr>
-      <td>1/22A停止の特定</td>
-      <td>analytics_ads_campaign_daily (日次)</td>
-      <td><span class="conf conf-h">高</span></td>
-      <td>3/6最終データ日。PAUSED状態はcampaign_statusから確認</td>
+      <td>顧客情報・申込日・属性</td>
+      <td>Supabase CRM DB（customersテーブル）</td>
+      <td><span class="conf conf-h">高（DB直接参照）</span></td>
+      <td>2026-03-13</td>
     </tr>
     <tr>
-      <td>マッチタイプ分析</td>
-      <td>analytics_ads_keyword_daily.match_type</td>
-      <td><span class="conf conf-h">高</span></td>
-      <td>Google Ads API直接同期</td>
+      <td>売上・成約ステータス</td>
+      <td>Supabase CRM DB（contracts + agent_records）</td>
+      <td><span class="conf conf-h">高（DB直接参照）</span></td>
+      <td>2026-03-13</td>
     </tr>
     <tr>
-      <td>売上データ</td>
-      <td>contracts + agent_records</td>
-      <td><span class="conf conf-h">高</span></td>
-      <td>DB直接参照。billing_status=未請求が多い点に注意</td>
-    </tr>
-    <tr>
-      <td>未カバークエリ分析</td>
-      <td>analytics_search_daily (Search Console)</td>
-      <td><span class="conf conf-m">中</span></td>
-      <td><strong>オーガニック検索のみ</strong>。広告の検索語句レポートは未取得。BROADマッチでの間接カバーは未確認</td>
-    </tr>
-    <tr>
-      <td>成約率</td>
-      <td>customers (utm_source) + sales_pipeline</td>
-      <td><span class="conf conf-m">中</span></td>
-      <td>UTM紐付けが不完全な可能性。全GA顧客がUTM付きとは限らない</td>
+      <td>エージェント見込み売上</td>
+      <td>CRM DB計算値（想定年収 x 各種率）</td>
+      <td><span class="conf conf-m">中（推計）</span></td>
+      <td>-</td>
     </tr>
   </table>
 
-  <h3>前バージョンからの主な修正</h3>
+  <h3>コンバージョン定義（Google Ads管理画面で確認）</h3>
   <table>
-    <tr><th>項目</th><th>v2.0</th><th>v3.0（今回）</th></tr>
-    <tr><td>3月減少の原因</td><td>統計的変動 + ターゲットCPA変更</td><td><strong>1/22Aキャンペーン停止が主因</strong>（日次データで3/6→3/7の断層を特定）</td></tr>
-    <tr><td>1/22Aキャンペーン</td><td>存在を認識していなかった</td><td>全クリックの95%を占める主力CP。停止によりトラフィック96%減</td></tr>
-    <tr><td>検索語句分析の前提</td><td>「広告キーワード未設定」と断定的</td><td>「オーガニックデータのみで、広告側は未確認」と明記。Developer Token制限を開示</td></tr>
-    <tr><td>Google API認証</td><td>言及なし</td><td>トークン期限切れによるデータ同期停止を報告</td></tr>
-    <tr><td>申込CVの帰属</td><td>キャンペーン区別なし</td><td>申込CVは完全一致CPのみ、1/22Aは申込CV=0であることを明記</td></tr>
+    <tr><th>CV種別</th><th>定義</th><th>分類</th></tr>
+    <tr><td>既卒(/schedule/遷移)</td><td>LPの/schedule/ページ遷移（既卒向け面談申込）</td><td><span class="tag tag-gn">申込CV</span></td></tr>
+    <tr><td>新卒(schedule_newgraduate_遷移)</td><td>LPの新卒向けスケジュールページ遷移</td><td><span class="tag tag-gn">申込CV</span></td></tr>
+    <tr><td>申込ボタンクリック</td><td>LP上の申込ボタンクリック</td><td><span class="tag tag-gn">申込CV</span></td></tr>
+    <tr><td>マイクロCV</td><td>LPスクロール、動画視聴等の行動指標</td><td><span class="tag tag-yw">マイクロCV</span></td></tr>
+  </table>
+
+  <h3>v3.0からの主な変更点</h3>
+  <table>
+    <tr><th>項目</th><th>v3.0</th><th>v4.0（今回）</th></tr>
+    <tr><td>データソース</td><td>Supabase DB（Google Ads API同期データ）</td><td><strong>Google Ads API v23 直接取得</strong> + Supabase CRM DB</td></tr>
+    <tr><td>Developer Token</td><td>テストアクセスレベル（search_term_view取得不可）</td><td><strong>Basic Access承認済み</strong>（全APIエンドポイントアクセス可能）</td></tr>
+    <tr><td>分析対象期間</td><td>2025年9月〜2026年3月10日</td><td><strong>2025年3月〜2026年3月12日</strong>（全期間）</td></tr>
+    <tr><td>累計広告費</td><td>1,217,287円（6ヶ月間）</td><td><strong>5,093,132円</strong>（13ヶ月間の全額）</td></tr>
+    <tr><td>検索語句レポート</td><td>取得不可（テストレベル制限）</td><td><strong>取得済み</strong>（Basic Accessで実際の広告検索語句を直接取得）</td></tr>
+    <tr><td>全キャンペーン数</td><td>一部のみ分析</td><td><strong>全14キャンペーン</strong>を網羅</td></tr>
+    <tr><td>マイクロCV vs 申込CVの分析</td><td>一部言及</td><td><strong>全キャンペーンで分離集計</strong>。ディスプレイ/PMaxの非効率性を定量的に実証</td></tr>
   </table>
 </div>
 </section>
@@ -573,9 +780,9 @@ footer{text-align:center;padding:32px 20px;border-top:1px solid var(--bd);color:
 </div>
 
 <footer>
-  Strategists CRM | Google Ads Deep Analysis v3.0 | 2026-03-13生成<br>
-  データ: Supabase (analytics_ads_campaign_daily, analytics_ads_keyword_daily, analytics_search_daily, customers, contracts, agent_records, sales_pipeline)<br>
-  <span style="color:var(--yw)">※ 3/11以降のデータはGOOGLE_REFRESH_TOKEN期限切れにより未同期</span>
+  Strategists CRM | Google Ads Analysis v4.0（API直接取得による完全版）| 2026-03-13生成<br>
+  データ: Google Ads API v23（アカウント 9777096652, Basic Access）+ Supabase CRM DB（customers, contracts, agent_records）<br>
+  <span style="color:var(--gn)">本レポートはGoogle Ads API直接取得データに基づく。従来のテストアクセスレベル制限は解消済み。</span>
 </footer>
 
 </body>
