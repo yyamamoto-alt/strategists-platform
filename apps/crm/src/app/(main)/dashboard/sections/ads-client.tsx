@@ -1,9 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import {
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend, Line, ComposedChart,
+} from "recharts";
 
 export interface AdsWeeklyRow {
-  period: string;      // "2026-03-10" (week start) or "2026-03" (month)
+  period: string;
   cost: number;
   cv_application: number;
   scheduled: number;
@@ -12,24 +15,39 @@ export interface AdsWeeklyRow {
   cpa_scheduled: number;
 }
 
+export interface LtvTier {
+  months: number;
+  label: string;
+  scheduled: number;
+  closed: number;
+  revenue: number;
+  ltvPerScheduled: number;
+}
+
 interface Props {
   weeklyRows: AdsWeeklyRow[];
   monthlyRows: AdsWeeklyRow[];
-  ltvPerScheduled: number;
-  rollingScheduled: number;
-  rollingRevenue: number;
+  ltvTiers: LtvTier[];
 }
 
 type Granularity = "weekly" | "monthly";
+type ViewMode = "chart" | "table";
 
 function formatCurrency(v: number): string {
   if (v >= 10000) return `¥${(v / 10000).toFixed(1)}万`;
   return `¥${v.toLocaleString()}`;
 }
 
-export function AdsSummaryClient({ weeklyRows, monthlyRows, ltvPerScheduled, rollingScheduled, rollingRevenue }: Props) {
+export function AdsSummaryClient({ weeklyRows, monthlyRows, ltvTiers }: Props) {
   const [granularity, setGranularity] = useState<Granularity>("weekly");
+  const [viewMode, setViewMode] = useState<ViewMode>("chart");
   const rows = granularity === "weekly" ? weeklyRows : monthlyRows;
+
+  // Chart data needs ascending order
+  const chartData = useMemo(() => [...rows].reverse().map(r => ({
+    ...r,
+    label: granularity === "weekly" ? r.period.slice(5) : r.period,
+  })), [rows, granularity]);
 
   // Period totals
   const totals = rows.reduce((acc, r) => ({
@@ -46,102 +64,177 @@ export function AdsSummaryClient({ weeklyRows, monthlyRows, ltvPerScheduled, rol
     <div className="px-6">
       <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 overflow-hidden">
         {/* Header */}
-        <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between">
-          <div>
-            <h2 className="text-sm font-semibold text-white">広告パフォーマンス</h2>
-            <p className="text-[10px] text-gray-500 mt-0.5">Google Ads 経由の広告費・申し込み・日程確定・成約</p>
-          </div>
-          <div className="flex items-center gap-3">
-            {/* LTV badge */}
-            <div className="text-right">
-              <p className="text-[10px] text-gray-500">日程確定あたりLTV（直近3ヶ月）</p>
-              <p className="text-base font-bold text-amber-400">
-                {ltvPerScheduled > 0 ? formatCurrency(ltvPerScheduled) : "—"}
-              </p>
-              <p className="text-[10px] text-gray-600">
-                {rollingScheduled}確定 / 売上{formatCurrency(rollingRevenue)}
-              </p>
+        <div className="px-5 py-4 border-b border-white/10">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h2 className="text-sm font-semibold text-white">広告パフォーマンス</h2>
+              <p className="text-[10px] text-gray-500 mt-0.5">Google Ads 経由の広告費・申し込み・日程確定・成約</p>
             </div>
-            {/* Granularity toggle */}
-            <div className="flex gap-0.5 bg-white/5 rounded-lg p-0.5">
-              {([["weekly", "週別"], ["monthly", "月別"]] as const).map(([v, label]) => (
-                <button key={v} onClick={() => setGranularity(v)}
-                  className={`px-3 py-1 text-xs rounded-md transition-colors ${granularity === v ? "bg-brand text-white" : "text-gray-400 hover:text-white"}`}>
-                  {label}
+            <div className="flex items-center gap-2">
+              {/* View mode toggle */}
+              <div className="flex gap-0.5 bg-white/5 rounded-lg p-0.5">
+                <button onClick={() => setViewMode("chart")}
+                  className={`px-2.5 py-1 text-xs rounded-md transition-colors ${viewMode === "chart" ? "bg-brand text-white" : "text-gray-400 hover:text-white"}`}>
+                  グラフ
                 </button>
-              ))}
+                <button onClick={() => setViewMode("table")}
+                  className={`px-2.5 py-1 text-xs rounded-md transition-colors ${viewMode === "table" ? "bg-brand text-white" : "text-gray-400 hover:text-white"}`}>
+                  テーブル
+                </button>
+              </div>
+              {/* Granularity toggle */}
+              <div className="flex gap-0.5 bg-white/5 rounded-lg p-0.5">
+                {([["weekly", "週別"], ["monthly", "月別"]] as const).map(([v, label]) => (
+                  <button key={v} onClick={() => setGranularity(v)}
+                    className={`px-3 py-1 text-xs rounded-md transition-colors ${granularity === v ? "bg-brand text-white" : "text-gray-400 hover:text-white"}`}>
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
+          </div>
+
+          {/* LTV Tiers */}
+          <div className="grid grid-cols-4 gap-2">
+            {ltvTiers.map(t => (
+              <div key={t.months} className="bg-white/[0.03] border border-white/5 rounded-lg px-3 py-2">
+                <p className="text-[10px] text-gray-500">確定LTV（直近{t.label}）</p>
+                <p className="text-sm font-bold text-amber-400 mt-0.5">
+                  {t.ltvPerScheduled > 0 ? formatCurrency(t.ltvPerScheduled) : "—"}
+                </p>
+                <p className="text-[10px] text-gray-600">
+                  {t.scheduled}確定 / {t.closed}成約 / {formatCurrency(t.revenue)}
+                </p>
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* Table */}
-        <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
-          <table className="w-full text-xs">
-            <thead className="sticky top-0 bg-surface-card z-10">
-              <tr className="border-b border-white/10 text-gray-400">
-                <th className="text-left py-2.5 px-4 w-28">
-                  {granularity === "weekly" ? "週" : "月"}
-                </th>
-                <th className="text-right py-2.5 px-3">広告費</th>
-                <th className="text-right py-2.5 px-3">申し込み</th>
-                <th className="text-right py-2.5 px-3">日程確定</th>
-                <th className="text-right py-2.5 px-3">成約</th>
-                <th className="text-right py-2.5 px-3">CPA（確定）</th>
-                <th className="text-right py-2.5 px-3">売上</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map(r => (
-                <tr key={r.period} className="border-b border-white/5 hover:bg-white/5">
-                  <td className="py-2.5 px-4 text-white font-medium">
-                    {granularity === "weekly" ? r.period.slice(5) : r.period}
-                  </td>
-                  <td className="text-right py-2.5 px-3 text-white">
-                    {r.cost > 0 ? `¥${r.cost.toLocaleString()}` : "—"}
-                  </td>
-                  <td className="text-right py-2.5 px-3">
-                    <span className={r.cv_application > 0 ? "text-green-400" : "text-gray-600"}>
-                      {r.cv_application > 0 ? r.cv_application.toFixed(1) : "—"}
-                    </span>
-                  </td>
-                  <td className="text-right py-2.5 px-3">
-                    <span className={r.scheduled > 0 ? "text-blue-400 font-medium" : "text-gray-600"}>
-                      {r.scheduled > 0 ? r.scheduled : "—"}
-                    </span>
-                  </td>
-                  <td className="text-right py-2.5 px-3">
-                    <span className={r.closed > 0 ? "text-amber-400 font-medium" : "text-gray-600"}>
-                      {r.closed > 0 ? r.closed : "—"}
-                    </span>
-                  </td>
-                  <td className="text-right py-2.5 px-3 text-gray-300">
-                    {r.cpa_scheduled > 0 ? `¥${r.cpa_scheduled.toLocaleString()}` : "—"}
-                  </td>
-                  <td className="text-right py-2.5 px-3">
-                    <span className={r.revenue > 0 ? "text-white" : "text-gray-600"}>
-                      {r.revenue > 0 ? `¥${r.revenue.toLocaleString()}` : "—"}
-                    </span>
-                  </td>
+        {/* Chart view */}
+        {viewMode === "chart" && chartData.length > 0 && (
+          <div className="p-5 space-y-4">
+            {/* Cost + CPA chart */}
+            <div>
+              <h3 className="text-xs font-medium text-gray-400 mb-3">広告費 / CPA（日程確定ベース）</h3>
+              <ResponsiveContainer width="100%" height={220}>
+                <ComposedChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                  <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#6b7280" }}
+                    interval={Math.max(Math.floor(chartData.length / 10), 0)} />
+                  <YAxis yAxisId="left" tick={{ fontSize: 10, fill: "#6b7280" }}
+                    tickFormatter={(v: number) => v >= 1000 ? `${(v/1000).toFixed(0)}k` : String(v)} />
+                  <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10, fill: "#6b7280" }}
+                    tickFormatter={(v: number) => v >= 1000 ? `${(v/1000).toFixed(0)}k` : String(v)} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: "#1f2937", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 12 }}
+                    labelStyle={{ color: "#9ca3af" }}
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    formatter={(value: any, name: any) => {
+                      const v = Number(value);
+                      if (name === "広告費") return [`¥${Math.round(v).toLocaleString()}`, name];
+                      if (name === "CPA(確定)") return [v > 0 ? `¥${Math.round(v).toLocaleString()}` : "—", name];
+                      return [String(v), name];
+                    }}
+                  />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  <Bar yAxisId="left" dataKey="cost" name="広告費" fill="#f59e0b" radius={[2, 2, 0, 0]} />
+                  <Line yAxisId="right" type="monotone" dataKey="cpa_scheduled" name="CPA(確定)" stroke="#ef4444" strokeWidth={2} dot={false} />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Funnel metrics chart */}
+            <div>
+              <h3 className="text-xs font-medium text-gray-400 mb-3">申し込み / 日程確定 / 成約</h3>
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                  <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#6b7280" }}
+                    interval={Math.max(Math.floor(chartData.length / 10), 0)} />
+                  <YAxis tick={{ fontSize: 10, fill: "#6b7280" }} domain={[0, (max: number) => Math.max(max, 3)]} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: "#1f2937", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 12 }}
+                    labelStyle={{ color: "#9ca3af" }}
+                  />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  <Bar dataKey="cv_application" name="申し込み" fill="#10b981" radius={[2, 2, 0, 0]} />
+                  <Bar dataKey="scheduled" name="日程確定" fill="#3b82f6" radius={[2, 2, 0, 0]} />
+                  <Bar dataKey="closed" name="成約" fill="#f59e0b" radius={[2, 2, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )}
+
+        {/* Table view */}
+        {viewMode === "table" && (
+          <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
+            <table className="w-full text-xs">
+              <thead className="sticky top-0 bg-surface-card z-10">
+                <tr className="border-b border-white/10 text-gray-400">
+                  <th className="text-left py-2.5 px-4 w-28">
+                    {granularity === "weekly" ? "週" : "月"}
+                  </th>
+                  <th className="text-right py-2.5 px-3">広告費</th>
+                  <th className="text-right py-2.5 px-3">申し込み</th>
+                  <th className="text-right py-2.5 px-3">日程確定</th>
+                  <th className="text-right py-2.5 px-3">成約</th>
+                  <th className="text-right py-2.5 px-3">CPA（確定）</th>
+                  <th className="text-right py-2.5 px-3">売上</th>
                 </tr>
-              ))}
-              {rows.length === 0 && (
-                <tr><td colSpan={7} className="py-8 text-center text-gray-500">データなし</td></tr>
-              )}
-              {/* Totals row */}
-              {rows.length > 0 && (
-                <tr className="border-t border-white/20 bg-white/5 font-medium sticky bottom-0">
-                  <td className="py-2.5 px-4 text-white">合計</td>
-                  <td className="text-right py-2.5 px-3 text-white">¥{totals.cost.toLocaleString()}</td>
-                  <td className="text-right py-2.5 px-3 text-green-400">{totals.cv_application.toFixed(1)}</td>
-                  <td className="text-right py-2.5 px-3 text-blue-400">{totals.scheduled}</td>
-                  <td className="text-right py-2.5 px-3 text-amber-400">{totals.closed}</td>
-                  <td className="text-right py-2.5 px-3 text-white">{totalCpaScheduled > 0 ? `¥${totalCpaScheduled.toLocaleString()}` : "—"}</td>
-                  <td className="text-right py-2.5 px-3 text-white">¥{totals.revenue.toLocaleString()}</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {rows.map(r => (
+                  <tr key={r.period} className="border-b border-white/5 hover:bg-white/5">
+                    <td className="py-2.5 px-4 text-white font-medium">
+                      {granularity === "weekly" ? r.period.slice(5) : r.period}
+                    </td>
+                    <td className="text-right py-2.5 px-3 text-white">
+                      {r.cost > 0 ? `¥${r.cost.toLocaleString()}` : "—"}
+                    </td>
+                    <td className="text-right py-2.5 px-3">
+                      <span className={r.cv_application > 0 ? "text-green-400" : "text-gray-600"}>
+                        {r.cv_application > 0 ? r.cv_application.toFixed(1) : "—"}
+                      </span>
+                    </td>
+                    <td className="text-right py-2.5 px-3">
+                      <span className={r.scheduled > 0 ? "text-blue-400 font-medium" : "text-gray-600"}>
+                        {r.scheduled > 0 ? r.scheduled : "—"}
+                      </span>
+                    </td>
+                    <td className="text-right py-2.5 px-3">
+                      <span className={r.closed > 0 ? "text-amber-400 font-medium" : "text-gray-600"}>
+                        {r.closed > 0 ? r.closed : "—"}
+                      </span>
+                    </td>
+                    <td className="text-right py-2.5 px-3 text-gray-300">
+                      {r.cpa_scheduled > 0 ? `¥${r.cpa_scheduled.toLocaleString()}` : "—"}
+                    </td>
+                    <td className="text-right py-2.5 px-3">
+                      <span className={r.revenue > 0 ? "text-white" : "text-gray-600"}>
+                        {r.revenue > 0 ? `¥${r.revenue.toLocaleString()}` : "—"}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+                {rows.length === 0 && (
+                  <tr><td colSpan={7} className="py-8 text-center text-gray-500">データなし</td></tr>
+                )}
+                {rows.length > 0 && (
+                  <tr className="border-t border-white/20 bg-white/5 font-medium sticky bottom-0">
+                    <td className="py-2.5 px-4 text-white">合計</td>
+                    <td className="text-right py-2.5 px-3 text-white">¥{totals.cost.toLocaleString()}</td>
+                    <td className="text-right py-2.5 px-3 text-green-400">{totals.cv_application.toFixed(1)}</td>
+                    <td className="text-right py-2.5 px-3 text-blue-400">{totals.scheduled}</td>
+                    <td className="text-right py-2.5 px-3 text-amber-400">{totals.closed}</td>
+                    <td className="text-right py-2.5 px-3 text-white">{totalCpaScheduled > 0 ? `¥${totalCpaScheduled.toLocaleString()}` : "—"}</td>
+                    <td className="text-right py-2.5 px-3 text-white">¥{totals.revenue.toLocaleString()}</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );

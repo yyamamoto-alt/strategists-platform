@@ -26,11 +26,11 @@ export default async function DashboardPage() {
       <Suspense fallback={<ChartsSkeleton />}>
         <ChartsSection />
       </Suspense>
-      <Suspense fallback={<AdsSummarySkeleton />}>
-        <AdsSection />
-      </Suspense>
       <Suspense fallback={<ChannelSkeleton />}>
         <ChannelSection />
+      </Suspense>
+      <Suspense fallback={<AdsSummarySkeleton />}>
+        <AdsSection />
       </Suspense>
       <Suspense fallback={<InsightsSkeleton />}>
         <InsightsSection />

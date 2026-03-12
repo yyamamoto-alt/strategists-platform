@@ -4,7 +4,7 @@ import {
   adsFunnelIsClosed,
   adsFunnelIsScheduled,
 } from "@/lib/data/analytics";
-import { AdsSummaryClient, type AdsWeeklyRow } from "./ads-client";
+import { AdsSummaryClient, type AdsWeeklyRow, type LtvTier } from "./ads-client";
 
 /** 週キーを算出（月曜始まり） */
 function weekKey(dateStr: string): string {
@@ -80,22 +80,29 @@ export async function AdsSection() {
     monthlyFunnel.set(mk, mf);
   }
 
-  // --- 直近3ヶ月のローリングLTV計算 ---
-  // 3ヶ月前の日付
-  const threeMonthsAgo = new Date();
-  threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
-  const threeMonthsAgoStr = threeMonthsAgo.toISOString().slice(0, 10);
-
-  let rollingScheduled = 0;
-  let rollingRevenue = 0;
-  for (const c of funnel) {
-    if (!c.application_date || c.application_date < threeMonthsAgoStr) continue;
-    if (adsFunnelIsScheduled(c.stage)) rollingScheduled++;
-    if (adsFunnelIsClosed(c.stage)) {
-      rollingRevenue += c.confirmed_amount + c.expected_referral_fee;
+  // --- ローリングLTV計算（4段階: 1ヶ月, 2ヶ月, 3ヶ月, 半年） ---
+  const ltvTiers = [1, 2, 3, 6].map(months => {
+    const cutoff = new Date();
+    cutoff.setMonth(cutoff.getMonth() - months);
+    const cutoffStr = cutoff.toISOString().slice(0, 10);
+    let scheduled = 0, revenue = 0, closed = 0;
+    for (const c of funnel) {
+      if (!c.application_date || c.application_date < cutoffStr) continue;
+      if (adsFunnelIsScheduled(c.stage)) scheduled++;
+      if (adsFunnelIsClosed(c.stage)) {
+        closed++;
+        revenue += c.confirmed_amount + c.expected_referral_fee;
+      }
     }
-  }
-  const ltvPerScheduled = rollingScheduled > 0 ? Math.round(rollingRevenue / rollingScheduled) : 0;
+    return {
+      months,
+      label: months === 6 ? "半年" : `${months}ヶ月`,
+      scheduled,
+      closed,
+      revenue: Math.round(revenue),
+      ltvPerScheduled: scheduled > 0 ? Math.round(revenue / scheduled) : 0,
+    };
+  });
 
   // --- 週次行を組み立て ---
   const allWeekKeys = new Set([...weeklyAds.keys(), ...weeklyFunnel.keys()]);
@@ -135,9 +142,7 @@ export async function AdsSection() {
     <AdsSummaryClient
       weeklyRows={weeklyRows}
       monthlyRows={monthlyRows}
-      ltvPerScheduled={ltvPerScheduled}
-      rollingScheduled={rollingScheduled}
-      rollingRevenue={Math.round(rollingRevenue)}
+      ltvTiers={ltvTiers}
     />
   );
 }
