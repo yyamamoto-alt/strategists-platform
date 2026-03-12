@@ -10,6 +10,7 @@ async function refreshAccessToken(): Promise<string> {
   const res = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    cache: "no-store",
     body: new URLSearchParams({
       grant_type: "refresh_token",
       refresh_token: process.env.GOOGLE_REFRESH_TOKEN!,
@@ -52,28 +53,28 @@ async function fetchAllVideoIds(accessToken: string): Promise<string[]> {
   // まずチャンネルIDを取得
   const chRes = await fetch(
     "https://www.googleapis.com/youtube/v3/channels?part=contentDetails&mine=true",
-    { headers: authHeaders(accessToken) }
+    { headers: authHeaders(accessToken), cache: "no-store" }
   );
   if (!chRes.ok) throw new Error(`Channels API: ${chRes.status} ${await chRes.text()}`);
   const chData = await chRes.json();
   const uploadsPlaylistId = chData.items?.[0]?.contentDetails?.relatedPlaylists?.uploads;
   if (!uploadsPlaylistId) throw new Error("Could not find uploads playlist");
 
-  // uploads playlist から全動画ID取得
-  const videoIds: string[] = [];
+  // uploads playlist から全動画ID取得（重複排除）
+  const videoIdSet = new Set<string>();
   let pageToken = "";
   for (let i = 0; i < 10; i++) { // 最大500動画
     const url = `https://www.googleapis.com/youtube/v3/playlistItems?part=contentDetails&playlistId=${uploadsPlaylistId}&maxResults=50${pageToken ? `&pageToken=${pageToken}` : ""}`;
-    const res = await fetch(url, { headers: authHeaders(accessToken) });
+    const res = await fetch(url, { headers: authHeaders(accessToken), cache: "no-store" });
     if (!res.ok) break;
     const data = await res.json();
     for (const item of data.items || []) {
-      videoIds.push(item.contentDetails.videoId);
+      videoIdSet.add(item.contentDetails.videoId);
     }
     if (!data.nextPageToken) break;
     pageToken = data.nextPageToken;
   }
-  return videoIds;
+  return Array.from(videoIdSet);
 }
 
 /** 動画メタデータ + 統計を取得 */
@@ -84,7 +85,7 @@ async function fetchVideoDetails(accessToken: string, videoIds: string[]): Promi
   for (let i = 0; i < videoIds.length; i += 50) {
     const batch = videoIds.slice(i, i + 50);
     const url = `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,contentDetails&id=${batch.join(",")}`;
-    const res = await fetch(url, { headers: authHeaders(accessToken) });
+    const res = await fetch(url, { headers: authHeaders(accessToken), cache: "no-store" });
     if (!res.ok) {
       console.error(`Videos API error: ${res.status}`);
       continue;
@@ -168,7 +169,7 @@ async function fetchYouTubeAnalytics(
 
     const res = await fetch(
       `https://youtubeanalytics.googleapis.com/v2/reports?${params}`,
-      { headers: authHeaders(accessToken) }
+      { headers: authHeaders(accessToken), cache: "no-store" }
     );
 
     if (!res.ok) {
@@ -216,7 +217,7 @@ async function fetchYouTubeAnalytics(
 
     const res = await fetch(
       `https://youtubeanalytics.googleapis.com/v2/reports?${params}`,
-      { headers: authHeaders(accessToken) }
+      { headers: authHeaders(accessToken), cache: "no-store" }
     );
 
     if (!res.ok) {
@@ -253,7 +254,7 @@ async function fetchYouTubeAnalytics(
 
     const res = await fetch(
       `https://youtubeanalytics.googleapis.com/v2/reports?${params}`,
-      { headers: authHeaders(accessToken) }
+      { headers: authHeaders(accessToken), cache: "no-store" }
     );
 
     if (res.ok) {
@@ -295,10 +296,14 @@ async function upsertVideos(supabase: any, videos: VideoMeta[]) {
     updated_at: new Date().toISOString(),
   }));
 
-  const { error } = await supabase
-    .from("analytics_youtube_videos")
-    .upsert(rows, { onConflict: "video_id" });
-  if (error) console.error("YouTube videos upsert error:", error.message);
+  // バッチで50件ずつ（重複排除済みだが念のため分割）
+  for (let i = 0; i < rows.length; i += 50) {
+    const batch = rows.slice(i, i + 50);
+    const { error } = await supabase
+      .from("analytics_youtube_videos")
+      .upsert(batch, { onConflict: "video_id" });
+    if (error) console.error("YouTube videos upsert error:", error.message);
+  }
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -367,12 +372,6 @@ export async function GET(request: Request) {
   const supabase = createServiceClient() as any;
 
   try {
-    // Debug: log env var prefixes to verify correct values
-    const rt = process.env.GOOGLE_REFRESH_TOKEN || "";
-    const ci = process.env.GOOGLE_CLIENT_ID || "";
-    const cs = process.env.GOOGLE_CLIENT_SECRET || "";
-    console.log(`ENV CHECK: REFRESH_TOKEN starts with "${rt.slice(0,10)}", CLIENT_ID starts with "${ci.slice(0,10)}", CLIENT_SECRET starts with "${cs.slice(0,10)}"`);
-
     const accessToken = await refreshAccessToken();
     console.log(`YouTube sync: ${start} ~ ${end}`);
 
@@ -387,7 +386,7 @@ export async function GET(request: Request) {
     // 3. チャンネル統計（登録者数/動画数）
     const chRes = await fetch(
       "https://www.googleapis.com/youtube/v3/channels?part=statistics&mine=true",
-      { headers: authHeaders(accessToken) }
+      { headers: authHeaders(accessToken), cache: "no-store" }
     );
     let totalSubscribers = 0;
     let totalVideos = 0;
@@ -417,18 +416,8 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     console.error("YouTube sync error:", error);
-    const rt = process.env.GOOGLE_REFRESH_TOKEN || "";
-    const ci = process.env.GOOGLE_CLIENT_ID || "";
-    const cs = process.env.GOOGLE_CLIENT_SECRET || "";
     return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Unknown error",
-        debug: {
-          refresh_token_prefix: rt.slice(0, 8),
-          client_id_prefix: ci.slice(0, 15),
-          client_secret_prefix: cs.slice(0, 10),
-        },
-      },
+      { error: error instanceof Error ? error.message : "Unknown error" },
       { status: 500 }
     );
   }
