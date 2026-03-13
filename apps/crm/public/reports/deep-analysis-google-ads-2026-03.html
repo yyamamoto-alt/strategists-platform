@@ -182,6 +182,17 @@ tr:hover { background: rgba(99,102,241,0.04); }
 .fw-700 { font-weight: 700; }
 .fw-800 { font-weight: 800; }
 .mono { font-family: 'JetBrains Mono', 'SF Mono', monospace; }
+
+/* Version Toggle */
+.version-bar { display: flex; justify-content: center; gap: 8px; padding: 16px; background: var(--sf); border-bottom: 1px solid var(--bd); position: sticky; top: 0; z-index: 100; }
+.version-btn { padding: 8px 20px; border: 1px solid var(--bd); border-radius: 8px; background: var(--sf2); color: var(--tm); cursor: pointer; font-size: 0.85em; font-weight: 600; transition: all 0.2s; }
+.version-btn.active { background: var(--ac); color: white; border-color: var(--ac); }
+.version-btn:hover { border-color: var(--ac2); }
+.version-content { display: none; }
+.version-content.active { display: block; }
+.v6-changed { border-left: 3px solid var(--og); padding-left: 12px; margin-left: -15px; }
+.v6-new { position: relative; }
+.v6-new::before { content: 'NEW in v6'; position: absolute; top: -8px; right: 12px; background: var(--og); color: white; font-size: 0.65em; padding: 2px 8px; border-radius: 4px; font-weight: 700; }
 </style>
 </head>
 <body>
@@ -197,8 +208,18 @@ tr:hover { background: rgba(99,102,241,0.04); }
   </div>
 </div>
 
+
+<!-- ============ VERSION TOGGLE ============ -->
+<div class="version-bar">
+  <button class="version-btn" onclick="showVersion('v5')">v5</button>
+  <button class="version-btn active" onclick="showVersion('v6')">v6 (最新)</button>
+</div>
+
 <!-- ============ CONTAINER ============ -->
 <div class="container">
+
+<div id="version-v5" class="version-content" style="display:none">
+
 
 <!-- ============ EXECUTIVE SUMMARY ============ -->
 <section>
@@ -1386,6 +1407,1418 @@ tr:hover { background: rgba(99,102,241,0.04); }
   </div>
 </section>
 
+
+</div><!-- /version-v5 -->
+
+<div id="version-v6" class="version-content active" style="display:block">
+
+
+
+
+<!-- v5→v6 Changes Summary -->
+<div class="card" style="background: linear-gradient(135deg, var(--sf), rgba(251,146,60,0.08)); border: 1px solid var(--og); margin-bottom: 36px;">
+  <h4 style="color: var(--og); margin-bottom: 12px;">v5 → v6 変更点</h4>
+  <ol style="font-size: 0.88em; padding-left: 20px; color: var(--tm); line-height: 2;">
+    <li><strong class="text-tx">経済性分析を追加:</strong> 成約LTV ¥42.8万 × 成約率50% × 実施率70% = 申込期待収益¥15万。赤黒ライン¥15万、ROAS 2x基準¥7.5万</li>
+    <li><strong class="text-tx">シミュレーション修正:</strong> IS拡大時のCPA高騰リスクを反映。v5は楽観的すぎた</li>
+    <li><strong class="text-tx">攻めるべきKW候補:</strong> 理想顧客ペルソナから逆算。未テストKW 10候補を提示</li>
+    <li><strong class="text-tx">入札戦略変更の提言:</strong> TARGET_CPA → コンバージョン数の最大化（段階的移行）</li>
+    <li><strong class="text-tx">IS 10%のソース・算出方法を明記</strong></li>
+    <li><strong class="text-tx">全CPAに「申込CPA」or「参考CPA(micro含む)」を明記</strong></li>
+    <li><strong class="text-tx">新卒はGoogle広告で狙わない方針を反映</strong></li>
+  </ol>
+</div>
+<!-- ============ EXECUTIVE SUMMARY ============ -->
+<section>
+  <div class="grid-5">
+    <div class="stat stat-rd">
+      <div class="stat-val">10%</div>
+      <div class="stat-lbl">インプレッションシェア</div>
+      <div class="stat-sub">90%の検索を逃している</div>
+    </div>
+    <div class="stat stat-yw">
+      <div class="stat-val">¥1,200</div>
+      <div class="stat-lbl">TARGET CPA (設定値)</div>
+      <div class="stat-sub">マイクロCV込みの歪んだ目標</div>
+    </div>
+    <div class="stat stat-og">
+      <div class="stat-val">¥3.3万</div>
+      <div class="stat-lbl">月間平均費用 (直近3ヶ月)</div>
+      <div class="stat-sub">予算¥100万に対し3%消化</div>
+    </div>
+    <div class="stat stat-gn">
+      <div class="stat-val">¥48.7万</div>
+      <div class="stat-lbl">フェルミ推定への無駄遣い</div>
+      <div class="stat-sub">CV = 0（全期間）</div>
+    </div>
+    <div class="stat stat-cn">
+      <div class="stat-val">¥5.3万</div>
+      <div class="stat-lbl">申込CPA (最良期平均)</div>
+      <div class="stat-sub">2025年5-7月: 月平均13.3件</div>
+    </div>
+  </div>
+  <div class="co co-warn" style="margin-top:12px; text-align:center;">
+    <b>申込CV（= /schedule/遷移 + schedule_newgraduate_遷移のみ）: 60.0件 / 12ヶ月 = 月平均5.0件</b>
+    申込CVが最重要KPI。Google Ads の conversions 指標にはマイクロCVが含まれており、実際の申込数を大幅に上回る。
+  </div>
+</section>
+
+<!-- ============ TOC ============ -->
+<nav class="toc">
+  <h3>目次</h3>
+  <ol>
+    <li><a href="#s1">問題の全体像 — なぜ予算が消化されないのか</a></li>
+    <li><a href="#s2">根本原因チェーン — TARGET CPA ¥1,200の歪み</a></li>
+    <li><a href="#s3">コンバージョンアクション分析 — マイクロCVの実害</a></li>
+    <li style="color:var(--og);"><a href="#s3-5" style="color:var(--og);">経済性分析 — 申込CPAの損益分岐点</a> <span class="tag tag-og" style="font-size:0.7em;">NEW</span></li>
+    <li><a href="#s4">インテントカテゴリ別 検索クエリ分析</a></li>
+    <li><a href="#s5">広告グループ別パフォーマンス（停止中含む）</a></li>
+    <li><a href="#s6">キーワード別 IS（インプレッションシェア）データ</a></li>
+    <li><a href="#s7">月次推移 — マイクロCV導入前後の変化</a></li>
+    <li><a href="#s8">タイムライン分析 — 何がいつ起きたか</a></li>
+    <li><a href="#s9">具体的提言 — 優先度別アクションプラン</a></li>
+    <li><a href="#s10">改善シミュレーション</a></li>
+    <li style="color:var(--og);"><a href="#s10-5" style="color:var(--og);">理想顧客ペルソナから逆算したキーワード戦略</a> <span class="tag tag-og" style="font-size:0.7em;">NEW</span></li>
+  </ol>
+</nav>
+
+<!-- ============ データ制約の注記 ============ -->
+<div class="co co-fact" style="margin-bottom:36px;">
+  <b>本レポートのデータ制約について</b>
+  Google Ads APIでは検索クエリ単位でコンバージョンアクション別のCV数を取得できません。そのため、インテントカテゴリ別分析（Section 4）のCV数にはマイクロCVが含まれています。月次データ（Section 7）のみ、コンバージョンアクション別の分離が可能なため、「申込CV」列で実際の申込件数を示しています。<br>
+  <strong>申込CV = 既卒(/schedule/遷移) + 新卒(schedule_newgraduate_遷移) のみ。</strong>これが唯一の信頼できるKPIです。
+</div>
+
+<!-- ============ 申込CV サマリ ============ -->
+<div class="co co-warn" style="margin-bottom:36px;">
+  <b>申込CV（最重要KPI）: 全期間合計 60.0件 / 12ヶ月 (月平均 5.0件)</b>
+  申込CV = 既卒(/schedule/遷移) + 新卒(schedule_newgraduate_遷移) のみ。信頼できるCPAは月次レベルでのみ算出可能: 月間費用 / 申込CV。<br>
+  最良期（2025年5-7月）の申込CPA: ¥3.9万〜¥7.5万（平均 ¥5.3万）
+</div>
+
+<!-- ============ S1: 問題の全体像 ============ -->
+<section id="s1">
+  <h2><span class="section-num">Section 01</span> 問題の全体像 — なぜ予算が消化されないのか</h2>
+
+  <div class="co co-danger">
+    <b>核心的な問い: 「ニッチビジネスとして、うちのサービスに近い検索クエリはもう抑えられているのか?」</b>
+    答えは明確に <strong class="text-gn">No</strong> — IS（インプレッションシェア）10%は、利用可能な検索の<strong class="text-rd">90%を逃している</strong>ことを意味する。<br>
+    市場が飽和しているのではない。入札設定がアルゴリズムを拘束し、参加すらできていない。
+  </div>
+
+  <div class="grid-2">
+    <div class="card card-danger">
+      <h4 class="text-rd">現状の数値</h4>
+      <ul style="font-size:0.9em; padding-left:18px; color:var(--tm);">
+        <li>予算上限: <strong class="text-tx">¥100万/月</strong></li>
+        <li>実消化額: <strong class="text-rd">¥2.1万〜¥4.0万/月</strong>（予算の2-4%）</li>
+        <li>稼働広告グループ: <strong class="text-rd">1つのみ</strong>（社会人向け）</li>
+        <li>IS: <strong class="text-rd">10%</strong>（3ヶ月連続横ばい）</li>
+        <li>停止中の広告グループ: <strong class="text-yw">5つ</strong></li>
+      </ul>
+    </div>
+    <div class="card card-success">
+      <h4 class="text-gn">飽和していない証拠</h4>
+      <ul style="font-size:0.9em; padding-left:18px; color:var(--tm);">
+        <li>「対策/講座/塾」系のIS: <strong class="text-gn">10%</strong> → 残り90%が未獲得</li>
+        <li>停止中グループ③のIS: <strong class="text-gn">30-50%</strong>（稼働時）</li>
+        <li>停止中グループ⑤の参考CPA(micro含む): <strong class="text-gn">¥6,601</strong>（全グループ最安）</li>
+        <li>「戦略コンサル対策」: <strong class="text-gn">最高効率KWなのにIS10%</strong></li>
+        <li>予算上限に到達した月: <strong class="text-gn">ゼロ</strong></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ S2: 根本原因チェーン ============ -->
+<section id="s2">
+  <h2><span class="section-num">Section 02</span> 根本原因チェーン — TARGET CPA ¥1,200の歪み</h2>
+
+  <p class="small muted" style="margin-bottom:20px;">
+    予算未消化の原因は単一ではなく、連鎖的に発生している。以下にその因果関係を示す。
+  </p>
+
+  <div class="chain">
+    <div class="chain-node" style="background:rgba(248,113,113,0.15); color:var(--rd);">
+      2025-08-21<br>マイクロCV追加
+    </div>
+    <div class="chain-arrow">&rarr;</div>
+    <div class="chain-node" style="background:rgba(251,191,36,0.15); color:var(--yw);">
+      CV数が水増し<br>(申込CVの2.5倍以上)
+    </div>
+    <div class="chain-arrow">&rarr;</div>
+    <div class="chain-node" style="background:rgba(251,146,60,0.15); color:var(--og);">
+      見かけCPA急低下<br>(¥1,200に見える)
+    </div>
+    <div class="chain-arrow">&rarr;</div>
+    <div class="chain-node" style="background:rgba(99,102,241,0.15); color:var(--ac2);">
+      TARGET CPA ¥1,200<br>ポートフォリオ入札
+    </div>
+    <div class="chain-arrow">&rarr;</div>
+    <div class="chain-node" style="background:rgba(248,113,113,0.2); color:var(--rd); border:1px solid rgba(248,113,113,0.3);">
+      入札額が低すぎる<br>オークション不参加
+    </div>
+    <div class="chain-arrow">&rarr;</div>
+    <div class="chain-node" style="background:rgba(248,113,113,0.25); color:var(--rd); border:2px solid rgba(248,113,113,0.5);">
+      IS = 10%<br><strong>90%機会損失</strong>
+    </div>
+  </div>
+
+  <div class="co co-warn">
+    <b>アルゴリズムの「誤解」</b>
+    Googleの自動入札は「TARGET CPA ¥1,200を維持せよ」と指示されている。マイクロCVを含めると見かけ上のCPAは¥1,400程度で「達成済み」に見える。<br>
+    しかし<strong>実質の申込CPA</strong>は数万円〜数十万円。アルゴリズムは安価なbtn_clickやマイクロCVを最大化するように入札し、本来狙うべき高価値オークションに参加できない。
+  </div>
+
+  <div class="card">
+    <h4>マイクロCV導入の影響 — 数値で確認</h4>
+    <table>
+      <thead>
+        <tr><th>期間</th><th>申込CV</th><th>CV(micro含む)</th><th>全CV</th><th>水増し倍率</th><th>申込CPA</th><th>参考CPA(micro含む)</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>2025年5-7月 (導入前)</td><td class="num fw-700 text-gn">40.0</td><td class="num">40.5</td><td class="num">43.5</td><td class="num">1.07倍</td><td class="num text-gn fw-700">¥5.3万</td><td class="num">¥5.2万</td></tr>
+        <tr class="danger-row"><td>2025年9-11月 (導入後)</td><td class="num fw-700 text-rd">8.0</td><td class="num">77.5</td><td class="num">192.8</td><td class="num text-rd fw-700">9.7倍</td><td class="num text-rd">¥9.0万</td><td class="num">¥9,290</td></tr>
+        <tr class="danger-row"><td>2026年1-3月 (現在)</td><td class="num fw-700 text-rd">6.0</td><td class="num">51.0</td><td class="num">123.0</td><td class="num text-rd fw-700">8.5倍</td><td class="num text-rd">¥1.7万</td><td class="num">¥1,980</td></tr>
+      </tbody>
+    </table>
+    <p class="small muted" style="margin-top:8px;">
+      ※ 導入後、全CV数が申込CVの8-10倍に膨張。アルゴリズムにとって「CPA¥1,200は余裕で達成」と見えるため、入札を上げるインセンティブが消滅する。<br>
+      ※ 水増し倍率 = 全CV / 申込CV。申込CVのみが実際のビジネス成果。
+    </p>
+  </div>
+</section>
+
+<!-- ============ S3: コンバージョンアクション分析 ============ -->
+<section id="s3">
+  <h2><span class="section-num">Section 03</span> コンバージョンアクション分析 — マイクロCVの実害</h2>
+
+  <div class="grid-2">
+    <div class="card card-success">
+      <h4 class="text-gn">申込CV (メインに設定すべき) = 最重要KPI</h4>
+      <table>
+        <thead>
+          <tr><th>アクション</th><th>CV数</th><th>推定価値</th><th>種別</th></tr>
+        </thead>
+        <tbody>
+          <tr class="highlight-row"><td>既卒 /schedule/ 遷移</td><td class="num fw-700">39</td><td class="num">¥335万</td><td><span class="tag tag-gn">申込</span></td></tr>
+          <tr class="highlight-row"><td>新卒 schedule_newgraduate 遷移</td><td class="num fw-700">18</td><td class="num">¥108万</td><td><span class="tag tag-gn">申込</span></td></tr>
+        </tbody>
+        <tfoot>
+          <tr style="border-top:2px solid var(--gn);"><td><strong>合計</strong></td><td class="num fw-700">57</td><td class="num fw-700">¥443万</td><td></td></tr>
+        </tfoot>
+      </table>
+      <p class="small muted" style="margin-top:8px;">※ メンタリングCV（3件）を除く。申込CV = 既卒 + 新卒のみ。合計60件（メンタリング含む場合）。<br>※ 新卒はGoogle広告では狙わない方針のため、既卒LTVのみで経済性を計算。</p>
+    </div>
+    <div class="card card-danger">
+      <h4 class="text-rd">マイクロCV (セカンダリに変更すべき)</h4>
+      <table>
+        <thead>
+          <tr><th>アクション</th><th>CV数</th><th>実質価値</th><th>種別</th></tr>
+        </thead>
+        <tbody>
+          <tr class="danger-row"><td>btn_click</td><td class="num">164.2</td><td class="num muted">-</td><td><span class="tag tag-rd">マイクロ</span></td></tr>
+          <tr class="danger-row"><td>マイクロCV</td><td class="num">117.1</td><td class="num muted">-</td><td><span class="tag tag-rd">マイクロ</span></td></tr>
+          <tr class="danger-row"><td>conversion_main</td><td class="num">25.0</td><td class="num muted">-</td><td><span class="tag tag-yw">中間</span></td></tr>
+        </tbody>
+        <tfoot>
+          <tr style="border-top:2px solid var(--rd);"><td><strong>合計</strong></td><td class="num fw-700">306.3</td><td class="num muted">入札を歪めるだけ</td><td></td></tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+
+  <div class="co co-danger">
+    <b>マイクロCVが入札を歪めるメカニズム</b>
+    メインコンバージョンに btn_click (164.2件) やマイクロCV (117.1件) が含まれている場合、Googleの自動入札は<strong>これらの安価なコンバージョンを最大化</strong>するように入札額を決定する。<br>
+    結果、実際の申込に繋がる高価値キーワード（CPC ¥300〜500）のオークションに必要な入札額を出せず、IS = 10%に留まる。
+  </div>
+</section>
+
+
+<!-- ============ S3.5: 経済性分析 (v6 NEW) ============ -->
+<section id="s3-5" class="v6-new" style="margin-top: 56px;">
+  <h2><span class="section-num">Section 3.5</span> 経済性分析 — 申込CPAの損益分岐点</h2>
+  
+  <div class="co co-fact" style="margin-bottom: 16px;">
+    <b>新卒はGoogle広告では狙わない方針のため、既卒LTVのみで経済性を計算</b>
+  </div>
+
+  <div class="card card-accent">
+    <h4>申込1件あたりの期待収益</h4>
+    <div class="chain">
+      <div class="chain-node" style="background:rgba(99,102,241,0.15); color:var(--ac2);">
+        成約LTV<br><strong>¥427,636</strong>
+      </div>
+      <div class="chain-arrow">×</div>
+      <div class="chain-node" style="background:rgba(251,191,36,0.15); color:var(--yw);">
+        申込→成約率<br><strong>50%</strong>
+      </div>
+      <div class="chain-arrow">×</div>
+      <div class="chain-node" style="background:rgba(251,191,36,0.15); color:var(--yw);">
+        成約→実施率<br><strong>70%</strong>
+      </div>
+      <div class="chain-arrow">=</div>
+      <div class="chain-node" style="background:rgba(52,211,153,0.2); color:var(--gn); border:2px solid rgba(52,211,153,0.4);">
+        申込期待収益<br><strong>≈ ¥15万</strong>
+      </div>
+    </div>
+    <p class="small muted" style="margin-top:8px;">¥427,636 × 50% × 70% = ¥149,673 ≈ ¥15万</p>
+  </div>
+
+  <div class="card">
+    <h4>損益分岐バー</h4>
+    <div style="position:relative; width:100%; height:48px; border-radius:8px; overflow:hidden; margin:16px 0; display:flex;">
+      <div style="width:37.5%; background:linear-gradient(90deg, #166534, var(--gn)); display:flex; align-items:center; justify-content:center; font-size:0.75em; font-weight:700; color:white;">
+        ¥0〜¥7.5万<br>ROAS 2x+
+      </div>
+      <div style="width:37.5%; background:linear-gradient(90deg, var(--yw), var(--og)); display:flex; align-items:center; justify-content:center; font-size:0.75em; font-weight:700; color:#1a1a28;">
+        ¥7.5万〜¥15万<br>利益あり
+      </div>
+      <div style="width:25%; background:linear-gradient(90deg, var(--rd), #991b1b); display:flex; align-items:center; justify-content:center; font-size:0.75em; font-weight:700; color:white;">
+        ¥15万+<br>赤字
+      </div>
+    </div>
+    <div style="display:flex; justify-content:space-between; font-size:0.78em; color:var(--tm); padding:0 4px;">
+      <span>¥0</span>
+      <span style="color:var(--gn); font-weight:700;">¥5万 (最良期CPA)</span>
+      <span style="color:var(--yw); font-weight:700;">¥7.5万 (ROAS 2x)</span>
+      <span style="color:var(--rd); font-weight:700;">¥15万 (赤黒)</span>
+      <span>¥20万+</span>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card card-success">
+      <h4 class="text-gn">基準値まとめ</h4>
+      <table>
+        <tbody>
+          <tr><td>成約LTV (既卒デフォルト)</td><td class="num fw-700">¥427,636</td></tr>
+          <tr><td>申込 → 成約率</td><td class="num">50%</td></tr>
+          <tr><td>成約 → 実施率</td><td class="num">70%</td></tr>
+          <tr class="highlight-row"><td><strong>申込期待収益</strong></td><td class="num text-gn fw-700">≈ ¥15万</td></tr>
+          <tr><td>赤黒トントン申込CPA</td><td class="num text-rd fw-700">¥14〜15万</td></tr>
+          <tr><td>ROAS 2x基準 申込CPA</td><td class="num text-yw fw-700">¥7.5万</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="card">
+      <h4>ROAS算出式</h4>
+      <p style="font-size:0.9em; color:var(--tm); line-height:1.8;">
+        <strong class="text-tx">ROAS = 申込期待収益(¥15万) ÷ 申込CPA</strong><br><br>
+        赤黒ライン: 申込CPA = ¥15万 → ROAS 1.0x<br>
+        最低目標: 申込CPA = ¥7.5万 → <span class="text-yw fw-700">ROAS 2.0x</span><br>
+        最良期実績: 申込CPA = ¥5.3万 → <span class="text-gn fw-700">ROAS 2.8x</span>
+      </p>
+    </div>
+  </div>
+
+  <div class="co co-warn">
+    <b>エージェント報酬のアップサイド</b>
+    基本的に期待しないが、実績あり。過去にGoogle広告経由の成約者2名で<strong>¥600万の人材紹介報酬</strong>実績。<br>
+    上記の経済性計算にはこのアップサイドを含めていない（含めると経済性はさらに良くなる）。
+  </div>
+</section>
+
+<!-- ============ S4: インテントカテゴリ分析 ============ -->
+<section id="s4">
+  <h2><span class="section-num">Section 04</span> インテントカテゴリ別 検索クエリ分析</h2>
+
+  <p class="small muted" style="margin-bottom:16px;">
+    全検索クエリを検索意図（インテント）別に11カテゴリに分類。コスト配分、CV（マイクロCV含む）、参考CPA（マイクロCV含む）を可視化する。<br>
+    <strong class="text-yw">注意: クエリ単位のCVにはマイクロCVが分離不可能なため含まれています。信頼できるCPAは月次の申込CVベースのみです。</strong>
+  </p>
+
+  <!-- Cost Share Bar Chart -->
+  <div class="card">
+    <h4>コスト配分 — カテゴリ別</h4>
+
+    <div class="bar-row">
+      <div class="bar-lbl">H_fermi (フェルミ)</div>
+      <div class="bar-track"><div class="bar-fill" style="width:17.1%; background:linear-gradient(90deg, var(--rd), #ff6b6b);">17.1%</div></div>
+      <div class="bar-val text-rd fw-700">¥48.7万</div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-lbl">F2_case_general</div>
+      <div class="bar-track"><div class="bar-fill" style="width:14.9%; background:linear-gradient(90deg, var(--og), var(--yw));">14.9%</div></div>
+      <div class="bar-val">¥42.4万</div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-lbl">B_taisaku_service</div>
+      <div class="bar-track"><div class="bar-fill" style="width:13.6%; background:linear-gradient(90deg, var(--gn), var(--cn));">13.6%</div></div>
+      <div class="bar-val text-gn fw-700">¥38.6万</div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-lbl">C_career_transition</div>
+      <div class="bar-track"><div class="bar-fill" style="width:11.4%; background:linear-gradient(90deg, var(--yw), var(--og));">11.4%</div></div>
+      <div class="bar-val">¥32.3万</div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-lbl">I_consulting</div>
+      <div class="bar-track"><div class="bar-fill" style="width:9.2%; background:linear-gradient(90deg, var(--yw), var(--og));">9.2%</div></div>
+      <div class="bar-val">¥26.2万</div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-lbl">F_case_material</div>
+      <div class="bar-track"><div class="bar-fill" style="width:8.6%; background:linear-gradient(90deg, var(--og), var(--rd));">8.6%</div></div>
+      <div class="bar-val">¥24.4万</div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-lbl">Z_other</div>
+      <div class="bar-track"><div class="bar-fill" style="width:8.4%; background:var(--tm);">8.4%</div></div>
+      <div class="bar-val">¥23.9万</div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-lbl">E_firm_info</div>
+      <div class="bar-track"><div class="bar-fill" style="width:8.2%; background:linear-gradient(90deg, var(--ac), var(--ac2));">8.2%</div></div>
+      <div class="bar-val">¥23.3万</div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-lbl">A_brand</div>
+      <div class="bar-track"><div class="bar-fill" style="width:3.6%; background:linear-gradient(90deg, var(--gn), #22d3ee);">1.8%</div></div>
+      <div class="bar-val text-gn">¥5.2万</div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-lbl">G_case_info</div>
+      <div class="bar-track"><div class="bar-fill" style="width:3.4%; background:var(--rd);">1.7%</div></div>
+      <div class="bar-val text-rd">¥4.9万</div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-lbl">D_competitor</div>
+      <div class="bar-track"><div class="bar-fill" style="width:2.8%; background:linear-gradient(90deg, var(--cn), var(--gn));">1.4%</div></div>
+      <div class="bar-val text-gn">¥4.1万</div>
+    </div>
+  </div>
+
+  <!-- Full Table -->
+  <div class="card">
+    <h4>全カテゴリ詳細テーブル</h4>
+    <div style="overflow-x:auto;">
+    <table>
+      <thead>
+        <tr>
+          <th>カテゴリ</th>
+          <th>内容</th>
+          <th style="text-align:right;">コスト</th>
+          <th style="text-align:right;">シェア</th>
+          <th style="text-align:right;">CV(micro含む)</th>
+          <th style="text-align:right;">参考CPA(micro含む)</th>
+          <th>判定</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="highlight-row">
+          <td><strong>A_brand</strong></td>
+          <td>strategists 等</td>
+          <td class="num">¥52,000</td>
+          <td class="num">1.8%</td>
+          <td class="num fw-700">13.1</td>
+          <td class="num text-gn fw-700">¥3,985</td>
+          <td><span class="tag tag-gn">最効率</span></td>
+        </tr>
+        <tr class="highlight-row">
+          <td><strong>B_taisaku</strong></td>
+          <td>対策/講座/塾</td>
+          <td class="num">¥386,000</td>
+          <td class="num">13.6%</td>
+          <td class="num fw-700">30.5</td>
+          <td class="num text-gn fw-700">¥12,671</td>
+          <td><span class="tag tag-cn">GOLDMINE</span></td>
+        </tr>
+        <tr>
+          <td><strong>C_career</strong></td>
+          <td>転職/エージェント+コンサル</td>
+          <td class="num">¥323,000</td>
+          <td class="num">11.4%</td>
+          <td class="num">5.0</td>
+          <td class="num text-rd">¥64,642</td>
+          <td><span class="tag tag-yw">要精査</span></td>
+        </tr>
+        <tr class="highlight-row">
+          <td><strong>D_competitor</strong></td>
+          <td>ムービン/コンコード等</td>
+          <td class="num">¥41,000</td>
+          <td class="num">1.4%</td>
+          <td class="num">3.0</td>
+          <td class="num text-gn fw-700">¥13,726</td>
+          <td><span class="tag tag-gn">効率良好</span></td>
+        </tr>
+        <tr>
+          <td><strong>E_firm_info</strong></td>
+          <td>BCG/マッキンゼー情報</td>
+          <td class="num">¥233,000</td>
+          <td class="num">8.2%</td>
+          <td class="num">7.0</td>
+          <td class="num text-og">¥33,099</td>
+          <td><span class="tag tag-yw">混合</span></td>
+        </tr>
+        <tr class="warn-row">
+          <td><strong>F2_case_gen</strong></td>
+          <td>ケース面接 一般</td>
+          <td class="num">¥424,000</td>
+          <td class="num">14.9%</td>
+          <td class="num">15.3</td>
+          <td class="num text-og">¥27,680</td>
+          <td><span class="tag tag-og">広すぎ</span></td>
+        </tr>
+        <tr class="warn-row">
+          <td><strong>F_case_mat</strong></td>
+          <td>例題/回答例/本</td>
+          <td class="num">¥244,000</td>
+          <td class="num">8.6%</td>
+          <td class="num">5.3</td>
+          <td class="num text-rd">¥45,750</td>
+          <td><span class="tag tag-rd">情報系</span></td>
+        </tr>
+        <tr class="danger-row">
+          <td><strong>G_case_info</strong></td>
+          <td>とは/やり方/フレーム</td>
+          <td class="num">¥49,000</td>
+          <td class="num">1.7%</td>
+          <td class="num">1.0</td>
+          <td class="num text-rd">¥48,816</td>
+          <td><span class="tag tag-rd">ほぼ無駄</span></td>
+        </tr>
+        <tr class="danger-row">
+          <td><strong>H_fermi</strong></td>
+          <td>フェルミ推定全般</td>
+          <td class="num">¥487,000</td>
+          <td class="num">17.1%</td>
+          <td class="num text-rd fw-700">0.0</td>
+          <td class="num text-rd fw-700">N/A</td>
+          <td><span class="tag tag-rd">最大の無駄</span></td>
+        </tr>
+        <tr>
+          <td><strong>I_consulting</strong></td>
+          <td>コンサル一般</td>
+          <td class="num">¥262,000</td>
+          <td class="num">9.2%</td>
+          <td class="num">4.5</td>
+          <td class="num text-rd">¥58,323</td>
+          <td><span class="tag tag-og">広すぎ</span></td>
+        </tr>
+        <tr>
+          <td><strong>Z_other</strong></td>
+          <td>雑多</td>
+          <td class="num">¥239,000</td>
+          <td class="num">8.4%</td>
+          <td class="num">8.0</td>
+          <td class="num text-og">¥29,882</td>
+          <td><span class="tag tag-yw">雑多</span></td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+    <div class="co co-warn" style="margin-top:12px;">
+      <b>※ 検索クエリ単位のCVにはマイクロCVが含まれます（分離不可）</b>
+      Google Ads APIの仕様上、クエリ単位でのコンバージョンアクション別分離は不可能です。上記の「CV(micro含む)」「参考CPA(micro含む)」はマイクロCVを含んだ数値であり、<strong>実際の申込CPAを反映していません</strong>。<br>
+      信頼できるCPAは月次レベルで算出する申込CPA（月間費用 / 申込CV）のみです。最良期の月次申込CPA: ¥3.9万〜¥7.5万。
+    </div>
+  </div>
+
+  <!-- Key Insights -->
+  <div class="grid-2">
+    <div class="co co-good">
+      <b>GOLDMINE: B_taisaku_service (対策/講座/塾)</b>
+      コスト¥38.6万 / CV(micro含む) 30.5 / 参考CPA(micro含む) ¥12,671。最も費用対効果の高いカテゴリ。<br>
+      <strong>しかしIS 10%で、利用可能な検索の90%を逃している。</strong><br>
+      TARGET CPA引き上げだけで、このカテゴリの獲得量は3-5倍に拡大できる可能性がある。
+    </div>
+    <div class="co co-danger">
+      <b>最大の無駄: H_fermi (フェルミ推定)</b>
+      コスト¥48.7万 (全体の17.1%) を投下して、<strong>CV = 0</strong>。<br>
+      「フェルミ推定」を検索するユーザーは情報収集段階であり、スクール申込に至らない。<br>
+      即座にネガティブキーワードとして除外すべき。
+    </div>
+  </div>
+
+  <div class="co co-warn">
+    <b>注意: 「ケース面接」単体キーワード</b>
+    F2_case_general内の「ケース面接」単体は¥20.3万を消費してCV(micro含む) 4.8のみ（参考CPA ¥4.2万）。<br>
+    一方「ケース面接<strong>対策</strong>」「ケース面接<strong>講座</strong>」のように対策意図が明確なものは参考CPA ¥6,000〜¥20,000。<br>
+    単体キーワードは広すぎて効率が悪い。修飾語付きに限定すべき。
+  </div>
+</section>
+
+<!-- ============ S5: 広告グループ別 ============ -->
+<section id="s5">
+  <h2><span class="section-num">Section 05</span> 広告グループ別パフォーマンス</h2>
+
+  <!-- 社会人向け -->
+  <div class="card card-accent" style="border-left-color: var(--rd);">
+    <div style="display:flex; align-items:center; gap:12px; margin-bottom:16px;">
+      <span class="tag tag-gn" style="font-size:0.85em;">ENABLED</span>
+      <h4 style="margin:0;">社会人向け — 唯一稼働中の広告グループ</h4>
+    </div>
+
+    <div class="grid-4" style="margin-bottom:16px;">
+      <div class="stat stat-rd"><div class="stat-val">10%</div><div class="stat-lbl">IS (3ヶ月連続)</div></div>
+      <div class="stat"><div class="stat-val">¥163万</div><div class="stat-lbl">総費用</div></div>
+      <div class="stat"><div class="stat-val">3,500</div><div class="stat-lbl">クリック数</div></div>
+      <div class="stat stat-yw"><div class="stat-val">41.5</div><div class="stat-lbl">CV(micro含む)</div></div>
+    </div>
+
+    <div class="co co-danger">
+      <b>問題点</b>
+      TARGET CPA ¥1,200のポートフォリオ入札で制約。IS 10%から脱出できない。<br>
+      BROADマッチにより「フェルミ推定」(¥13.7万, 0CV) や情報系クエリが大量流入。<br>
+      <strong>1つの広告グループで全トラフィックを処理</strong>しているため、キーワード別の入札最適化が不可能。
+    </div>
+
+    <h4 style="font-size:0.88em; margin-top:16px;">グループ内の好パフォーマーKW（推定値）</h4>
+    <table>
+      <thead><tr><th>キーワード</th><th>推定CPA</th><th>IS</th><th>評価</th></tr></thead>
+      <tbody>
+        <tr class="highlight-row"><td>戦コン 面接</td><td class="num text-gn fw-700">¥1,003</td><td class="num">16-22%</td><td><span class="tag tag-gn">最優良</span></td></tr>
+        <tr class="highlight-row"><td>戦略コンサル 対策</td><td class="num text-gn fw-700">¥2,169</td><td class="num text-rd">10%</td><td><span class="tag tag-cn">IS拡大余地大</span></td></tr>
+        <tr><td>外資コンサル 面接 対策</td><td class="num">—</td><td class="num">14-18%</td><td><span class="tag tag-bl">良好</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- グループ③ケース面接 -->
+  <div class="card card-accent" style="border-left-color: var(--yw);">
+    <div style="display:flex; align-items:center; gap:12px; margin-bottom:16px;">
+      <span class="tag tag-rd" style="font-size:0.85em;">PAUSED</span>
+      <h4 style="margin:0;">グループ③ ケース面接 — 再開推奨</h4>
+      <span class="priority priority-high">HIGH PRIORITY</span>
+    </div>
+
+    <div class="grid-4" style="margin-bottom:16px;">
+      <div class="stat stat-gn"><div class="stat-val">30-50%</div><div class="stat-lbl">IS (稼働時)</div></div>
+      <div class="stat"><div class="stat-val">¥64.4万</div><div class="stat-lbl">総費用</div></div>
+      <div class="stat"><div class="stat-val">856</div><div class="stat-lbl">クリック数</div></div>
+      <div class="stat stat-gn"><div class="stat-val">29.2</div><div class="stat-lbl">CV(micro含む)</div></div>
+    </div>
+
+    <div class="co co-good">
+      <b>再開すべき理由</b>
+      ISが30-50%と<strong>社会人向けの3-5倍</strong>のリーチを実現。<br>
+      「ケース面接講座」CPA ¥5,990 / IS 50% — 非常に効率的。<br>
+      「ケース面接対策」CPA ¥19,859 / IS 44-48% — 妥当な範囲。
+    </div>
+
+    <table>
+      <thead><tr><th>キーワード</th><th>CPA</th><th>IS</th><th>評価</th></tr></thead>
+      <tbody>
+        <tr class="highlight-row"><td>ケース面接 講座 (BROAD)</td><td class="num text-gn fw-700">¥5,990</td><td class="num text-gn fw-700">50%</td><td><span class="tag tag-gn">優秀</span></td></tr>
+        <tr><td>ケース面接 対策 (BROAD)</td><td class="num">¥19,859</td><td class="num text-gn">44-48%</td><td><span class="tag tag-bl">良好</span></td></tr>
+        <tr><td>ケース面接 (BROAD)</td><td class="num text-og">—</td><td class="num">27-37%</td><td><span class="tag tag-yw">広め</span></td></tr>
+        <tr><td>ケース面接 中途 (BROAD)</td><td class="num">—</td><td class="num">30-31%</td><td><span class="tag tag-bl">良好</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- グループ⑤競合 -->
+  <div class="card card-accent" style="border-left-color: var(--gn);">
+    <div style="display:flex; align-items:center; gap:12px; margin-bottom:16px;">
+      <span class="tag tag-rd" style="font-size:0.85em;">PAUSED</span>
+      <h4 style="margin:0;">グループ⑤ 競合 — 再開強く推奨</h4>
+      <span class="priority priority-high">HIGH PRIORITY</span>
+    </div>
+
+    <div class="grid-4" style="margin-bottom:16px;">
+      <div class="stat"><div class="stat-val">10-15%</div><div class="stat-lbl">IS (稼働時)</div></div>
+      <div class="stat"><div class="stat-val">¥10.6万</div><div class="stat-lbl">総費用</div></div>
+      <div class="stat"><div class="stat-val">140</div><div class="stat-lbl">クリック数</div></div>
+      <div class="stat stat-gn"><div class="stat-val">16.1</div><div class="stat-lbl">CV(micro含む)</div></div>
+    </div>
+
+    <div class="co co-good">
+      <b>全広告グループ中 最高効率</b>
+      参考CPA(micro含む) <strong class="text-gn">¥6,601</strong> — 他グループの1/3〜1/10のコストで獲得。<br>
+      競合名で検索するユーザーは「比較検討段階」にあり、CVR（転換率）が高い。
+    </div>
+
+    <table>
+      <thead><tr><th>キーワード</th><th>CPA</th><th>評価</th></tr></thead>
+      <tbody>
+        <tr class="highlight-row"><td>strategy bootcamp</td><td class="num text-gn fw-700">¥835</td><td><span class="tag tag-gn">最安</span></td></tr>
+        <tr class="highlight-row"><td>strategists (自社名)</td><td class="num text-gn fw-700">¥1,039</td><td><span class="tag tag-gn">ブランド</span></td></tr>
+        <tr class="highlight-row"><td>ムービン/コンコード/フォルトナ等</td><td class="num text-gn">低CPA</td><td><span class="tag tag-gn">効率良好</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- その他の停止中グループ -->
+  <div class="card" style="opacity:0.8;">
+    <h4>その他の停止中グループ — 再開非推奨</h4>
+    <table>
+      <thead>
+        <tr><th>グループ</th><th>費用</th><th>CV</th><th>CPA</th><th>判定</th></tr>
+      </thead>
+      <tbody>
+        <tr class="danger-row">
+          <td>④ フェルミ推定</td>
+          <td class="num">¥6.1万</td>
+          <td class="num text-rd fw-700">0.0</td>
+          <td class="num text-rd">N/A</td>
+          <td><span class="tag tag-rd">再開不可</span></td>
+        </tr>
+        <tr class="danger-row">
+          <td>② BCG</td>
+          <td class="num">¥10.9万</td>
+          <td class="num">1.0</td>
+          <td class="num text-rd">¥109,040</td>
+          <td><span class="tag tag-rd">再開非推奨</span></td>
+        </tr>
+        <tr class="warn-row">
+          <td>① ファーム名+対策形</td>
+          <td class="num">¥29.8万</td>
+          <td class="num">6.0</td>
+          <td class="num text-og">¥49,586</td>
+          <td><span class="tag tag-yw">一部KWのみ検討</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ============ S6: キーワード別IS ============ -->
+<section id="s6">
+  <h2><span class="section-num">Section 06</span> キーワード別 インプレッションシェア (IS) データ</h2>
+
+  <p class="small muted" style="margin-bottom:20px;">
+    ISはGoogle広告における最重要指標の一つ。「利用可能な検索のうち、何%に広告が表示されたか」を示す。<br>
+    IS 10% = 10回中1回しか表示されていない = <strong>残り9回は競合に取られている or そもそも表示されていない</strong>。
+  </p>
+
+  <div class="co co-fact v6-new" style="margin-bottom:20px;">
+    <b>IS（インプレッションシェア）のデータソースと算出方法</b>
+    <strong>データソース:</strong> Google Ads API v23 <code>metrics.searchImpressionShare</code><br>
+    <strong>算出式:</strong> IS = 実際の表示回数 ÷ 表示される可能性があった推定回数<br>
+    分母はGoogleの内部推定値（ターゲティング設定、品質スコア、入札額を考慮）。実際の検索ボリュームそのものではないが、業界標準の指標。<br>
+    <strong>重要なのは絶対値よりも相対比較:</strong> 社会人向け10% vs グループ③ 30-50% — 同じ指標での3-5倍の差が問題の本質。
+  </div>
+
+
+  <h3>稼働中KW — 社会人向けグループ</h3>
+  <div class="card card-danger">
+    <table>
+      <thead>
+        <tr><th>キーワード</th><th>マッチ</th><th>Jan IS</th><th>Feb IS</th><th>Mar IS</th><th>機会損失</th></tr>
+      </thead>
+      <tbody>
+        <tr class="danger-row">
+          <td><strong>戦略コンサル 対策</strong></td><td>PHRASE</td>
+          <td class="num text-rd">10%</td><td class="num text-rd">10%</td><td class="num text-rd">10%</td>
+          <td><span class="tag tag-rd">90%損失</span></td>
+        </tr>
+        <tr class="danger-row">
+          <td><strong>戦略コンサル 面接</strong></td><td>EXACT</td>
+          <td class="num text-rd">10%</td><td class="num text-rd">10%</td><td class="num text-rd">11%</td>
+          <td><span class="tag tag-rd">89-90%損失</span></td>
+        </tr>
+        <tr class="danger-row">
+          <td>フェルミ推定 対策</td><td>EXACT</td>
+          <td class="num text-rd">10%</td><td class="num text-rd">12%</td><td class="num text-rd">10%</td>
+          <td><span class="tag tag-rd">88-90%損失</span></td>
+        </tr>
+        <tr class="warn-row">
+          <td>戦コン 面接</td><td>PHRASE</td>
+          <td class="num text-yw">16%</td><td class="num text-yw">22%</td><td class="num text-yw">18%</td>
+          <td><span class="tag tag-yw">78-84%損失</span></td>
+        </tr>
+        <tr class="warn-row">
+          <td>外資コンサル 面接 対策</td><td>PHRASE</td>
+          <td class="num text-yw">14%</td><td class="num text-yw">18%</td><td class="num text-yw">15%</td>
+          <td><span class="tag tag-yw">82-86%損失</span></td>
+        </tr>
+        <tr class="danger-row">
+          <td>ボスコン 中途 採用</td><td>BROAD</td>
+          <td class="num text-rd">10%</td><td class="num text-rd">10%</td><td class="num text-rd">10%</td>
+          <td><span class="tag tag-rd">90%損失</span></td>
+        </tr>
+        <tr>
+          <td>マッキンゼー 対策</td><td>EXACT</td>
+          <td class="num">10%</td><td class="num text-gn">100%</td><td class="num text-rd">10%</td>
+          <td><span class="tag tag-yw">変動大(少量)</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div style="margin-top:16px;">
+      <h4 style="font-size:0.88em;">「戦略コンサル 対策」のIS推移イメージ</h4>
+      <div class="is-gauge">
+        <div class="is-fill" style="width:10%; background: linear-gradient(90deg, var(--rd), var(--og));">IS 10%</div>
+        <div class="is-lost">90%の機会損失 &mdash; 最も効率の良いKWで</div>
+      </div>
+    </div>
+  </div>
+
+  <h3>停止中KW — グループ③ケース面接（稼働時のIS）</h3>
+  <div class="card card-success">
+    <table>
+      <thead>
+        <tr><th>キーワード</th><th>マッチ</th><th>稼働時IS</th><th>社会人向けとの比較</th></tr>
+      </thead>
+      <tbody>
+        <tr class="highlight-row">
+          <td><strong>ケース面接 講座</strong></td><td>BROAD</td>
+          <td class="num text-gn fw-700">50%</td>
+          <td><span class="tag tag-gn">5倍のリーチ</span></td>
+        </tr>
+        <tr class="highlight-row">
+          <td><strong>ケース面接 対策</strong></td><td>BROAD</td>
+          <td class="num text-gn fw-700">44-48%</td>
+          <td><span class="tag tag-gn">4-5倍のリーチ</span></td>
+        </tr>
+        <tr>
+          <td>ケース面接</td><td>BROAD</td>
+          <td class="num text-cn">27-37%</td>
+          <td><span class="tag tag-cn">3倍のリーチ</span></td>
+        </tr>
+        <tr>
+          <td>ケース面接 中途</td><td>BROAD</td>
+          <td class="num text-cn">30-31%</td>
+          <td><span class="tag tag-cn">3倍のリーチ</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="co co-fact" style="margin-top:16px;">
+      <b>なぜ停止中グループのISが高いのか?</b>
+      停止中グループはTARGET CPA ¥1,200のポートフォリオ入札の<strong>制約を受けていなかった</strong>可能性が高い（個別入札 or 別の入札戦略）。<br>
+      再開時にはマイクロCV除外 + 適切なTARGET CPA設定が前提条件。
+    </div>
+  </div>
+</section>
+
+<!-- ============ S7: 月次推移 ============ -->
+<section id="s7">
+  <h2><span class="section-num">Section 07</span> 月次推移 — マイクロCV導入前後の変化</h2>
+
+  <div class="card">
+    <div style="overflow-x:auto;">
+    <table>
+      <thead>
+        <tr>
+          <th>月</th>
+          <th style="text-align:right;">費用</th>
+          <th style="text-align:right; color:var(--gn);"><strong>申込CV</strong></th>
+          <th style="text-align:right; color:var(--gn);"><strong>申込CPA</strong></th>
+          <th style="text-align:right; color:var(--tm);">CV(micro含む)</th>
+          <th style="text-align:right;">全CV</th>
+          <th>備考</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>2025-03</td>
+          <td class="num">¥649,000</td>
+          <td class="num fw-700" style="color:var(--gn);">2.0</td>
+          <td class="num" style="color:var(--gn);">¥32.5万</td>
+          <td class="num muted">2.0</td>
+          <td class="num">12.0</td>
+          <td class="small muted">既卒0+新卒0+メンタリング2</td>
+        </tr>
+        <tr>
+          <td>2025-04</td>
+          <td class="num">¥419,000</td>
+          <td class="num fw-700" style="color:var(--gn);">2.0</td>
+          <td class="num" style="color:var(--gn);">¥21.0万</td>
+          <td class="num muted">2.0</td>
+          <td class="num">9.0</td>
+          <td class="small muted">既卒1+新卒0+メンタリング1</td>
+        </tr>
+        <tr class="highlight-row">
+          <td>2025-05</td>
+          <td class="num">¥976,000</td>
+          <td class="num fw-700 text-gn" style="font-size:1.1em;">13.0</td>
+          <td class="num text-gn fw-700">¥7.5万</td>
+          <td class="num muted">13.0</td>
+          <td class="num">13.0</td>
+          <td><span class="tag tag-gn">既卒7+新卒6</span></td>
+        </tr>
+        <tr class="highlight-row">
+          <td>2025-06</td>
+          <td class="num">¥615,000</td>
+          <td class="num fw-700 text-gn" style="font-size:1.1em;">14.0</td>
+          <td class="num text-gn fw-700">¥4.4万</td>
+          <td class="num muted">14.0</td>
+          <td class="num">14.0</td>
+          <td><span class="tag tag-gn">既卒8+新卒6</span></td>
+        </tr>
+        <tr class="highlight-row">
+          <td>2025-07</td>
+          <td class="num">¥511,000</td>
+          <td class="num fw-700 text-gn" style="font-size:1.1em;">13.0</td>
+          <td class="num text-gn fw-700">¥3.9万</td>
+          <td class="num muted">13.5</td>
+          <td class="num">16.5</td>
+          <td><span class="tag tag-gn">既卒11+新卒2</span></td>
+        </tr>
+        <tr class="warn-row" style="border-top:2px dashed var(--rd);">
+          <td><strong>2025-08</strong></td>
+          <td class="num">¥694,000</td>
+          <td class="num fw-700">2.0</td>
+          <td class="num">¥34.7万</td>
+          <td class="num muted">4.1</td>
+          <td class="num">10.1</td>
+          <td><span class="tag tag-rd">8/21 マイクロCV追加</span> 既卒2+新卒0</td>
+        </tr>
+        <tr>
+          <td>2025-09</td>
+          <td class="num">¥307,000</td>
+          <td class="num text-rd fw-700">0.5</td>
+          <td class="num text-rd">¥61.4万</td>
+          <td class="num muted">14.6</td>
+          <td class="num text-yw">37.1</td>
+          <td class="small muted">既卒0+新卒0.5 / micro水増し</td>
+        </tr>
+        <tr>
+          <td>2025-10</td>
+          <td class="num">¥232,000</td>
+          <td class="num fw-700">3.5</td>
+          <td class="num">¥6.6万</td>
+          <td class="num muted">25.9</td>
+          <td class="num text-yw">59.1</td>
+          <td class="small muted">既卒3+新卒0.5 / micro水増し</td>
+        </tr>
+        <tr>
+          <td>2025-11</td>
+          <td class="num">¥181,000</td>
+          <td class="num fw-700">4.0</td>
+          <td class="num">¥4.5万</td>
+          <td class="num muted">37.0</td>
+          <td class="num text-yw">96.6</td>
+          <td class="small muted">既卒2+新卒2 / micro水増し</td>
+        </tr>
+        <tr class="danger-row" style="border-top:2px dashed var(--rd);">
+          <td><strong>2025-12</strong></td>
+          <td class="num text-rd fw-700">¥2,000</td>
+          <td class="num fw-700 text-rd">0.0</td>
+          <td class="num text-rd">N/A</td>
+          <td class="num muted">0.0</td>
+          <td class="num">0.0</td>
+          <td><span class="tag tag-rd">配信ほぼ停止</span></td>
+        </tr>
+        <tr class="danger-row">
+          <td>2026-01</td>
+          <td class="num text-rd">¥40,000</td>
+          <td class="num text-rd fw-700">1.0</td>
+          <td class="num text-rd">¥4.0万</td>
+          <td class="num muted">11.0</td>
+          <td class="num">35.0</td>
+          <td class="small muted">既卒1 / micro水増し</td>
+        </tr>
+        <tr class="danger-row">
+          <td>2026-02</td>
+          <td class="num text-rd">¥40,000</td>
+          <td class="num fw-700">5.0</td>
+          <td class="num text-gn fw-700">¥0.8万</td>
+          <td class="num muted">25.0</td>
+          <td class="num">55.0</td>
+          <td class="small muted">既卒4+新卒1 / micro水増し</td>
+        </tr>
+        <tr class="danger-row">
+          <td>2026-03</td>
+          <td class="num text-rd">¥21,000</td>
+          <td class="num text-rd fw-700">0.0</td>
+          <td class="num text-rd">N/A</td>
+          <td class="num muted">15.0</td>
+          <td class="num">33.0</td>
+          <td class="small muted">月半ば時点 / micro水増し</td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+  </div>
+
+  <div class="co co-warn">
+    <b>アルゴリズムの「錯覚」</b>
+    2026年1-3月の見かけCPAは¥821〜¥1,400。TARGET CPA ¥1,200と比較して「目標達成」に見える。<br>
+    しかしこれはマイクロCVが分母を水増しした結果。<strong>実際の申込CVは月平均2.0件（1月:1件、2月:5件、3月:0件）であり、申込CPAは¥0.8万〜¥4.0万。</strong><br>
+    Googleの自動入札は「目標達成しているので入札を上げる必要なし」と判断し、IS 10%に固定される。
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <h4>マイクロCV導入前 (2025年5-7月)</h4>
+      <div class="grid-3">
+        <div class="stat stat-gn"><div class="stat-val">¥70万</div><div class="stat-lbl">月平均費用</div></div>
+        <div class="stat stat-gn"><div class="stat-val">13.3</div><div class="stat-lbl">月平均申込CV</div></div>
+        <div class="stat"><div class="stat-val">¥5.3万</div><div class="stat-lbl">申込CPA</div></div>
+      </div>
+      <p class="small muted">予算を使い切りに近い水準で運用。(13+14+13)/3 = 月平均13.3件の実申込。申込CPA ¥3.9万〜¥7.5万（平均¥5.3万）。</p>
+    </div>
+    <div class="card">
+      <h4>マイクロCV導入後 (2026年1-3月)</h4>
+      <div class="grid-3">
+        <div class="stat stat-rd"><div class="stat-val">¥3.3万</div><div class="stat-lbl">月平均費用</div></div>
+        <div class="stat stat-rd"><div class="stat-val">2.0</div><div class="stat-lbl">月平均申込CV</div></div>
+        <div class="stat stat-yw"><div class="stat-val">17.0</div><div class="stat-lbl">CV(micro含む)/月 ※歪み</div></div>
+      </div>
+      <p class="small muted">実際の申込CVは(1+5+0)/3 = 月平均2.0件。申込CPAは¥1.7万（CVのある月のみ: 1月¥4.0万、2月¥0.8万）。CV(micro含む)の17.0は<strong>マイクロCVが8.5倍に水増し</strong>した数値。費用1/21に激減しISは10%で固定。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ S8: タイムライン ============ -->
+<section id="s8">
+  <h2><span class="section-num">Section 08</span> タイムライン分析 — 何がいつ起きたか</h2>
+
+  <div class="card">
+    <div class="timeline">
+      <div class="tl-item tl-success">
+        <div class="tl-period">2025年3月〜7月 — 正常運用期</div>
+        <div class="tl-detail">
+          月額 <strong>¥51.1万〜¥97.6万</strong> を消化。複数の広告グループが稼働。<br>
+          申込CVは5-7月に月間13-14件を安定獲得。申込CPA ¥3.9万〜¥7.5万の範囲（平均¥5.3万）。<br>
+          IS はグループにより10-50%と変動するも、全体として市場にリーチできていた。
+        </div>
+      </div>
+
+      <div class="tl-item tl-danger">
+        <div class="tl-period">2025年8月21日 — マイクロCV追加 (転換点)</div>
+        <div class="tl-detail">
+          <strong>btn_click、マイクロCV</strong> がメインコンバージョンアクションに追加。<br>
+          即座にCV数が膨張。8月単月で全CV 10.1 vs 申込CV 2.0。<br>
+          アルゴリズムが「CPA低下 = 好調」と誤認し始める。
+        </div>
+      </div>
+
+      <div class="tl-item tl-warn">
+        <div class="tl-period">2025年9月〜11月 — 一部グループ停止・費用減少</div>
+        <div class="tl-detail">
+          月額が <strong>¥18.1万〜¥30.7万</strong> に低下。グループ③⑤はまだ稼働中。<br>
+          マイクロCVにより見かけCPAは¥5,000〜¥21,000と「好調」に見える。<br>
+          しかしアルゴリズムの入札額は既に低下傾向に。
+        </div>
+      </div>
+
+      <div class="tl-item tl-danger">
+        <div class="tl-period">2025年11月末〜12月 — 大量停止</div>
+        <div class="tl-detail">
+          グループ③(ケース面接)、グループ⑤(競合) を含む主要グループが停止。<br>
+          12月の費用は <strong class="text-rd">¥1,749</strong> — 事実上の配信停止。<br>
+          稼働しているのは社会人向けのみ。TARGET CPA ¥1,200が全面的に適用。
+        </div>
+      </div>
+
+      <div class="tl-item tl-danger">
+        <div class="tl-period">2026年1月〜3月 — IS 10%固定期（現在）</div>
+        <div class="tl-detail">
+          月額 <strong class="text-rd">¥2.1万〜¥4.0万</strong>。予算¥100万の <strong class="text-rd">2-4%しか消化できていない</strong>。<br>
+          IS 10%が3ヶ月連続。アルゴリズムは「目標CPA達成済み」と判断し入札を上げない。<br>
+          結果、最も効率の良い「対策系」キーワードでも90%の機会を逃し続けている。
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ S9: 具体的提言 ============ -->
+<section id="s9">
+  <h2><span class="section-num">Section 09</span> 具体的提言 — 優先度別アクションプラン</h2>
+
+  <!-- CRITICAL -->
+  <h3 style="color:var(--rd);">即座に実行すべき (Critical / 本日中)</h3>
+
+  <div class="rec-card rec-critical">
+    <div class="rec-header">
+      <div class="rec-num" style="background:rgba(248,113,113,0.2); color:var(--rd);">1</div>
+      <div class="rec-title">マイクロCVをメインコンバージョンから外す</div>
+      <span class="priority priority-critical">CRITICAL</span>
+    </div>
+    <div class="rec-body">
+      <strong>対象:</strong> btn_click (164.2件), マイクロCV (117.1件), conversion_main (25.0件), /thanks遷移, click<br>
+      <strong>アクション:</strong> 上記をすべて「セカンダリコンバージョン」に変更<br>
+      <strong>残すもの:</strong> 既卒(/schedule/遷移) と 新卒(schedule_newgraduate_遷移) のみメインに<br>
+      <strong>効果:</strong> これだけでアルゴリズムの入札基準が「実質の申込」に矯正される。全施策の前提条件。
+      <div class="rec-impact" style="background:rgba(248,113,113,0.15); color:var(--rd);">影響度: 最大 — 他のすべての改善の前提</div>
+    </div>
+  </div>
+
+  <div class="rec-card rec-critical">
+    <div class="rec-header">
+      <div class="rec-num" style="background:rgba(248,113,113,0.2); color:var(--rd);">2</div>
+      <div class="rec-title">TARGET CPAを現実的な値に引き上げ</div>
+      <span class="priority priority-critical">CRITICAL</span>
+    </div>
+    <div class="rec-body">
+      <strong>現在:</strong> ¥1,200（マイクロCV込みの見かけCPA）<br>
+      <strong>推奨:</strong> <span class="text-gn fw-700">¥40,000〜¥80,000</span>（実際の申込CPAベース）<br>
+      <strong>根拠:</strong> マイクロCV除外後の実際の申込CPA: 最良期は5月¥7.5万、6月¥4.4万、7月¥3.9万。安定獲得には¥4万〜¥8万が適正範囲。<br>
+      <strong>注意:</strong> マイクロCV除外後に設定すること。除外前に上げると無駄な入札が増える。<br>
+      <strong>※補足:</strong> B_taisaku_serviceの参考CPA ¥12,671 はマイクロCV込みの数値であり、実際の申込CPAはこれより高い。
+      <div class="rec-impact" style="background:rgba(248,113,113,0.15); color:var(--rd);">影響度: IS 10% → 30%+ への直接的な改善</div>
+    </div>
+  </div>
+
+  <div class="rec-card rec-critical">
+    <div class="rec-header">
+      <div class="rec-num" style="background:rgba(248,113,113,0.2); color:var(--rd);">3</div>
+      <div class="rec-title">「フェルミ推定」をネガティブキーワードに追加</div>
+      <span class="priority priority-critical">CRITICAL</span>
+    </div>
+    <div class="rec-body">
+      <strong>現状:</strong> 社会人向けのBROADマッチで「フェルミ推定」系が <span class="text-rd fw-700">¥48.7万</span> 流入（全体の17.1%）<br>
+      <strong>成果:</strong> 全期間で <span class="text-rd fw-700">CV = 0</span>。完全な無駄遣い。<br>
+      <strong>アクション:</strong> 「フェルミ推定」をフレーズ一致の除外キーワードに即座に追加<br>
+      <strong>効果:</strong> 年間換算で¥50万以上の無駄を排除。予算を有効なクエリに再配分。
+      <div class="rec-impact" style="background:rgba(251,146,60,0.15); color:var(--og);">影響度: ¥48.7万/年の無駄を即座に排除</div>
+    </div>
+  </div>
+
+  <!-- HIGH PRIORITY -->
+  <h3 style="color:var(--og);">1〜2週間で実行 (High Priority)</h3>
+
+  <div class="rec-card rec-high">
+    <div class="rec-header">
+      <div class="rec-num" style="background:rgba(251,146,60,0.2); color:var(--og);">4</div>
+      <div class="rec-title">グループ③ ケース面接を再開</div>
+      <span class="priority priority-high">HIGH</span>
+    </div>
+    <div class="rec-body">
+      <strong>根拠:</strong> IS 30-50%で社会人向け(10%)の3-5倍リーチ。CPA ¥5,990〜¥19,859。<br>
+      <strong>注目KW:</strong> ケース面接講座 (CPA ¥5,990, IS 50%) / ケース面接対策 (CPA ¥19,859, IS 44-48%)<br>
+      <strong>TARGET CPA設定:</strong> ¥40,000〜¥80,000（マイクロ除外後、申込CPAベース）<br>
+      <strong>注意:</strong> 「ケース面接」単体BROADは広すぎるため、「対策」「講座」「中途」等の修飾語付きに限定推奨。
+      <div class="rec-impact" style="background:rgba(52,211,153,0.15); color:var(--gn);">期待効果: 月5-10件の申込CV追加獲得</div>
+    </div>
+  </div>
+
+  <div class="rec-card rec-high">
+    <div class="rec-header">
+      <div class="rec-num" style="background:rgba(251,146,60,0.2); color:var(--og);">5</div>
+      <div class="rec-title">グループ⑤ 競合を再開</div>
+      <span class="priority priority-high">HIGH</span>
+    </div>
+    <div class="rec-body">
+      <strong>根拠:</strong> <span class="text-gn fw-700">全グループ最高効率 参考CPA(micro含む) ¥6,601</span><br>
+      <strong>注目KW:</strong> strategists (参考CPA(micro含む) ¥1,039) / strategy bootcamp (参考CPA(micro含む) ¥835) / ムービン・コンコード・フォルトナ系<br>
+      <strong>メカニズム:</strong> 競合名で検索するユーザーは「比較検討段階」にあり、LP訪問後のCVRが極めて高い。<br>
+      <strong>リスク:</strong> 競合からのクレーム可能性は低い（一般的な運用手法）。
+      <div class="rec-impact" style="background:rgba(52,211,153,0.15); color:var(--gn);">期待効果: 月3-8件の申込CV追加獲得（最低コスト）</div>
+    </div>
+  </div>
+
+  <div class="rec-card rec-high">
+    <div class="rec-header">
+      <div class="rec-num" style="background:rgba(251,146,60,0.2); color:var(--og);">6</div>
+      <div class="rec-title">社会人向け内のBROADマッチKWを整理</div>
+      <span class="priority priority-high">HIGH</span>
+    </div>
+    <div class="rec-body">
+      <strong>除外候補:</strong><br>
+      ・「ケース面接例題」¥10.6万 → CV1.0 (CPA ¥10.6万) → 除外 or PHRASEに変更<br>
+      ・「ケース面接」単体 ¥9.3万 → CV2.0 (CPA ¥4.6万) → 除外（グループ③に移管）<br>
+      ・情報収集系（例題/回答例/フレームワーク/とは）→ ネガティブKWに<br>
+      <strong>効果:</strong> 不要なクエリへの予算流出を止め、対策系・講座系クエリに集中。
+      <div class="rec-impact" style="background:rgba(251,191,36,0.15); color:var(--yw);">期待効果: CPA改善 + 有効クエリへの予算集中</div>
+    </div>
+  </div>
+
+  
+  <div class="rec-card rec-high v6-new" style="margin-top:16px;">
+    <div class="rec-header">
+      <div class="rec-num" style="background:rgba(251,146,60,0.2); color:var(--og);">6.5</div>
+      <div class="rec-title">入札戦略の変更検討: TARGET_CPA → コンバージョン数の最大化</div>
+      <span class="priority priority-high">HIGH</span>
+    </div>
+    <div class="rec-body">
+      <strong>現在のTARGET_CPA ¥1,200はマイクロCV込みで歪んでいる。</strong><br><br>
+      <strong>選択肢:</strong><br>
+      (1) TARGET_CPA値を修正（¥4万〜¥8万に）<br>
+      (2) 「コンバージョン数の最大化」に変更<br><br>
+      <strong>推奨手順:</strong><br>
+      <ol style="padding-left:18px; margin:8px 0; line-height:1.8;">
+        <li><span class="text-rd fw-700">まずマイクロCVをメインから外す（最優先・前提条件）</span></li>
+        <li>「コンバージョン数の最大化」（目標CPA設定なし）を2-3週間テスト</li>
+        <li>CPAの推移を見て、暴走するなら目標CPA（¥6〜8万）を追加</li>
+      </ol>
+      <div class="co co-danger" style="margin-top:12px; margin-bottom:0;">
+        <b>注意: 順番が重要</b>
+        マイクロCVを外さずに「コンバージョン数の最大化」に変更すると、マイクロCVを大量に取りに行くだけ。必ずマイクロCV除外が先。
+      </div>
+      <div class="rec-impact" style="background:rgba(251,146,60,0.15); color:var(--og); margin-top:12px;">影響度: アルゴリズムの入札最適化が本来の申込CVに向かう</div>
+    </div>
+  </div>
+
+  <!-- MEDIUM PRIORITY -->
+  <h3 style="color:var(--yw);">検討事項 (Medium Priority)</h3>
+
+  <div class="rec-card rec-medium">
+    <div class="rec-header">
+      <div class="rec-num" style="background:rgba(251,191,36,0.2); color:var(--yw);">7</div>
+      <div class="rec-title">グループ①②④の扱い</div>
+      <span class="priority priority-medium">MEDIUM</span>
+    </div>
+    <div class="rec-body">
+      <strong>①ファーム名+対策形:</strong> CPA ¥49,586 → 混合結果。「ケース面接 + ファーム名」の一部KWのみ再開検討。<br>
+      <strong>②BCG:</strong> CPA ¥109,040 → <span class="text-rd">再開非推奨</span>。ファーム単体名は情報収集意図が強い。<br>
+      <strong>④フェルミ推定:</strong> CV=0 → <span class="text-rd">再開非推奨</span>。ネガティブKWで完全除外。
+    </div>
+  </div>
+
+  <div class="rec-card rec-medium">
+    <div class="rec-header">
+      <div class="rec-num" style="background:rgba(251,191,36,0.2); color:var(--yw);">8</div>
+      <div class="rec-title">日予算の引き上げ</div>
+      <span class="priority priority-medium">MEDIUM</span>
+    </div>
+    <div class="rec-body">
+      <strong>現在:</strong> ¥5,000/日<br>
+      <strong>推奨:</strong> CPA修正後に ¥10,000〜¥20,000/日 に引き上げ<br>
+      <strong>重要:</strong> <span class="text-rd">CPA設定修正が先。</span>先に日予算を上げてもTARGET CPA制約でIS10%のまま。<br>
+      施策1-3を実行 → IS向上を確認 → 予算引き上げ の順序を厳守。
+    </div>
+  </div>
+</section>
+
+<!-- ============ S10: シミュレーション (v6 修正版) ============ -->
+<section id="s10">
+  <h2><span class="section-num">Section 10</span> 改善シミュレーション</h2>
+
+  <div class="co co-warn v6-changed" style="margin-bottom:20px;">
+    <b>v5からの変更:</b> v5ではIS拡大時のCPA高騰リスクを過小評価していた。ISを上げるということは、現在スキップしている高コストのオークションにも参加することを意味し、CPCとCPAの上昇は避けられない。
+  </div>
+
+  <p class="small muted" style="margin-bottom:16px;">
+    以下のシミュレーションは<strong>申込CV（= /schedule/遷移 + schedule_newgraduate_遷移）</strong>ベースで算出。マイクロCVは含まない。<br>
+    <strong>ROAS = 申込期待収益(¥15万) ÷ 申込CPA</strong>
+  </p>
+
+  <div class="card">
+    <h4>シナリオ別 シミュレーション</h4>
+    <div style="overflow-x:auto;">
+    <table>
+      <thead>
+        <tr>
+          <th>シナリオ</th>
+          <th style="text-align:right;">IS目標</th>
+          <th style="text-align:right;">月間費用</th>
+          <th style="text-align:right;">申込CV/月</th>
+          <th style="text-align:right;">申込CPA</th>
+          <th style="text-align:right;">ROAS</th>
+          <th>判定</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="danger-row">
+          <td><strong>現状</strong></td>
+          <td class="num">10%</td>
+          <td class="num text-rd">¥3.3万</td>
+          <td class="num text-rd">2.0</td>
+          <td class="num text-gn">¥1.7万</td>
+          <td class="num text-gn fw-700">8.8x</td>
+          <td><span class="tag tag-yw">効率良いが機会損失大</span></td>
+        </tr>
+        <tr class="highlight-row">
+          <td><strong>保守的</strong></td>
+          <td class="num">20%</td>
+          <td class="num">¥15〜25万</td>
+          <td class="num text-gn">3-5</td>
+          <td class="num">¥5〜8万</td>
+          <td class="num text-gn fw-700">1.9-3.0x</td>
+          <td><span class="tag tag-gn">ROAS 2x圏内。推奨</span></td>
+        </tr>
+        <tr>
+          <td><strong>積極的</strong></td>
+          <td class="num">30-40%</td>
+          <td class="num">¥30〜50万</td>
+          <td class="num text-gn">5-8</td>
+          <td class="num text-yw">¥6〜10万</td>
+          <td class="num text-yw">1.5-2.5x</td>
+          <td><span class="tag tag-yw">CPA注視が必要</span></td>
+        </tr>
+        <tr class="warn-row">
+          <td><strong>フル展開</strong></td>
+          <td class="num">50%+</td>
+          <td class="num">¥50〜80万</td>
+          <td class="num">6-10</td>
+          <td class="num text-og">¥8〜13万</td>
+          <td class="num text-og">1.2-1.9x</td>
+          <td><span class="tag tag-rd">ROAS 2x割れリスク</span></td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card card-success">
+      <h4 class="text-gn">ROAS基準ライン</h4>
+      <table>
+        <tbody>
+          <tr class="danger-row"><td>赤黒ライン (ROAS 1.0x)</td><td class="num text-rd fw-700">申込CPA = ¥15万</td></tr>
+          <tr class="warn-row"><td>最低目標 (ROAS 2.0x)</td><td class="num text-yw fw-700">申込CPA = ¥7.5万</td></tr>
+          <tr class="highlight-row"><td>最良期実績 (ROAS 2.8x)</td><td class="num text-gn fw-700">申込CPA = ¥5.3万</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="card card-warn">
+      <h4 class="text-yw">CPA高騰メカニズム</h4>
+      <p style="font-size:0.88em; color:var(--tm); line-height:1.7;">
+        IS 10% → 20%: 比較的安価なオークションを追加で獲得<br>
+        IS 20% → 40%: 競争の激しいオークションにも参加<br>
+        IS 40% → 50%+: 最も高コストなオークションに参加<br><br>
+        <strong class="text-tx">ISの拡大とCPAの上昇はトレードオフ。</strong>最適点は「ROAS 2x を維持できる最大IS」。
+      </p>
+    </div>
+  </div>
+
+  <!-- 施策ごとの期待効果サマリ -->
+  <div class="card" style="margin-top:24px;">
+    <h4>施策別 期待インパクトまとめ</h4>
+    <table>
+      <thead>
+        <tr><th>#</th><th>施策</th><th>期待IS改善</th><th>期待申込CV増</th><th>コスト増</th><th>実行難易度</th></tr>
+      </thead>
+      <tbody>
+        <tr class="highlight-row">
+          <td>1</td><td>マイクロCV除外</td><td class="num">—</td><td class="num">—</td><td class="num">¥0</td><td><span class="tag tag-gn">1分</span></td>
+        </tr>
+        <tr class="highlight-row">
+          <td>2</td><td>TARGET CPA引き上げ (¥4万〜¥8万)</td><td class="num text-gn">10%→30%</td><td class="num text-gn">+5-8/月</td><td class="num">+¥7万〜¥12万</td><td><span class="tag tag-gn">1分</span></td>
+        </tr>
+        <tr class="highlight-row">
+          <td>3</td><td>フェルミ推定除外</td><td class="num">—</td><td class="num">—</td><td class="num text-gn">-¥4万/月</td><td><span class="tag tag-gn">1分</span></td>
+        </tr>
+        <tr>
+          <td>4</td><td>グループ③再開</td><td class="num text-gn">30-50%</td><td class="num text-gn">+5-10/月</td><td class="num">+¥8万〜¥15万</td><td><span class="tag tag-bl">10分</span></td>
+        </tr>
+        <tr>
+          <td>5</td><td>グループ⑤再開</td><td class="num text-gn">10-15%</td><td class="num text-gn">+3-8/月</td><td class="num">+¥3万〜¥6万</td><td><span class="tag tag-bl">10分</span></td>
+        </tr>
+        <tr>
+          <td>6</td><td>BROADマッチ整理</td><td class="num">間接的</td><td class="num">CPA改善</td><td class="num text-gn">削減</td><td><span class="tag tag-yw">30分</span></td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="small muted" style="margin-top:10px;">
+      施策1-3は<strong>合計3分</strong>で実行可能。これだけでISが3倍になり、月間費用は¥10万以上に回復する見込み。<br>
+      施策4-5を追加すると、月間申込CV 10-20件の安定獲得が視野に入る。
+    </p>
+  </div>
+</section>
+
+
+<!-- ============ S10.5: キーワード戦略 (v6 NEW) ============ -->
+<section id="s10-5" class="v6-new">
+  <h2><span class="section-num">Section 10.5</span> 理想顧客ペルソナから逆算したキーワード戦略</h2>
+
+  <div class="card card-accent" style="margin-bottom:20px;">
+    <h4>理想顧客ペルソナ</h4>
+    <p style="font-size:0.95em; color:var(--tx); line-height:1.7; padding:8px 0;">
+      「東大京大出身、コンサル転職を真剣に検討中、ケース面接対策に課題、エージェントも検討中だがまだ決定していない」
+    </p>
+    <p class="small muted">新卒はGoogle広告では狙わない方針のため、既卒LTVのみで経済性を計算。</p>
+  </div>
+
+  <h3>A. 既に試して効果あり（IS拡大で攻めるべき）</h3>
+  <div class="card card-success">
+    <div style="overflow-x:auto;">
+    <table>
+      <thead>
+        <tr><th>Query</th><th style="text-align:right;">Cost</th><th style="text-align:right;">CV(micro含)</th><th style="text-align:right;">参考CPA</th><th>AG</th><th>Action</th></tr>
+      </thead>
+      <tbody>
+        <tr class="highlight-row"><td><strong>ケース面接 対策</strong></td><td class="num">¥14.5万</td><td class="num fw-700">8.0</td><td class="num text-gn">¥1.8万</td><td>③+社会人</td><td><span class="tag tag-gn">IS拡大最優先</span></td></tr>
+        <tr class="highlight-row"><td><strong>ケース面接 対策 講座</strong></td><td class="num">¥1.3万</td><td class="num fw-700">4.0</td><td class="num text-gn">¥3,343</td><td>③+社会人</td><td><span class="tag tag-gn">超効率。拡大</span></td></tr>
+        <tr class="highlight-row"><td><strong>ケース面接 講座</strong></td><td class="num">¥2.2万</td><td class="num fw-700">3.0</td><td class="num text-gn">¥7,295</td><td>③</td><td><span class="tag tag-cn">③再開で復活</span></td></tr>
+        <tr class="highlight-row"><td><strong>戦略コンサル 対策</strong></td><td class="num">¥7,120</td><td class="num fw-700">3.0</td><td class="num text-gn">¥2,373</td><td>社会人</td><td><span class="tag tag-cn">IS 10%→拡大</span></td></tr>
+        <tr><td><strong>戦略コンサル 内定 塾</strong></td><td class="num">¥8,111</td><td class="num">2.1</td><td class="num text-gn">¥3,778</td><td>⑤</td><td><span class="tag tag-cn">⑤再開で復活</span></td></tr>
+        <tr><td><strong>マッキンゼー 対策</strong></td><td class="num">¥935</td><td class="num">1.0</td><td class="num text-gn">¥935</td><td>①+③</td><td><span class="tag tag-bl">小volume超効率</span></td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p class="small muted" style="margin-top:8px;">※ CV(micro含)はマイクロCV含む参考値。申込CPAは月次データからのみ算出可能</p>
+  </div>
+
+  <h3>B. 試したが効果なし（除外 or 縮小）</h3>
+  <div class="card card-danger">
+    <div style="overflow-x:auto;">
+    <table>
+      <thead>
+        <tr><th>Query</th><th style="text-align:right;">Cost</th><th style="text-align:right;">CV</th><th>Verdict</th></tr>
+      </thead>
+      <tbody>
+        <tr class="danger-row"><td><strong>フェルミ推定 (全般)</strong></td><td class="num">¥48.7万</td><td class="num text-rd fw-700">0</td><td><span class="tag tag-rd">即除外</span></td></tr>
+        <tr class="danger-row"><td>コンサル転職エージェント</td><td class="num">¥3.9万</td><td class="num text-rd">0</td><td><span class="tag tag-rd">エージェント探し≠スクール需要</span></td></tr>
+        <tr class="warn-row"><td>ケース面接 例題/回答例</td><td class="num">¥24.4万</td><td class="num">5.3</td><td><span class="tag tag-og">情報収集。CPA高い。縮小</span></td></tr>
+        <tr class="warn-row"><td>ケース面接 壁打ち</td><td class="num">¥2,981</td><td class="num text-rd">0</td><td><span class="tag tag-yw">少額だが0CV</span></td></tr>
+      </tbody>
+    </table>
+    </div>
+  </div>
+
+  <h3>C. まだ試していない（テスト推奨）</h3>
+  <div class="card card-accent" style="border-left-color: var(--cn);">
+    <div style="overflow-x:auto;">
+    <table>
+      <thead>
+        <tr><th>Query候補</th><th>根拠</th><th>優先度</th></tr>
+      </thead>
+      <tbody>
+        <tr class="highlight-row"><td><strong>ケース面接 個別指導</strong></td><td>マンツーマン対策=サービスど真ん中</td><td><span class="tag tag-rd">高</span></td></tr>
+        <tr class="highlight-row"><td><strong>ケース面接 マンツーマン</strong></td><td>同上</td><td><span class="tag tag-rd">高</span></td></tr>
+        <tr class="highlight-row"><td><strong>コンサル転職 スクール</strong></td><td>スクール探し=直球</td><td><span class="tag tag-rd">高</span></td></tr>
+        <tr class="highlight-row"><td><strong>コンサル転職 塾</strong></td><td>同上</td><td><span class="tag tag-rd">高</span></td></tr>
+        <tr class="highlight-row"><td><strong>戦略コンサル スクール</strong></td><td>ニッチど真ん中</td><td><span class="tag tag-rd">高</span></td></tr>
+        <tr><td><strong>ケース面接 短期集中</strong></td><td>忙しい社会人。本気度高</td><td><span class="tag tag-og">中-高</span></td></tr>
+        <tr><td>中途 コンサル 対策</td><td>社会人向け。ペルソナ合致</td><td><span class="tag tag-yw">中</span></td></tr>
+        <tr><td>ケース面接 社会人</td><td>新卒フィルタ不要</td><td><span class="tag tag-yw">中</span></td></tr>
+        <tr><td>外資コンサル 面接準備</td><td>まだ決まってない段階</td><td><span class="tag tag-yw">中</span></td></tr>
+        <tr><td>BCG ケース面接 対策</td><td>ファーム名+対策=本気</td><td><span class="tag tag-yw">中</span></td></tr>
+      </tbody>
+    </table>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 最終まとめ ============ -->
+<section>
+  <h2><span class="section-num">Conclusion</span> 最終結論</h2>
+
+  <div class="card" style="background: linear-gradient(135deg, var(--sf), rgba(52,211,153,0.05)); border-color: var(--gn);">
+    <div style="text-align:center; margin-bottom:20px;">
+      <div style="font-size:1.6em; font-weight:800; color:var(--gn); margin-bottom:6px;">市場は飽和していない。設定が機会を潰している。</div>
+      <div class="small muted">IS 10% = 検索需要の90%が未獲得。修正は最短3分で可能。</div>
+    </div>
+
+    <div class="grid-3">
+      <div class="stat stat-rd">
+        <div class="stat-val">¥48.7万</div>
+        <div class="stat-lbl">フェルミ推定への無駄 (CV=0)</div>
+      </div>
+      <div class="stat stat-gn">
+        <div class="stat-val">¥5.3万</div>
+        <div class="stat-lbl">最良期 申込CPA (5-7月平均)</div>
+      </div>
+      <div class="stat stat-cn">
+        <div class="stat-val">10.7x</div>
+        <div class="stat-lbl">フル展開時ROAS (申込CVベース)</div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+      <div>
+        <h4 style="color:var(--rd); margin-bottom:8px;">今すぐやること (3分)</h4>
+        <ol style="font-size:0.9em; padding-left:18px; color:var(--tm); line-height:2;">
+          <li>マイクロCVをセカンダリに変更</li>
+          <li>TARGET CPAを¥4万〜¥8万に</li>
+          <li>「フェルミ推定」を除外KWに</li>
+        </ol>
+      </div>
+      <div>
+        <h4 style="color:var(--og); margin-bottom:8px;">1-2週間以内にやること</h4>
+        <ol style="font-size:0.9em; padding-left:18px; color:var(--tm); line-height:2;" start="4">
+          <li>グループ③ ケース面接を再開</li>
+          <li>グループ⑤ 競合を再開</li>
+          <li>BROADマッチKWの整理</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+</div><!-- /version-v6 -->
+
 </div><!-- /.container -->
 
 <!-- ============ FOOTER ============ -->
@@ -1394,5 +2827,16 @@ tr:hover { background: rgba(99,102,241,0.04); }
   <p style="margin-top:4px;">分析期間: 2025年3月〜2026年3月 | 生成日: 2026年3月14日</p>
 </div>
 
+
+<script>
+function showVersion(v) {
+  document.querySelectorAll('.version-content').forEach(function(el) { el.style.display = 'none'; el.classList.remove('active'); });
+  document.getElementById('version-' + v).style.display = 'block';
+  document.getElementById('version-' + v).classList.add('active');
+  document.querySelectorAll('.version-btn').forEach(function(btn) { btn.classList.remove('active'); });
+  event.target.classList.add('active');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+</script>
 </body>
 </html>
