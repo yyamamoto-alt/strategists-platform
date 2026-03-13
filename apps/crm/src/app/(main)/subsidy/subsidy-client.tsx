@@ -848,12 +848,24 @@ function buildColumns(
       stickyLeft: 0,
       sortValue: (c) => c.name || "",
       render: (c) => (
-        <button
-          onClick={() => onRowClick(c)}
-          className="text-brand hover:underline font-medium truncate block text-left"
-        >
-          {c.name}
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => onRowClick(c)}
+            className="text-brand hover:underline font-medium truncate text-left"
+          >
+            {c.name}
+          </button>
+          <a
+            href={`/customers/${c.id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="shrink-0 text-gray-500 hover:text-brand transition-colors"
+            title="顧客詳細を別タブで開く"
+          >
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7 3H3.5A1.5 1.5 0 002 4.5v8A1.5 1.5 0 003.5 14h8a1.5 1.5 0 001.5-1.5V9" /><path d="M10 2h4v4" /><path d="M14 2L7 9" /></svg>
+          </a>
+        </div>
       ),
     },
     {
