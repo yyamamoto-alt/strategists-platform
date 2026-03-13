@@ -846,6 +846,7 @@ function buildColumns(
       label: "名前",
       width: 140,
       stickyLeft: 0,
+      sortValue: (c) => c.name || "",
       render: (c) => (
         <button
           onClick={() => onRowClick(c)}
@@ -859,6 +860,7 @@ function buildColumns(
       key: "attribute",
       label: "属性",
       width: 48,
+      sortValue: (c) => c.attribute || "",
       render: (c) => (
         <span className={`text-[11px] px-1.5 py-0.5 rounded font-medium ${getAttributeColor(c.attribute)}`}>
           {c.attribute || "-"}
@@ -869,6 +871,7 @@ function buildColumns(
       key: "stage",
       label: "ステージ",
       width: 90,
+      sortValue: (c) => c.pipeline?.stage || "",
       render: (c) => {
         const s = c.pipeline?.stage || "-";
         return <span className={`text-xs px-1.5 py-0.5 rounded ${getStageColor(s)}`}>{s}</span>;
@@ -878,6 +881,7 @@ function buildColumns(
       key: "first_coaching",
       label: "初回指導日",
       width: 100,
+      sortValue: (c) => { const d = completionData[c.id]; return d?.firstCoachingDate ? normalizeDate(d.firstCoachingDate) : ""; },
       render: (c) => {
         const d = completionData[c.id];
         const dateStr = d?.firstCoachingDate ? normalizeDate(d.firstCoachingDate) : null;
@@ -894,12 +898,24 @@ function buildColumns(
       key: "payment_date",
       label: "入金日",
       width: 90,
+      sortValue: (c) => paidMap[c.id] || c.contract?.payment_date || "",
       render: (c) => <span className="text-gray-300 text-xs">{paidMap[c.id] || c.contract?.payment_date || "-"}</span>,
     },
     {
       key: "coaching_end",
       label: "指導終了日",
       width: 100,
+      sortValue: (c) => {
+        const d = completionData[c.id];
+        const candidates: Date[] = [];
+        const coachStr = d?.firstCoachingDate ? normalizeDate(d.firstCoachingDate) : null;
+        if (coachStr) { const cd = new Date(coachStr); if (!isNaN(cd.getTime())) { cd.setMonth(cd.getMonth() + 2); candidates.push(cd); } }
+        const payStr = d?.paymentDate ? normalizeDate(d.paymentDate) : null;
+        if (payStr) { const pd = new Date(payStr); if (!isNaN(pd.getTime())) { pd.setMonth(pd.getMonth() + 3); candidates.push(pd); } }
+        if (candidates.length === 0) return "";
+        const end = candidates.reduce((a, b) => a < b ? a : b);
+        return end.toISOString().slice(0, 10);
+      },
       render: (c) => {
         const d = completionData[c.id];
         const candidates: Date[] = [];
@@ -926,6 +942,11 @@ function buildColumns(
       key: "conditions",
       label: "修了条件",
       width: 380,
+      sortValue: (c) => {
+        const d = completionData[c.id];
+        const chk = checksData[c.id];
+        return (d?.hasOutputForm ? 1 : 0) + (d?.caseConditionMet ? 1 : 0) + (d?.behaviorConditionMet ? 1 : 0) + (d?.hasPassingEvaluation ? 1 : 0) + ((chk?.identityDocVerified && chk?.bankDocVerified) ? 1 : 0);
+      },
       render: (c) => {
         const d = completionData[c.id];
         const chk = checksData[c.id];
@@ -964,6 +985,7 @@ function buildColumns(
       key: "case_sessions",
       label: "ケース",
       width: 70,
+      sortValue: (c) => completionData[c.id]?.caseSessionCount || 0,
       render: (c) => {
         const d = completionData[c.id];
         const count = d?.caseSessionCount || 0;
@@ -988,6 +1010,7 @@ function buildColumns(
       key: "behavior_sessions",
       label: "Behavior",
       width: 50,
+      sortValue: (c) => completionData[c.id]?.behaviorSessionCount || 0,
       render: (c) => {
         const d = completionData[c.id];
         const count = d?.behaviorSessionCount || 0;
@@ -1008,6 +1031,7 @@ function buildColumns(
       key: "additional_coaching",
       label: "追加指導",
       width: 50,
+      sortValue: (c) => completionData[c.id]?.additionalCoachingCount || 0,
       render: (c) => {
         const d = completionData[c.id];
         const count = d?.additionalCoachingCount || 0;
@@ -1028,6 +1052,7 @@ function buildColumns(
       key: "documents",
       label: "書類提出",
       width: 70,
+      sortValue: (c) => { const d = completionData[c.id]; return (d?.identityDocUrl ? 1 : 0) + (d?.bankDocUrl ? 1 : 0); },
       render: (c) => {
         const d = completionData[c.id];
         return (
@@ -1046,6 +1071,7 @@ function buildColumns(
       key: "doc_verified",
       label: "目視確認",
       width: 90,
+      sortValue: (c) => { const chk = checksData[c.id]; return (chk?.identityDocVerified ? 1 : 0) + (chk?.bankDocVerified ? 1 : 0); },
       render: (c) => {
         const chk = checksData[c.id];
         return (
@@ -1080,6 +1106,7 @@ function buildColumns(
       key: "issued",
       label: "発行済み",
       width: 90,
+      sortValue: (c) => { const docs = documentData[c.id]; return (docs?.invoiceIssuedAt ? 1 : 0) + (docs?.receiptIssuedAt ? 1 : 0) + (docs?.certificateIssuedAt ? 1 : 0); },
       render: (c) => {
         const docs = documentData[c.id];
         if (!docs) return <span className="text-xs text-gray-600">-</span>;
@@ -1099,6 +1126,7 @@ function buildColumns(
       key: "confirmed_amount",
       label: "確定売上",
       width: 110,
+      sortValue: (c) => (c.contract?.confirmed_amount || 0) + (c.contract?.subsidy_eligible ? 203636 : 0),
       render: (c) => {
         if (!c.contract?.confirmed_amount) return <span className="text-gray-300 text-xs">-</span>;
         const base = c.contract.confirmed_amount;

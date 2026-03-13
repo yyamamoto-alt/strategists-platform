@@ -93,9 +93,10 @@ export async function fetchSubsidyCompletionData(
       } else if (typeof kaiji === "string" && kaiji === "追加指導") {
         result[cid].additionalCoachingCount++;
       } else {
-        // Numeric case sessions
+        // Numeric case sessions + アセスメント
+        const isAssessment = typeof kaiji === "string" && kaiji.includes("アセスメント");
         const num = parseInt(String(kaiji), 10);
-        if (!isNaN(num) && num > 0) {
+        if (isAssessment || (!isNaN(num) && num > 0)) {
           result[cid].caseSessionCount++;
           if (num === 4) {
             result[cid].hasExactFourRecord = true;
