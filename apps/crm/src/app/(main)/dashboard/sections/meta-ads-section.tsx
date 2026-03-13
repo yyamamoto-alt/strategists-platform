@@ -3,6 +3,7 @@ import {
   fetchMetaFunnelData,
   adsFunnelIsClosed,
   adsFunnelIsScheduled,
+  isAgentFunnelCustomer,
 } from "@/lib/data/analytics";
 import { MetaAdsSummaryClient, type MetaAdsRow } from "./meta-ads-client";
 
@@ -58,7 +59,8 @@ export async function MetaAdsSection() {
     const mk = monthKey(c.application_date);
     const isScheduled = adsFunnelIsScheduled(c.stage) ? 1 : 0;
     const isClosed = adsFunnelIsClosed(c.stage) ? 1 : 0;
-    const rev = isClosed ? c.confirmed_amount : 0;
+    const agentFee = isAgentFunnelCustomer(c) ? c.expected_referral_fee : 0;
+    const rev = isClosed ? (c.confirmed_amount + c.subsidy_amount + agentFee) : 0;
 
     const wf = weeklyFunnel.get(wk) || zero();
     wf.scheduled += isScheduled;
@@ -87,7 +89,8 @@ export async function MetaAdsSection() {
       if (!c.application_date || c.application_date < startStr || c.application_date > endStr) continue;
       if (adsFunnelIsScheduled(c.stage)) scheduled++;
       if (adsFunnelIsClosed(c.stage)) {
-        revenue += c.confirmed_amount;
+        const af = isAgentFunnelCustomer(c) ? c.expected_referral_fee : 0;
+        revenue += c.confirmed_amount + c.subsidy_amount + af;
       }
     }
     return scheduled > 0 ? Math.round(revenue / scheduled) : 0;

@@ -15,6 +15,7 @@ import {
   fetchYouTubeDaily,
   fetchYouTubeChannelDaily,
   fetchYouTubeFunnelData,
+  fetchYouTubeTrafficSources,
 } from "@/lib/data/analytics";
 import { AnalyticsClient } from "./analytics-client";
 
@@ -23,6 +24,7 @@ export default async function AnalyticsPage() {
     pageDailyRows, traffic, searchQueries, searchDailyRows, hourlyRows,
     adsCampaigns, adsKeywords, adsFunnel, metaCampaigns, metaFunnel,
     youtubeVideos, youtubeDaily, youtubeChannelDaily, youtubeFunnel,
+    youtubeTrafficSources,
   ] = await Promise.all([
     fetchPageDailyRows(90),
     fetchTrafficSources(90),
@@ -35,9 +37,10 @@ export default async function AnalyticsPage() {
     fetchMetaCampaignDaily(365),
     fetchMetaFunnelData(),
     fetchYouTubeVideos(),
-    fetchYouTubeDaily(365),
-    fetchYouTubeChannelDaily(365),
+    fetchYouTubeDaily(),
+    fetchYouTubeChannelDaily(),
     fetchYouTubeFunnelData(),
+    fetchYouTubeTrafficSources(),
   ]);
 
   return (
@@ -56,6 +59,7 @@ export default async function AnalyticsPage() {
       youtubeDaily={youtubeDaily}
       youtubeChannelDaily={youtubeChannelDaily}
       youtubeFunnel={youtubeFunnel}
+      youtubeTrafficSources={youtubeTrafficSources}
     />
   );
 }

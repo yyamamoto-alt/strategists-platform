@@ -24,6 +24,7 @@ export function AnalyticsClient({
   youtubeDaily,
   youtubeChannelDaily,
   youtubeFunnel,
+  youtubeTrafficSources,
 }: AnalyticsProps) {
   const [mainTab, setMainTab] = useState<MainTab>("seo");
 
@@ -69,6 +70,7 @@ export function AnalyticsClient({
           youtubeDaily={youtubeDaily}
           youtubeChannelDaily={youtubeChannelDaily}
           youtubeFunnel={youtubeFunnel}
+          youtubeTrafficSources={youtubeTrafficSources}
         />
       )}
     </div>

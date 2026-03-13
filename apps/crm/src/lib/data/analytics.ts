@@ -270,7 +270,20 @@ export interface AdsFunnelCustomer {
   utm_campaign: string | null;
   stage: string | null;
   confirmed_amount: number;
+  subsidy_amount: number;
   expected_referral_fee: number;
+  referral_category: string | null;
+}
+
+/** エージェント利用者か判定（referral_categoryが「フル利用」or「一部利用」） */
+export function isAgentFunnelCustomer(c: { referral_category: string | null }): boolean {
+  return c.referral_category === "フル利用" || c.referral_category === "一部利用";
+}
+
+/** 見込みLTV算出: スクール確定 + 補助金 + 人材報酬（エージェント利用者のみ） */
+export function calcFunnelLTV(c: AdsFunnelCustomer): number {
+  const agent = isAgentFunnelCustomer(c) ? c.expected_referral_fee : 0;
+  return c.confirmed_amount + c.subsidy_amount + agent;
 }
 
 const NOT_CONDUCTED_STAGES = new Set([
@@ -296,7 +309,7 @@ function adsFunnelIsScheduled(stage: string | null | undefined): boolean {
 export async function fetchAdsFunnelData(): Promise<AdsFunnelCustomer[]> {
   const { data, error } = await supabase()
     .from("customers")
-    .select("id,name,application_date,attribute,utm_source,utm_medium,utm_campaign,sales_pipeline(stage),contracts(confirmed_amount),agent_records(expected_referral_fee)")
+    .select("id,name,application_date,attribute,utm_source,utm_medium,utm_campaign,sales_pipeline(stage),contracts(confirmed_amount,subsidy_amount,referral_category),agent_records(expected_referral_fee)")
     .eq("utm_source", "googleads")
     .order("application_date", { ascending: false });
 
@@ -318,7 +331,9 @@ export async function fetchAdsFunnelData(): Promise<AdsFunnelCustomer[]> {
     utm_campaign: row.utm_campaign,
     stage: r(row.sales_pipeline)?.stage ?? null,
     confirmed_amount: r(row.contracts)?.confirmed_amount ?? 0,
+    subsidy_amount: r(row.contracts)?.subsidy_amount ?? 0,
     expected_referral_fee: r(row.agent_records)?.expected_referral_fee ?? 0,
+    referral_category: r(row.contracts)?.referral_category ?? null,
   }));
 }
 
@@ -366,7 +381,7 @@ export async function fetchMetaCampaignDaily(days: number = 90): Promise<MetaCam
 export async function fetchMetaFunnelData(): Promise<AdsFunnelCustomer[]> {
   const { data, error } = await supabase()
     .from("customers")
-    .select("id,name,application_date,attribute,utm_source,utm_medium,utm_campaign,sales_pipeline(stage),contracts(confirmed_amount),agent_records(expected_referral_fee)")
+    .select("id,name,application_date,attribute,utm_source,utm_medium,utm_campaign,sales_pipeline(stage),contracts(confirmed_amount,subsidy_amount,referral_category),agent_records(expected_referral_fee)")
     .in("utm_source", ["fbad", "facebook"])
     .order("application_date", { ascending: false });
 
@@ -388,7 +403,9 @@ export async function fetchMetaFunnelData(): Promise<AdsFunnelCustomer[]> {
     utm_campaign: row.utm_campaign,
     stage: r(row.sales_pipeline)?.stage ?? null,
     confirmed_amount: r(row.contracts)?.confirmed_amount ?? 0,
+    subsidy_amount: r(row.contracts)?.subsidy_amount ?? 0,
     expected_referral_fee: r(row.agent_records)?.expected_referral_fee ?? 0,
+    referral_category: r(row.contracts)?.referral_category ?? null,
   }));
 }
 
@@ -446,6 +463,7 @@ export interface YouTubeFunnelCustomer {
   plan_name: string | null;
   subsidy_amount: number;
   expected_referral_fee: number;
+  referral_category: string | null;
   source_type: "utm" | "application_reason" | "initial_channel";
 }
 
@@ -464,37 +482,62 @@ export async function fetchYouTubeVideos(): Promise<YouTubeVideo[]> {
   return data || [];
 }
 
-/** YouTube動画別日別KPI */
-export async function fetchYouTubeDaily(days: number = 90): Promise<YouTubeDaily[]> {
-  const { from, to } = dateRange(days);
-
-  const { data, error } = await supabase()
-    .from("analytics_youtube_daily")
-    .select("date,video_id,views,estimated_minutes_watched,average_view_duration_seconds,average_view_percentage,likes,comments,shares,subscribers_gained,subscribers_lost,impressions,impressions_ctr")
-    .gte("date", from)
-    .lte("date", to)
-    .order("date", { ascending: true });
-
-  if (error) {
-    console.error("YouTube daily fetch error:", error.message);
-    return [];
+/** YouTube動画別日別KPI（全期間） */
+export async function fetchYouTubeDaily(): Promise<YouTubeDaily[]> {
+  const all: YouTubeDaily[] = [];
+  let offset = 0;
+  const PAGE_SIZE = 1000;
+  while (true) {
+    const { data, error } = await supabase()
+      .from("analytics_youtube_daily")
+      .select("date,video_id,views,estimated_minutes_watched,average_view_duration_seconds,average_view_percentage,likes,comments,shares,subscribers_gained,subscribers_lost,impressions,impressions_ctr")
+      .order("date", { ascending: true })
+      .range(offset, offset + PAGE_SIZE - 1);
+    if (error) { console.error("YouTube daily fetch error:", error.message); break; }
+    if (!data || data.length === 0) break;
+    all.push(...data);
+    if (data.length < PAGE_SIZE) break;
+    offset += PAGE_SIZE;
   }
-  return data || [];
+  return all;
 }
 
-/** YouTubeチャンネル日別KPI */
-export async function fetchYouTubeChannelDaily(days: number = 90): Promise<YouTubeChannelDaily[]> {
-  const { from, to } = dateRange(days);
+/** YouTubeチャンネル日別KPI（全期間） */
+export async function fetchYouTubeChannelDaily(): Promise<YouTubeChannelDaily[]> {
+  const all: YouTubeChannelDaily[] = [];
+  let offset = 0;
+  const PAGE_SIZE = 1000;
+  while (true) {
+    const { data, error } = await supabase()
+      .from("analytics_youtube_channel_daily")
+      .select("date,total_views,estimated_minutes_watched,subscribers_gained,subscribers_lost,total_subscribers")
+      .order("date", { ascending: true })
+      .range(offset, offset + PAGE_SIZE - 1);
+    if (error) { console.error("YouTube channel daily fetch error:", error.message); break; }
+    if (!data || data.length === 0) break;
+    all.push(...data);
+    if (data.length < PAGE_SIZE) break;
+    offset += PAGE_SIZE;
+  }
+  return all;
+}
 
+/** YouTube動画別流入元データ */
+export interface YouTubeTrafficSource {
+  video_id: string;
+  source_type: string;
+  views: number;
+  estimated_minutes_watched: number;
+}
+
+export async function fetchYouTubeTrafficSources(): Promise<YouTubeTrafficSource[]> {
   const { data, error } = await supabase()
-    .from("analytics_youtube_channel_daily")
-    .select("date,total_views,estimated_minutes_watched,subscribers_gained,subscribers_lost,total_subscribers")
-    .gte("date", from)
-    .lte("date", to)
-    .order("date", { ascending: true });
+    .from("analytics_youtube_traffic_source")
+    .select("video_id,source_type,views,estimated_minutes_watched")
+    .order("views", { ascending: false });
 
   if (error) {
-    console.error("YouTube channel daily fetch error:", error.message);
+    console.error("YouTube traffic source fetch error:", error.message);
     return [];
   }
   return data || [];
@@ -529,14 +572,17 @@ export async function fetchYouTubeFunnelData(): Promise<YouTubeFunnelCustomer[]>
       plan_name: ct?.plan_name ?? null,
       subsidy_amount: ct?.subsidy_amount ?? 0,
       expected_referral_fee: ar?.expected_referral_fee ?? 0,
+      referral_category: ct?.referral_category ?? null,
       source_type: sourceType,
     };
   };
 
+  const ytSelect = "id,name,application_date,attribute,utm_source,utm_medium,utm_campaign,application_reason,sales_pipeline(stage,initial_channel),contracts(confirmed_amount,contract_total,plan_name,subsidy_amount,referral_category),agent_records(expected_referral_fee)";
+
   // 1. UTM経由 (utm_source に youtube/yt/lp3 を含む)
   const { data: utmData } = await supabase()
     .from("customers")
-    .select("id,name,application_date,attribute,utm_source,utm_medium,utm_campaign,application_reason,sales_pipeline(stage,initial_channel),contracts(confirmed_amount,contract_total,plan_name,subsidy_amount),agent_records(expected_referral_fee)")
+    .select(ytSelect)
     .or("utm_source.ilike.%youtube%,utm_source.ilike.%yt%,utm_source.eq.lp3")
     .order("application_date", { ascending: false });
   for (const row of utmData || []) {
@@ -546,7 +592,7 @@ export async function fetchYouTubeFunnelData(): Promise<YouTubeFunnelCustomer[]>
   // 2. 申込理由にYouTubeを含む
   const { data: reasonData } = await supabase()
     .from("customers")
-    .select("id,name,application_date,attribute,utm_source,utm_medium,utm_campaign,application_reason,sales_pipeline(stage,initial_channel),contracts(confirmed_amount,contract_total,plan_name,subsidy_amount),agent_records(expected_referral_fee)")
+    .select(ytSelect)
     .ilike("application_reason", "%youtube%")
     .order("application_date", { ascending: false });
   for (const row of reasonData || []) {
@@ -556,7 +602,7 @@ export async function fetchYouTubeFunnelData(): Promise<YouTubeFunnelCustomer[]>
   // 3. initial_channel = YouTube（ネストフィルタ不可のためクライアント側フィルタ）
   const { data: channelData } = await supabase()
     .from("customers")
-    .select("id,name,application_date,attribute,utm_source,utm_medium,utm_campaign,application_reason,sales_pipeline(stage,initial_channel),contracts(confirmed_amount,contract_total,plan_name,subsidy_amount),agent_records(expected_referral_fee)")
+    .select(ytSelect)
     .order("application_date", { ascending: false });
   for (const row of channelData || []) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

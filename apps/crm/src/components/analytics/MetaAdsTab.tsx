@@ -374,7 +374,8 @@ function MetaFunnelTab({ metaFunnel }: { metaFunnel: AdsFunnelCustomer[] }) {
 
   const kpis = useMemo(() => {
     const count = closedCustomers.length;
-    const revenue = closedCustomers.reduce((s, c) => s + c.confirmed_amount + c.expected_referral_fee, 0);
+    const isAgent = (c: AdsFunnelCustomer) => c.referral_category === "フル利用" || c.referral_category === "一部利用";
+    const revenue = closedCustomers.reduce((s, c) => s + c.confirmed_amount + c.subsidy_amount + (isAgent(c) ? c.expected_referral_fee : 0), 0);
     const kisotsu = closedCustomers.filter(c => isKisotsu(c.attribute)).length;
     const shinsotsu = count - kisotsu;
     return { count, revenue, kisotsu, shinsotsu };
@@ -432,7 +433,7 @@ function MetaFunnelTab({ metaFunnel }: { metaFunnel: AdsFunnelCustomer[] }) {
                   </td>
                   <td className="py-2.5 px-3 text-gray-400 truncate max-w-[150px]">{c.utm_campaign || "—"}</td>
                   <td className="py-2.5 px-3 text-gray-400 truncate max-w-[150px]">{c.utm_medium || "—"}</td>
-                  <td className="text-right py-2.5 px-3 text-white">{(c.confirmed_amount + c.expected_referral_fee) > 0 ? `¥${Math.round(c.confirmed_amount + c.expected_referral_fee).toLocaleString()}` : "—"}</td>
+                  <td className="text-right py-2.5 px-3 text-white">{(() => { const agent = (c.referral_category === "フル利用" || c.referral_category === "一部利用") ? c.expected_referral_fee : 0; const ltv = c.confirmed_amount + c.subsidy_amount + agent; return ltv > 0 ? `¥${Math.round(ltv).toLocaleString()}` : "—"; })()}</td>
                 </tr>
               ))}
               {closedCustomers.length === 0 && (

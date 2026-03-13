@@ -15,6 +15,7 @@ import type {
   YouTubeDaily,
   YouTubeChannelDaily,
   YouTubeFunnelCustomer,
+  YouTubeTrafficSource,
 } from "@/lib/data/analytics";
 
 /* ───────── Re-export types for convenience ───────── */
@@ -32,6 +33,7 @@ export type {
   YouTubeDaily,
   YouTubeChannelDaily,
   YouTubeFunnelCustomer,
+  YouTubeTrafficSource,
 };
 
 /* ───────── Types ───────── */
@@ -70,6 +72,7 @@ export interface AnalyticsProps {
   youtubeDaily: YouTubeDaily[];
   youtubeChannelDaily: YouTubeChannelDaily[];
   youtubeFunnel: YouTubeFunnelCustomer[];
+  youtubeTrafficSources: YouTubeTrafficSource[];
 }
 
 /* ───────── Shared Utils ───────── */
