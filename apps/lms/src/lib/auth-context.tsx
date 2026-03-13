@@ -10,6 +10,7 @@ interface AuthContextType {
   avatarUrl: string | null;
   setAvatarUrl: (url: string) => void;
   loading: boolean;
+  subsidyEligible: boolean;
   signOut: () => Promise<void>;
 }
 
@@ -20,6 +21,7 @@ const AuthContext = createContext<AuthContextType>({
   avatarUrl: null,
   setAvatarUrl: () => {},
   loading: false,
+  subsidyEligible: false,
   signOut: async () => {},
 });
 
@@ -29,12 +31,14 @@ export function AuthProvider({
   initialRole,
   initialDisplayName,
   initialAvatarUrl,
+  initialSubsidyEligible,
 }: {
   children: ReactNode;
   initialUser?: { email: string; id: string } | null;
   initialRole?: UserRole | null;
   initialDisplayName?: string | null;
   initialAvatarUrl?: string | null;
+  initialSubsidyEligible?: boolean;
 }) {
   const useMock = process.env.NEXT_PUBLIC_USE_MOCK === "true";
 
@@ -52,6 +56,7 @@ export function AuthProvider({
   const [avatarUrl, setAvatarUrl] = useState<string | null>(
     useMock ? null : initialAvatarUrl ?? null
   );
+  const [subsidyEligible] = useState(initialSubsidyEligible ?? false);
   const [loading] = useState(false);
 
   const signOut = async () => {
@@ -64,7 +69,7 @@ export function AuthProvider({
   };
 
   return (
-    <AuthContext.Provider value={{ user, role, displayName, avatarUrl, setAvatarUrl, loading, signOut }}>
+    <AuthContext.Provider value={{ user, role, displayName, avatarUrl, setAvatarUrl, loading, subsidyEligible, signOut }}>
       {children}
     </AuthContext.Provider>
   );

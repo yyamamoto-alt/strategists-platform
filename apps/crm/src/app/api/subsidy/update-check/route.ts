@@ -5,7 +5,7 @@ export async function PATCH(request: Request) {
   const body = await request.json();
   const { customerId, field } = body;
 
-  if (!customerId || !["identity_doc_verified", "bank_doc_verified"].includes(field)) {
+  if (!customerId || !["identity_doc_verified", "bank_doc_verified", "contract_verified"].includes(field)) {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
 

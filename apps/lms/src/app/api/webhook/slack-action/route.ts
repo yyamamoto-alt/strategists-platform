@@ -94,13 +94,15 @@ export async function POST(request: Request) {
           if (sel?.selected_option?.value) selectedAgent = sel.selected_option.value;
         }
       }
+      // プラン名から補助金適用を自動判定
+      const selectedSubsidy = !!(selectedPlan && selectedPlan.includes("補助金"));
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const contractUpd: Record<string, any> = {};
       if (selectedPlan) {
         contractUpd.plan_name = selectedPlan;
-        if (selectedPlan.includes("補助金")) contractUpd.subsidy_eligible = true;
       }
+      contractUpd.subsidy_eligible = selectedSubsidy;
       if (selectedAgent) {
         if (selectedAgent.includes("フル")) contractUpd.referral_category = "フル利用";
         else if (selectedAgent.includes("一部")) contractUpd.referral_category = "一部利用";
@@ -122,7 +124,7 @@ export async function POST(request: Request) {
       const crmUrl = `https://strategists-crm.vercel.app/customers/${customer_id}`;
       return respondToSlack(
         payload,
-        `✅ *【営業】確認完了* (by ${userName})\nプラン: ${selectedPlan || "-"}\nエージェント利用: ${selectedAgent || "-"}\nCRMに反映しました。\n${crmUrl}`
+        `✅ *【営業】確認完了* (by ${userName})\nプラン: ${selectedPlan || "-"}\nエージェント利用: ${selectedAgent || "-"}${selectedSubsidy ? "\n補助金: ✅ 適用" : ""}\nCRMに反映しました。\n${crmUrl}`
       );
     } catch (e) {
       console.error("Enrollment confirm error:", e);
@@ -201,6 +203,9 @@ export async function POST(request: Request) {
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + 30);
 
+      // 補助金フラグ取得（enrollment_applicationsまたはcontracts）
+      let subsidyEligible = application.subsidy_eligible || false;
+
       // 顧客DBから紐づけ + 指導情報取得
       let customerId: string | null = null;
       let progressSheetUrl: string | null = null;
@@ -222,12 +227,13 @@ export async function POST(request: Request) {
         // 契約情報（プログレスシートURL含む）
         const { data: contract } = await supabase
           .from("contracts")
-          .select("plan_name, progress_sheet_url")
+          .select("plan_name, progress_sheet_url, subsidy_eligible")
           .eq("customer_id", customer.id)
           .single();
         if (contract) {
           progressSheetUrl = contract.progress_sheet_url;
           contractPlanName = contract.plan_name;
+          if (contract.subsidy_eligible) subsidyEligible = true;
         }
 
         // 指導情報
@@ -328,6 +334,7 @@ export async function POST(request: Request) {
           mentorLineUrl,
           mentorBookingUrl,
           mentorProfileText,
+          subsidyEligible,
         });
         emailSent = true;
       } catch (e) {

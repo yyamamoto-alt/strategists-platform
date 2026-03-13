@@ -17,6 +17,7 @@ interface InviteEmailParams {
   mentorLineUrl?: string;
   mentorBookingUrl?: string;
   mentorProfileText?: string;
+  subsidyEligible?: boolean;
 }
 
 interface EmailTemplate {
@@ -86,7 +87,7 @@ function roleLabel(role: string): string {
   }
 }
 
-export async function sendInviteEmail({ to, displayName, role, inviteUrl, appName, mentorName, mentorLineUrl, mentorBookingUrl, mentorProfileText }: InviteEmailParams) {
+export async function sendInviteEmail({ to, displayName, role, inviteUrl, appName, mentorName, mentorLineUrl, mentorBookingUrl, mentorProfileText, subsidyEligible }: InviteEmailParams) {
   if (!resend) {
     throw new Error("RESEND_API_KEY が設定されていません");
   }
@@ -136,6 +137,25 @@ export async function sendInviteEmail({ to, displayName, role, inviteUrl, appNam
           </a>
         </div>
         ${mentorSection}
+        ${subsidyEligible ? `
+        <div style="background-color: #FFF8E1; border-left: 4px solid #F9A825; padding: 16px 20px; margin: 24px 0; border-radius: 0 8px 8px 0;">
+          <p style="font-size: 14px; font-weight: bold; color: #333; margin: 0 0 12px 0;">📋 補助金プランをご利用の方へ</p>
+          <p style="font-size: 14px; color: #333; line-height: 1.7; margin: 0 0 12px 0;">
+            補助金プランのお申込ありがとうございます。50%の半額割引については当社プログラムを<strong>「修了」</strong>されることが条件となっております。
+          </p>
+          <p style="font-size: 14px; color: #333; line-height: 1.7; margin: 0 0 8px 0;">
+            以下の<strong>3要件</strong>を必ず満たしていただくようにお願いします：
+          </p>
+          <ol style="font-size: 14px; color: #333; line-height: 1.8; margin: 0 0 12px 0; padding-left: 20px;">
+            <li>ケースメンタリングを<strong>4回以上</strong>受講</li>
+            <li>ビヘイビア指導を<strong>1回以上</strong>受講</li>
+            <li>教材を閲覧し、<a href="https://forms.gle/tkut12PeXYNh8WdN8" style="color: #C13028; text-decoration: underline;">こちらのフォーム</a>で報告</li>
+          </ol>
+          <p style="font-size: 13px; color: #D84315; line-height: 1.6; margin: 0; font-weight: bold;">
+            ※ 指導期間内（3ヶ月以内）に満たさない場合、補助額相当分をご請求させていただきます。
+          </p>
+        </div>
+        ` : ""}
         <p style="font-size: 13px; color: #888; line-height: 1.6;">
           ${tpl.linkExpiry}<br>
           ${tpl.linkFallback}

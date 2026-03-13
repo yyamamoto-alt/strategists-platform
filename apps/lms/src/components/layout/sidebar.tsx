@@ -92,7 +92,7 @@ function NavSection({ title, items, role }: { title: string; items: NavItem[]; r
 }
 
 export function Sidebar() {
-  const { user, role, displayName, avatarUrl, setAvatarUrl, signOut } = useAuth();
+  const { user, role, displayName, avatarUrl, setAvatarUrl, subsidyEligible, signOut } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
 
@@ -143,6 +143,9 @@ export function Sidebar() {
       </div>
       <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
         <NavSection title="学習" items={learningNavigation} role={role} />
+        {subsidyEligible && (
+          <NavSection title="補助金" items={[{ name: "補助金適用の方", href: "/subsidy-info", icon: "💰" }]} role={role} />
+        )}
         <NavSection title="管理" items={adminNavigation} role={role} />
       </nav>
       <div className="p-4 border-t border-white/10">

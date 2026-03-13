@@ -356,8 +356,7 @@ function DocumentModal({
   const [startDate, setStartDate] = useState(defaultPaymentDate);
   const [endDate, setEndDate] = useState("");
   const [certNumber, setCertNumber] = useState("00001");
-  const [sending, setSending] = useState(false);
-  const [sent, setSent] = useState(false);
+  const [sendStep, setSendStep] = useState<"idle" | "confirm" | "sending" | "done">("idle");
 
   const customerEmail = customer.email || "";
 
@@ -372,8 +371,8 @@ function DocumentModal({
     if (!completion.hasPassingEvaluation) conditionWarnings.push("内定獲得圏内以上の評価なし");
   }
 
-  const handleSend = async () => {
-    setSending(true);
+  const handleSendConfirm = async () => {
+    setSendStep("sending");
     try {
       const res = await fetch("/api/subsidy/issue-document", {
         method: "POST",
@@ -391,11 +390,10 @@ function DocumentModal({
       });
       const data = await res.json();
       if (data.certificateNumber) setCertNumber(data.certificateNumber);
-      setSent(true);
+      setSendStep("done");
     } catch (e) {
       console.error("Send failed:", e);
-    } finally {
-      setSending(false);
+      setSendStep("idle");
     }
   };
 
@@ -528,23 +526,46 @@ function DocumentModal({
             PDF印刷
           </button>
           <div className="flex gap-2 items-center">
-            {!sent ? (
+            {sendStep === "idle" && (
               <>
                 {!customerEmail && (
                   <span className="text-xs text-amber-400 mr-2">⚠ メール未登録</span>
                 )}
                 <button
-                  onClick={handleSend}
-                  disabled={sending || !customerEmail}
+                  onClick={() => setSendStep("confirm")}
+                  disabled={!customerEmail}
                   className="px-5 py-2.5 text-sm bg-brand text-white rounded-lg hover:bg-brand/90 disabled:opacity-50 transition-colors font-medium"
-                  title={!customerEmail ? "メールアドレス未登録のため送付できません" : `${customerEmail} にPDF送付（CC: support@）`}
                 >
-                  {sending ? "送付中..." : `📧 ${typeLabel}を送付する`}
+                  📧 PDFを送信
                 </button>
               </>
-            ) : (
+            )}
+            {sendStep === "confirm" && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-amber-300">本当に {customerEmail} に送信しますか？</span>
+                <button
+                  onClick={handleSendConfirm}
+                  className="px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-500 transition-colors font-bold"
+                >
+                  送信する
+                </button>
+                <button
+                  onClick={() => setSendStep("idle")}
+                  className="px-3 py-2 text-sm text-gray-400 hover:text-white border border-white/10 rounded-lg transition-colors"
+                >
+                  キャンセル
+                </button>
+              </div>
+            )}
+            {sendStep === "sending" && (
+              <span className="flex items-center gap-2 text-sm text-blue-400 font-medium">
+                <span className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                送信中...
+              </span>
+            )}
+            {sendStep === "done" && (
               <span className="flex items-center gap-2 text-sm text-green-400 font-medium">
-                ✅ 送付完了（{customerEmail}）
+                ✅ メールが送信されました（{customerEmail}）
               </span>
             )}
           </div>
