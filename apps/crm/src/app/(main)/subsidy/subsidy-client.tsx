@@ -120,15 +120,26 @@ function getAttributeColor(attr: string | null | undefined): string {
   return "bg-gray-700 text-gray-400";
 }
 
-/** 修了条件の達成数を計算 */
-function getConditionScore(d: SubsidyCompletionData | undefined): { met: number; total: number } {
-  if (!d) return { met: 0, total: 4 };
+/** 修了条件の達成数を計算（目視確認含む5条件） */
+function getConditionScore(d: SubsidyCompletionData | undefined, chk: SubsidyCheckData | undefined): { met: number; total: number } {
+  if (!d) return { met: 0, total: 5 };
   let met = 0;
   if (d.hasOutputForm) met++;
   if (d.caseConditionMet) met++;
   if (d.behaviorConditionMet) met++;
   if (d.hasPassingEvaluation) met++;
-  return { met, total: 4 };
+  if (chk?.identityDocVerified && chk?.bankDocVerified) met++;
+  return { met, total: 5 };
+}
+
+/** 入金日から2週間経過しても初回指導日が未入力の場合の警告 */
+function isTwoWeeksPastPayment(paymentDate: string | null | undefined, firstCoachingDate: string | null | undefined): boolean {
+  if (!paymentDate || firstCoachingDate) return false;
+  const pd = new Date(normalizeDate(paymentDate) + "T00:00:00");
+  if (isNaN(pd.getTime())) return false;
+  const twoWeeksLater = new Date(pd);
+  twoWeeksLater.setDate(twoWeeksLater.getDate() + 14);
+  return new Date() > twoWeeksLater;
 }
 
 /** 1ヶ月経過チェック */
@@ -692,6 +703,24 @@ function CustomerDetailModal({
                 </div>
               )}
             </div>
+
+            {/* Condition 5: 目視確認 */}
+            <div className={`p-3 rounded-lg border ${
+              checks?.identityDocVerified && checks?.bankDocVerified
+                ? "border-green-500/30 bg-green-900/10"
+                : "border-red-500/30 bg-red-900/10"
+            }`}>
+              <ConditionBadge label="書類目視確認" met={(checks?.identityDocVerified && checks?.bankDocVerified) || false} />
+              <p className="text-[10px] text-gray-500 mt-1">本人確認書類・振込先書類の両方を目視確認</p>
+              <div className="mt-1 flex gap-2">
+                <span className={`text-[9px] px-1 py-0.5 rounded ${checks?.identityDocVerified ? "bg-green-900/40 text-green-300" : "bg-red-900/40 text-red-300"}`}>
+                  ID: {checks?.identityDocVerified ? "確認済" : "未確認"}
+                </span>
+                <span className={`text-[9px] px-1 py-0.5 rounded ${checks?.bankDocVerified ? "bg-green-900/40 text-green-300" : "bg-red-900/40 text-red-300"}`}>
+                  口座: {checks?.bankDocVerified ? "確認済" : "未確認"}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -852,8 +881,20 @@ function buildColumns(
       render: (c) => {
         const d = completionData[c.id];
         const dateStr = d?.firstCoachingDate ? normalizeDate(d.firstCoachingDate) : null;
-        return <span className="text-gray-300 text-xs">{dateStr || "-"}</span>;
+        const payDate = paidMap[c.id] || c.contract?.payment_date || null;
+        const warn = isTwoWeeksPastPayment(payDate, d?.firstCoachingDate);
+        return (
+          <span className={`text-xs ${warn ? "text-red-400 font-bold" : "text-gray-300"}`}>
+            {dateStr || (warn ? "⚠️ 未設定" : "-")}
+          </span>
+        );
       },
+    },
+    {
+      key: "payment_date",
+      label: "入金日",
+      width: 90,
+      render: (c) => <span className="text-gray-300 text-xs">{paidMap[c.id] || c.contract?.payment_date || "-"}</span>,
     },
     {
       key: "coaching_end",
@@ -861,12 +902,22 @@ function buildColumns(
       width: 100,
       render: (c) => {
         const d = completionData[c.id];
-        const dateStr = d?.firstCoachingDate ? normalizeDate(d.firstCoachingDate) : null;
-        if (!dateStr) return <span className="text-gray-300 text-xs">-</span>;
-        const start = new Date(dateStr + "T00:00:00");
-        if (isNaN(start.getTime())) return <span className="text-gray-300 text-xs">-</span>;
-        start.setMonth(start.getMonth() + 2);
-        const endStr = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}-${String(start.getDate()).padStart(2, "0")}`;
+        const candidates: Date[] = [];
+        // 初回指導日 + 2ヶ月
+        const coachStr = d?.firstCoachingDate ? normalizeDate(d.firstCoachingDate) : null;
+        if (coachStr) {
+          const cd = new Date(coachStr + "T00:00:00");
+          if (!isNaN(cd.getTime())) { cd.setMonth(cd.getMonth() + 2); candidates.push(cd); }
+        }
+        // 入金日 + 3ヶ月
+        const payStr = d?.paymentDate ? normalizeDate(d.paymentDate) : null;
+        if (payStr) {
+          const pd = new Date(payStr + "T00:00:00");
+          if (!isNaN(pd.getTime())) { pd.setMonth(pd.getMonth() + 3); candidates.push(pd); }
+        }
+        if (candidates.length === 0) return <span className="text-gray-300 text-xs">-</span>;
+        const end = candidates.reduce((a, b) => a < b ? a : b);
+        const endStr = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, "0")}-${String(end.getDate()).padStart(2, "0")}`;
         const isPast = endStr < new Date().toISOString().slice(0, 10);
         return <span className={`text-xs ${isPast ? "text-red-400" : "text-gray-300"}`}>{endStr}</span>;
       },
@@ -874,15 +925,17 @@ function buildColumns(
     {
       key: "conditions",
       label: "修了条件",
-      width: 320,
+      width: 380,
       render: (c) => {
         const d = completionData[c.id];
+        const chk = checksData[c.id];
         const alerts = getAlerts(d);
         const conditions = [
           { met: d?.hasOutputForm || false, label: "教材" },
           { met: d?.caseConditionMet || false, label: "ケース面接" },
           { met: d?.behaviorConditionMet || false, label: "BH/追加指導" },
           { met: d?.hasPassingEvaluation || false, label: "総合評価" },
+          { met: (chk?.identityDocVerified && chk?.bankDocVerified) || false, label: "目視確認" },
         ];
         return (
           <div className="flex items-center gap-1.5">
@@ -972,25 +1025,6 @@ function buildColumns(
       },
     },
     {
-      key: "evaluation",
-      label: "総合評価",
-      width: 90,
-      render: (c) => {
-        const d = completionData[c.id];
-        if (!d || d.evaluations.length === 0) return <span className="text-xs text-gray-600">-</span>;
-        const best = d.hasPassingEvaluation
-          ? d.evaluations.find((e) => e !== "内定獲得不可レベル") || ""
-          : "不可";
-        return (
-          <span className={`text-[10px] px-1.5 py-0.5 rounded ${
-            d.hasPassingEvaluation ? "bg-green-900/40 text-green-300" : "bg-red-900/40 text-red-300"
-          }`}>
-            {best.replace("内定獲得", "").replace("レベル", "")}
-          </span>
-        );
-      },
-    },
-    {
       key: "documents",
       label: "書類提出",
       width: 70,
@@ -1062,20 +1096,20 @@ function buildColumns(
       },
     },
     {
-      key: "payment_date",
-      label: "入金日",
-      width: 90,
-      render: (c) => <span className="text-gray-300 text-xs">{paidMap[c.id] || c.contract?.payment_date || "-"}</span>,
-    },
-    {
       key: "confirmed_amount",
       label: "確定売上",
-      width: 90,
-      render: (c) => (
-        <span className="text-gray-300 text-xs">
-          {c.contract?.confirmed_amount ? formatCurrency(c.contract.confirmed_amount) : "-"}
-        </span>
-      ),
+      width: 110,
+      render: (c) => {
+        if (!c.contract?.confirmed_amount) return <span className="text-gray-300 text-xs">-</span>;
+        const base = c.contract.confirmed_amount;
+        const subsidy = c.contract.subsidy_eligible ? RESKILLING_UNIT : 0;
+        const total = base + subsidy;
+        return (
+          <span className="text-gray-300 text-xs" title={`受講料 ${formatCurrency(base)}${subsidy ? ` + 補助金 ${formatCurrency(subsidy)}` : ""}`}>
+            {formatCurrency(total)}
+          </span>
+        );
+      },
     },
   ];
 }
@@ -1160,10 +1194,10 @@ export function SubsidyClient({ customers, firstPaidMap, completionData, documen
 
   const completedCount = useMemo(() => {
     return subsidyCustomers.filter((c) => {
-      const { met, total } = getConditionScore(completionData[c.id]);
+      const { met, total } = getConditionScore(completionData[c.id], checksData[c.id]);
       return met === total;
     }).length;
-  }, [subsidyCustomers, completionData]);
+  }, [subsidyCustomers, completionData, checksData]);
 
   // 推移用の対象者（元の日付ベース定義）
   const collectionTargets = useMemo(() => customers.filter(isSubsidyCollectionTarget), [customers]);
