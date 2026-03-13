@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, Fragment } from "react";
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend,
 } from "recharts";
@@ -10,10 +10,13 @@ import type {
   YouTubeChannelDaily,
   YouTubeFunnelCustomer,
   YouTubeTrafficSource,
+  YouTubeSearchTerm,
+  SearchQueryRow,
+  AdsKeywordDaily,
 } from "@/lib/data/analytics";
 
 /* ───── Types ───── */
-type YouTubeSub = "videos" | "detail" | "customers";
+type YouTubeSub = "videos" | "detail" | "customers" | "keywords";
 type ChartGranularity = "daily" | "weekly" | "monthly";
 type VideoSortKey = "views" | "published_at";
 
@@ -104,9 +107,12 @@ interface YouTubeTabProps {
   youtubeChannelDaily: YouTubeChannelDaily[];
   youtubeFunnel: YouTubeFunnelCustomer[];
   youtubeTrafficSources: YouTubeTrafficSource[];
+  youtubeSearchTerms: YouTubeSearchTerm[];
+  searchQueries: SearchQueryRow[];
+  adsKeywords: AdsKeywordDaily[];
 }
 
-export function YouTubeTab({ youtubeVideos, youtubeDaily, youtubeChannelDaily, youtubeFunnel, youtubeTrafficSources }: YouTubeTabProps) {
+export function YouTubeTab({ youtubeVideos, youtubeDaily, youtubeChannelDaily, youtubeFunnel, youtubeTrafficSources, youtubeSearchTerms, searchQueries, adsKeywords }: YouTubeTabProps) {
   const [sub, setSub] = useState<YouTubeSub>("videos");
 
   const hasData = youtubeVideos.length > 0 || youtubeChannelDaily.length > 0;
@@ -125,10 +131,12 @@ export function YouTubeTab({ youtubeVideos, youtubeDaily, youtubeChannelDaily, y
         <SubTab label="動画別比較" active={sub === "videos"} onClick={() => setSub("videos")} />
         <SubTab label="動画別KPI詳細" active={sub === "detail"} onClick={() => setSub("detail")} />
         <SubTab label="成約顧客リスト" active={sub === "customers"} onClick={() => setSub("customers")} />
+        <SubTab label="キーワード攻略" active={sub === "keywords"} onClick={() => setSub("keywords")} />
       </div>
       {sub === "videos" && <YouTubeVideoTable youtubeVideos={youtubeVideos} youtubeDaily={youtubeDaily} channelDaily={youtubeChannelDaily} />}
-      {sub === "detail" && <YouTubeVideoDetailTable youtubeVideos={youtubeVideos} youtubeDaily={youtubeDaily} trafficSources={youtubeTrafficSources} />}
+      {sub === "detail" && <YouTubeVideoDetailTable youtubeVideos={youtubeVideos} youtubeDaily={youtubeDaily} trafficSources={youtubeTrafficSources} searchTerms={youtubeSearchTerms} youtubeFunnel={youtubeFunnel} />}
       {sub === "customers" && <YouTubeClosedCustomersTab youtubeFunnel={youtubeFunnel} youtubeVideos={youtubeVideos} />}
+      {sub === "keywords" && <YouTubeKeywordAnalysis youtubeVideos={youtubeVideos} youtubeSearchTerms={youtubeSearchTerms} trafficSources={youtubeTrafficSources} searchQueries={searchQueries} adsKeywords={adsKeywords} />}
     </div>
   );
 }
@@ -245,7 +253,7 @@ function YouTubeVideoTable({ youtubeVideos, youtubeDaily, channelDaily }: {
   }, [youtubeVideos]);
 
   // Monthly heatmap data
-  const { videoRows, monthKeys, maxMonthViews } = useMemo(() => {
+  const { videoRows, monthKeys, maxMonthViews, maxTotalViews } = useMemo(() => {
     const monthMap = new Map<string, Map<string, number>>();
     const allMonths = new Set<string>();
 
@@ -258,7 +266,25 @@ function YouTubeVideoTable({ youtubeVideos, youtubeDaily, channelDaily }: {
       vm.set(month, (vm.get(month) || 0) + r.views);
     }
 
-    const mKeys = Array.from(allMonths).sort();
+    // 投稿日の最古月〜今月まで全月キーを生成
+    let earliestMonth = "";
+    for (const v of filteredVideos) {
+      const m = v.published_at.slice(0, 7);
+      if (!earliestMonth || m < earliestMonth) earliestMonth = m;
+    }
+    for (const m of allMonths) {
+      if (!earliestMonth || m < earliestMonth) earliestMonth = m;
+    }
+    const nowMonth = new Date().toISOString().slice(0, 7);
+    if (earliestMonth) {
+      const [sy, sm] = earliestMonth.split("-").map(Number);
+      const [ey, em] = nowMonth.split("-").map(Number);
+      for (let y = sy, mo = sm; y < ey || (y === ey && mo <= em); mo++) {
+        if (mo > 12) { mo = 1; y++; }
+        allMonths.add(`${y}-${String(mo).padStart(2, "0")}`);
+      }
+    }
+    const mKeys = Array.from(allMonths).sort().reverse();
 
     const rows = filteredVideos
       .map(v => {
@@ -272,9 +298,13 @@ function YouTubeVideoTable({ youtubeVideos, youtubeDaily, channelDaily }: {
       });
 
     let maxV = 0;
-    for (const r of rows) for (const v of r.months.values()) if (v > maxV) maxV = v;
+    let maxTotal = 0;
+    for (const r of rows) {
+      for (const v of r.months.values()) if (v > maxV) maxV = v;
+      if (r.totalViews > maxTotal) maxTotal = r.totalViews;
+    }
 
-    return { videoRows: rows, monthKeys: mKeys, maxMonthViews: maxV };
+    return { videoRows: rows, monthKeys: mKeys, maxMonthViews: maxV, maxTotalViews: maxTotal };
   }, [youtubeDaily, filteredVideos, filteredVideoIds]);
 
   const sortedVideoRows = useMemo(() => {
@@ -302,13 +332,13 @@ function YouTubeVideoTable({ youtubeVideos, youtubeDaily, channelDaily }: {
       <div className="flex justify-end">
         <GranularitySelector value={chartGranularity} onChange={setChartGranularity} />
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="bg-surface-raised border border-white/10 rounded-xl p-5">
-          <h3 className="text-sm font-medium text-gray-300 mb-4">視聴数推移</h3>
-          <ResponsiveContainer width="100%" height={250}>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="bg-surface-raised border border-white/10 rounded-xl p-4">
+          <h3 className="text-xs font-medium text-gray-300 mb-3">視聴数推移</h3>
+          <ResponsiveContainer width="100%" height={200}>
             <LineChart data={viewsChartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-              <XAxis dataKey="key" tick={{ fontSize: 10, fill: "#6b7280" }}
+              <XAxis dataKey="key" tick={{ fontSize: 9, fill: "#6b7280" }}
                 tickFormatter={(v: string, i: number) => {
                   const month = v.slice(5, 7);
                   if (chartGranularity === "monthly") return `${parseInt(month)}月`;
@@ -316,18 +346,18 @@ function YouTubeVideoTable({ youtubeVideos, youtubeDaily, channelDaily }: {
                   return month !== prevMonth ? `${parseInt(month)}月` : "";
                 }}
                 interval={0} />
-              <YAxis tick={{ fontSize: 10, fill: "#6b7280" }} />
-              <Tooltip contentStyle={{ backgroundColor: "#1f2937", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 12 }} labelStyle={{ color: "#9ca3af" }} />
+              <YAxis tick={{ fontSize: 9, fill: "#6b7280" }} />
+              <Tooltip contentStyle={{ backgroundColor: "#1f2937", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 11 }} labelStyle={{ color: "#9ca3af" }} />
               <Line type="monotone" dataKey="total_views" name="視聴数" stroke="#ef4444" strokeWidth={2} dot={chartGranularity !== "daily"} />
             </LineChart>
           </ResponsiveContainer>
         </div>
-        <div className="bg-surface-raised border border-white/10 rounded-xl p-5">
-          <h3 className="text-sm font-medium text-gray-300 mb-4">視聴時間推移（分）</h3>
-          <ResponsiveContainer width="100%" height={250}>
+        <div className="bg-surface-raised border border-white/10 rounded-xl p-4">
+          <h3 className="text-xs font-medium text-gray-300 mb-3">視聴時間推移（分）</h3>
+          <ResponsiveContainer width="100%" height={200}>
             <LineChart data={minutesChartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-              <XAxis dataKey="key" tick={{ fontSize: 10, fill: "#6b7280" }}
+              <XAxis dataKey="key" tick={{ fontSize: 9, fill: "#6b7280" }}
                 tickFormatter={(v: string, i: number) => {
                   const month = v.slice(5, 7);
                   if (chartGranularity === "monthly") return `${parseInt(month)}月`;
@@ -335,31 +365,27 @@ function YouTubeVideoTable({ youtubeVideos, youtubeDaily, channelDaily }: {
                   return month !== prevMonth ? `${parseInt(month)}月` : "";
                 }}
                 interval={0} />
-              <YAxis tick={{ fontSize: 10, fill: "#6b7280" }} />
-              <Tooltip contentStyle={{ backgroundColor: "#1f2937", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 12 }} labelStyle={{ color: "#9ca3af" }} />
+              <YAxis tick={{ fontSize: 9, fill: "#6b7280" }} />
+              <Tooltip contentStyle={{ backgroundColor: "#1f2937", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 11 }} labelStyle={{ color: "#9ca3af" }} />
               <Line type="monotone" dataKey="estimated_minutes_watched" name="視聴時間(分)" stroke="#f59e0b" strokeWidth={2} dot={chartGranularity !== "daily"} />
             </LineChart>
           </ResponsiveContainer>
         </div>
-      </div>
-
-      {/* Monthly publish count */}
-      {publishData.length > 1 && (
-        <div className="bg-surface-raised border border-white/10 rounded-xl p-5">
-          <h3 className="text-sm font-medium text-gray-300 mb-4">月別動画投稿数</h3>
+        <div className="bg-surface-raised border border-white/10 rounded-xl p-4">
+          <h3 className="text-xs font-medium text-gray-300 mb-3">月別動画投稿数</h3>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={publishData}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-              <XAxis dataKey="month" tick={{ fontSize: 10, fill: "#6b7280" }} />
-              <YAxis tick={{ fontSize: 10, fill: "#6b7280" }} allowDecimals={false} />
-              <Tooltip contentStyle={{ backgroundColor: "#1f2937", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 12 }} labelStyle={{ color: "#9ca3af" }} />
-              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <XAxis dataKey="month" tick={{ fontSize: 9, fill: "#6b7280" }} />
+              <YAxis tick={{ fontSize: 9, fill: "#6b7280" }} allowDecimals={false} />
+              <Tooltip contentStyle={{ backgroundColor: "#1f2937", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 11 }} labelStyle={{ color: "#9ca3af" }} />
+              <Legend wrapperStyle={{ fontSize: 10 }} />
               <Bar dataKey="count" name="通常動画" fill="#ef4444" radius={[4, 4, 0, 0]} />
               <Bar dataKey="shorts" name="ショート" fill="#f59e0b" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
-      )}
+      </div>
 
       {/* Video heatmap table */}
       <div className="space-y-3">
@@ -396,11 +422,14 @@ function YouTubeVideoTable({ youtubeVideos, youtubeDaily, channelDaily }: {
                     onClick={() => setVideoSort(videoSort === "views" ? "published_at" : "views")}>
                     総再生回数 {videoSort === "views" ? "▼" : ""}
                   </th>
-                  {monthKeys.map(mk => (
-                    <th key={mk} className="text-center py-2.5 px-1 w-16 whitespace-nowrap text-[10px]">
-                      {mk.replace("-", "/")}
-                    </th>
-                  ))}
+                  {monthKeys.map(mk => {
+                    const [y, m] = mk.split("-");
+                    return (
+                      <th key={mk} className="text-center py-2.5 px-1 w-16 whitespace-nowrap text-[10px]">
+                        {y}/{parseInt(m)}
+                      </th>
+                    );
+                  })}
                 </tr>
               </thead>
               <tbody>
@@ -425,7 +454,15 @@ function YouTubeVideoTable({ youtubeVideos, youtubeDaily, channelDaily }: {
                       </div>
                     </td>
                     <td className="text-center py-2 px-2 text-gray-400 whitespace-nowrap text-[11px]">{row.video.published_at.slice(0, 10)}</td>
-                    <td className="text-right py-2 px-3 text-white font-bold text-sm">{row.totalViews.toLocaleString()}</td>
+                    <td className={`text-right py-2 px-3 text-white font-bold text-sm ${(() => {
+                      if (maxTotalViews === 0 || row.totalViews === 0) return "";
+                      const r = row.totalViews / maxTotalViews;
+                      if (r > 0.8) return "bg-blue-500/40";
+                      if (r > 0.6) return "bg-blue-500/30";
+                      if (r > 0.4) return "bg-blue-500/20";
+                      if (r > 0.2) return "bg-blue-500/10";
+                      return "bg-blue-500/5";
+                    })()}`}>{row.totalViews.toLocaleString()}</td>
                     {monthKeys.map(mk => {
                       const val = row.months.get(mk) || 0;
                       return (
@@ -451,37 +488,61 @@ function YouTubeVideoTable({ youtubeVideos, youtubeDaily, channelDaily }: {
 /* ─── Video Detail KPI Table ─── */
 
 const TRAFFIC_SOURCE_LABELS: Record<string, string> = {
-  SUGGESTED: "関連動画",
-  SEARCH: "検索",
-  EXTERNAL: "外部",
-  BROWSE: "ブラウジング",
-  NOTIFICATION: "通知",
+  YT_SEARCH: "YouTube検索",
+  SUBSCRIBER: "チャンネル登録者",
+  YT_CHANNEL: "チャンネルページ",
+  EXT_URL: "外部サイト",
+  SHORTS: "ショートフィード",
+  NO_LINK_OTHER: "その他",
+  YT_OTHER_PAGE: "ブラウジング機能",
+  RELATED_VIDEO: "関連動画",
   PLAYLIST: "再生リスト",
-  SHORTS: "ショート",
+  NOTIFICATION: "通知",
   END_SCREEN: "終了画面",
-  ADVERTISING: "広告",
-  OTHER: "その他",
+  SHORTS_CONTENT_LINKS: "ショートリンク",
+  HASHTAGS: "ハッシュタグ",
+  SOUND_PAGE: "サウンドページ",
 };
 const TRAFFIC_SOURCE_COLORS: Record<string, string> = {
-  SUGGESTED: "#ef4444",
-  SEARCH: "#3b82f6",
-  EXTERNAL: "#f59e0b",
-  BROWSE: "#10b981",
-  NOTIFICATION: "#8b5cf6",
-  PLAYLIST: "#ec4899",
+  YT_SEARCH: "#3b82f6",
+  SUBSCRIBER: "#8b5cf6",
+  YT_CHANNEL: "#06b6d4",
+  EXT_URL: "#f59e0b",
   SHORTS: "#f97316",
-  END_SCREEN: "#06b6d4",
-  ADVERTISING: "#84cc16",
-  OTHER: "#6b7280",
+  NO_LINK_OTHER: "#6b7280",
+  YT_OTHER_PAGE: "#a78bfa",
+  RELATED_VIDEO: "#ef4444",
+  PLAYLIST: "#ec4899",
+  NOTIFICATION: "#10b981",
+  END_SCREEN: "#14b8a6",
+  SHORTS_CONTENT_LINKS: "#fb923c",
+  HASHTAGS: "#84cc16",
+  SOUND_PAGE: "#d946ef",
 };
+
+// 固定表示順序: 登録者→検索→チャンネルページ→関連動画→外部→ショート→再生リスト→通知→その他→残り
+const TRAFFIC_SOURCE_ORDER = [
+  "SUBSCRIBER", "YT_SEARCH", "YT_CHANNEL", "RELATED_VIDEO",
+  "EXT_URL", "SHORTS", "PLAYLIST", "NOTIFICATION",
+  "YT_OTHER_PAGE", "NO_LINK_OTHER", "END_SCREEN",
+  "SHORTS_CONTENT_LINKS", "HASHTAGS", "SOUND_PAGE",
+];
+
+function sortSourcesByFixedOrder(sources: YouTubeTrafficSource[]): YouTubeTrafficSource[] {
+  return [...sources].sort((a, b) => {
+    const ai = TRAFFIC_SOURCE_ORDER.indexOf(a.source_type);
+    const bi = TRAFFIC_SOURCE_ORDER.indexOf(b.source_type);
+    return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+  });
+}
 
 function TrafficSourceBar({ sources, totalViews }: { sources: YouTubeTrafficSource[]; totalViews: number }) {
   if (sources.length === 0 || totalViews === 0) return <span className="text-gray-600 text-[10px]">—</span>;
-  const sorted = [...sources].sort((a, b) => b.views - a.views);
+  const ordered = sortSourcesByFixedOrder(sources);
   return (
     <div className="space-y-0.5">
       <div className="flex h-3 rounded overflow-hidden bg-white/5">
-        {sorted.map(s => {
+        {ordered.map(s => {
           const pct = (s.views / totalViews) * 100;
           if (pct < 1) return null;
           return (
@@ -491,8 +552,9 @@ function TrafficSourceBar({ sources, totalViews }: { sources: YouTubeTrafficSour
         })}
       </div>
       <div className="flex gap-1.5 flex-wrap">
-        {sorted.slice(0, 3).map(s => {
+        {[...sources].sort((a, b) => b.views - a.views).slice(0, 3).map(s => {
           const pct = (s.views / totalViews) * 100;
+          if (pct < 1) return null;
           return (
             <span key={s.source_type} className="text-[9px] text-gray-400">
               <span className="inline-block w-1.5 h-1.5 rounded-full mr-0.5" style={{ backgroundColor: TRAFFIC_SOURCE_COLORS[s.source_type] || "#6b7280" }} />
@@ -505,19 +567,24 @@ function TrafficSourceBar({ sources, totalViews }: { sources: YouTubeTrafficSour
   );
 }
 
-type DetailSortKey = "views" | "published_at" | "avg_view_pct" | "watch_hours" | "predicted";
+type DetailSortKey = "views" | "published_at" | "avg_view_pct" | "watch_hours" | "predicted" | "likes" | "like_rate" | "comments" | "ctr";
 
-function YouTubeVideoDetailTable({ youtubeVideos, youtubeDaily, trafficSources }: {
+function YouTubeVideoDetailTable({ youtubeVideos, youtubeDaily, trafficSources, searchTerms, youtubeFunnel }: {
   youtubeVideos: YouTubeVideo[];
   youtubeDaily: YouTubeDaily[];
   trafficSources: YouTubeTrafficSource[];
+  searchTerms: YouTubeSearchTerm[];
+  youtubeFunnel: YouTubeFunnelCustomer[];
 }) {
   const [detailSort, setDetailSort] = useState<DetailSortKey>("views");
   const [includeShorts, setIncludeShorts] = useState(false);
+  const [expandedVideo, setExpandedVideo] = useState<string | null>(null);
 
-  const filteredVideos = useMemo(() =>
-    includeShorts ? youtubeVideos : youtubeVideos.filter(v => !isShort(v)),
-  [youtubeVideos, includeShorts]);
+  const filteredVideos = useMemo(() => {
+    return youtubeVideos
+      .filter(v => includeShorts || !isShort(v))
+      .filter(v => !(v.privacy_status === "unlisted" && v.total_views <= 100));
+  }, [youtubeVideos, includeShorts]);
 
   // Build per-video source map
   const sourceMap = useMemo(() => {
@@ -530,38 +597,86 @@ function YouTubeVideoDetailTable({ youtubeVideos, youtubeDaily, trafficSources }
     return m;
   }, [trafficSources]);
 
+  // Build per-video CV count from funnel data (UTM campaign matching)
+  const videoCvMap = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const c of youtubeFunnel) {
+      if (!funnelIsClosed(c.stage)) continue;
+      const matched = matchCampaignToVideo(c.utm_campaign, youtubeVideos);
+      if (matched) {
+        m.set(matched.video_id, (m.get(matched.video_id) || 0) + 1);
+      }
+    }
+    return m;
+  }, [youtubeFunnel, youtubeVideos]);
+
+  // Build per-video search terms map
+  const searchTermMap = useMemo(() => {
+    const m = new Map<string, YouTubeSearchTerm[]>();
+    for (const s of searchTerms) {
+      const arr = m.get(s.video_id) || [];
+      arr.push(s);
+      m.set(s.video_id, arr);
+    }
+    return m;
+  }, [searchTerms]);
+
   // Build per-video daily aggregates
   const dailyMap = useMemo(() => {
-    const m = new Map<string, { views: number; minutes: number }>();
+    const m = new Map<string, { views: number; minutes: number; impressions: number; impressionsCtr: number; impressionCount: number }>();
     for (const d of youtubeDaily) {
-      const ex = m.get(d.video_id) || { views: 0, minutes: 0 };
+      const ex = m.get(d.video_id) || { views: 0, minutes: 0, impressions: 0, impressionsCtr: 0, impressionCount: 0 };
       ex.views += d.views;
       ex.minutes += d.estimated_minutes_watched;
+      ex.impressions += d.impressions;
+      if (d.impressions_ctr > 0) { ex.impressionsCtr += d.impressions_ctr; ex.impressionCount++; }
       m.set(d.video_id, ex);
     }
     return m;
   }, [youtubeDaily]);
 
-  // Growth prediction: compare recent videos against mature video average curve
-  const matureAvgDailyViews = useMemo(() => {
-    // Videos older than 6 months: compute average views per day
-    const now = new Date();
-    const sixMonthsAgo = new Date(now);
-    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-    const matureVideos = youtubeVideos.filter(v => new Date(v.published_at) < sixMonthsAgo);
-    if (matureVideos.length === 0) return 0;
-
-    const matureIds = new Set(matureVideos.map(v => v.video_id));
-    let totalViews = 0;
-    let totalDays = 0;
-    for (const v of matureVideos) {
-      const ageDays = Math.max(1, Math.floor((now.getTime() - new Date(v.published_at).getTime()) / 86400000));
-      totalViews += v.total_views;
-      totalDays += ageDays;
+  // Build per-video daily data by day offset (for 90-day actual calculation and growth curve)
+  const videoDailyByOffset = useMemo(() => {
+    const m = new Map<string, Map<number, number>>(); // video_id -> (dayOffset -> views)
+    for (const d of youtubeDaily) {
+      const video = youtubeVideos.find(v => v.video_id === d.video_id);
+      if (!video) continue;
+      const pubDate = new Date(video.published_at);
+      const dayOffset = Math.floor((new Date(d.date).getTime() - pubDate.getTime()) / 86400000);
+      if (dayOffset < 0) continue;
+      if (!m.has(d.video_id)) m.set(d.video_id, new Map());
+      const vm = m.get(d.video_id)!;
+      vm.set(dayOffset, (vm.get(dayOffset) || 0) + d.views);
     }
-    // Filter only daily data for mature videos to get decay curve
-    return totalDays > 0 ? totalViews / totalDays : 0;
-  }, [youtubeVideos]);
+    return m;
+  }, [youtubeDaily, youtubeVideos]);
+
+  // Growth curve: average views per day-offset across mature videos (>120 days old)
+  const matureCurve = useMemo(() => {
+    const now = new Date();
+    const cutoff = new Date(now);
+    cutoff.setDate(cutoff.getDate() - 120);
+    const matureVideos = youtubeVideos.filter(v => new Date(v.published_at) < cutoff);
+    if (matureVideos.length === 0) return new Map<number, number>();
+
+    const sumByOffset = new Map<number, { total: number; count: number }>();
+    for (const v of matureVideos) {
+      const offsets = videoDailyByOffset.get(v.video_id);
+      if (!offsets) continue;
+      for (const [offset, views] of offsets) {
+        if (offset > 90) continue;
+        const ex = sumByOffset.get(offset) || { total: 0, count: 0 };
+        ex.total += views;
+        ex.count++;
+        sumByOffset.set(offset, ex);
+      }
+    }
+    const avg = new Map<number, number>();
+    for (const [offset, { total, count }] of sumByOffset) {
+      avg.set(offset, total / count);
+    }
+    return avg;
+  }, [youtubeVideos, videoDailyByOffset]);
 
   const detailRows = useMemo(() => {
     const now = new Date();
@@ -569,28 +684,53 @@ function YouTubeVideoDetailTable({ youtubeVideos, youtubeDaily, trafficSources }
     threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
 
     return filteredVideos.map(v => {
-      const daily = dailyMap.get(v.video_id) || { views: 0, minutes: 0 };
+      const daily = dailyMap.get(v.video_id) || { views: 0, minutes: 0, impressions: 0, impressionsCtr: 0, impressionCount: 0 };
       const sources = sourceMap.get(v.video_id) || [];
       const totalViews = v.total_views || daily.views;
       const watchHours = daily.minutes / 60;
+      const likes = v.total_likes;
+      const comments = v.total_comments;
+      const likeRate = totalViews > 0 ? (likes / totalViews) * 100 : 0;
+      const impressions = daily.impressions;
+      const ctr = daily.impressionCount > 0 ? daily.impressionsCtr / daily.impressionCount : 0;
 
       // Average view percentage (estimated from watch time vs duration)
       const avgViewPct = v.duration_seconds > 0 && totalViews > 0
         ? Math.min(100, (daily.minutes * 60 / (totalViews * v.duration_seconds)) * 100)
         : 0;
 
-      // Growth prediction for videos < 3 months old
       const pubDate = new Date(v.published_at);
       const ageDays = Math.max(1, Math.floor((now.getTime() - pubDate.getTime()) / 86400000));
       const isNew = pubDate > threeMonthsAgo;
+
+      // Calculate actual 90-day views for mature videos
+      const offsets = videoDailyByOffset.get(v.video_id);
+      let actual90 = 0;
+      if (offsets && ageDays > 90) {
+        for (const [offset, views] of offsets) {
+          if (offset <= 90) actual90 += views;
+        }
+      }
+
+      // Growth prediction for videos < 3 months old
+      // Use mature video curve to predict remaining days (avoids early-boost bias)
       let predicted90 = 0;
       if (isNew && ageDays > 0) {
-        const currentDailyAvg = totalViews / ageDays;
-        const remainingDays = Math.max(0, 90 - ageDays);
-        // Decay factor: new videos slow down over time; use ratio vs mature avg
-        const decayFactor = matureAvgDailyViews > 0 ? Math.min(1, currentDailyAvg / matureAvgDailyViews) : 0.5;
-        predicted90 = totalViews + remainingDays * currentDailyAvg * decayFactor;
+        // Sum actual views so far
+        predicted90 = totalViews;
+        // Add predicted remaining views using mature curve ratio
+        for (let day = ageDays; day <= 90; day++) {
+          const curveAvg = matureCurve.get(day) || matureCurve.get(Math.min(day, 90)) || 0;
+          const curveAtAge = matureCurve.get(Math.max(ageDays - 1, 0)) || 1;
+          const recentDailyAvg = ageDays > 14
+            ? (() => { let s = 0; const o = videoDailyByOffset.get(v.video_id); if (!o) return totalViews / ageDays; for (const [off, vw] of o) { if (off >= ageDays - 14) s += vw; } return s / 14; })()
+            : totalViews / ageDays;
+          const scaleFactor = curveAtAge > 0 ? recentDailyAvg / curveAtAge : 1;
+          predicted90 += curveAvg * scaleFactor;
+        }
       }
+
+      const cvCount = videoCvMap.get(v.video_id) || 0;
 
       return {
         video: v,
@@ -601,9 +741,16 @@ function YouTubeVideoDetailTable({ youtubeVideos, youtubeDaily, trafficSources }
         isNew,
         ageDays,
         predicted90,
+        actual90,
+        likes,
+        comments,
+        likeRate,
+        impressions,
+        ctr,
+        cvCount,
       };
     });
-  }, [filteredVideos, dailyMap, sourceMap, matureAvgDailyViews]);
+  }, [filteredVideos, dailyMap, sourceMap, matureCurve, videoDailyByOffset]);
 
   const sortedRows = useMemo(() => {
     const sorted = [...detailRows];
@@ -612,10 +759,51 @@ function YouTubeVideoDetailTable({ youtubeVideos, youtubeDaily, trafficSources }
       case "published_at": sorted.sort((a, b) => (b.video.published_at || "").localeCompare(a.video.published_at || "")); break;
       case "avg_view_pct": sorted.sort((a, b) => b.avgViewPct - a.avgViewPct); break;
       case "watch_hours": sorted.sort((a, b) => b.watchHours - a.watchHours); break;
-      case "predicted": sorted.sort((a, b) => b.predicted90 - a.predicted90); break;
+      case "predicted": sorted.sort((a, b) => {
+        const aVal = a.isNew ? a.predicted90 : a.actual90;
+        const bVal = b.isNew ? b.predicted90 : b.actual90;
+        return bVal - aVal;
+      }); break;
+      case "likes": sorted.sort((a, b) => b.likes - a.likes); break;
+      case "like_rate": sorted.sort((a, b) => b.likeRate - a.likeRate); break;
+      case "comments": sorted.sort((a, b) => b.comments - a.comments); break;
+      case "ctr": sorted.sort((a, b) => b.ctr - a.ctr); break;
     }
     return sorted;
   }, [detailRows, detailSort]);
+
+  // Max values for heatmaps
+  const maxValues = useMemo(() => {
+    let maxViews = 0, max90v = 0, maxAvgPct = 0, maxLikeRate = 0;
+    for (const r of detailRows) {
+      if (r.totalViews > maxViews) maxViews = r.totalViews;
+      const v90 = r.isNew ? r.predicted90 : r.actual90;
+      if (v90 > max90v) max90v = v90;
+      if (r.avgViewPct > maxAvgPct) maxAvgPct = r.avgViewPct;
+      if (r.likeRate > maxLikeRate) maxLikeRate = r.likeRate;
+    }
+    return { maxViews, max90: max90v, maxAvgPct, maxLikeRate };
+  }, [detailRows]);
+
+  function heatmapLevel(value: number, max: number): number {
+    if (max === 0 || value === 0) return 0;
+    const r = value / max;
+    if (r > 0.8) return 5;
+    if (r > 0.6) return 4;
+    if (r > 0.4) return 3;
+    if (r > 0.2) return 2;
+    return 1;
+  }
+
+  const HM_VIEWS = ["", "bg-emerald-500/5", "bg-emerald-500/10", "bg-emerald-500/20", "bg-emerald-500/30", "bg-emerald-500/40"];
+  const HM_90 = ["", "bg-blue-500/5", "bg-blue-500/10", "bg-blue-500/20", "bg-blue-500/30", "bg-blue-500/40"];
+  const HM_PCT = ["", "bg-indigo-500/5", "bg-indigo-500/10", "bg-indigo-500/20", "bg-indigo-500/30", "bg-indigo-500/40"];
+  const HM_LIKE = ["", "bg-pink-500/5", "bg-pink-500/10", "bg-pink-500/20", "bg-pink-500/30", "bg-pink-500/40"];
+
+  function heatmapViews(value: number): string { return HM_VIEWS[heatmapLevel(value, maxValues.maxViews)]; }
+  function heatmap90(value: number): string { return HM_90[heatmapLevel(value, maxValues.max90)]; }
+  function heatmapPct(value: number): string { return HM_PCT[heatmapLevel(value, maxValues.maxAvgPct)]; }
+  function heatmapLikeRate(value: number): string { return HM_LIKE[heatmapLevel(value, maxValues.maxLikeRate)]; }
 
   const sortHeader = (key: DetailSortKey, label: string, align = "text-right") => (
     <th className={`${align} py-2.5 px-2 cursor-pointer select-none hover:text-white transition-colors whitespace-nowrap`}
@@ -636,11 +824,11 @@ function YouTubeVideoDetailTable({ youtubeVideos, youtubeDaily, trafficSources }
       </div>
 
       {/* Traffic source legend */}
-      <div className="flex gap-2 flex-wrap">
-        {Object.entries(TRAFFIC_SOURCE_LABELS).slice(0, 8).map(([key, label]) => (
+      <div className="flex gap-2 flex-wrap justify-end">
+        {["SUBSCRIBER", "YT_SEARCH", "YT_CHANNEL", "RELATED_VIDEO", "EXT_URL", "SHORTS", "YT_OTHER_PAGE", "PLAYLIST", "NOTIFICATION", "NO_LINK_OTHER"].map(key => (
           <span key={key} className="flex items-center gap-1 text-[9px] text-gray-500">
             <span className="w-2 h-2 rounded-full" style={{ backgroundColor: TRAFFIC_SOURCE_COLORS[key] }} />
-            {label}
+            {TRAFFIC_SOURCE_LABELS[key]}
           </span>
         ))}
       </div>
@@ -649,63 +837,169 @@ function YouTubeVideoDetailTable({ youtubeVideos, youtubeDaily, trafficSources }
         <div className="overflow-x-auto max-h-[800px] overflow-y-auto">
           <table className="w-full text-xs">
             <thead className="sticky top-0 bg-surface-raised z-10">
-              <tr className="border-b border-white/10 text-gray-400">
-                <th className="text-center py-2.5 px-2 w-8">No.</th>
-                <th className="text-left py-2.5 px-3 min-w-[250px]">動画名</th>
+              <tr className="border-b border-white/10 text-gray-400 text-[10px]">
+                <th className="text-center py-2 px-1 w-6">#</th>
+                <th className="text-left py-2 px-2 min-w-[120px] max-w-[160px]">動画名</th>
                 {sortHeader("published_at", "投稿日", "text-center")}
-                {sortHeader("views", "総再生数")}
-                {sortHeader("watch_hours", "視聴時間")}
+                <th className="text-center py-2 px-1 whitespace-nowrap">公開</th>
+                {sortHeader("views", "再生数")}
+                {sortHeader("predicted", "90日")}
+                {sortHeader("watch_hours", "時間")}
                 {sortHeader("avg_view_pct", "維持率")}
-                <th className="text-center py-2.5 px-2 min-w-[160px]">流入元</th>
-                {sortHeader("predicted", "90日予測")}
+                {sortHeader("likes", "高評価")}
+                {sortHeader("like_rate", "高評価率")}
+                {sortHeader("comments", "コメント")}
+                {sortHeader("ctr", "CTR")}
+                <th className="text-center py-2 px-1 min-w-[140px]">流入元</th>
+                <th className="text-right py-2 px-1 whitespace-nowrap cursor-pointer select-none hover:text-white transition-colors">CV</th>
               </tr>
             </thead>
             <tbody>
-              {sortedRows.slice(0, 100).map((row, idx) => (
-                <tr key={row.video.video_id} className="border-b border-white/5 hover:bg-white/5">
-                  <td className="text-center py-2 px-2 text-gray-500">{idx + 1}</td>
-                  <td className="py-2 px-3">
-                    <div className="flex items-center gap-2">
-                      {row.video.thumbnail_url && (
-                        <img src={row.video.thumbnail_url} alt="" className="w-16 h-9 rounded object-cover flex-shrink-0" />
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <a href={`https://www.youtube.com/watch?v=${row.video.video_id}`} target="_blank" rel="noopener noreferrer"
-                          className="text-white font-medium hover:text-brand transition-colors line-clamp-2 text-[11px] leading-tight">
-                          {row.video.title}
-                        </a>
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                          {isShort(row.video) && <span className="text-[9px] px-1 py-0.5 rounded bg-yellow-500/20 text-yellow-300">Short</span>}
-                          {row.isNew && <span className="text-[9px] px-1 py-0.5 rounded bg-blue-500/20 text-blue-300">新着</span>}
-                          <span className="text-[10px] text-gray-600">{formatDuration(row.video.duration_seconds)}</span>
+              {sortedRows.slice(0, 100).map((row, idx) => {
+                const isExpanded = expandedVideo === row.video.video_id;
+                return (
+                  <Fragment key={row.video.video_id}>
+                    <tr className={`border-b border-white/5 hover:bg-white/5 cursor-pointer ${isExpanded ? "bg-white/5" : ""}`}
+                      onClick={() => setExpandedVideo(isExpanded ? null : row.video.video_id)}>
+                      <td className="text-center py-1.5 px-1 text-gray-500 text-[10px]">{idx + 1}</td>
+                      <td className="py-1.5 px-2">
+                        <div className="flex items-center gap-1.5">
+                          {row.video.thumbnail_url && (
+                            <img src={row.video.thumbnail_url} alt="" className="w-14 h-8 rounded object-cover flex-shrink-0" />
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <span className="text-white text-[10px] leading-tight line-clamp-2">{row.video.title}</span>
+                            <div className="flex items-center gap-1 mt-0.5">
+                              {isShort(row.video) && <span className="text-[8px] px-0.5 rounded bg-yellow-500/20 text-yellow-300">S</span>}
+                              {row.isNew && <span className="text-[8px] px-0.5 rounded bg-blue-500/20 text-blue-300">新</span>}
+                              <span className="text-[9px] text-gray-600">{formatDuration(row.video.duration_seconds)}</span>
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="text-center py-2 px-2 text-gray-400 whitespace-nowrap text-[11px]">{row.video.published_at.slice(0, 10)}</td>
-                  <td className="text-right py-2 px-2 text-white font-bold">{row.totalViews.toLocaleString()}</td>
-                  <td className="text-right py-2 px-2 text-gray-300">{row.watchHours.toFixed(1)}h</td>
-                  <td className="text-right py-2 px-2">
-                    <span className={row.avgViewPct >= 40 ? "text-green-400" : row.avgViewPct >= 20 ? "text-yellow-400" : "text-red-400"}>
-                      {row.avgViewPct.toFixed(0)}%
-                    </span>
-                  </td>
-                  <td className="py-2 px-2">
-                    <TrafficSourceBar sources={row.sources} totalViews={row.totalViews} />
-                  </td>
-                  <td className="text-right py-2 px-2">
-                    {row.isNew ? (
-                      <div>
-                        <span className="text-blue-300 font-medium">{Math.round(row.predicted90).toLocaleString()}</span>
-                        <div className="text-[9px] text-gray-500">{row.ageDays}日経過</div>
-                      </div>
-                    ) : (
-                      <span className="text-gray-600">—</span>
+                      </td>
+                      <td className="text-center py-1.5 px-1 text-gray-400 whitespace-nowrap text-[10px]">{row.video.published_at.slice(5, 10)}</td>
+                      <td className="text-center py-1.5 px-1">
+                        <span className={`text-[9px] px-1 py-0.5 rounded ${
+                          row.video.privacy_status === "public" ? "bg-green-500/20 text-green-300" :
+                          row.video.privacy_status === "unlisted" ? "bg-yellow-500/20 text-yellow-300" :
+                          "bg-red-500/20 text-red-300"
+                        }`}>
+                          {row.video.privacy_status === "public" ? "公開" :
+                           row.video.privacy_status === "unlisted" ? "限定" : "非公開"}
+                        </span>
+                      </td>
+                      <td className={`text-right py-1.5 px-1 ${heatmapViews(row.totalViews)}`}>
+                        <span className="text-white font-bold text-[11px]">{row.totalViews.toLocaleString()}</span>
+                      </td>
+                      <td className={`text-right py-1.5 px-1 ${heatmap90(row.isNew ? row.predicted90 : row.actual90)}`}>
+                        {row.isNew ? (
+                          row.predicted90 > 0 ? (
+                            <div>
+                              <span className="text-blue-300 font-medium text-[10px]">{Math.round(row.predicted90).toLocaleString()}</span>
+                              <div className="text-[8px] text-gray-500">予測</div>
+                            </div>
+                          ) : (
+                            <div>
+                              <span className="text-gray-500 text-[10px]">{row.totalViews.toLocaleString()}</span>
+                              <div className="text-[8px] text-gray-600">{row.ageDays}日</div>
+                            </div>
+                          )
+                        ) : (
+                          <div>
+                            <span className="text-white font-medium text-[10px]">{row.actual90.toLocaleString()}</span>
+                            <div className="text-[8px] text-gray-500">実績</div>
+                          </div>
+                        )}
+                      </td>
+                      <td className="text-right py-1.5 px-1 text-gray-300 text-[10px]">{row.watchHours.toFixed(1)}h</td>
+                      <td className={`text-right py-1.5 px-1 ${heatmapPct(row.avgViewPct)}`}>
+                        <span className={`text-[10px] ${row.avgViewPct >= 40 ? "text-green-400" : row.avgViewPct >= 20 ? "text-yellow-400" : "text-red-400"}`}>
+                          {row.avgViewPct.toFixed(0)}%
+                        </span>
+                      </td>
+                      <td className="text-right py-1.5 px-1 text-gray-300 text-[10px]">{row.likes.toLocaleString()}</td>
+                      <td className={`text-right py-1.5 px-1 ${heatmapLikeRate(row.likeRate)}`}>
+                        <span className={`text-[10px] ${row.likeRate >= 3 ? "text-green-400" : row.likeRate >= 1 ? "text-yellow-400" : "text-gray-500"}`}>
+                          {row.likeRate.toFixed(1)}%
+                        </span>
+                      </td>
+                      <td className="text-right py-1.5 px-1 text-gray-300 text-[10px]">{row.comments}</td>
+                      <td className="text-right py-1.5 px-1">
+                        <span className={`text-[10px] ${row.ctr >= 5 ? "text-green-400" : row.ctr >= 2 ? "text-yellow-400" : "text-gray-500"}`}>
+                          {row.ctr > 0 ? `${row.ctr.toFixed(1)}%` : "—"}
+                        </span>
+                      </td>
+                      <td className="py-1.5 px-1">
+                        <TrafficSourceBar sources={row.sources} totalViews={row.totalViews} />
+                      </td>
+                      <td className="text-right py-1.5 px-1">
+                        {row.cvCount > 0 ? (
+                          <span className="text-green-400 font-bold text-[11px]">{row.cvCount}</span>
+                        ) : (
+                          <span className="text-gray-700 text-[10px]">—</span>
+                        )}
+                      </td>
+                    </tr>
+                    {isExpanded && (
+                      <tr className="border-b border-white/10 bg-white/[0.02]">
+                        <td colSpan={14} className="px-4 py-3">
+                          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-[10px]">
+                            <div>
+                              <p className="text-gray-500 mb-1">基本情報</p>
+                              <p className="text-gray-300">投稿日: {row.video.published_at.slice(0, 10)}</p>
+                              <p className="text-gray-300">経過日数: {row.ageDays}日</p>
+                              <p className="text-gray-300">動画長: {formatDuration(row.video.duration_seconds)}</p>
+                              <a href={`https://www.youtube.com/watch?v=${row.video.video_id}`} target="_blank" rel="noopener noreferrer"
+                                className="text-brand hover:underline mt-1 inline-block">YouTubeで開く →</a>
+                            </div>
+                            <div>
+                              <p className="text-gray-500 mb-1">エンゲージメント</p>
+                              <p className="text-gray-300">高評価: {row.likes.toLocaleString()} ({row.likeRate.toFixed(2)}%)</p>
+                              <p className="text-gray-300">コメント: {row.comments}</p>
+                              <p className="text-gray-300">インプレッション: {row.impressions.toLocaleString()}</p>
+                              <p className="text-gray-300">クリック率: {row.ctr > 0 ? `${row.ctr.toFixed(2)}%` : "—"}</p>
+                            </div>
+                            <div>
+                              <p className="text-gray-500 mb-1">視聴</p>
+                              <p className="text-gray-300">総再生数: {row.totalViews.toLocaleString()}</p>
+                              <p className="text-gray-300">視聴時間: {row.watchHours.toFixed(1)}h</p>
+                              <p className="text-gray-300">平均維持率: {row.avgViewPct.toFixed(1)}%</p>
+                            </div>
+                            <div>
+                              <p className="text-gray-500 mb-1">流入元内訳</p>
+                              {row.sources.length > 0 ? (
+                                sortSourcesByFixedOrder(row.sources).map(s => (
+                                  <p key={s.source_type} className="text-gray-300 flex justify-between">
+                                    <span>
+                                      <span className="inline-block w-1.5 h-1.5 rounded-full mr-1" style={{ backgroundColor: TRAFFIC_SOURCE_COLORS[s.source_type] || "#6b7280" }} />
+                                      {TRAFFIC_SOURCE_LABELS[s.source_type] || s.source_type}
+                                    </span>
+                                    <span>{s.views.toLocaleString()} ({((s.views / row.totalViews) * 100).toFixed(0)}%)</span>
+                                  </p>
+                                ))
+                              ) : <p className="text-gray-600">データなし</p>}
+                            </div>
+                            <div>
+                              <p className="text-gray-500 mb-1">検索語句 (TOP10)</p>
+                              {(() => {
+                                const terms = searchTermMap.get(row.video.video_id) || [];
+                                if (terms.length === 0) return <p className="text-gray-600">データなし</p>;
+                                return terms.slice(0, 10).map((t, i) => (
+                                  <p key={i} className="text-gray-300 flex justify-between">
+                                    <span className="truncate mr-2">{t.search_term}</span>
+                                    <span className="flex-shrink-0">{t.views.toLocaleString()}</span>
+                                  </p>
+                                ));
+                              })()}
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
                     )}
-                  </td>
-                </tr>
-              ))}
-              {sortedRows.length === 0 && <tr><td colSpan={8} className="py-8 text-center text-gray-500">データなし</td></tr>}
+                  </Fragment>
+                );
+              })}
+              {sortedRows.length === 0 && <tr><td colSpan={14} className="py-8 text-center text-gray-500">データなし</td></tr>}
             </tbody>
           </table>
         </div>
@@ -866,6 +1160,382 @@ function YouTubeClosedCustomersTab({ youtubeFunnel, youtubeVideos }: {
             </tbody>
           </table>
         </div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════
+   KEYWORD ATTACK ANALYSIS
+   ═══════════════════════════════════════════ */
+
+interface KeywordAnalysisProps {
+  youtubeVideos: YouTubeVideo[];
+  youtubeSearchTerms: YouTubeSearchTerm[];
+  trafficSources: YouTubeTrafficSource[];
+  searchQueries: SearchQueryRow[];
+  adsKeywords: AdsKeywordDaily[];
+}
+
+/* ───── Static attack list: target keywords ───── */
+const ATTACK_KEYWORDS: { keyword: string; category: "戦略ファーム" | "面接対策" | "転職" | "スキル" | "業界理解"; firmType?: "戦略" | "総合"; cvIntent: "HIGH" | "MID" | "LOW" }[] = [
+  // 戦略ファーム × ケース面接 (最優先)
+  { keyword: "マッキンゼー ケース面接", category: "戦略ファーム", firmType: "戦略", cvIntent: "HIGH" },
+  { keyword: "BCG ケース面接", category: "戦略ファーム", firmType: "戦略", cvIntent: "HIGH" },
+  { keyword: "ベイン ケース面接", category: "戦略ファーム", firmType: "戦略", cvIntent: "HIGH" },
+  { keyword: "ローランドベルガー ケース面接", category: "戦略ファーム", firmType: "戦略", cvIntent: "HIGH" },
+  { keyword: "ATカーニー ケース面接", category: "戦略ファーム", firmType: "戦略", cvIntent: "HIGH" },
+  { keyword: "Strategy& 面接", category: "戦略ファーム", firmType: "戦略", cvIntent: "HIGH" },
+  { keyword: "オリバーワイマン", category: "戦略ファーム", firmType: "戦略", cvIntent: "MID" },
+  // 戦略ファーム単体
+  { keyword: "マッキンゼー", category: "戦略ファーム", firmType: "戦略", cvIntent: "MID" },
+  { keyword: "ベインアンドカンパニー", category: "戦略ファーム", firmType: "戦略", cvIntent: "MID" },
+  { keyword: "BCG", category: "戦略ファーム", firmType: "戦略", cvIntent: "LOW" },
+  { keyword: "MBB", category: "戦略ファーム", firmType: "戦略", cvIntent: "MID" },
+  // 面接対策 (CV直結)
+  { keyword: "ケース面接 中途", category: "面接対策", cvIntent: "HIGH" },
+  { keyword: "戦略コンサル 対策", category: "面接対策", cvIntent: "HIGH" },
+  { keyword: "戦略コンサル 面接", category: "面接対策", cvIntent: "HIGH" },
+  { keyword: "ケース面接 対策", category: "面接対策", cvIntent: "HIGH" },
+  { keyword: "ケース面接 解答例", category: "面接対策", cvIntent: "HIGH" },
+  { keyword: "ケース面接 例題", category: "面接対策", cvIntent: "HIGH" },
+  { keyword: "ケース面接 フレームワーク", category: "面接対策", cvIntent: "HIGH" },
+  { keyword: "ケース面接 売上向上", category: "面接対策", cvIntent: "HIGH" },
+  { keyword: "ケース面接 新規事業", category: "面接対策", cvIntent: "HIGH" },
+  { keyword: "ケース面接 因数分解", category: "面接対策", cvIntent: "HIGH" },
+  { keyword: "ケース面接 ロジックツリー", category: "面接対策", cvIntent: "HIGH" },
+  { keyword: "ケース面接 前提確認", category: "面接対策", cvIntent: "HIGH" },
+  { keyword: "ケース面接 市場規模", category: "面接対策", cvIntent: "HIGH" },
+  { keyword: "フェルミ推定 対策", category: "面接対策", cvIntent: "HIGH" },
+  { keyword: "フェルミ推定 例題", category: "面接対策", cvIntent: "HIGH" },
+  { keyword: "ケース面接", category: "面接対策", cvIntent: "HIGH" },
+  { keyword: "フェルミ推定", category: "面接対策", cvIntent: "MID" },
+  { keyword: "AIケース面接", category: "面接対策", cvIntent: "HIGH" },
+  { keyword: "ケース面接 ボロボロ", category: "面接対策", cvIntent: "MID" },
+  { keyword: "ケース面接 ノー勉", category: "面接対策", cvIntent: "MID" },
+  // 総合コンサル (参考)
+  { keyword: "ベイカレント ケース面接", category: "戦略ファーム", firmType: "総合", cvIntent: "MID" },
+  { keyword: "アクセンチュア ケース面接", category: "戦略ファーム", firmType: "総合", cvIntent: "MID" },
+  { keyword: "デロイト ケース面接", category: "戦略ファーム", firmType: "総合", cvIntent: "MID" },
+  { keyword: "アビーム ケース面接", category: "戦略ファーム", firmType: "総合", cvIntent: "MID" },
+  { keyword: "PwC ケース面接", category: "戦略ファーム", firmType: "総合", cvIntent: "MID" },
+  // 転職
+  { keyword: "コンサル 転職 未経験", category: "転職", cvIntent: "HIGH" },
+  { keyword: "コンサル 転職 対策", category: "転職", cvIntent: "HIGH" },
+  { keyword: "戦略コンサル 転職", category: "転職", cvIntent: "HIGH" },
+  // 業界理解
+  { keyword: "戦略コンサル", category: "業界理解", cvIntent: "MID" },
+  { keyword: "コンサル 激務", category: "業界理解", cvIntent: "LOW" },
+];
+
+function YouTubeKeywordAnalysis({ youtubeVideos, youtubeSearchTerms, trafficSources, searchQueries, adsKeywords }: KeywordAnalysisProps) {
+  const [filterCategory, setFilterCategory] = useState<string>("all");
+  const [filterCoverage, setFilterCoverage] = useState<string>("all");
+
+  // Build video map
+  const videoMap = useMemo(() => {
+    const m: Record<string, YouTubeVideo> = {};
+    for (const v of youtubeVideos) m[v.video_id] = v;
+    return m;
+  }, [youtubeVideos]);
+
+  // Build YT search term map: term -> { views, videoEntries }
+  const ytTermMap = useMemo(() => {
+    const m: Record<string, { totalViews: number; videos: { videoId: string; views: number }[] }> = {};
+    for (const t of youtubeSearchTerms) {
+      if (!m[t.search_term]) m[t.search_term] = { totalViews: 0, videos: [] };
+      m[t.search_term].totalViews += t.views;
+      m[t.search_term].videos.push({ videoId: t.video_id, views: t.views });
+    }
+    // Sort videos by views desc within each term
+    for (const key of Object.keys(m)) {
+      m[key].videos.sort((a, b) => b.views - a.views);
+    }
+    return m;
+  }, [youtubeSearchTerms]);
+
+  // Build YT_SEARCH traffic per video
+  const ytSearchByVideo = useMemo(() => {
+    const m: Record<string, number> = {};
+    for (const t of trafficSources) {
+      if (t.source_type === "YT_SEARCH") m[t.video_id] = (m[t.video_id] || 0) + t.views;
+    }
+    return m;
+  }, [trafficSources]);
+
+  // Build SC aggregated map: query -> { clicks, impressions, avgPosition }
+  const scMap = useMemo(() => {
+    const m: Record<string, { clicks: number; impressions: number; positions: number[]; count: number }> = {};
+    for (const r of searchQueries) {
+      if (!r.query) continue;
+      if (!m[r.query]) m[r.query] = { clicks: 0, impressions: 0, positions: [], count: 0 };
+      m[r.query].clicks += r.clicks || 0;
+      m[r.query].impressions += r.impressions || 0;
+      if (r.position) m[r.query].positions.push(r.position);
+      m[r.query].count++;
+    }
+    return m;
+  }, [searchQueries]);
+
+  // Build Ads aggregated map: keyword -> { clicks, impressions, cost, conversions }
+  const adsMap = useMemo(() => {
+    const m: Record<string, { clicks: number; impressions: number; cost: number; conversions: number }> = {};
+    for (const r of adsKeywords) {
+      if (!r.keyword) continue;
+      if (!m[r.keyword]) m[r.keyword] = { clicks: 0, impressions: 0, cost: 0, conversions: 0 };
+      m[r.keyword].clicks += r.clicks || 0;
+      m[r.keyword].impressions += r.impressions || 0;
+      m[r.keyword].cost += r.cost || 0;
+      m[r.keyword].conversions += r.conversions || 0;
+    }
+    return m;
+  }, [adsKeywords]);
+
+  // For each attack keyword, find matching data
+  const analysisRows = useMemo(() => {
+    return ATTACK_KEYWORDS.map(ak => {
+      // Find matching YT search terms (partial match)
+      const kwLower = ak.keyword.toLowerCase();
+      const matchingYtTerms: { term: string; views: number; topVideo: { videoId: string; views: number } | null }[] = [];
+      for (const [term, data] of Object.entries(ytTermMap)) {
+        if (term.toLowerCase().includes(kwLower) || kwLower.includes(term.toLowerCase())) {
+          matchingYtTerms.push({
+            term,
+            views: data.totalViews,
+            topVideo: data.videos[0] || null,
+          });
+        }
+      }
+      // Exact match first
+      const exactYt = ytTermMap[ak.keyword];
+      const ytSearchViews = exactYt?.totalViews || matchingYtTerms.reduce((s, t) => s + t.views, 0);
+      const topVideo = exactYt?.videos[0] || matchingYtTerms[0]?.topVideo || null;
+      const topVideoTitle = topVideo ? (videoMap[topVideo.videoId]?.title || "不明") : null;
+      const topVideoViews = topVideo?.views || 0;
+      const topVideoShare = ytSearchViews > 0 && topVideoViews > 0 ? Math.round((topVideoViews / ytSearchViews) * 100) : 0;
+
+      // SC data - find matching queries
+      let scImp = 0, scClicks = 0, scAvgPos: number | null = null;
+      const scPositions: number[] = [];
+      for (const [q, data] of Object.entries(scMap)) {
+        if (q.toLowerCase().includes(kwLower) || kwLower.includes(q.toLowerCase())) {
+          scImp += data.impressions;
+          scClicks += data.clicks;
+          scPositions.push(...data.positions);
+        }
+      }
+      if (scPositions.length > 0) scAvgPos = Math.round((scPositions.reduce((a, b) => a + b, 0) / scPositions.length) * 10) / 10;
+
+      // Ads data - find matching keywords
+      let adsCv = 0, adsCost = 0;
+      for (const [kw, data] of Object.entries(adsMap)) {
+        if (kw.includes(ak.keyword) || ak.keyword.includes(kw)) {
+          adsCv += data.conversions;
+          adsCost += data.cost;
+        }
+      }
+
+      // Determine coverage level
+      let coverage: "上位" | "弱い" | "なし";
+      if (ytSearchViews >= 100 && topVideoShare >= 20) {
+        coverage = "上位";
+      } else if (ytSearchViews > 0) {
+        coverage = "弱い";
+      } else {
+        coverage = "なし";
+      }
+
+      return {
+        ...ak,
+        ytSearchViews,
+        topVideoTitle,
+        topVideoViews,
+        topVideoShare,
+        scImp,
+        scClicks,
+        scAvgPos,
+        adsCv,
+        adsCost,
+        coverage,
+      };
+    });
+  }, [ytTermMap, scMap, adsMap, videoMap]);
+
+  // Stats
+  const stats = useMemo(() => {
+    const ranked = analysisRows.filter(r => r.coverage === "上位").length;
+    const weak = analysisRows.filter(r => r.coverage === "弱い").length;
+    const none = analysisRows.filter(r => r.coverage === "なし").length;
+    const stratNone = analysisRows.filter(r => r.firmType === "戦略" && r.coverage === "なし").length;
+    const totalAdsCv = analysisRows.reduce((s, r) => s + r.adsCv, 0);
+    const uncoveredAdsCv = analysisRows.filter(r => r.coverage === "なし").reduce((s, r) => s + r.adsCv, 0);
+    return { ranked, weak, none, stratNone, totalAdsCv, uncoveredAdsCv };
+  }, [analysisRows]);
+
+  // Filter
+  const filtered = analysisRows.filter(r => {
+    if (filterCategory !== "all" && r.category !== filterCategory) return false;
+    if (filterCoverage === "上位" && r.coverage !== "上位") return false;
+    if (filterCoverage === "未対応" && r.coverage !== "なし") return false;
+    if (filterCoverage === "弱い" && r.coverage !== "弱い") return false;
+    return true;
+  });
+
+  const categories = ["all", ...Array.from(new Set(ATTACK_KEYWORDS.map(k => k.category)))];
+
+  return (
+    <div className="space-y-4">
+      {/* KPI Cards */}
+      <div className="grid grid-cols-4 gap-3">
+        <div className="bg-surface-raised border border-white/10 rounded-xl p-4 text-center">
+          <p className="text-2xl font-bold text-green-400">{stats.ranked}</p>
+          <p className="text-[10px] text-gray-500 uppercase tracking-wider mt-1">上位表示KW</p>
+        </div>
+        <div className="bg-surface-raised border border-white/10 rounded-xl p-4 text-center">
+          <p className="text-2xl font-bold text-yellow-400">{stats.weak}</p>
+          <p className="text-[10px] text-gray-500 uppercase tracking-wider mt-1">弱い / 分散</p>
+        </div>
+        <div className="bg-surface-raised border border-white/10 rounded-xl p-4 text-center">
+          <p className="text-2xl font-bold text-red-400">{stats.none}</p>
+          <p className="text-[10px] text-gray-500 uppercase tracking-wider mt-1">未対応</p>
+        </div>
+        <div className="bg-surface-raised border border-white/10 rounded-xl p-4 text-center">
+          <p className="text-2xl font-bold text-red-400">{stats.stratNone}</p>
+          <p className="text-[10px] text-gray-500 uppercase tracking-wider mt-1">戦略ファーム未対応</p>
+        </div>
+      </div>
+
+      {/* Insight box */}
+      {stats.uncoveredAdsCv > 0 && (
+        <div className="bg-red-500/5 border border-red-500/20 rounded-xl p-4">
+          <p className="text-sm text-red-300">
+            <span className="font-bold">未対応KWのAds CV計: {stats.uncoveredAdsCv.toFixed(1)}件</span> —
+            これらのキーワードに対応する動画を作れば、広告費をかけずにCV獲得できる可能性
+          </p>
+        </div>
+      )}
+
+      {/* Filters */}
+      <div className="flex gap-4 items-center flex-wrap">
+        <div className="flex gap-1 items-center">
+          <span className="text-xs text-gray-500 mr-1">カテゴリ:</span>
+          {categories.map(c => (
+            <button key={c} onClick={() => setFilterCategory(c)}
+              className={`px-2.5 py-1 text-[11px] rounded-md transition-colors ${filterCategory === c ? "bg-brand/20 text-brand" : "text-gray-400 hover:text-white"}`}>
+              {c === "all" ? "全て" : c}
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-1 items-center">
+          <span className="text-xs text-gray-500 mr-1">カバレッジ:</span>
+          {["all", "上位", "弱い", "未対応"].map(c => (
+            <button key={c} onClick={() => setFilterCoverage(c)}
+              className={`px-2.5 py-1 text-[11px] rounded-md transition-colors ${filterCoverage === c ? "bg-brand/20 text-brand" : "text-gray-400 hover:text-white"}`}>
+              {c === "all" ? "全て" : c}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Main table */}
+      <div className="bg-surface-raised border border-white/10 rounded-xl overflow-hidden">
+        <div className="overflow-x-auto max-h-[700px] overflow-y-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="bg-white/5">
+                <th className="text-left py-2 px-3 text-gray-500 font-medium sticky top-0 bg-[#22263a] z-10">キーワード</th>
+                <th className="text-center py-2 px-3 text-gray-500 font-medium sticky top-0 bg-[#22263a] z-10 whitespace-nowrap">タイプ</th>
+                <th className="text-center py-2 px-3 text-gray-500 font-medium sticky top-0 bg-[#22263a] z-10 whitespace-nowrap">CV意図</th>
+                <th className="text-center py-2 px-3 text-gray-500 font-medium sticky top-0 bg-[#22263a] z-10 whitespace-nowrap">YT検索</th>
+                <th className="text-right py-2 px-3 text-gray-500 font-medium sticky top-0 bg-[#22263a] z-10 whitespace-nowrap">検索流入</th>
+                <th className="text-left py-2 px-3 text-gray-500 font-medium sticky top-0 bg-[#22263a] z-10">推定#1動画</th>
+                <th className="text-right py-2 px-3 text-gray-500 font-medium sticky top-0 bg-[#22263a] z-10 whitespace-nowrap">シェア</th>
+                <th className="text-right py-2 px-3 text-gray-500 font-medium sticky top-0 bg-[#22263a] z-10 whitespace-nowrap">SC imp</th>
+                <th className="text-right py-2 px-3 text-gray-500 font-medium sticky top-0 bg-[#22263a] z-10 whitespace-nowrap">SC clicks</th>
+                <th className="text-right py-2 px-3 text-gray-500 font-medium sticky top-0 bg-[#22263a] z-10 whitespace-nowrap">SC順位</th>
+                <th className="text-right py-2 px-3 text-gray-500 font-medium sticky top-0 bg-[#22263a] z-10 whitespace-nowrap">Ads CV</th>
+                <th className="text-right py-2 px-3 text-gray-500 font-medium sticky top-0 bg-[#22263a] z-10 whitespace-nowrap">Ads費用</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((row, i) => {
+                const coverageBg = row.coverage === "上位" ? "border-l-2 border-l-green-500" : row.coverage === "弱い" ? "border-l-2 border-l-yellow-500" : "border-l-2 border-l-red-500";
+                return (
+                  <tr key={i} className={`${coverageBg} hover:bg-white/5`}>
+                    <td className="py-2 px-3">
+                      <span className="text-white font-medium">{row.keyword}</span>
+                    </td>
+                    <td className="text-center py-2 px-3 whitespace-nowrap">
+                      {row.firmType === "戦略" ? (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-indigo-500/20 text-indigo-300">戦略</span>
+                      ) : row.firmType === "総合" ? (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-500/20 text-gray-400">総合</span>
+                      ) : (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-500/20 text-blue-300">{row.category}</span>
+                      )}
+                    </td>
+                    <td className="text-center py-2 px-3">
+                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                        row.cvIntent === "HIGH" ? "bg-red-500/20 text-red-300" : row.cvIntent === "MID" ? "bg-yellow-500/20 text-yellow-300" : "bg-gray-500/20 text-gray-400"
+                      }`}>{row.cvIntent}</span>
+                    </td>
+                    <td className="text-center py-2 px-3">
+                      {row.coverage === "上位" ? (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-green-500/20 text-green-300">上位</span>
+                      ) : row.coverage === "弱い" ? (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-yellow-500/20 text-yellow-300">弱い</span>
+                      ) : (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-500/20 text-red-300">なし</span>
+                      )}
+                    </td>
+                    <td className="text-right py-2 px-3 text-gray-300 whitespace-nowrap">
+                      {row.ytSearchViews > 0 ? row.ytSearchViews.toLocaleString() : <span className="text-gray-600">—</span>}
+                    </td>
+                    <td className="py-2 px-3 text-gray-300 max-w-[200px] truncate" title={row.topVideoTitle || ""}>
+                      {row.topVideoTitle ? (
+                        <span className="text-gray-300">{row.topVideoTitle}</span>
+                      ) : <span className="text-gray-600">動画なし</span>}
+                    </td>
+                    <td className="text-right py-2 px-3 whitespace-nowrap">
+                      {row.topVideoShare > 0 ? (
+                        <span className={row.topVideoShare >= 25 ? "text-green-400" : "text-yellow-400"}>{row.topVideoShare}%</span>
+                      ) : <span className="text-gray-600">—</span>}
+                    </td>
+                    <td className="text-right py-2 px-3 text-gray-300 whitespace-nowrap">
+                      {row.scImp > 0 ? row.scImp.toLocaleString() : <span className="text-gray-600">—</span>}
+                    </td>
+                    <td className="text-right py-2 px-3 text-gray-300 whitespace-nowrap">
+                      {row.scClicks > 0 ? row.scClicks.toLocaleString() : <span className="text-gray-600">—</span>}
+                    </td>
+                    <td className="text-right py-2 px-3 whitespace-nowrap">
+                      {row.scAvgPos !== null ? (
+                        <span className={row.scAvgPos <= 3 ? "text-green-400" : row.scAvgPos <= 10 ? "text-yellow-400" : "text-gray-400"}>{row.scAvgPos}</span>
+                      ) : <span className="text-gray-600">—</span>}
+                    </td>
+                    <td className="text-right py-2 px-3 whitespace-nowrap">
+                      {row.adsCv > 0 ? (
+                        <span className="text-emerald-300 font-medium">{row.adsCv.toFixed(1)}</span>
+                      ) : <span className="text-gray-600">—</span>}
+                    </td>
+                    <td className="text-right py-2 px-3 whitespace-nowrap">
+                      {row.adsCost > 0 ? (
+                        <span className="text-gray-400">¥{Math.round(row.adsCost).toLocaleString()}</span>
+                      ) : <span className="text-gray-600">—</span>}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Legend */}
+      <div className="flex gap-4 text-[10px] text-gray-500 flex-wrap">
+        <span><span className="inline-block w-2 h-2 rounded-full bg-green-500 mr-1"></span>上位: 検索流入100+かつシェア20%以上</span>
+        <span><span className="inline-block w-2 h-2 rounded-full bg-yellow-500 mr-1"></span>弱い: 検索流入あるが分散or少量</span>
+        <span><span className="inline-block w-2 h-2 rounded-full bg-red-500 mr-1"></span>なし: 検索流入ゼロ = 動画不在</span>
+        <span>SC = Search Console (Web検索) | Ads CV = Google Adsでの実CV数</span>
       </div>
     </div>
   );
