@@ -420,6 +420,7 @@ export interface YouTubeVideo {
   total_views: number;
   total_likes: number;
   total_comments: number;
+  privacy_status: string;
 }
 
 export interface YouTubeDaily {
@@ -471,7 +472,7 @@ export interface YouTubeFunnelCustomer {
 export async function fetchYouTubeVideos(): Promise<YouTubeVideo[]> {
   const { data, error } = await supabase()
     .from("analytics_youtube_videos")
-    .select("video_id,title,published_at,thumbnail_url,duration_seconds,total_views,total_likes,total_comments")
+    .select("video_id,title,published_at,thumbnail_url,duration_seconds,total_views,total_likes,total_comments,privacy_status")
     .eq("is_active", true)
     .order("published_at", { ascending: false });
 
@@ -538,6 +539,26 @@ export async function fetchYouTubeTrafficSources(): Promise<YouTubeTrafficSource
 
   if (error) {
     console.error("YouTube traffic source fetch error:", error.message);
+    return [];
+  }
+  return data || [];
+}
+
+/** YouTube動画別検索語句 */
+export interface YouTubeSearchTerm {
+  video_id: string;
+  search_term: string;
+  views: number;
+}
+
+export async function fetchYouTubeSearchTerms(): Promise<YouTubeSearchTerm[]> {
+  const { data, error } = await supabase()
+    .from("analytics_youtube_search_terms")
+    .select("video_id,search_term,views")
+    .order("views", { ascending: false });
+
+  if (error) {
+    console.error("YouTube search terms fetch error:", error.message);
     return [];
   }
   return data || [];

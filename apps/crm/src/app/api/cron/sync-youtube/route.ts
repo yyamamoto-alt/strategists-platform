@@ -39,6 +39,7 @@ interface VideoMeta {
   total_views: number;
   total_likes: number;
   total_comments: number;
+  privacy_status: string;
 }
 
 /** ISO 8601 duration (PT1H2M3S) を秒に変換 */
@@ -84,7 +85,7 @@ async function fetchVideoDetails(accessToken: string, videoIds: string[]): Promi
   // 50個ずつバッチ処理
   for (let i = 0; i < videoIds.length; i += 50) {
     const batch = videoIds.slice(i, i + 50);
-    const url = `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,contentDetails&id=${batch.join(",")}`;
+    const url = `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,contentDetails,status&id=${batch.join(",")}`;
     const res = await fetch(url, { headers: authHeaders(accessToken), cache: "no-store" });
     if (!res.ok) {
       console.error(`Videos API error: ${res.status}`);
@@ -102,6 +103,7 @@ async function fetchVideoDetails(accessToken: string, videoIds: string[]): Promi
         total_views: parseInt(item.statistics?.viewCount || "0"),
         total_likes: parseInt(item.statistics?.likeCount || "0"),
         total_comments: parseInt(item.statistics?.commentCount || "0"),
+        privacy_status: item.status?.privacyStatus || "public",
       });
     }
   }
@@ -292,6 +294,7 @@ async function upsertVideos(supabase: any, videos: VideoMeta[]) {
     total_views: v.total_views,
     total_likes: v.total_likes,
     total_comments: v.total_comments,
+    privacy_status: v.privacy_status,
     is_active: true,
     updated_at: new Date().toISOString(),
   }));
@@ -334,6 +337,148 @@ async function upsertChannelDaily(supabase: any, rows: ChannelDailyRow[], totalS
     .from("analytics_youtube_channel_daily")
     .upsert(enriched, { onConflict: "date" });
   if (error) console.error("YouTube channel daily upsert error:", error.message);
+}
+
+/* ───── Search Terms & Traffic Sources (cumulative) ───── */
+
+interface SearchTermRow {
+  video_id: string;
+  search_term: string;
+  views: number;
+  estimated_minutes_watched: number;
+}
+
+interface TrafficSourceRow {
+  video_id: string;
+  source_type: string;
+  views: number;
+  estimated_minutes_watched: number;
+}
+
+async function fetchSearchTerms(accessToken: string, videoIds: string[]): Promise<SearchTermRow[]> {
+  const results: SearchTermRow[] = [];
+  const endDate = new Date();
+  endDate.setDate(endDate.getDate() - 3);
+  const startDate = "2024-01-01";
+  const endStr = endDate.toISOString().slice(0, 10);
+
+  // YouTube Analytics API doesn't support video+insightTrafficSourceDetail together.
+  // Must query per-video. Limit to avoid quota issues.
+  const maxVideos = Math.min(videoIds.length, 60);
+  for (let i = 0; i < maxVideos; i++) {
+    const vid = videoIds[i];
+    const params = new URLSearchParams({
+      ids: "channel==MINE",
+      startDate,
+      endDate: endStr,
+      dimensions: "insightTrafficSourceDetail",
+      metrics: "views,estimatedMinutesWatched",
+      filters: `video==${vid};insightTrafficSourceType==YT_SEARCH`,
+      maxResults: "10",
+      sort: "-views",
+    });
+
+    const res = await fetch(
+      `https://youtubeanalytics.googleapis.com/v2/reports?${params}`,
+      { headers: authHeaders(accessToken), cache: "no-store" }
+    );
+
+    if (!res.ok) {
+      // Some videos may not have search traffic - skip silently
+      continue;
+    }
+
+    const data = await res.json();
+    for (const row of data.rows || []) {
+      results.push({
+        video_id: vid,
+        search_term: row[0],
+        views: row[1] || 0,
+        estimated_minutes_watched: row[2] || 0,
+      });
+    }
+  }
+  return results;
+}
+
+async function fetchTrafficSources(accessToken: string, videoIds: string[]): Promise<TrafficSourceRow[]> {
+  const results: TrafficSourceRow[] = [];
+  const endDate = new Date();
+  endDate.setDate(endDate.getDate() - 3);
+  const startDate = "2024-01-01";
+  const endStr = endDate.toISOString().slice(0, 10);
+
+  for (let i = 0; i < videoIds.length; i += 200) {
+    const batch = videoIds.slice(i, i + 200);
+    const params = new URLSearchParams({
+      ids: "channel==MINE",
+      startDate,
+      endDate: endStr,
+      dimensions: "video,insightTrafficSourceType",
+      metrics: "views,estimatedMinutesWatched",
+      filters: `video==${batch.join(",")}`,
+      sort: "-views",
+    });
+
+    const res = await fetch(
+      `https://youtubeanalytics.googleapis.com/v2/reports?${params}`,
+      { headers: authHeaders(accessToken), cache: "no-store" }
+    );
+
+    if (!res.ok) {
+      console.error(`YT traffic sources error: ${res.status}`);
+      continue;
+    }
+
+    const data = await res.json();
+    for (const row of data.rows || []) {
+      results.push({
+        video_id: row[0],
+        source_type: row[1],
+        views: row[2] || 0,
+        estimated_minutes_watched: row[3] || 0,
+      });
+    }
+  }
+  return results;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function upsertSearchTerms(supabase: any, rows: SearchTermRow[]) {
+  if (rows.length === 0) return;
+  const dbRows = rows.map(r => ({
+    video_id: r.video_id,
+    search_term: r.search_term,
+    views: r.views,
+    estimated_minutes_watched: r.estimated_minutes_watched,
+    updated_at: new Date().toISOString(),
+  }));
+  for (let i = 0; i < dbRows.length; i += 100) {
+    const batch = dbRows.slice(i, i + 100);
+    const { error } = await supabase
+      .from("analytics_youtube_search_terms")
+      .upsert(batch, { onConflict: "video_id,search_term" });
+    if (error) console.error("Search terms upsert error:", error.message);
+  }
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function upsertTrafficSources(supabase: any, rows: TrafficSourceRow[]) {
+  if (rows.length === 0) return;
+  const dbRows = rows.map(r => ({
+    video_id: r.video_id,
+    source_type: r.source_type,
+    views: r.views,
+    estimated_minutes_watched: r.estimated_minutes_watched,
+    updated_at: new Date().toISOString(),
+  }));
+  for (let i = 0; i < dbRows.length; i += 100) {
+    const batch = dbRows.slice(i, i + 100);
+    const { error } = await supabase
+      .from("analytics_youtube_traffic_source")
+      .upsert(batch, { onConflict: "video_id,source_type" });
+    if (error) console.error("Traffic sources upsert error:", error.message);
+  }
 }
 
 /* ───── Main Handler ───── */
@@ -406,6 +551,16 @@ export async function GET(request: Request) {
     await upsertDailyRows(supabase, videoDailyRows);
     await upsertChannelDaily(supabase, channelDailyRows, totalSubscribers, totalVideos);
 
+    // 6. 検索語句 + トラフィックソース（累計、毎回全更新）
+    const [searchTerms, trafficSourceRows] = await Promise.all([
+      fetchSearchTerms(accessToken, videoIds),
+      fetchTrafficSources(accessToken, videoIds),
+    ]);
+    await Promise.all([
+      upsertSearchTerms(supabase, searchTerms),
+      upsertTrafficSources(supabase, trafficSourceRows),
+    ]);
+
     return NextResponse.json({
       success: true,
       period: { start, end },
@@ -413,6 +568,8 @@ export async function GET(request: Request) {
       daily_rows: videoDailyRows.length,
       channel_daily_rows: channelDailyRows.length,
       total_subscribers: totalSubscribers,
+      search_terms: searchTerms.length,
+      traffic_sources: trafficSourceRows.length,
     });
   } catch (error) {
     console.error("YouTube sync error:", error);
