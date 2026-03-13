@@ -35,8 +35,8 @@ export default async function AnalyticsPage() {
     fetchMetaCampaignDaily(365),
     fetchMetaFunnelData(),
     fetchYouTubeVideos(),
-    fetchYouTubeDaily(90),
-    fetchYouTubeChannelDaily(90),
+    fetchYouTubeDaily(365),
+    fetchYouTubeChannelDaily(365),
     fetchYouTubeFunnelData(),
   ]);
 

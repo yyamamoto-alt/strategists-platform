@@ -40,7 +40,7 @@ function formatDuration(seconds: number): string {
 }
 
 function isShort(video: YouTubeVideo): boolean {
-  return video.duration_seconds <= 60;
+  return video.duration_seconds <= 180;
 }
 
 function GranularitySelector({ value, onChange }: { value: ChartGranularity; onChange: (g: ChartGranularity) => void }) {
