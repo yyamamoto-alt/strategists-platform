@@ -730,13 +730,16 @@ function CustomerDetailModal({
           <div className="space-y-2">
             <div className="flex items-center justify-between p-2 rounded-lg bg-white/[0.02]">
               <div className="flex items-center gap-2">
-                <span className={`text-xs ${d?.identityDocUrl ? "text-green-400" : "text-red-400"}`}>
-                  {d?.identityDocUrl ? "✅" : "❌"} 本人確認書類
+                <span className={`text-xs ${checks?.identityDocVerified ? "text-green-400" : d?.identityDocUrl ? "text-amber-400" : "text-red-400"}`}>
+                  {checks?.identityDocVerified ? "✅" : d?.identityDocUrl ? "📎" : "❌"} 本人確認書類
                 </span>
                 {d?.identityDocUrl && (
                   <a href={d.identityDocUrl.split(",")[0].trim()} target="_blank" rel="noopener" className="text-[10px] text-brand hover:underline">
                     確認
                   </a>
+                )}
+                {d?.identityDocUrl && !checks?.identityDocVerified && (
+                  <span className="text-[9px] text-amber-400">要目視</span>
                 )}
               </div>
               {checks && (
@@ -754,13 +757,16 @@ function CustomerDetailModal({
             </div>
             <div className="flex items-center justify-between p-2 rounded-lg bg-white/[0.02]">
               <div className="flex items-center gap-2">
-                <span className={`text-xs ${d?.bankDocUrl ? "text-green-400" : "text-red-400"}`}>
-                  {d?.bankDocUrl ? "✅" : "❌"} 振込先書類
+                <span className={`text-xs ${checks?.bankDocVerified ? "text-green-400" : d?.bankDocUrl ? "text-amber-400" : "text-red-400"}`}>
+                  {checks?.bankDocVerified ? "✅" : d?.bankDocUrl ? "📎" : "❌"} 振込先書類
                 </span>
                 {d?.bankDocUrl && (
                   <a href={d.bankDocUrl.split(",")[0].trim()} target="_blank" rel="noopener" className="text-[10px] text-brand hover:underline">
                     確認
                   </a>
+                )}
+                {d?.bankDocUrl && !checks?.bankDocVerified && (
+                  <span className="text-[9px] text-amber-400">要目視</span>
                 )}
               </div>
               {checks && (
@@ -790,35 +796,50 @@ function CustomerDetailModal({
           <div className="grid grid-cols-3 gap-3">
             <button
               onClick={() => onOpenDoc("invoice")}
-              className="p-3 rounded-lg border border-white/10 hover:bg-white/5 transition-colors text-left"
+              className="p-4 rounded-lg border-2 border-dashed border-white/20 hover:border-brand/50 hover:bg-brand/5 transition-all text-left group cursor-pointer"
             >
-              <p className="text-xs font-bold text-white">請求書/明細書</p>
-              <p className="text-[10px] text-gray-500 mt-0.5">入塾時に発行</p>
-              {documents?.invoiceIssuedAt && (
-                <p className="text-[10px] text-green-400 mt-1">発行済み: {normalizeDate(documents.invoiceIssuedAt)}</p>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-base">📄</span>
+                <p className="text-xs font-bold text-white group-hover:text-brand transition-colors">請求書/明細書</p>
+              </div>
+              <p className="text-[10px] text-gray-500">入塾時に発行</p>
+              {documents?.invoiceIssuedAt ? (
+                <p className="text-[10px] text-green-400 mt-2">✅ 発行済み: {normalizeDate(documents.invoiceIssuedAt)}</p>
+              ) : (
+                <p className="text-[10px] text-brand/60 mt-2 group-hover:text-brand">クリックして発行 →</p>
               )}
             </button>
             <button
               onClick={() => onOpenDoc("receipt")}
-              className="p-3 rounded-lg border border-white/10 hover:bg-white/5 transition-colors text-left"
+              className="p-4 rounded-lg border-2 border-dashed border-white/20 hover:border-brand/50 hover:bg-brand/5 transition-all text-left group cursor-pointer"
             >
-              <p className="text-xs font-bold text-white">領収書</p>
-              <p className="text-[10px] text-gray-500 mt-0.5">書類目視確認後に発行</p>
-              {documents?.receiptIssuedAt && (
-                <p className="text-[10px] text-green-400 mt-1">発行済み: {normalizeDate(documents.receiptIssuedAt)}</p>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-base">🧾</span>
+                <p className="text-xs font-bold text-white group-hover:text-brand transition-colors">領収書</p>
+              </div>
+              <p className="text-[10px] text-gray-500">書類目視確認後に発行</p>
+              {documents?.receiptIssuedAt ? (
+                <p className="text-[10px] text-green-400 mt-2">✅ 発行済み: {normalizeDate(documents.receiptIssuedAt)}</p>
+              ) : (
+                <p className="text-[10px] text-brand/60 mt-2 group-hover:text-brand">クリックして発行 →</p>
               )}
             </button>
             <button
               onClick={() => onOpenDoc("certificate")}
-              className="p-3 rounded-lg border border-white/10 hover:bg-white/5 transition-colors text-left"
+              className="p-4 rounded-lg border-2 border-dashed border-white/20 hover:border-brand/50 hover:bg-brand/5 transition-all text-left group cursor-pointer"
             >
-              <p className="text-xs font-bold text-white">修了証明書</p>
-              <p className="text-[10px] text-gray-500 mt-0.5">修了条件達成後に発行</p>
-              {documents?.certificateIssuedAt && (
-                <p className="text-[10px] text-green-400 mt-1">
-                  発行済み: {normalizeDate(documents.certificateIssuedAt)}
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-base">🎓</span>
+                <p className="text-xs font-bold text-white group-hover:text-brand transition-colors">修了証明書</p>
+              </div>
+              <p className="text-[10px] text-gray-500">修了条件達成後に発行</p>
+              {documents?.certificateIssuedAt ? (
+                <p className="text-[10px] text-green-400 mt-2">
+                  ✅ 発行済み: {normalizeDate(documents.certificateIssuedAt)}
                   {documents.certificateNumber && ` (No.${documents.certificateNumber})`}
                 </p>
+              ) : (
+                <p className="text-[10px] text-brand/60 mt-2 group-hover:text-brand">クリックして発行 →</p>
               )}
             </button>
           </div>
