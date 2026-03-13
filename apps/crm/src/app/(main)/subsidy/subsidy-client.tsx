@@ -34,8 +34,11 @@ interface SubsidyCompletionData {
 
 interface DocumentData {
   invoiceIssuedAt: string | null;
+  invoiceSentAt: string | null;
   receiptIssuedAt: string | null;
+  receiptSentAt: string | null;
   certificateIssuedAt: string | null;
+  certificateSentAt: string | null;
   certificateNumber: string | null;
 }
 
@@ -67,6 +70,13 @@ const RESKILLING_UNIT = 203636;
 function normalizeDate(d: string | null | undefined): string {
   if (!d) return "";
   return d.replace(/\//g, "-").split("T")[0].split(" ")[0];
+}
+
+function formatMMDD(d: string | null | undefined): string {
+  if (!d) return "";
+  const date = new Date(normalizeDate(d) + "T00:00:00");
+  if (isNaN(date.getTime())) return "";
+  return `${date.getMonth() + 1}/${date.getDate()}`;
 }
 
 function formatDateJP(d: string | null | undefined): string {
@@ -121,16 +131,22 @@ function getAttributeColor(attr: string | null | undefined): string {
   return "bg-gray-700 text-gray-400";
 }
 
-/** 修了条件の達成数を計算（目視確認含む5条件） */
-function getConditionScore(d: SubsidyCompletionData | undefined, chk: SubsidyCheckData | undefined): { met: number; total: number } {
-  if (!d) return { met: 0, total: 5 };
+/** 修了条件の達成数を計算（7条件） */
+function getConditionScore(
+  d: SubsidyCompletionData | undefined,
+  chk: SubsidyCheckData | undefined,
+  docs?: DocumentData | undefined,
+): { met: number; total: number } {
+  if (!d) return { met: 0, total: 7 };
   let met = 0;
   if (d.hasOutputForm) met++;
   if (d.caseConditionMet) met++;
   if (d.behaviorConditionMet) met++;
   if (d.hasPassingEvaluation) met++;
   if (chk?.identityDocVerified && chk?.bankDocVerified) met++;
-  return { met, total: 5 };
+  if (chk?.contractVerified) met++;
+  if (docs?.invoiceSentAt && docs?.receiptSentAt && docs?.certificateSentAt) met++;
+  return { met, total: 7 };
 }
 
 /** 入金日から2週間経過しても初回指導日が未入力の場合の警告 */
@@ -342,8 +358,6 @@ function DocumentModal({
   const [certNumber, setCertNumber] = useState("00001");
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
-  const [issuing, setIssuing] = useState(false);
-  const [issued, setIssued] = useState(false);
 
   const customerEmail = customer.email || "";
 
@@ -358,11 +372,9 @@ function DocumentModal({
     if (!completion.hasPassingEvaluation) conditionWarnings.push("内定獲得圏内以上の評価なし");
   }
 
-  const handleIssue = async () => {
-    setIssuing(true);
+  const handleSend = async () => {
+    setSending(true);
     try {
-      // 領収書はメール送付も同時に行う
-      const shouldSendEmail = state.type === "receipt" && !!customerEmail;
       const res = await fetch("/api/subsidy/issue-document", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -374,37 +386,11 @@ function DocumentModal({
           paymentDate,
           startDate,
           endDate,
-          sendEmail: shouldSendEmail,
+          sendEmail: !!customerEmail,
         }),
       });
       const data = await res.json();
       if (data.certificateNumber) setCertNumber(data.certificateNumber);
-      setIssued(true);
-      if (shouldSendEmail && data.emailSentAt) setSent(true);
-    } catch (e) {
-      console.error("Issue failed:", e);
-    } finally {
-      setIssuing(false);
-    }
-  };
-
-  const handleSendEmail = async () => {
-    setSending(true);
-    try {
-      await fetch("/api/subsidy/issue-document", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          customerId: customer.id,
-          docType: state.type,
-          customerName: customer.name,
-          customerEmail,
-          paymentDate,
-          startDate,
-          endDate,
-          sendEmail: true,
-        }),
-      });
       setSent(true);
     } catch (e) {
       console.error("Send failed:", e);
@@ -476,14 +462,20 @@ function DocumentModal({
           {(state.type === "invoice" || state.type === "receipt") && (
             <div>
               <label className="text-xs text-gray-400 block mb-1">
-                {state.type === "invoice" ? "支払い通知日（入金日）" : "発行日"}
+                {state.type === "invoice" ? "支払い通知日（入金日と同一）" : "発行日"}
               </label>
-              <input
-                type="date"
-                value={paymentDate}
-                onChange={(e) => setPaymentDate(e.target.value)}
-                className="w-48 px-3 py-1.5 bg-white/5 border border-white/10 rounded text-sm text-white"
-              />
+              {state.type === "invoice" ? (
+                <p className="w-48 px-3 py-1.5 bg-white/5 border border-white/10 rounded text-sm text-white">
+                  {paymentDate || "入金日未設定"}
+                </p>
+              ) : (
+                <input
+                  type="date"
+                  value={paymentDate}
+                  onChange={(e) => setPaymentDate(e.target.value)}
+                  className="w-48 px-3 py-1.5 bg-white/5 border border-white/10 rounded text-sm text-white"
+                />
+              )}
             </div>
           )}
           {state.type === "certificate" && (
@@ -535,36 +527,25 @@ function DocumentModal({
           >
             PDF印刷
           </button>
-          <div className="flex gap-2">
-            {!issued ? (
-              <button
-                onClick={handleIssue}
-                disabled={issuing || (state.type === "receipt" && !customerEmail)}
-                className="px-4 py-2 text-sm bg-brand text-white rounded-lg hover:bg-brand/90 disabled:opacity-50 transition-colors"
-                title={state.type === "receipt" && !customerEmail ? "メールアドレス未登録のため送付できません" : undefined}
-              >
-                {issuing
-                  ? (state.type === "receipt" ? "送付中..." : "登録中...")
-                  : (state.type === "receipt"
-                    ? `${customerEmail} にメール送付`
-                    : "発行記録を登録")}
-              </button>
-            ) : (
+          <div className="flex gap-2 items-center">
+            {!sent ? (
               <>
-                <span className="text-xs text-green-400 self-center mr-2">
-                  {sent ? "送付済み" : "登録済み"}
-                </span>
-                {!sent && state.type !== "receipt" && (
-                  <button
-                    onClick={handleSendEmail}
-                    disabled={sending || !customerEmail}
-                    className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-500 disabled:opacity-50 transition-colors"
-                    title={!customerEmail ? "メールアドレス未登録" : `${customerEmail} に送信（CC: support@）`}
-                  >
-                    {sending ? "送信中..." : `メール送信`}
-                  </button>
+                {!customerEmail && (
+                  <span className="text-xs text-amber-400 mr-2">⚠ メール未登録</span>
                 )}
+                <button
+                  onClick={handleSend}
+                  disabled={sending || !customerEmail}
+                  className="px-5 py-2.5 text-sm bg-brand text-white rounded-lg hover:bg-brand/90 disabled:opacity-50 transition-colors font-medium"
+                  title={!customerEmail ? "メールアドレス未登録のため送付できません" : `${customerEmail} にPDF送付（CC: support@）`}
+                >
+                  {sending ? "送付中..." : `📧 ${typeLabel}を送付する`}
+                </button>
               </>
+            ) : (
+              <span className="flex items-center gap-2 text-sm text-green-400 font-medium">
+                ✅ 送付完了（{customerEmail}）
+              </span>
             )}
           </div>
         </div>
@@ -782,22 +763,22 @@ function CustomerDetailModal({
               </div>
             </div>
 
-            {/* Condition 7: 書類発行 */}
+            {/* Condition 7: 書類送付 */}
             {(() => {
-              const allIssued = !!(documents?.invoiceIssuedAt && documents?.receiptIssuedAt && documents?.certificateIssuedAt);
+              const allSent = !!(documents?.invoiceSentAt && documents?.receiptSentAt && documents?.certificateSentAt);
               return (
-                <div className={`p-3 rounded-lg border ${allIssued ? "border-green-500/30 bg-green-900/10" : "border-red-500/30 bg-red-900/10"}`}>
-                  <ConditionBadge label="書類発行" met={allIssued} />
-                  <p className="text-[10px] text-gray-500 mt-1">請求書・領収書・修了証の全て発行</p>
+                <div className={`p-3 rounded-lg border ${allSent ? "border-green-500/30 bg-green-900/10" : "border-red-500/30 bg-red-900/10"}`}>
+                  <ConditionBadge label="書類送付" met={allSent} />
+                  <p className="text-[10px] text-gray-500 mt-1">請求書・領収書・修了証を全て送付</p>
                   <div className="mt-1 flex gap-1.5">
-                    <span className={`text-[9px] px-1 py-0.5 rounded ${documents?.invoiceIssuedAt ? "bg-green-900/40 text-green-300" : "bg-red-900/40 text-red-300"}`}>
-                      {documents?.invoiceIssuedAt ? "✓" : "✗"} 請求
+                    <span className={`text-[9px] px-1 py-0.5 rounded ${documents?.invoiceSentAt ? "bg-green-900/40 text-green-300" : documents?.invoiceIssuedAt ? "bg-amber-900/40 text-amber-300" : "bg-red-900/40 text-red-300"}`}>
+                      {documents?.invoiceSentAt ? "📧" : documents?.invoiceIssuedAt ? "⚠" : "✗"} 請求
                     </span>
-                    <span className={`text-[9px] px-1 py-0.5 rounded ${documents?.receiptIssuedAt ? "bg-green-900/40 text-green-300" : "bg-red-900/40 text-red-300"}`}>
-                      {documents?.receiptIssuedAt ? "✓" : "✗"} 領収
+                    <span className={`text-[9px] px-1 py-0.5 rounded ${documents?.receiptSentAt ? "bg-green-900/40 text-green-300" : documents?.receiptIssuedAt ? "bg-amber-900/40 text-amber-300" : "bg-red-900/40 text-red-300"}`}>
+                      {documents?.receiptSentAt ? "📧" : documents?.receiptIssuedAt ? "⚠" : "✗"} 領収
                     </span>
-                    <span className={`text-[9px] px-1 py-0.5 rounded ${documents?.certificateIssuedAt ? "bg-green-900/40 text-green-300" : "bg-red-900/40 text-red-300"}`}>
-                      {documents?.certificateIssuedAt ? "✓" : "✗"} 修了
+                    <span className={`text-[9px] px-1 py-0.5 rounded ${documents?.certificateSentAt ? "bg-green-900/40 text-green-300" : documents?.certificateIssuedAt ? "bg-amber-900/40 text-amber-300" : "bg-red-900/40 text-red-300"}`}>
+                      {documents?.certificateSentAt ? "📧" : documents?.certificateIssuedAt ? "⚠" : "✗"} 修了
                     </span>
                   </div>
                 </div>
@@ -819,10 +800,12 @@ function CustomerDetailModal({
                 <p className="text-xs font-bold text-white group-hover:text-brand transition-colors">請求書/明細書</p>
               </div>
               <p className="text-[10px] text-gray-500">入塾時に発行</p>
-              {documents?.invoiceIssuedAt ? (
-                <p className="text-[10px] text-green-400 mt-2">✅ 発行済み: {normalizeDate(documents.invoiceIssuedAt)}</p>
+              {documents?.invoiceSentAt ? (
+                <p className="text-[10px] text-green-400 mt-2">📧 送付済み: {normalizeDate(documents.invoiceSentAt)}</p>
+              ) : documents?.invoiceIssuedAt ? (
+                <p className="text-[10px] text-amber-400 mt-2">⚠ 発行済み（未送付）</p>
               ) : (
-                <p className="text-[10px] text-brand/60 mt-2 group-hover:text-brand">クリックして発行 →</p>
+                <p className="text-[10px] text-brand/60 mt-2 group-hover:text-brand">クリックして送付 →</p>
               )}
             </button>
             <button
@@ -834,10 +817,12 @@ function CustomerDetailModal({
                 <p className="text-xs font-bold text-white group-hover:text-brand transition-colors">領収書</p>
               </div>
               <p className="text-[10px] text-gray-500">書類目視確認後に発行</p>
-              {documents?.receiptIssuedAt ? (
-                <p className="text-[10px] text-green-400 mt-2">✅ 発行済み: {normalizeDate(documents.receiptIssuedAt)}</p>
+              {documents?.receiptSentAt ? (
+                <p className="text-[10px] text-green-400 mt-2">📧 送付済み: {normalizeDate(documents.receiptSentAt)}</p>
+              ) : documents?.receiptIssuedAt ? (
+                <p className="text-[10px] text-amber-400 mt-2">⚠ 発行済み（未送付）</p>
               ) : (
-                <p className="text-[10px] text-brand/60 mt-2 group-hover:text-brand">クリックして発行 →</p>
+                <p className="text-[10px] text-brand/60 mt-2 group-hover:text-brand">クリックして送付 →</p>
               )}
             </button>
             <button
@@ -849,13 +834,15 @@ function CustomerDetailModal({
                 <p className="text-xs font-bold text-white group-hover:text-brand transition-colors">修了証明書</p>
               </div>
               <p className="text-[10px] text-gray-500">修了条件達成後に発行</p>
-              {documents?.certificateIssuedAt ? (
+              {documents?.certificateSentAt ? (
                 <p className="text-[10px] text-green-400 mt-2">
-                  ✅ 発行済み: {normalizeDate(documents.certificateIssuedAt)}
+                  📧 送付済み: {normalizeDate(documents.certificateSentAt)}
                   {documents.certificateNumber && ` (No.${documents.certificateNumber})`}
                 </p>
+              ) : documents?.certificateIssuedAt ? (
+                <p className="text-[10px] text-amber-400 mt-2">⚠ 発行済み（未送付）</p>
               ) : (
-                <p className="text-[10px] text-brand/60 mt-2 group-hover:text-brand">クリックして発行 →</p>
+                <p className="text-[10px] text-brand/60 mt-2 group-hover:text-brand">クリックして送付 →</p>
               )}
             </button>
           </div>
@@ -912,12 +899,12 @@ function buildColumns(
       sortValue: (c) => { const d = completionData[c.id]; return d?.firstCoachingDate ? normalizeDate(d.firstCoachingDate) : ""; },
       render: (c) => {
         const d = completionData[c.id];
-        const dateStr = d?.firstCoachingDate ? normalizeDate(d.firstCoachingDate) : null;
+        const dateStr = d?.firstCoachingDate ? formatMMDD(d.firstCoachingDate) : null;
         const payDate = paidMap[c.id] || c.contract?.payment_date || null;
         const warn = isTwoWeeksPastPayment(payDate, d?.firstCoachingDate);
         return (
           <span className={`text-xs ${warn ? "text-red-400 font-bold" : "text-gray-300"}`}>
-            {dateStr || (warn ? "⚠️ 未設定" : "-")}
+            {dateStr || (warn ? "⚠️ 2週間超未予約" : "-")}
           </span>
         );
       },
@@ -925,9 +912,12 @@ function buildColumns(
     {
       key: "payment_date",
       label: "入金日",
-      width: 90,
+      width: 60,
       sortValue: (c) => paidMap[c.id] || c.contract?.payment_date || "",
-      render: (c) => <span className="text-gray-300 text-xs">{paidMap[c.id] || c.contract?.payment_date || "-"}</span>,
+      render: (c) => {
+        const raw = paidMap[c.id] || c.contract?.payment_date || null;
+        return <span className="text-gray-300 text-xs">{formatMMDD(raw) || "-"}</span>;
+      },
     },
     {
       key: "coaching_end",
@@ -963,7 +953,8 @@ function buildColumns(
         const end = candidates.reduce((a, b) => a < b ? a : b);
         const endStr = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, "0")}-${String(end.getDate()).padStart(2, "0")}`;
         const isPast = endStr < new Date().toISOString().slice(0, 10);
-        return <span className={`text-xs ${isPast ? "text-red-400" : "text-gray-300"}`}>{endStr}</span>;
+        const displayStr = `${end.getMonth() + 1}/${end.getDate()}`;
+        return <span className={`text-xs ${isPast ? "text-red-400" : "text-gray-300"}`}>{displayStr}</span>;
       },
     },
     {
@@ -974,7 +965,7 @@ function buildColumns(
         const d = completionData[c.id];
         const chk = checksData[c.id];
         const docs = documentData[c.id];
-        return (d?.hasOutputForm ? 1 : 0) + (d?.caseConditionMet ? 1 : 0) + (d?.behaviorConditionMet ? 1 : 0) + (d?.hasPassingEvaluation ? 1 : 0) + ((chk?.identityDocVerified && chk?.bankDocVerified) ? 1 : 0) + (chk?.contractVerified ? 1 : 0) + ((docs?.invoiceIssuedAt && docs?.receiptIssuedAt && docs?.certificateIssuedAt) ? 1 : 0);
+        return (d?.hasOutputForm ? 1 : 0) + (d?.caseConditionMet ? 1 : 0) + (d?.behaviorConditionMet ? 1 : 0) + (d?.hasPassingEvaluation ? 1 : 0) + ((chk?.identityDocVerified && chk?.bankDocVerified) ? 1 : 0) + (chk?.contractVerified ? 1 : 0) + ((docs?.invoiceSentAt && docs?.receiptSentAt && docs?.certificateSentAt) ? 1 : 0);
       },
       render: (c) => {
         const d = completionData[c.id];
@@ -988,7 +979,7 @@ function buildColumns(
           { met: d?.hasPassingEvaluation || false, label: "総合評価" },
           { met: (chk?.identityDocVerified && chk?.bankDocVerified) || false, label: "目視確認" },
           { met: chk?.contractVerified || false, label: "契約書" },
-          { met: !!(docs?.invoiceIssuedAt && docs?.receiptIssuedAt && docs?.certificateIssuedAt), label: "書類発行" },
+          { met: !!(docs?.invoiceSentAt && docs?.receiptSentAt && docs?.certificateSentAt), label: "書類送付" },
         ];
         return (
           <div className="flex items-center gap-1.5">
@@ -1136,20 +1127,26 @@ function buildColumns(
     },
     {
       key: "issued",
-      label: "発行済み",
-      width: 90,
-      sortValue: (c) => { const docs = documentData[c.id]; return (docs?.invoiceIssuedAt ? 1 : 0) + (docs?.receiptIssuedAt ? 1 : 0) + (docs?.certificateIssuedAt ? 1 : 0); },
+      label: "送付状況",
+      width: 100,
+      sortValue: (c) => { const docs = documentData[c.id]; return (docs?.invoiceSentAt ? 2 : docs?.invoiceIssuedAt ? 1 : 0) + (docs?.receiptSentAt ? 2 : docs?.receiptIssuedAt ? 1 : 0) + (docs?.certificateSentAt ? 2 : docs?.certificateIssuedAt ? 1 : 0); },
       render: (c) => {
         const docs = documentData[c.id];
         if (!docs) return <span className="text-xs text-gray-600">-</span>;
+        const items = [
+          { label: "請求", sent: docs.invoiceSentAt, issued: docs.invoiceIssuedAt },
+          { label: "領収", sent: docs.receiptSentAt, issued: docs.receiptIssuedAt },
+          { label: "修了", sent: docs.certificateSentAt, issued: docs.certificateIssuedAt },
+        ];
+        const hasAny = items.some(i => i.sent || i.issued);
+        if (!hasAny) return <span className="text-xs text-gray-600">-</span>;
         return (
-          <div className="flex gap-1">
-            {docs.invoiceIssuedAt && <span className="text-[9px] bg-blue-900/40 text-blue-300 px-1 rounded">請求</span>}
-            {docs.receiptIssuedAt && <span className="text-[9px] bg-purple-900/40 text-purple-300 px-1 rounded">領収</span>}
-            {docs.certificateIssuedAt && <span className="text-[9px] bg-green-900/40 text-green-300 px-1 rounded">修了</span>}
-            {!docs.invoiceIssuedAt && !docs.receiptIssuedAt && !docs.certificateIssuedAt && (
-              <span className="text-xs text-gray-600">-</span>
-            )}
+          <div className="flex gap-1 flex-wrap">
+            {items.map(i => i.sent ? (
+              <span key={i.label} className="text-[9px] bg-green-900/40 text-green-300 px-1 rounded">📧{i.label}</span>
+            ) : i.issued ? (
+              <span key={i.label} className="text-[9px] bg-amber-900/40 text-amber-300 px-1 rounded">⚠{i.label}</span>
+            ) : null)}
           </div>
         );
       },
@@ -1254,10 +1251,10 @@ export function SubsidyClient({ customers, firstPaidMap, completionData, documen
 
   const completedCount = useMemo(() => {
     return subsidyCustomers.filter((c) => {
-      const { met, total } = getConditionScore(completionData[c.id], checksData[c.id]);
+      const { met, total } = getConditionScore(completionData[c.id], checksData[c.id], documentData[c.id]);
       return met === total;
     }).length;
-  }, [subsidyCustomers, completionData, checksData]);
+  }, [subsidyCustomers, completionData, checksData, documentData]);
 
   // 推移用の対象者（元の日付ベース定義）
   const collectionTargets = useMemo(() => customers.filter(isSubsidyCollectionTarget), [customers]);

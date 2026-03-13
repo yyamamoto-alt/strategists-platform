@@ -165,8 +165,11 @@ export async function fetchSubsidyCompletionData(
 
 export interface SubsidyDocumentData {
   invoiceIssuedAt: string | null;
+  invoiceSentAt: string | null;
   receiptIssuedAt: string | null;
+  receiptSentAt: string | null;
   certificateIssuedAt: string | null;
+  certificateSentAt: string | null;
   certificateNumber: string | null;
 }
 
@@ -181,13 +184,13 @@ export async function fetchSubsidyDocuments(
   const db = supabase as any;
   const { data } = await db
     .from("subsidy_documents")
-    .select("customer_id, doc_type, issued_at, certificate_number")
+    .select("customer_id, doc_type, issued_at, email_sent_at, certificate_number")
     .in("customer_id", customerIds)
     .order("issued_at", { ascending: false });
 
   const result: Record<string, SubsidyDocumentData> = {};
   for (const cid of customerIds) {
-    result[cid] = { invoiceIssuedAt: null, receiptIssuedAt: null, certificateIssuedAt: null, certificateNumber: null };
+    result[cid] = { invoiceIssuedAt: null, invoiceSentAt: null, receiptIssuedAt: null, receiptSentAt: null, certificateIssuedAt: null, certificateSentAt: null, certificateNumber: null };
   }
 
   if (data) {
@@ -196,12 +199,15 @@ export async function fetchSubsidyDocuments(
       if (!result[cid]) continue;
       if (row.doc_type === "invoice" && !result[cid].invoiceIssuedAt) {
         result[cid].invoiceIssuedAt = row.issued_at;
+        result[cid].invoiceSentAt = row.email_sent_at;
       }
       if (row.doc_type === "receipt" && !result[cid].receiptIssuedAt) {
         result[cid].receiptIssuedAt = row.issued_at;
+        result[cid].receiptSentAt = row.email_sent_at;
       }
       if (row.doc_type === "certificate" && !result[cid].certificateIssuedAt) {
         result[cid].certificateIssuedAt = row.issued_at;
+        result[cid].certificateSentAt = row.email_sent_at;
         result[cid].certificateNumber = row.certificate_number;
       }
     }
