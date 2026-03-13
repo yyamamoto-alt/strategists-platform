@@ -39,6 +39,17 @@ function stableStringify(obj: unknown): string {
  *   "data": { "お名前": "...", "メールアドレス": "...", ... }
  * }
  */
+
+/** 新規顧客作成を許可するformName一覧。
+ *  これ以外のフォーム（営業報告、課題提出、面接終了後報告等）は
+ *  既存顧客の更新・履歴追加のみ行い、マッチしない場合はunmatched_recordsに保存する。 */
+const ALLOW_CREATE_FORMS = new Set([
+  "カルテ",
+  "LP申込(メインLP)",
+  "LP申込(LP3)",
+  "LP申込(広告LP)",
+]);
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -116,8 +127,8 @@ export async function POST(request: Request) {
           { onConflict: "email" }
         );
       }
-    } else {
-      // 新規顧客を作成
+    } else if (ALLOW_CREATE_FORMS.has(formName)) {
+      // 新規顧客を作成（許可されたフォームのみ）
       isNew = true;
       const customerInsert: Record<string, unknown> = {
         name: name || "未入力",
@@ -157,6 +168,22 @@ export async function POST(request: Request) {
       await db.from("sales_pipeline").insert({
         customer_id: customerId,
         stage: "日程未確",
+      });
+    } else {
+      // 許可されていないフォームでマッチしなかった場合 → unmatched_recordsに保存
+      console.warn(`[webhook/google-forms] No match for "${formName}" (name: ${name}). Saving to unmatched_records.`);
+      await db.from("unmatched_records").insert({
+        source: formName,
+        raw_data: rawData,
+        raw_data_hash: rawHash,
+        status: "pending",
+        notes: `${formName}: 顧客マッチなし（新規作成対象外フォーム）`,
+      });
+
+      return NextResponse.json({
+        success: true,
+        action: "unmatched",
+        reason: `formName "${formName}" is not allowed to create new customers`,
       });
     }
 
