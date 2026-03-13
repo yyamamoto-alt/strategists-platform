@@ -704,7 +704,7 @@ function CustomerDetailModal({
               )}
             </div>
 
-            {/* Condition 5: 目視確認 */}
+            {/* Condition 5: 書類目視確認（提出書類の確認・目視チェック統合） */}
             <div className={`p-3 rounded-lg border ${
               checks?.identityDocVerified && checks?.bankDocVerified
                 ? "border-green-500/30 bg-green-900/10"
@@ -712,81 +712,82 @@ function CustomerDetailModal({
             }`}>
               <ConditionBadge label="書類目視確認" met={(checks?.identityDocVerified && checks?.bankDocVerified) || false} />
               <p className="text-[10px] text-gray-500 mt-1">本人確認書類・振込先書類の両方を目視確認</p>
-              <div className="mt-1 flex gap-2">
-                <span className={`text-[9px] px-1 py-0.5 rounded ${checks?.identityDocVerified ? "bg-green-900/40 text-green-300" : "bg-red-900/40 text-red-300"}`}>
-                  ID: {checks?.identityDocVerified ? "確認済" : "未確認"}
-                </span>
-                <span className={`text-[9px] px-1 py-0.5 rounded ${checks?.bankDocVerified ? "bg-green-900/40 text-green-300" : "bg-red-900/40 text-red-300"}`}>
-                  口座: {checks?.bankDocVerified ? "確認済" : "未確認"}
-                </span>
+              <div className="mt-2 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <span className={`text-[10px] ${checks?.identityDocVerified ? "text-green-400" : d?.identityDocUrl ? "text-amber-400" : "text-red-400"}`}>
+                      {checks?.identityDocVerified ? "✅" : d?.identityDocUrl ? "📎" : "❌"} ID
+                    </span>
+                    {d?.identityDocUrl && (
+                      <a href={d.identityDocUrl.split(",")[0].trim()} target="_blank" rel="noopener" className="text-[9px] text-brand hover:underline">確認</a>
+                    )}
+                  </div>
+                  {checks && (
+                    <button
+                      onClick={() => onToggleCheck?.("identity_doc_verified")}
+                      className={`text-[9px] px-1.5 py-0.5 rounded border transition-colors ${
+                        checks.identityDocVerified
+                          ? "bg-green-900/40 text-green-300 border-green-500/30"
+                          : "bg-gray-800 text-gray-500 border-gray-600 hover:border-gray-400"
+                      }`}
+                    >
+                      {checks.identityDocVerified ? "✓ 確認済" : "未確認"}
+                    </button>
+                  )}
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <span className={`text-[10px] ${checks?.bankDocVerified ? "text-green-400" : d?.bankDocUrl ? "text-amber-400" : "text-red-400"}`}>
+                      {checks?.bankDocVerified ? "✅" : d?.bankDocUrl ? "📎" : "❌"} 口座
+                    </span>
+                    {d?.bankDocUrl && (
+                      <a href={d.bankDocUrl.split(",")[0].trim()} target="_blank" rel="noopener" className="text-[9px] text-brand hover:underline">確認</a>
+                    )}
+                  </div>
+                  {checks && (
+                    <button
+                      onClick={() => onToggleCheck?.("bank_doc_verified")}
+                      className={`text-[9px] px-1.5 py-0.5 rounded border transition-colors ${
+                        checks.bankDocVerified
+                          ? "bg-green-900/40 text-green-300 border-green-500/30"
+                          : "bg-gray-800 text-gray-500 border-gray-600 hover:border-gray-400"
+                      }`}
+                    >
+                      {checks.bankDocVerified ? "✓ 確認済" : "未確認"}
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        </div>
 
-        {/* Documents status */}
-        <div className="px-6 py-4 border-t border-white/10">
-          <h4 className="text-sm font-bold text-white mb-3">提出書類</h4>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between p-2 rounded-lg bg-white/[0.02]">
-              <div className="flex items-center gap-2">
-                <span className={`text-xs ${checks?.identityDocVerified ? "text-green-400" : d?.identityDocUrl ? "text-amber-400" : "text-red-400"}`}>
-                  {checks?.identityDocVerified ? "✅" : d?.identityDocUrl ? "📎" : "❌"} 本人確認書類
-                </span>
-                {d?.identityDocUrl && (
-                  <a href={d.identityDocUrl.split(",")[0].trim()} target="_blank" rel="noopener" className="text-[10px] text-brand hover:underline">
-                    確認
-                  </a>
-                )}
-                {d?.identityDocUrl && !checks?.identityDocVerified && (
-                  <span className="text-[9px] text-amber-400">要目視</span>
-                )}
-              </div>
-              {checks && (
-                <button
-                  onClick={() => onToggleCheck?.("identity_doc_verified")}
-                  className={`text-[10px] px-2 py-1 rounded border transition-colors ${
-                    checks.identityDocVerified
-                      ? "bg-green-900/40 text-green-300 border-green-500/30"
-                      : "bg-gray-800 text-gray-500 border-gray-600 hover:border-gray-400"
-                  }`}
-                >
-                  {checks.identityDocVerified ? "✓ 目視確認済み" : "目視未確認"}
-                </button>
-              )}
+            {/* Condition 6: 契約書締結 */}
+            <div className={`p-3 rounded-lg border ${d?.contractSigned ? "border-green-500/30 bg-green-900/10" : "border-red-500/30 bg-red-900/10"}`}>
+              <ConditionBadge label="契約書締結" met={d?.contractSigned || false} />
+              <p className="text-[10px] text-gray-500 mt-1">契約書への署名確認</p>
+              {d?.contractSigned && <p className="text-[10px] text-amber-400 mt-1">📋 自己申告済</p>}
             </div>
-            <div className="flex items-center justify-between p-2 rounded-lg bg-white/[0.02]">
-              <div className="flex items-center gap-2">
-                <span className={`text-xs ${checks?.bankDocVerified ? "text-green-400" : d?.bankDocUrl ? "text-amber-400" : "text-red-400"}`}>
-                  {checks?.bankDocVerified ? "✅" : d?.bankDocUrl ? "📎" : "❌"} 振込先書類
-                </span>
-                {d?.bankDocUrl && (
-                  <a href={d.bankDocUrl.split(",")[0].trim()} target="_blank" rel="noopener" className="text-[10px] text-brand hover:underline">
-                    確認
-                  </a>
-                )}
-                {d?.bankDocUrl && !checks?.bankDocVerified && (
-                  <span className="text-[9px] text-amber-400">要目視</span>
-                )}
-              </div>
-              {checks && (
-                <button
-                  onClick={() => onToggleCheck?.("bank_doc_verified")}
-                  className={`text-[10px] px-2 py-1 rounded border transition-colors ${
-                    checks.bankDocVerified
-                      ? "bg-green-900/40 text-green-300 border-green-500/30"
-                      : "bg-gray-800 text-gray-500 border-gray-600 hover:border-gray-400"
-                  }`}
-                >
-                  {checks.bankDocVerified ? "✓ 目視確認済み" : "目視未確認"}
-                </button>
-              )}
-            </div>
-            <div className="p-2 rounded-lg bg-white/[0.02]">
-              <span className={`text-xs ${d?.contractSigned ? "text-amber-400" : "text-red-400"}`}>
-                {d?.contractSigned ? "📋 自己申告済（要目視確認）" : "❌ 未確認"} 契約書締結
-              </span>
-            </div>
+
+            {/* Condition 7: 書類発行 */}
+            {(() => {
+              const allIssued = !!(documents?.invoiceIssuedAt && documents?.receiptIssuedAt && documents?.certificateIssuedAt);
+              return (
+                <div className={`p-3 rounded-lg border ${allIssued ? "border-green-500/30 bg-green-900/10" : "border-red-500/30 bg-red-900/10"}`}>
+                  <ConditionBadge label="書類発行" met={allIssued} />
+                  <p className="text-[10px] text-gray-500 mt-1">請求書・領収書・修了証の全て発行</p>
+                  <div className="mt-1 flex gap-1.5">
+                    <span className={`text-[9px] px-1 py-0.5 rounded ${documents?.invoiceIssuedAt ? "bg-green-900/40 text-green-300" : "bg-red-900/40 text-red-300"}`}>
+                      {documents?.invoiceIssuedAt ? "✓" : "✗"} 請求
+                    </span>
+                    <span className={`text-[9px] px-1 py-0.5 rounded ${documents?.receiptIssuedAt ? "bg-green-900/40 text-green-300" : "bg-red-900/40 text-red-300"}`}>
+                      {documents?.receiptIssuedAt ? "✓" : "✗"} 領収
+                    </span>
+                    <span className={`text-[9px] px-1 py-0.5 rounded ${documents?.certificateIssuedAt ? "bg-green-900/40 text-green-300" : "bg-red-900/40 text-red-300"}`}>
+                      {documents?.certificateIssuedAt ? "✓" : "✗"} 修了
+                    </span>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
 
@@ -890,27 +891,6 @@ function buildColumns(
       ),
     },
     {
-      key: "attribute",
-      label: "属性",
-      width: 48,
-      sortValue: (c) => c.attribute || "",
-      render: (c) => (
-        <span className={`text-[11px] px-1.5 py-0.5 rounded font-medium ${getAttributeColor(c.attribute)}`}>
-          {c.attribute || "-"}
-        </span>
-      ),
-    },
-    {
-      key: "stage",
-      label: "ステージ",
-      width: 90,
-      sortValue: (c) => c.pipeline?.stage || "",
-      render: (c) => {
-        const s = c.pipeline?.stage || "-";
-        return <span className={`text-xs px-1.5 py-0.5 rounded ${getStageColor(s)}`}>{s}</span>;
-      },
-    },
-    {
       key: "first_coaching",
       label: "初回指導日",
       width: 100,
@@ -974,15 +954,17 @@ function buildColumns(
     {
       key: "conditions",
       label: "修了条件",
-      width: 380,
+      width: 500,
       sortValue: (c) => {
         const d = completionData[c.id];
         const chk = checksData[c.id];
-        return (d?.hasOutputForm ? 1 : 0) + (d?.caseConditionMet ? 1 : 0) + (d?.behaviorConditionMet ? 1 : 0) + (d?.hasPassingEvaluation ? 1 : 0) + ((chk?.identityDocVerified && chk?.bankDocVerified) ? 1 : 0);
+        const docs = documentData[c.id];
+        return (d?.hasOutputForm ? 1 : 0) + (d?.caseConditionMet ? 1 : 0) + (d?.behaviorConditionMet ? 1 : 0) + (d?.hasPassingEvaluation ? 1 : 0) + ((chk?.identityDocVerified && chk?.bankDocVerified) ? 1 : 0) + (d?.contractSigned ? 1 : 0) + ((docs?.invoiceIssuedAt && docs?.receiptIssuedAt && docs?.certificateIssuedAt) ? 1 : 0);
       },
       render: (c) => {
         const d = completionData[c.id];
         const chk = checksData[c.id];
+        const docs = documentData[c.id];
         const alerts = getAlerts(d);
         const conditions = [
           { met: d?.hasOutputForm || false, label: "教材" },
@@ -990,6 +972,8 @@ function buildColumns(
           { met: d?.behaviorConditionMet || false, label: "BH/追加指導" },
           { met: d?.hasPassingEvaluation || false, label: "総合評価" },
           { met: (chk?.identityDocVerified && chk?.bankDocVerified) || false, label: "目視確認" },
+          { met: d?.contractSigned || false, label: "契約書" },
+          { met: !!(docs?.invoiceIssuedAt && docs?.receiptIssuedAt && docs?.certificateIssuedAt), label: "書類発行" },
         ];
         return (
           <div className="flex items-center gap-1.5">
