@@ -21,13 +21,8 @@ import {
 import { AnalyticsClient } from "./analytics-client";
 
 export default async function AnalyticsPage() {
-  const [
-    pageDailyRows, traffic, searchQueries, searchDailyRows, hourlyRows,
-    adsCampaigns, adsKeywords, adsFunnel, metaCampaigns, metaFunnel,
-    youtubeVideos, youtubeDaily, youtubeChannelDaily, youtubeFunnel,
-    youtubeTrafficSources,
-    youtubeSearchTerms,
-  ] = await Promise.all([
+  // Use allSettled so one failing fetch doesn't break the entire page
+  const results = await Promise.allSettled([
     fetchPageDailyRows(90),
     fetchTrafficSources(90),
     fetchSearchQueries(),
@@ -45,6 +40,26 @@ export default async function AnalyticsPage() {
     fetchYouTubeTrafficSources(),
     fetchYouTubeSearchTerms(),
   ]);
+
+  const v = <T,>(r: PromiseSettledResult<T>, fallback: T): T =>
+    r.status === "fulfilled" ? r.value : fallback;
+
+  const pageDailyRows = v(results[0], []);
+  const traffic = v(results[1], []);
+  const searchQueries = v(results[2], []);
+  const searchDailyRows = v(results[3], []);
+  const hourlyRows = v(results[4], []);
+  const adsCampaigns = v(results[5], []);
+  const adsKeywords = v(results[6], []);
+  const adsFunnel = v(results[7], []);
+  const metaCampaigns = v(results[8], []);
+  const metaFunnel = v(results[9], []);
+  const youtubeVideos = v(results[10], []);
+  const youtubeDaily = v(results[11], []);
+  const youtubeChannelDaily = v(results[12], []);
+  const youtubeFunnel = v(results[13], []);
+  const youtubeTrafficSources = v(results[14], []);
+  const youtubeSearchTerms = v(results[15], []);
 
   return (
     <AnalyticsClient
