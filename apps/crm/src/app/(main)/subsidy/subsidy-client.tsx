@@ -42,6 +42,7 @@ interface DocumentData {
 interface SubsidyCheckData {
   identityDocVerified: boolean;
   bankDocVerified: boolean;
+  contractVerified: boolean;
 }
 
 interface Props {
@@ -591,7 +592,7 @@ function CustomerDetailModal({
   checks: SubsidyCheckData | undefined;
   onClose: () => void;
   onOpenDoc: (type: DocType) => void;
-  onToggleCheck?: (field: "identity_doc_verified" | "bank_doc_verified") => void;
+  onToggleCheck?: (field: "identity_doc_verified" | "bank_doc_verified" | "contract_verified") => void;
 }) {
   const alerts = getAlerts(completion);
   const d = completion;
@@ -761,10 +762,24 @@ function CustomerDetailModal({
             </div>
 
             {/* Condition 6: 契約書締結 */}
-            <div className={`p-3 rounded-lg border ${d?.contractSigned ? "border-green-500/30 bg-green-900/10" : "border-red-500/30 bg-red-900/10"}`}>
-              <ConditionBadge label="契約書締結" met={d?.contractSigned || false} />
+            <div className={`p-3 rounded-lg border ${checks?.contractVerified ? "border-green-500/30 bg-green-900/10" : "border-red-500/30 bg-red-900/10"}`}>
+              <ConditionBadge label="契約書締結" met={checks?.contractVerified || false} />
               <p className="text-[10px] text-gray-500 mt-1">契約書への署名確認</p>
               {d?.contractSigned && <p className="text-[10px] text-amber-400 mt-1">📋 自己申告済</p>}
+              <div className="mt-1.5">
+                {checks && (
+                  <button
+                    onClick={() => onToggleCheck?.("contract_verified")}
+                    className={`text-[9px] px-1.5 py-0.5 rounded border transition-colors ${
+                      checks.contractVerified
+                        ? "bg-green-900/40 text-green-300 border-green-500/30"
+                        : "bg-gray-800 text-gray-500 border-gray-600 hover:border-gray-400"
+                    }`}
+                  >
+                    {checks.contractVerified ? "✓ 確認済" : "未確認"}
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Condition 7: 書類発行 */}
@@ -860,7 +875,7 @@ function buildColumns(
   documentData: Record<string, DocumentData>,
   checksData: Record<string, SubsidyCheckData>,
   onRowClick: (c: CustomerWithRelations) => void,
-  onToggleCheck: (customerId: string, field: "identity_doc_verified" | "bank_doc_verified") => void,
+  onToggleCheck: (customerId: string, field: "identity_doc_verified" | "bank_doc_verified" | "contract_verified") => void,
 ): SpreadsheetColumn<CustomerWithRelations>[] {
   return [
     {
@@ -923,8 +938,8 @@ function buildColumns(
         const candidates: Date[] = [];
         const coachStr = d?.firstCoachingDate ? normalizeDate(d.firstCoachingDate) : null;
         if (coachStr) { const cd = new Date(coachStr); if (!isNaN(cd.getTime())) { cd.setMonth(cd.getMonth() + 2); candidates.push(cd); } }
-        const payStr = d?.paymentDate ? normalizeDate(d.paymentDate) : null;
-        if (payStr) { const pd = new Date(payStr); if (!isNaN(pd.getTime())) { pd.setMonth(pd.getMonth() + 3); candidates.push(pd); } }
+        const payRaw = paidMap[c.id] || c.contract?.payment_date;
+        if (payRaw) { const pd = new Date(normalizeDate(payRaw)); if (!isNaN(pd.getTime())) { pd.setMonth(pd.getMonth() + 3); candidates.push(pd); } }
         if (candidates.length === 0) return "";
         const end = candidates.reduce((a, b) => a < b ? a : b);
         return end.toISOString().slice(0, 10);
@@ -939,9 +954,9 @@ function buildColumns(
           if (!isNaN(cd.getTime())) { cd.setMonth(cd.getMonth() + 2); candidates.push(cd); }
         }
         // 入金日 + 3ヶ月
-        const payStr = d?.paymentDate ? normalizeDate(d.paymentDate) : null;
-        if (payStr) {
-          const pd = new Date(payStr + "T00:00:00");
+        const payRaw = paidMap[c.id] || c.contract?.payment_date;
+        if (payRaw) {
+          const pd = new Date(normalizeDate(payRaw) + "T00:00:00");
           if (!isNaN(pd.getTime())) { pd.setMonth(pd.getMonth() + 3); candidates.push(pd); }
         }
         if (candidates.length === 0) return <span className="text-gray-300 text-xs">-</span>;
@@ -959,7 +974,7 @@ function buildColumns(
         const d = completionData[c.id];
         const chk = checksData[c.id];
         const docs = documentData[c.id];
-        return (d?.hasOutputForm ? 1 : 0) + (d?.caseConditionMet ? 1 : 0) + (d?.behaviorConditionMet ? 1 : 0) + (d?.hasPassingEvaluation ? 1 : 0) + ((chk?.identityDocVerified && chk?.bankDocVerified) ? 1 : 0) + (d?.contractSigned ? 1 : 0) + ((docs?.invoiceIssuedAt && docs?.receiptIssuedAt && docs?.certificateIssuedAt) ? 1 : 0);
+        return (d?.hasOutputForm ? 1 : 0) + (d?.caseConditionMet ? 1 : 0) + (d?.behaviorConditionMet ? 1 : 0) + (d?.hasPassingEvaluation ? 1 : 0) + ((chk?.identityDocVerified && chk?.bankDocVerified) ? 1 : 0) + (chk?.contractVerified ? 1 : 0) + ((docs?.invoiceIssuedAt && docs?.receiptIssuedAt && docs?.certificateIssuedAt) ? 1 : 0);
       },
       render: (c) => {
         const d = completionData[c.id];
@@ -972,7 +987,7 @@ function buildColumns(
           { met: d?.behaviorConditionMet || false, label: "BH/追加指導" },
           { met: d?.hasPassingEvaluation || false, label: "総合評価" },
           { met: (chk?.identityDocVerified && chk?.bankDocVerified) || false, label: "目視確認" },
-          { met: d?.contractSigned || false, label: "契約書" },
+          { met: chk?.contractVerified || false, label: "契約書" },
           { met: !!(docs?.invoiceIssuedAt && docs?.receiptIssuedAt && docs?.certificateIssuedAt), label: "書類発行" },
         ];
         return (
@@ -1205,7 +1220,7 @@ export function SubsidyClient({ customers, firstPaidMap, completionData, documen
 
   const subsidyCustomers = useMemo(() => customers.filter(isSubsidyTarget), [customers]);
 
-  const handleToggleCheck = useCallback(async (customerId: string, field: "identity_doc_verified" | "bank_doc_verified") => {
+  const handleToggleCheck = useCallback(async (customerId: string, field: "identity_doc_verified" | "bank_doc_verified" | "contract_verified") => {
     try {
       const res = await fetch("/api/subsidy/update-check", {
         method: "PATCH",
@@ -1218,7 +1233,7 @@ export function SubsidyClient({ customers, firstPaidMap, completionData, documen
           ...prev,
           [customerId]: {
             ...prev[customerId],
-            [field === "identity_doc_verified" ? "identityDocVerified" : "bankDocVerified"]: data[field],
+            [field === "identity_doc_verified" ? "identityDocVerified" : field === "bank_doc_verified" ? "bankDocVerified" : "contractVerified"]: data[field],
           },
         }));
       }

@@ -213,6 +213,7 @@ export async function fetchSubsidyDocuments(
 export interface SubsidyCheckData {
   identityDocVerified: boolean;
   bankDocVerified: boolean;
+  contractVerified: boolean;
 }
 
 export async function fetchSubsidyChecks(
@@ -225,12 +226,12 @@ export async function fetchSubsidyChecks(
   const db = supabase as any;
   const { data } = await db
     .from("subsidy_checks")
-    .select("customer_id, identity_doc_verified, bank_doc_verified")
+    .select("customer_id, identity_doc_verified, bank_doc_verified, contract_verified")
     .in("customer_id", customerIds);
 
   const result: Record<string, SubsidyCheckData> = {};
   for (const cid of customerIds) {
-    result[cid] = { identityDocVerified: false, bankDocVerified: false };
+    result[cid] = { identityDocVerified: false, bankDocVerified: false, contractVerified: false };
   }
 
   if (data) {
@@ -238,6 +239,7 @@ export async function fetchSubsidyChecks(
       result[row.customer_id] = {
         identityDocVerified: row.identity_doc_verified || false,
         bankDocVerified: row.bank_doc_verified || false,
+        contractVerified: row.contract_verified || false,
       };
     }
   }
