@@ -411,9 +411,6 @@ function buildContractFields(c: CustomerWithRelations, firstPaidDate?: string | 
     { key: "referral_category", label: "人材紹介区分", source: "manual", type: "select", options: [
       "フル利用", "一部利用", "スクールのみ", "自社", "該当", "なし",
     ], table: "contract", getValue: () => c.contract?.referral_category || "-" },
-    { key: "referral_status", label: "紹介ステータス", source: "manual", type: "select", options: [
-      "MVプラン入会済", "MV利用開始済", "初回URL送付済", "面談予約済み", "検討中(URL送付済)", "予約URLを渡していない", "希望してこなかったので渡していない",
-    ], table: "contract", getValue: () => c.contract?.referral_status || "-" },
     { key: "progress_sheet_url", label: "Progress Sheet", source: "manual", table: "contract", getValue: () => c.contract?.progress_sheet_url || "-" },
     { key: "second_amount", label: "二次金額", source: "manual", type: "number", table: "contract", getValue: () => c.contract?.second_amount ? formatCurrency(c.contract.second_amount) : "-" },
     { key: "contract_amount", label: "契約金額", source: "manual", type: "number", table: "contract", getValue: () => c.contract?.contract_amount ? formatCurrency(c.contract.contract_amount) : "-" },
@@ -668,7 +665,6 @@ function buildPipelineFieldGroups(c: CustomerWithRelations): { label: string; fi
     { label: "判断材料", fields: [
       { key: "decision_factor", label: "ネック要因", source: "sync", table: "pipeline", getValue: () => c.pipeline?.decision_factor || "-" },
       { key: "comparison_services", label: "比較サービス", source: "sync", table: "pipeline", getValue: () => c.pipeline?.comparison_services || "-" },
-      { key: "agent_interest", label: "エージェント希望", source: "sync", getValue: () => c.pipeline?.agent_interest_at_application ? "あり" : "なし" },
       { key: "agent_confirmation", label: "エージェント利用意向", source: "sync", getValue: () => c.pipeline?.agent_confirmation || "-" },
       { key: "sales_content", label: "営業内容", source: "manual", type: "textarea", table: "pipeline", getValue: () => c.pipeline?.sales_content || "-" },
       { key: "sales_strategy", label: "営業戦略", source: "manual", type: "textarea", table: "pipeline", getValue: () => c.pipeline?.sales_strategy || "-" },
@@ -957,7 +953,7 @@ export function CustomerDetailClient({
     // agent fields
     if (customer.agent) {
       const a = customer.agent as unknown as Record<string, unknown>;
-      for (const key of ["job_search_status", "selection_status", "offer_company", "offer_salary", "offer_rank", "referral_fee_rate", "placement_confirmed", "placement_date", "margin"]) {
+      for (const key of ["job_search_status", "offer_company", "offer_salary", "offer_rank", "referral_fee_rate", "placement_confirmed", "placement_date", "margin"]) {
         vals[`agent.${key}`] = dateKeys.has(key) ? toDateValue(a[key]) : (a[key] != null ? String(a[key]) : "");
       }
     }

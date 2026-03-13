@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { formatCurrency } from "@/lib/utils";
-import { calcExpectedReferralFee, getOfferRankRate, OFFER_RANK_META } from "@/lib/calc-fields";
+import { calcExpectedReferralFee, getOfferRankRate, OFFER_RANK_META, isAgentCustomer } from "@/lib/calc-fields";
 import type { CustomerWithRelations, AgentRevenueSummary } from "@strategy-school/shared-db";
 
 interface AgentsClientProps {
@@ -27,16 +27,9 @@ export function AgentsClient({ customers, agentSummary }: AgentsClientProps) {
     .filter((c) => c.agent)
     .map((c) => ({ ...c, agent: c.agent! }));
 
-  const enrolled = agentCustomers.filter((c) => {
-    if (c.agent.agent_service_enrolled) return true;
-    if (c.agent.expected_referral_fee && c.agent.expected_referral_fee > 0) return true;
-    if (c.agent.offer_salary && c.agent.offer_salary > 0) return true;
-    return false;
-  });
-  const activeSearch = agentCustomers.filter((c) => c.agent.job_search_status === "活動中");
-  const placed = agentCustomers.filter(
-    (c) => c.agent.job_search_status === "入社済" || c.agent.job_search_status === "内定"
-  );
+  const enrolled = agentCustomers.filter((c) => isAgentCustomer(c));
+  const activeSearch = enrolled.filter((c) => c.agent.job_search_status === "活動中");
+  const ended = enrolled.filter((c) => c.agent.job_search_status === "終了");
   const confirmed = agentCustomers.filter(
     (c) => c.agent.placement_confirmed === "確定"
   );
@@ -44,10 +37,7 @@ export function AgentsClient({ customers, agentSummary }: AgentsClientProps) {
   const statusColor = (status: string) => {
     switch (status) {
       case "活動中": return "bg-brand-muted text-brand";
-      case "内定": return "bg-green-900/20 text-green-400";
-      case "入社済": return "bg-emerald-900/20 text-emerald-400";
-      case "休止": return "bg-orange-900/20 text-orange-400";
-      case "未開始": return "bg-white/10 text-gray-300";
+      case "終了": return "bg-gray-900/20 text-gray-400";
       default: return "bg-white/10 text-gray-300";
     }
   };
@@ -70,8 +60,8 @@ export function AgentsClient({ customers, agentSummary }: AgentsClientProps) {
           <p className="text-2xl font-bold text-white mt-1">{activeSearch.length}名</p>
         </div>
         <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-4">
-          <p className="text-xs text-gray-500">内定・入社済</p>
-          <p className="text-2xl font-bold text-green-400 mt-1">{placed.length}名</p>
+          <p className="text-xs text-gray-500">終了</p>
+          <p className="text-2xl font-bold text-gray-400 mt-1">{ended.length}名</p>
         </div>
         <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-4">
           <p className="text-xs text-gray-500">確定済</p>
@@ -103,7 +93,6 @@ export function AgentsClient({ customers, agentSummary }: AgentsClientProps) {
                 <th className="text-center py-3 px-4 text-xs font-semibold text-gray-500">内定ランク</th>
                 <th className="text-right py-3 px-4 text-xs font-semibold text-gray-500">想定年収</th>
                 <th className="text-right py-3 px-4 text-xs font-semibold text-gray-500">紹介報酬期待値</th>
-                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">選考状況</th>
                 <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">外部エージェント</th>
               </tr>
             </thead>
@@ -142,16 +131,13 @@ export function AgentsClient({ customers, agentSummary }: AgentsClientProps) {
                         {fee > 0 ? formatCurrency(fee) : "-"}
                       </span>
                     </td>
-                    <td className="py-3 px-4 text-sm text-gray-400 max-w-[200px] truncate">
-                      {c.agent.selection_status || "-"}
-                    </td>
                     <td className="py-3 px-4 text-sm text-gray-400">{c.agent.external_agents || "-"}</td>
                   </tr>
                 );
               })}
               {enrolled.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="py-8 text-center text-gray-500">
+                  <td colSpan={7} className="py-8 text-center text-gray-500">
                     エージェント利用者がいません
                   </td>
                 </tr>

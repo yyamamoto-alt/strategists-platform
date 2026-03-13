@@ -30,7 +30,7 @@ export type DealStatus =
 
 export type LearningLevel = "初級者" | "中級者" | "上級者" | (string & {});
 export type BillingStatus = "未請求" | "請求済" | "入金済" | "分割中" | "滞納" | (string & {});
-export type PlacementResult = "内定" | "入社済" | "活動中" | "休止" | "未開始" | (string & {});
+export type PlacementResult = "活動中" | "終了" | (string & {});
 
 export type LeadSource =
   | "SEO(直LP)"
@@ -184,7 +184,6 @@ export interface Contract {
   progress_sheet_url: string | null;
   // --- migration 004 追加フィールド ---
   referral_category?: string | null;
-  referral_status?: string | null;
   enrollment_status?: string | null;
   invoice_info?: string | null;
   customer?: Customer;
@@ -195,33 +194,20 @@ export interface AgentRecord {
   customer_id: string;
   created_at: string;
   updated_at: string;
-  agent_service_enrolled: boolean;
-  agent_plan: string | null;
   agent_memo: string | null;
   job_search_status: PlacementResult;
-  selection_status: string | null;
-  level_up_confirmed: string | null;
-  document_pass_rate: number | null;
-  exam_count: number;
   offer_company: string | null;
-  placement_company: string | null;
   placement_date: string | null;
   offer_salary: number | null;
-  expected_salary_rate: number | null;
+  offer_rank: string | null;
   referral_fee_rate: number | null;
   margin: number | null;
   external_agents: string | null;
   loss_reason: string | null;
   loss_detail: string | null;
-  // --- migration 004 追加フィールド ---
-  expected_agent_revenue?: number | null;
-  hire_rate?: number | null;
-  offer_probability?: number | null;
-  offer_rank?: string | null;
-  expected_referral_fee?: number | null;
-  agent_staff?: string | null;
-  placement_confirmed?: string | null;
-  general_memo?: string | null;
+  expected_referral_fee: number | null;
+  agent_staff: string | null;
+  placement_confirmed: string | null;
   customer?: Customer;
 }
 

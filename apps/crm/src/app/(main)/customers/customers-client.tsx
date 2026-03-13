@@ -92,8 +92,8 @@ const VIEW_COLUMNS: Record<ViewTab, string[] | null> = {
     "sales_route",
     // 営業: 角度, 営業担当
     "probability", "sales_person",
-    // 人材紹介（紹介ステータスまで）
-    "referral_category", "referral_status", "external_agents",
+    // 人材紹介
+    "referral_category", "external_agents",
   ],
   all: null, // 全カラム表示
   marketing: [
@@ -111,7 +111,7 @@ const VIEW_COLUMNS: Record<ViewTab, string[] | null> = {
     "sales_person", "sales_content", "sales_strategy",
     "decision_factor", "application_reason",
     "agent_confirmation", "jicoo_message",
-    "referral_category", "referral_status",
+    "referral_category",
     "additional_sales_content", "additional_plan", "additional_discount_info",
     "alternative_application",
     "payment_date", "additional_notes",
@@ -140,7 +140,7 @@ const VIEW_COLUMNS: Record<ViewTab, string[] | null> = {
   agent: [
     "application_date", "name", "attribute", "stage", "subsidy_eligible",
     "confirmed_amount", "rev_plus", "rev_agent", "rev_eq", "rev_total",
-    "is_agent_customer", "referral_category", "referral_status",
+    "is_agent_customer", "referral_category",
     "external_agents",
     "offer_rank", "offer_salary",
     "referral_fee_rate", "margin",
@@ -448,10 +448,6 @@ export function CustomersClient() {
         render: (c) => <span className="text-xs">{c.utm_campaign || "-"}</span> },
 
       // ═══ 営業（青） ═══
-      { key: "agent_interest", label: "申込時エージェント", width: 120, category: "sales",
-        render: (c) => <span className="text-xs">{c.pipeline?.agent_interest_at_application || "-"}</span>,
-        sortValue: (c) => String(c.pipeline?.agent_interest_at_application || "") },
-
       { key: "meeting_scheduled", label: "営業予定日", width: 82, category: "sales",
         render: (c) => <span className="text-xs">{fmtDate(c.pipeline?.meeting_scheduled_date)}</span>,
         sortValue: (c) => c.pipeline?.meeting_scheduled_date || "" },
@@ -527,9 +523,6 @@ export function CustomersClient() {
           const rc = c.contract?.referral_category;
           return rc ? <span className={`inline-block px-2 py-px rounded-full text-[10px] leading-none font-medium whitespace-nowrap ${getReferralCategoryColor(rc)}`}>{rc}</span> : <span className="text-gray-600 text-xs">-</span>;
         } },
-      { key: "referral_status", label: "紹介ステータス", width: 100, category: "agent",
-        render: (c) => <span className="text-xs">{c.contract?.referral_status || "-"}</span> },
-
       { key: "external_agents", label: "利用エージェント", width: 110, category: "agent",
         render: (c) => <span className="text-xs">{c.agent?.external_agents || "-"}</span> },
       { key: "offer_rank", label: "内定ランク", width: 90, category: "agent",
@@ -659,7 +652,7 @@ export function CustomersClient() {
         render: (c) => c.contract?.progress_sheet_url
           ? <a href={c.contract.progress_sheet_url} target="_blank" rel="noopener noreferrer" className="text-brand hover:underline text-xs">リンク</a>
           : "-" },
-      { key: "general_memo", label: "メモ", width: 160,        render: (c) => c.agent?.general_memo || "-" },
+      { key: "agent_memo", label: "メモ", width: 160,        render: (c) => c.agent?.agent_memo || "-" },
     ],
     [attributionMap, stageOverrides, handleStageUpdate]
   );

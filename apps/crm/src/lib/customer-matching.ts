@@ -437,7 +437,6 @@ async function syncFormFieldsToRelatedTables(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const learningUpdate: Record<string, any> = {};
     if (rawData["申込プラン"]) learningUpdate.progress_text = rawData["申込プラン"];
-    if (rawData["エージェント利用"]) learningUpdate.selection_status = rawData["エージェント利用"];
     if (rawData["Strategistsへの入会理由、（他社と比較した方）Strategistsを選んだ理由"]) {
       learningUpdate.enrollment_reason = rawData["Strategistsへの入会理由、（他社と比較した方）Strategistsを選んだ理由"];
     }

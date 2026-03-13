@@ -32,7 +32,7 @@ const ACTIVE_AGENT_STAGES = [
 /**
  * GET /api/cron/ca-reminder
  * 毎朝のCA（キャリアアドバイザー）タスクリマインド:
- * - agent_service_enrolled=true の顧客をパイプラインからピックアップ
+ * - referral_category=フル利用/一部利用 の顧客をパイプラインからピックアップ
  * - 担当CA（sales_person）ごとにグループ化
  * - 各CAにDM + チャンネルにサマリー投稿
  */
@@ -65,12 +65,11 @@ export async function GET(request: Request) {
     upcoming_reminders: 0,
   };
 
-  // agent_service_enrolled=true の顧客でアクティブなパイプラインを取得
-  // agent_service_enrolled は agent_records テーブルにあるため、先にエージェント利用中の顧客IDを取得
+  // エージェント利用者（referral_category=フル利用 or 一部利用）を contracts テーブルから取得
   const { data: agentCustomers, error: agentError } = await supabase
-    .from("agent_records")
+    .from("contracts")
     .select("customer_id")
-    .eq("agent_service_enrolled", true);
+    .in("referral_category", ["フル利用", "一部利用"]);
 
   if (agentError) {
     console.error("Agent records query error:", agentError);
