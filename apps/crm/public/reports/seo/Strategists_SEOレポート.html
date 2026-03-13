@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Strategists ブログ SEO分析 & サイト構造リデザインプラン</title>
+<style>
+  :root {
+    --primary: #1a1a2e;
+    --accent: #e94560;
+    --accent2: #0f3460;
+    --bg: #f8f9fa;
+    --card: #ffffff;
+    --text: #333;
+    --text-light: #666;
+    --border: #e0e0e0;
+    --green: #27ae60;
+    --orange: #f39c12;
+    --red: #e74c3c;
+    --blue: #3498db;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+  }
+  .container { max-width: 1100px; margin: 0 auto; padding: 20px; }
+
+  /* Header */
+  .header {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--accent2) 100%);
+    color: white;
+    padding: 50px 0 40px;
+    margin-bottom: 30px;
+  }
+  .header h1 { font-size: 28px; margin-bottom: 8px; }
+  .header .subtitle { font-size: 16px; opacity: 0.85; }
+  .header .meta { font-size: 13px; opacity: 0.6; margin-top: 16px; }
+
+  /* Cards */
+  .card {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 28px 32px;
+    margin-bottom: 24px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    border: 1px solid var(--border);
+  }
+  .card h2 {
+    font-size: 20px;
+    color: var(--primary);
+    margin-bottom: 16px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid var(--accent);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .card h3 {
+    font-size: 16px;
+    color: var(--accent2);
+    margin: 20px 0 10px;
+  }
+  .card h2 .num {
+    background: var(--accent);
+    color: white;
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+
+  /* KPI Grid */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  .kpi-box {
+    background: linear-gradient(135deg, #f8f9fa 0%, #fff 100%);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    text-align: center;
+  }
+  .kpi-box .value {
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--primary);
+  }
+  .kpi-box .label {
+    font-size: 13px;
+    color: var(--text-light);
+    margin-top: 4px;
+  }
+
+  /* Tables */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    margin: 12px 0;
+  }
+  th {
+    background: var(--primary);
+    color: white;
+    padding: 10px 12px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 13px;
+  }
+  td {
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  tr:hover td { background: #f5f7fa; }
+  .text-right { text-align: right; }
+
+  /* Badges */
+  .badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .badge-green { background: #e8f5e9; color: var(--green); }
+  .badge-orange { background: #fff3e0; color: var(--orange); }
+  .badge-red { background: #fce4ec; color: var(--red); }
+  .badge-blue { background: #e3f2fd; color: var(--blue); }
+  .badge-gray { background: #eee; color: #666; }
+
+  /* Verdict boxes */
+  .verdict {
+    border-left: 4px solid;
+    padding: 12px 16px;
+    margin: 12px 0;
+    border-radius: 0 8px 8px 0;
+    font-size: 14px;
+  }
+  .verdict-true { border-color: var(--green); background: #e8f5e9; }
+  .verdict-partial { border-color: var(--orange); background: #fff8e1; }
+  .verdict-false { border-color: var(--red); background: #fce4ec; }
+
+  /* Funnel */
+  .funnel {
+    display: flex;
+    gap: 12px;
+    margin: 16px 0;
+    flex-wrap: wrap;
+  }
+  .funnel-stage {
+    flex: 1;
+    min-width: 200px;
+    border-radius: 10px;
+    padding: 16px;
+    border: 2px solid;
+  }
+  .funnel-stage.tofu { border-color: var(--blue); background: #e3f2fd; }
+  .funnel-stage.mofu { border-color: var(--orange); background: #fff8e1; }
+  .funnel-stage.bofu { border-color: var(--green); background: #e8f5e9; }
+  .funnel-stage h4 { font-size: 14px; margin-bottom: 8px; }
+  .funnel-stage ul { font-size: 13px; padding-left: 18px; }
+
+  /* Category structure */
+  .cat-tree {
+    font-family: 'Courier New', monospace;
+    background: #1a1a2e;
+    color: #a8d8ea;
+    border-radius: 10px;
+    padding: 20px 24px;
+    font-size: 14px;
+    line-height: 1.9;
+    overflow-x: auto;
+  }
+  .cat-tree .highlight { color: var(--accent); font-weight: bold; }
+  .cat-tree .dim { color: #666; }
+  .cat-tree .tag { color: #f39c12; }
+
+  /* Timeline */
+  .timeline { position: relative; padding-left: 30px; }
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 10px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--border);
+  }
+  .timeline-item {
+    position: relative;
+    margin-bottom: 20px;
+  }
+  .timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -25px;
+    top: 6px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+  .timeline-item h4 { font-size: 15px; color: var(--primary); }
+  .timeline-item p { font-size: 13px; color: var(--text-light); margin-top: 4px; }
+  .timeline-item ul { font-size: 13px; padding-left: 18px; margin-top: 4px; }
+
+  /* TOC */
+  .toc {
+    background: #f0f4f8;
+    border-radius: 10px;
+    padding: 20px 28px;
+    margin-bottom: 24px;
+  }
+  .toc h3 { font-size: 15px; margin-bottom: 10px; color: var(--primary); }
+  .toc ol { padding-left: 20px; }
+  .toc li { margin: 6px 0; }
+  .toc a { color: var(--accent2); text-decoration: none; font-size: 14px; }
+  .toc a:hover { text-decoration: underline; }
+
+  /* Risk table colors */
+  .risk-high { color: var(--red); font-weight: 600; }
+  .risk-mid { color: var(--orange); font-weight: 600; }
+  .risk-low { color: var(--green); font-weight: 600; }
+
+  /* Footer */
+  .footer {
+    text-align: center;
+    padding: 30px 0;
+    color: var(--text-light);
+    font-size: 12px;
+  }
+
+  /* Print */
+  @media print {
+    .header { padding: 30px 0 20px; }
+    .card { break-inside: avoid; box-shadow: none; border: 1px solid #ddd; }
+    body { font-size: 12px; }
+  }
+
+  /* Competitive comparison */
+  .comp-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 16px;
+    margin: 16px 0;
+  }
+  .comp-card {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    background: #fafbfc;
+  }
+  .comp-card h4 {
+    font-size: 15px;
+    color: var(--accent2);
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+  .comp-card ul { font-size: 13px; padding-left: 16px; }
+  .comp-card li { margin: 4px 0; }
+  .comp-card .takeaway {
+    margin-top: 10px;
+    padding: 8px 12px;
+    background: #e8f5e9;
+    border-radius: 6px;
+    font-size: 12px;
+    color: var(--green);
+    font-weight: 600;
+  }
+
+  .note {
+    background: #fffde7;
+    border: 1px solid #fff176;
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 13px;
+    margin: 12px 0;
+  }
+</style>
+</head>
+<body>
+
+<!-- ========== HEADER ========== -->
+<div class="header">
+  <div class="container">
+    <h1>Strategists ブログ SEO分析 & サイト構造リデザインプラン</h1>
+    <div class="subtitle">https://akagiconsulting.com/blog — 現状分析・提案書ファクトチェック・構造再設計</div>
+    <div class="meta">作成日: 2026年3月11日 ｜ 対象期間: 直近90日間 (2025/12/09 〜 2026/03/08) ｜ データソース: Google Search Console API</div>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- ========== TOC ========== -->
+<div class="toc">
+  <h3>目次</h3>
+  <ol>
+    <li><a href="#current">現状パフォーマンス（Search Console実データ）</a></li>
+    <li><a href="#factcheck">2つのSEO提案書のファクトチェック</a></li>
+    <li><a href="#issues">特定された課題</a></li>
+    <li><a href="#competitors">競合サイト構造分析</a></li>
+    <li><a href="#plan">サイト構造リデザインプラン</a></li>
+    <li><a href="#migration">移行計画 & リスク管理</a></li>
+    <li><a href="#schedule">実行スケジュール</a></li>
+  </ol>
+</div>
+
+<!-- ========== 1. CURRENT PERFORMANCE ========== -->
+<div class="card" id="current">
+  <h2><span class="num">1</span> 現状パフォーマンス</h2>
+
+  <h3>ブログ全体 KPI（直近90日）</h3>
+  <div class="kpi-grid">
+    <div class="kpi-box">
+      <div class="value">13,335</div>
+      <div class="label">クリック数</div>
+    </div>
+    <div class="kpi-box">
+      <div class="value">335,925</div>
+      <div class="label">表示回数</div>
+    </div>
+    <div class="kpi-box">
+      <div class="value">3.97%</div>
+      <div class="label">平均CTR</div>
+    </div>
+    <div class="kpi-box">
+      <div class="value">9.7</div>
+      <div class="label">平均掲載順位</div>
+    </div>
+  </div>
+
+  <h3>カテゴリ別パフォーマンス</h3>
+  <table>
+    <tr>
+      <th>カテゴリ</th>
+      <th class="text-right">クリック</th>
+      <th class="text-right">表示回数</th>
+      <th class="text-right">CTR</th>
+      <th class="text-right">平均順位</th>
+      <th>評価</th>
+    </tr>
+    <tr>
+      <td><strong>fermi-estimate</strong>（フェルミ推定）</td>
+      <td class="text-right">4,741</td>
+      <td class="text-right">225,211</td>
+      <td class="text-right">2.11%</td>
+      <td class="text-right">8.3</td>
+      <td><span class="badge badge-green">主力</span></td>
+    </tr>
+    <tr>
+      <td><strong>information</strong>（企業研究）</td>
+      <td class="text-right">4,568</td>
+      <td class="text-right">274,131</td>
+      <td class="text-right">1.67%</td>
+      <td class="text-right">8.3</td>
+      <td><span class="badge badge-green">主力</span></td>
+    </tr>
+    <tr>
+      <td><strong>case-interview</strong>（ケース面接）</td>
+      <td class="text-right">2,956</td>
+      <td class="text-right">113,137</td>
+      <td class="text-right">2.61%</td>
+      <td class="text-right">8.8</td>
+      <td><span class="badge badge-blue">成長余地</span></td>
+    </tr>
+    <tr>
+      <td><strong>behavior</strong></td>
+      <td class="text-right">20</td>
+      <td class="text-right">557</td>
+      <td class="text-right">3.59%</td>
+      <td class="text-right">14.7</td>
+      <td><span class="badge badge-gray">統合候補</span></td>
+    </tr>
+    <tr>
+      <td><strong>news</strong></td>
+      <td class="text-right">4</td>
+      <td class="text-right">64</td>
+      <td class="text-right">6.25%</td>
+      <td class="text-right">8.4</td>
+      <td><span class="badge badge-gray">統合候補</span></td>
+    </tr>
+    <tr>
+      <td><strong>recommend / experiences</strong></td>
+      <td class="text-right">0</td>
+      <td class="text-right">0</td>
+      <td class="text-right">—</td>
+      <td class="text-right">—</td>
+      <td><span class="badge badge-red">流入なし</span></td>
+    </tr>
+  </table>
+
+  <h3>検索クエリ TOP15（ブログ流入）</h3>
+  <table>
+    <tr>
+      <th>検索クエリ</th>
+      <th class="text-right">クリック</th>
+      <th class="text-right">表示</th>
+      <th class="text-right">CTR</th>
+      <th class="text-right">順位</th>
+    </tr>
+    <tr><td>nq診断</td><td class="text-right">151</td><td class="text-right">512</td><td class="text-right">29.49%</td><td class="text-right">3.3</td></tr>
+    <tr><td>アビーム ケース面接</td><td class="text-right">114</td><td class="text-right">2,530</td><td class="text-right">4.51%</td><td class="text-right">2.5</td></tr>
+    <tr><td>ベイカレント ケース面接</td><td class="text-right">109</td><td class="text-right">3,689</td><td class="text-right">2.95%</td><td class="text-right">3.3</td></tr>
+    <tr><td>nq診断とは</td><td class="text-right">102</td><td class="text-right">397</td><td class="text-right">25.69%</td><td class="text-right">3.5</td></tr>
+    <tr><td>pwc ケース面接</td><td class="text-right">86</td><td class="text-right">1,659</td><td class="text-right">5.18%</td><td class="text-right">2.6</td></tr>
+    <tr><td>デロイト ケース面接</td><td class="text-right">85</td><td class="text-right">4,826</td><td class="text-right">1.76%</td><td class="text-right">5.6</td></tr>
+    <tr><td>アクセンチュア ケース面接 過去問</td><td class="text-right">71</td><td class="text-right">2,229</td><td class="text-right">3.19%</td><td class="text-right">5.3</td></tr>
+    <tr><td>アビームコンサルティング ケース面接</td><td class="text-right">64</td><td class="text-right">1,682</td><td class="text-right">3.80%</td><td class="text-right">4.5</td></tr>
+    <tr><td>nttデータ経営研究所 選考フロー</td><td class="text-right">61</td><td class="text-right">2,049</td><td class="text-right">2.98%</td><td class="text-right">2.6</td></tr>
+    <tr><td>ノースサンド 選考フロー</td><td class="text-right">58</td><td class="text-right">2,279</td><td class="text-right">2.54%</td><td class="text-right">3.0</td></tr>
+    <tr><td>nq診断 ノースサンド</td><td class="text-right">54</td><td class="text-right">626</td><td class="text-right">8.63%</td><td class="text-right">1.8</td></tr>
+    <tr><td>ベイカレント ケース面接 過去問</td><td class="text-right">53</td><td class="text-right">1,007</td><td class="text-right">5.26%</td><td class="text-right">2.0</td></tr>
+    <tr><td>ケース面接 売上向上</td><td class="text-right">41</td><td class="text-right">458</td><td class="text-right">8.95%</td><td class="text-right">1.2</td></tr>
+    <tr><td>アクセンチュア ケース面接</td><td class="text-right">39</td><td class="text-right">3,768</td><td class="text-right">1.04%</td><td class="text-right"><span style="color:var(--orange)">14.4</span></td></tr>
+    <tr><td>ケース面接 企業一覧</td><td class="text-right">35</td><td class="text-right">661</td><td class="text-right">5.30%</td><td class="text-right">2.0</td></tr>
+  </table>
+  <div class="note">
+    <strong>注目</strong>: 「ファーム名 × ケース面接」系の複合KWがブログ流入の大半を占める。<br>
+    「アクセンチュア ケース面接」は表示3,768回に対しCTR 1.04%/順位14.4 → 2ページ目に停滞中で改善余地大。
+  </div>
+
+  <h3>ページ別 TOP10</h3>
+  <table>
+    <tr>
+      <th>ページ</th>
+      <th class="text-right">クリック</th>
+      <th class="text-right">表示</th>
+      <th class="text-right">CTR</th>
+      <th class="text-right">順位</th>
+    </tr>
+    <tr><td>/information/2063/</td><td class="text-right"><strong>947</strong></td><td class="text-right">16,228</td><td class="text-right">5.84%</td><td class="text-right">5.9</td></tr>
+    <tr><td>/case-interview/1173/</td><td class="text-right">513</td><td class="text-right">5,674</td><td class="text-right">9.04%</td><td class="text-right">11.0</td></tr>
+    <tr><td>/fermi-estimate/866/</td><td class="text-right">415</td><td class="text-right">4,225</td><td class="text-right">9.82%</td><td class="text-right">9.1</td></tr>
+    <tr><td>/fermi-estimate/860/</td><td class="text-right">407</td><td class="text-right">4,367</td><td class="text-right">9.32%</td><td class="text-right">10.9</td></tr>
+    <tr><td>/uncategorized/1270/ <span class="badge badge-orange">移動済</span></td><td class="text-right">359</td><td class="text-right">10,096</td><td class="text-right">3.56%</td><td class="text-right">9.6</td></tr>
+    <tr><td>/fermi-estimate/872/</td><td class="text-right">339</td><td class="text-right">3,861</td><td class="text-right">8.78%</td><td class="text-right">9.5</td></tr>
+    <tr><td>/fermi-estimate/422/</td><td class="text-right">321</td><td class="text-right">9,054</td><td class="text-right">3.55%</td><td class="text-right">9.8</td></tr>
+    <tr><td>/fermi-estimate/882/</td><td class="text-right">311</td><td class="text-right">7,474</td><td class="text-right">4.16%</td><td class="text-right">8.6</td></tr>
+    <tr><td>/fermi-estimate/878/</td><td class="text-right">309</td><td class="text-right">4,007</td><td class="text-right">7.71%</td><td class="text-right">8.8</td></tr>
+    <tr><td>/fermi-estimate/498/</td><td class="text-right">287</td><td class="text-right">5,729</td><td class="text-right">5.01%</td><td class="text-right">14.8</td></tr>
+  </table>
+
+  <h3>2ページ目に停滞しているKW（順位10〜20、表示100+）</h3>
+  <table>
+    <tr>
+      <th>クエリ</th>
+      <th class="text-right">クリック</th>
+      <th class="text-right">表示</th>
+      <th class="text-right">CTR</th>
+      <th class="text-right">順位</th>
+      <th>対策メモ</th>
+    </tr>
+    <tr><td>アクセンチュア ケース面接</td><td class="text-right">39</td><td class="text-right">3,768</td><td class="text-right">1.04%</td><td class="text-right">14.4</td><td><span class="badge badge-red">最重要</span> 表示多・CTR低</td></tr>
+    <tr><td>ケース面接 アクセンチュア</td><td class="text-right">17</td><td class="text-right">1,508</td><td class="text-right">1.13%</td><td class="text-right">14.2</td><td>上記と同一意図</td></tr>
+    <tr><td>ノースサンド 就職難易度</td><td class="text-right">3</td><td class="text-right">1,391</td><td class="text-right">0.22%</td><td class="text-right">10.1</td><td>あと少しで1ページ目</td></tr>
+    <tr><td>ケース面接 フレームワーク</td><td class="text-right">25</td><td class="text-right">1,107</td><td class="text-right">2.26%</td><td class="text-right">16.8</td><td>ピラーページで狙う</td></tr>
+    <tr><td>デロイト ケース面接 落ちる</td><td class="text-right">7</td><td class="text-right">1,045</td><td class="text-right">0.67%</td><td class="text-right">11.0</td><td>内容追記で引き上げ可能</td></tr>
+    <tr><td>bcg ケース面接 中途</td><td class="text-right">1</td><td class="text-right">1,020</td><td class="text-right">0.10%</td><td class="text-right">17.6</td><td>中途特化セクション追加</td></tr>
+    <tr><td>デロイト ケース面接 過去問</td><td class="text-right">28</td><td class="text-right">953</td><td class="text-right">2.94%</td><td class="text-right">10.0</td><td>過去問コンテンツ強化</td></tr>
+    <tr><td>ケース面接とは</td><td class="text-right">1</td><td class="text-right">740</td><td class="text-right">0.14%</td><td class="text-right">10.9</td><td>完全ガイド（ピラーページ）で対策</td></tr>
+    <tr><td>ローランドベルガー ケース面接</td><td class="text-right">13</td><td class="text-right">673</td><td class="text-right">1.93%</td><td class="text-right">12.5</td><td>専用記事作成</td></tr>
+    <tr><td>フェルミ推定 基礎知識</td><td class="text-right">3</td><td class="text-right">654</td><td class="text-right">0.46%</td><td class="text-right">15.1</td><td>基礎ガイド記事作成</td></tr>
+    <tr><td>pwc ケース面接 過去問</td><td class="text-right">17</td><td class="text-right">589</td><td class="text-right">2.89%</td><td class="text-right">18.8</td><td>PwC記事内の過去問セクション強化</td></tr>
+  </table>
+</div>
+
+<!-- ========== 2. FACT CHECK ========== -->
+<div class="card" id="factcheck">
+  <h2><span class="num">2</span> SEO提案書のファクトチェック</h2>
+
+  <p style="font-size:14px;color:var(--text-light);margin-bottom:16px;">
+    外部から受領した2つのSEO提案書の主要な主張を、Search Console APIの実データで検証しました。
+  </p>
+
+  <!-- 提案書A -->
+  <h3>提案書A: 佐藤様（コンテンツ戦略系）</h3>
+
+  <div class="verdict verdict-true">
+    <strong>「カテゴリの重複登録によるカニバリゼーションが発生」</strong><br>
+    <span class="badge badge-green">事実</span> — 144記事中48記事（33%）が複数カテゴリに登録。特にcase-interview + fermi-estimate + informationの3重登録が目立つ。パーマリンク構造上、プライマリカテゴリが検索結果に表示されるURLに影響するため、重複は構造的な問題。
+  </div>
+
+  <div class="verdict verdict-true">
+    <strong>「2ページ目に停滞しているキーワードがあり、改善余地がある」</strong><br>
+    <span class="badge badge-green">事実</span> — 「アクセンチュア ケース面接」(順位14.4/表示3,768)、「ケース面接 フレームワーク」(順位16.8/表示1,107)など、表示回数が多いのに2ページ目に留まっているKWが複数確認された。
+  </div>
+
+  <div class="verdict verdict-partial">
+    <strong>「KWランキングが全体的に低下傾向」</strong><br>
+    <span class="badge badge-orange">要検証</span> — 直近90日のデータでは平均順位9.7で安定。長期トレンド（6ヶ月〜1年）の比較が必要。
+  </div>
+
+  <!-- 提案書B -->
+  <h3>提案書B: SEO改善のご提案（テクニカルSEO系）</h3>
+
+  <div class="verdict verdict-true">
+    <strong>「モバイルLCP 15.9秒でCore Web Vitalsが不良」</strong><br>
+    <span class="badge badge-green">事実（要対応）</span> — WordPress + 画像最適化不足が主因と推定。ただし、ブログの現在の流入規模（月間約4,400クリック）では、CWV改善よりコンテンツ構造改善の方がROIが高い。
+  </div>
+
+  <div class="verdict verdict-partial">
+    <strong>「533ページ中307ページが未インデックス」</strong><br>
+    <span class="badge badge-orange">部分的に正しい</span> — 実際にtag/（45ページ、43クリック）、category/（11ページ、36クリック）、page/（12ページ、1クリック）はほぼ流入がなく、インデックスの「薄いページ」になっている。ただし307ページという数字は#toc付きURLやfeedなどを含む可能性があり、「問題ページ」として過大評価。
+  </div>
+
+  <div class="verdict verdict-false">
+    <strong>「上位表示されているページが全て#toc1 #toc2等のアンカーURL」</strong><br>
+    <span class="badge badge-red">誇大表現</span> — #toc付きURLは確かに189,287回の表示があるが、クリックは22回のみ（CTR 0.01%）。メインURLは正常にインデックス・表示されており（CTR 3-6%）、canonical tagも正しく設定済み。提案書の主張は実態を大幅に誇張している。<br>
+    <span style="font-size:12px;color:#999;">※ #toc URLはSearch Consoleの「ページ」としてカウントされるが、実際には同一ページの目次アンカー。Googleは正しくメインURLを優先している。</span>
+  </div>
+
+  <div class="verdict verdict-partial">
+    <strong>「カテゴリとURLの不一致」</strong><br>
+    <span class="badge badge-orange">問題の指摘は正しいが解法が不十分</span> — パーマリンク構造 <code>/%category%/%post_id%/</code> で、複数カテゴリ登録時にプライマリカテゴリ以外のパスでもアクセス可能な問題は存在する。ただし、根本解決は「1記事1カテゴリ」ルールの徹底であり、提案書のcanonical修正では不十分。
+  </div>
+
+  <h3 style="margin-top:24px;">総合評価</h3>
+  <table>
+    <tr>
+      <th>提案書</th>
+      <th>妥当性</th>
+      <th>優先すべき施策</th>
+      <th>不要 / 過大な施策</th>
+    </tr>
+    <tr>
+      <td>A（佐藤様）</td>
+      <td><span class="badge badge-green">概ね妥当</span></td>
+      <td>カニバリ解消、2ページ目KW改善、カテゴリ再設計</td>
+      <td>長期トレンドの検証が必要</td>
+    </tr>
+    <tr>
+      <td>B（テクニカル）</td>
+      <td><span class="badge badge-orange">部分的</span></td>
+      <td>tag/categoryのnoindex、CWV改善（中期）</td>
+      <td>#toc canonical修正（不要）、未インデックス数の過大評価</td>
+    </tr>
+  </table>
+</div>
+
+<!-- ========== 3. ISSUES ========== -->
+<div class="card" id="issues">
+  <h2><span class="num">3</span> 特定された課題</h2>
+
+  <h3>課題A: カテゴリ構造の問題</h3>
+  <table>
+    <tr><th>指標</th><th>現状</th><th>問題点</th></tr>
+    <tr><td>カテゴリ数</td><td>8個</td><td>使われていないカテゴリ (recommend, experiences, behavior, news) が4つ</td></tr>
+    <tr><td>複数カテゴリ記事</td><td>48/144記事 (33%)</td><td>カニバリゼーション、URL構造の混乱</td></tr>
+    <tr><td>recommend / experiences</td><td>合計11記事</td><td>Search Console流入 0 クリック</td></tr>
+    <tr><td>uncategorized</td><td>1記事</td><td><span class="badge badge-green">解決済み</span> → informationに移動+301リダイレクト設定</td></tr>
+  </table>
+
+  <h3>課題B: 薄いページのインデックス</h3>
+  <table>
+    <tr><th>ページタイプ</th><th>ページ数</th><th>90日クリック</th><th>推奨</th></tr>
+    <tr><td>tag/ ページ</td><td>45</td><td>43</td><td><span class="badge badge-orange">noindex推奨</span></td></tr>
+    <tr><td>category/ ページ</td><td>11</td><td>36</td><td><span class="badge badge-orange">まとめページに作り替え</span></td></tr>
+    <tr><td>page/ (ページネーション)</td><td>12</td><td>1</td><td><span class="badge badge-orange">noindex推奨</span></td></tr>
+  </table>
+
+  <h3>課題C: ファネル構造の偏り</h3>
+  <div class="funnel">
+    <div class="funnel-stage tofu">
+      <h4>TOFU（認知）</h4>
+      <ul>
+        <li>コンサルタントとは</li>
+        <li>コンサル 年収</li>
+        <li>戦略コンサル 仕事</li>
+      </ul>
+      <p style="margin-top:8px;font-size:12px;color:#1565c0;"><strong>現状: informationカテゴリで一定カバー</strong></p>
+    </div>
+    <div class="funnel-stage mofu">
+      <h4>MOFU（検討）</h4>
+      <ul>
+        <li>ケース面接 対策</li>
+        <li>ケース面接 例題</li>
+        <li>フェルミ推定 やり方</li>
+      </ul>
+      <p style="margin-top:8px;font-size:12px;color:#e65100;"><strong>現状: 記事はあるが構造化不十分。最大の改善余地</strong></p>
+    </div>
+    <div class="funnel-stage bofu">
+      <h4>BOFU（決定）</h4>
+      <ul>
+        <li>Strategists 評判</li>
+        <li>ケース面接 スクール</li>
+        <li>ケース面接 対策塾</li>
+      </ul>
+      <p style="margin-top:8px;font-size:12px;color:#2e7d32;"><strong>現状: LP/サービスページで対応</strong></p>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 4. COMPETITORS ========== -->
+<div class="card" id="competitors">
+  <h2><span class="num">4</span> 競合サイト構造分析</h2>
+
+  <div class="comp-grid">
+    <div class="comp-card">
+      <h4>Movin（movin.co.jp）</h4>
+      <ul>
+        <li>3階層構造: 業界TOP → 業態 → 企業</li>
+        <li>URLが論理構造を完全に反映</li>
+        <li>パンくずリスト4階層</li>
+        <li>業態カテゴリ（戦略/総合/IT等 11分類）</li>
+      </ul>
+      <div class="takeaway">学び: 業態別の企業分類、パンくず設計</div>
+    </div>
+    <div class="comp-card">
+      <h4>MyVision（my-vision.co.jp）</h4>
+      <ul>
+        <li>/consultant/ 配下にディレクトリ型で最大5階層</li>
+        <li>カテゴリ一覧ページなし（全URL=記事）</li>
+        <li>CTAを記事テーマ別にカスタマイズ</li>
+        <li>サービスサイトとブログが一体化</li>
+      </ul>
+      <div class="takeaway">学び: テーマ別CTA、ブログ＝集客導線</div>
+    </div>
+    <div class="comp-card">
+      <h4>コンサルキャリア</h4>
+      <ul>
+        <li>カテゴリ + タグの二軸分類</li>
+        <li>600記事以上を整理</li>
+        <li>記事URLはフラット構造 (/[slug]/)</li>
+        <li>ファーム別・テーマ別で横断</li>
+      </ul>
+      <div class="takeaway">学び: 記事が増えた時の二軸分類</div>
+    </div>
+    <div class="comp-card">
+      <h4>外資就活</h4>
+      <ul>
+        <li>コラム＋口コミのUGCモデル</li>
+        <li>ファーム別に口コミ情報を蓄積</li>
+        <li>コミュニティ機能で滞在時間確保</li>
+      </ul>
+      <div class="takeaway">学び: 体験談コンテンツの集客力</div>
+    </div>
+  </div>
+
+  <h3>競合との差別化ポイント</h3>
+  <div class="note">
+    <strong>Strategistsの唯一の武器</strong>: 競合は全て「情報メディア」として中立的に情報を提供。<br>
+    Strategistsは<strong>唯一の「実際にケース面接を指導している塾」</strong>。<br>
+    →「面接官はここを見ている」「良い回答 vs 悪い回答」など、<strong>実務者視点のコンテンツ</strong>が最大の差別化要因。<br>
+    → カテゴリまとめページで「ケース面接対策のプロが教える」という権威性を前面に出す。
+  </div>
+</div>
+
+<!-- ========== 5. PLAN ========== -->
+<div class="card" id="plan">
+  <h2><span class="num">5</span> サイト構造リデザインプラン</h2>
+
+  <h3>設計原則</h3>
+  <table>
+    <tr><th>#</th><th>原則</th><th>理由</th></tr>
+    <tr><td>1</td><td><strong>1記事1カテゴリ</strong></td><td>カニバリゼーション根絶。複数カテゴリ登録を運用ルールで禁止</td></tr>
+    <tr><td>2</td><td><strong>カテゴリ名 = 狙いたいKW</strong></td><td>SEO提案書・内野チーム方針を踏襲</td></tr>
+    <tr><td>3</td><td><strong>既存URLの変更を最小化</strong></td><td>上位記事のURL変更は順位低下リスクがあるため</td></tr>
+    <tr><td>4</td><td><strong>Phase分け</strong></td><td>既存記事の整理（Phase 1）と新規拡充（Phase 2）を分離</td></tr>
+  </table>
+
+  <h3>Phase 1: 既存144記事を4カテゴリに再編</h3>
+  <div class="cat-tree">
+<span class="highlight">ケース面接</span> (case-interview)        <span class="dim">← slug維持。URL変更最小</span>
+├── 対策法・ステージ別               <span class="tag">← タグで管理</span>
+├── 例題・過去問解説
+└── フレームワーク応用
+
+<span class="highlight">フェルミ推定</span> (fermi-estimate)      <span class="dim">← slug維持。URL変更最小</span>
+├── やり方・基礎
+└── 例題
+
+<span class="highlight">企業研究</span> (information)             <span class="dim">← slug維持。URL変更最小</span>
+├── 戦略コンサル                   <span class="tag">← tag: strategy</span>
+│   （BCG, McKinsey, Bain, Kearney, S&amp;, ADL, RB, IGPI, DI, YCP）
+├── 総合コンサル                   <span class="tag">← tag: general</span>
+│   （Accenture, Deloitte, PwC, EY, Abeam, BayCurrent）
+└── シンクタンク                   <span class="tag">← tag: thinktank</span>
+    （NTTデータ経営研究所, 大和総研, ノースサンド等）
+
+<span class="highlight">コンサル転職</span> (career)              <span class="dim">← 新規カテゴリ</span>
+├── 中途転職ガイド
+├── 新卒就活ガイド
+└── 体験談
+  </div>
+
+  <h3>48記事の振り分けルール</h3>
+  <table>
+    <tr>
+      <th>現在の状態</th>
+      <th>記事タイプの例</th>
+      <th>→ 新カテゴリ</th>
+      <th>判断基準</th>
+    </tr>
+    <tr>
+      <td>case + fermi + info</td>
+      <td>「BCGのケース面接を突破し内定する方法」</td>
+      <td><span class="badge badge-blue">企業研究</span></td>
+      <td>ファーム名KWで流入</td>
+    </tr>
+    <tr>
+      <td>case + fermi + info</td>
+      <td>「デロイト ケース面接の通過率は？」</td>
+      <td><span class="badge badge-blue">企業研究</span></td>
+      <td>ファーム名KWで流入</td>
+    </tr>
+    <tr>
+      <td>case + fermi</td>
+      <td>「過去問研究/ベイカレント」「過去問研究/ADL」</td>
+      <td><span class="badge badge-blue">企業研究</span></td>
+      <td>企業名が主軸</td>
+    </tr>
+    <tr>
+      <td>case + fermi</td>
+      <td>「戦コン一次面接突破のコツ」</td>
+      <td><span class="badge badge-blue">ケース面接</span></td>
+      <td>対策法が主軸</td>
+    </tr>
+    <tr>
+      <td>case + fermi</td>
+      <td>「高難易度フェルミ推定に挑戦！」</td>
+      <td><span class="badge badge-blue">フェルミ推定</span></td>
+      <td>フェルミ推定が主軸</td>
+    </tr>
+    <tr>
+      <td>recommend + case + exp</td>
+      <td>「初心者からマッキンゼーに内定した話」</td>
+      <td><span class="badge badge-blue">コンサル転職</span></td>
+      <td>体験談</td>
+    </tr>
+    <tr>
+      <td>behavior + exp</td>
+      <td>「ビヘイビア面接(PEI)対策」</td>
+      <td><span class="badge badge-blue">ケース面接</span></td>
+      <td>面接対策として統合</td>
+    </tr>
+  </table>
+
+  <h3>URL変更の影響見積もり</h3>
+  <table>
+    <tr>
+      <th>変更パターン</th>
+      <th class="text-right">対象記事数</th>
+      <th>URL変更</th>
+      <th>リスク</th>
+    </tr>
+    <tr>
+      <td>case-interview → case-interview（変更なし）</td>
+      <td class="text-right">~30</td>
+      <td><span class="badge badge-green">なし</span></td>
+      <td class="risk-low">低</td>
+    </tr>
+    <tr>
+      <td>fermi-estimate → fermi-estimate（変更なし）</td>
+      <td class="text-right">~15</td>
+      <td><span class="badge badge-green">なし</span></td>
+      <td class="risk-low">低</td>
+    </tr>
+    <tr>
+      <td>information → information（変更なし）</td>
+      <td class="text-right">~40</td>
+      <td><span class="badge badge-green">なし</span></td>
+      <td class="risk-low">低</td>
+    </tr>
+    <tr>
+      <td>case-interview → information（企業研究へ移動）</td>
+      <td class="text-right">~30</td>
+      <td><span class="badge badge-orange">あり</span></td>
+      <td class="risk-mid">中</td>
+    </tr>
+    <tr>
+      <td>fermi-estimate → case-interview（統合）</td>
+      <td class="text-right">~5</td>
+      <td><span class="badge badge-orange">あり</span></td>
+      <td class="risk-low">低</td>
+    </tr>
+    <tr>
+      <td>recommend/experiences → career（新カテゴリ）</td>
+      <td class="text-right">~10</td>
+      <td><span class="badge badge-orange">あり</span></td>
+      <td class="risk-low">低</td>
+    </tr>
+  </table>
+  <div class="note">
+    <strong>URL変更が必要な記事: 約45件</strong><br>
+    WordPressが自動で旧URL→新URLの301リダイレクトを設定することを実機で確認済み。<br>
+    上位記事（clicks 100+）から段階的に移動し、Search Consoleで2-4週間モニタリング。
+  </div>
+
+  <h3>Phase 2: 新規コンテンツ拡充（中期）</h3>
+  <div class="cat-tree">
+<span class="highlight">コンサル業界</span> (industry)            <span class="dim">← 新規カテゴリ（記事5本以上書いてから追加）</span>
+├── 戦略コンサルとは <span class="tag">(vol: 880)</span>
+├── 総合コンサルとは <span class="tag">(vol: 320)</span>
+├── シンクタンクとは <span class="tag">(vol: 27,100)</span>
+├── コンサル年収 <span class="tag">(vol: 多数)</span>
+└── コンサルの仕事内容
+
+<span class="dim">※「企業研究」= 個別ファームの選考情報</span>
+<span class="dim">※「コンサル業界」= 業界全体の概要・入門コンテンツ</span>
+  </div>
+
+  <h3>カテゴリまとめページ（ランディングページ）</h3>
+  <p style="font-size:14px;">現在のWordPressカテゴリページは記事が時系列に並ぶだけ。Movin方式の手動キュレーションページに作り替える。</p>
+  <div style="background:#f5f7fa;border-radius:10px;padding:20px;margin:12px 0;font-size:14px;line-height:1.9;">
+    <strong>/blog/category/case-interview/ のリデザインイメージ:</strong><br><br>
+    [パンくず] TOP > ブログ > ケース面接<br><br>
+    <strong style="font-size:18px;">ケース面接対策</strong><br>
+    戦略コンサル・総合コンサルのケース面接を突破するための対策法を、MBB内定者が徹底解説。<br><br>
+    <strong>■ まずはここから（ピラーページ）</strong><br>
+    &nbsp;&nbsp;&nbsp;→ ケース面接とは？完全ガイド<br><br>
+    <strong>■ ステージ別対策</strong><br>
+    &nbsp;&nbsp;&nbsp;├── 一次面接突破のコツ<br>
+    &nbsp;&nbsp;&nbsp;├── 二次面接突破のコツ<br>
+    &nbsp;&nbsp;&nbsp;└── 最終面接突破のコツ<br><br>
+    <strong>■ 過去問解説シリーズ</strong><br>
+    &nbsp;&nbsp;&nbsp;├── BCG / McKinsey / Bain ...<br>
+    &nbsp;&nbsp;&nbsp;└── 高難易度フェルミ推定に挑戦<br><br>
+    <span style="background:var(--accent);color:white;padding:6px 16px;border-radius:6px;font-size:13px;">無料でケース面接を体験する →</span>
+  </div>
+
+  <h3>タグ設計（サブ分類）</h3>
+  <p style="font-size:14px;">カテゴリは1記事1つだが、タグは複数OK。横断的な記事発見を支援。</p>
+  <table>
+    <tr><th>タグ種別</th><th>例</th><th>用途</th></tr>
+    <tr><td>ファーム名</td><td>mckinsey, bcg, bain, accenture, deloitte</td><td>企業別絞り込み</td></tr>
+    <tr><td>業態</td><td>strategy, general, thinktank</td><td>業態別絞り込み</td></tr>
+    <tr><td>対象者</td><td>mid-career, new-grad</td><td>中途/新卒フィルタ</td></tr>
+    <tr><td>難易度</td><td>beginner, advanced</td><td>レベル別</td></tr>
+  </table>
+  <p style="font-size:13px;color:var(--text-light);margin-top:8px;">※ タグページは全てnoindex。SEO価値はカテゴリページに集中。</p>
+
+  <h3>内部リンク設計（トピッククラスター）</h3>
+  <div style="background:#f5f7fa;border-radius:10px;padding:20px;margin:12px 0;font-size:13px;font-family:monospace;line-height:2;">
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;┌──────────────┐<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;│ ケース面接&nbsp;&nbsp;&nbsp;│ ← ピラーページ<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;│ 完全ガイド&nbsp;&nbsp;&nbsp;│<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;└──────┬───────┘<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;┌───────────────┼───────────────┐<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;▼&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;▼&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;▼<br>
+    &nbsp;&nbsp;┌──────────┐&nbsp;&nbsp;&nbsp;&nbsp;┌──────────┐&nbsp;&nbsp;&nbsp;&nbsp;┌──────────┐<br>
+    &nbsp;&nbsp;│一次面接&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;&nbsp;│BCG過去問&nbsp;│&nbsp;&nbsp;&nbsp;&nbsp;│フレーム&nbsp;&nbsp;│<br>
+    &nbsp;&nbsp;│突破のコツ│&nbsp;&nbsp;&nbsp;&nbsp;│解説&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;&nbsp;│ワーク&nbsp;&nbsp;&nbsp;│<br>
+    &nbsp;&nbsp;└──────────┘&nbsp;&nbsp;&nbsp;&nbsp;└──────────┘&nbsp;&nbsp;&nbsp;&nbsp;└──────────┘<br>
+  </div>
+</div>
+
+<!-- ========== 6. MIGRATION ========== -->
+<div class="card" id="migration">
+  <h2><span class="num">6</span> 移行計画 & リスク管理</h2>
+
+  <h3>リスク評価</h3>
+  <table>
+    <tr><th>リスク</th><th>確率</th><th>影響度</th><th>対策</th></tr>
+    <tr>
+      <td>URL変更による一時的な順位低下</td>
+      <td class="risk-mid">中</td>
+      <td class="risk-mid">中</td>
+      <td>段階移行（1日5記事）+ SC監視。301で通常2-4週間で回復</td>
+    </tr>
+    <tr>
+      <td>WordPress自動301が効かない記事</td>
+      <td class="risk-low">低</td>
+      <td class="risk-mid">中</td>
+      <td>.htaccessで手動301追加。移行前にテスト確認済み</td>
+    </tr>
+    <tr>
+      <td>カテゴリまとめページのSEO効果が出ない</td>
+      <td class="risk-mid">中</td>
+      <td class="risk-low">低</td>
+      <td>手動キュレーション + 内部リンク強化で対応</td>
+    </tr>
+    <tr>
+      <td>チーム内の振り分け基準の不一致</td>
+      <td class="risk-mid">中</td>
+      <td class="risk-low">低</td>
+      <td>振り分けルール表を事前に合意。判断基準=メインの検索クエリ</td>
+    </tr>
+  </table>
+
+  <h3>既に完了した作業</h3>
+  <table>
+    <tr><th>作業</th><th>日付</th><th>結果</th></tr>
+    <tr>
+      <td>uncategorized/1270 → information カテゴリに移動</td>
+      <td>2026-03-11</td>
+      <td><span class="badge badge-green">完了</span> — 301リダイレクト自動設定を確認</td>
+    </tr>
+    <tr>
+      <td>Search Console API接続・データ取得基盤構築</td>
+      <td>2026-03-11</td>
+      <td><span class="badge badge-green">完了</span></td>
+    </tr>
+    <tr>
+      <td>WordPress SSH接続・WP-CLI動作確認</td>
+      <td>2026-03-11</td>
+      <td><span class="badge badge-green">完了</span> — /opt/php-8.2/bin/php で実行</td>
+    </tr>
+  </table>
+</div>
+
+<!-- ========== 7. SCHEDULE ========== -->
+<div class="card" id="schedule">
+  <h2><span class="num">7</span> 実行スケジュール</h2>
+
+  <div class="timeline">
+    <div class="timeline-item">
+      <h4>Week 1-2: 準備</h4>
+      <ul>
+        <li>全144記事の新カテゴリ振り分け表を作成（SCクエリデータと突き合わせ）</li>
+        <li>振り分け表をチームでレビュー・合意</li>
+        <li>WordPressに新カテゴリ「コンサル転職(career)」を作成</li>
+        <li>タグを一括作成</li>
+      </ul>
+    </div>
+    <div class="timeline-item">
+      <h4>Week 3-4: 上位記事から段階移行</h4>
+      <ul>
+        <li>clicks上位20記事のカテゴリ変更（1日5記事ペース）</li>
+        <li>各記事の301リダイレクト動作確認</li>
+        <li>Search Consoleでインデックス状況監視</li>
+        <li>問題があれば即ロールバック</li>
+      </ul>
+    </div>
+    <div class="timeline-item">
+      <h4>Week 5-6: 残り記事の移行 + noindex設定</h4>
+      <ul>
+        <li>残り記事のカテゴリ変更</li>
+        <li>旧カテゴリ（recommend, news, behavior, experiences）の整理・削除</li>
+        <li>tag/page のnoindex設定</li>
+      </ul>
+    </div>
+    <div class="timeline-item">
+      <h4>Week 7-8: まとめページ & 内部リンク</h4>
+      <ul>
+        <li>4カテゴリのまとめページ（ランディングページ）作成</li>
+        <li>パンくずリスト実装確認・追加</li>
+        <li>各記事に関連記事セクション追加</li>
+      </ul>
+    </div>
+    <div class="timeline-item">
+      <h4>Phase 2（翌月以降）</h4>
+      <ul>
+        <li>「コンサル業界」カテゴリ追加（新規記事5本以上書いてから）</li>
+        <li>ピラーページ作成（ケース面接完全ガイド / フェルミ推定完全ガイド）</li>
+        <li>CTA記事テーマ別カスタマイズ（MyVision方式）</li>
+        <li>Core Web Vitals改善（モバイルLCP対策）</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ========== NEXT STEP ========== -->
+<div class="card" style="border: 2px solid var(--accent); background: linear-gradient(135deg, #fff5f7 0%, #fff 100%);">
+  <h2 style="border-bottom-color: var(--accent);">次のアクション</h2>
+  <p style="font-size:15px;margin-bottom:12px;">本プランの承認後、以下を実行予定:</p>
+  <ol style="font-size:14px;padding-left:20px;">
+    <li style="margin:8px 0;"><strong>全144記事の振り分け表を作成</strong> — 各記事のタイトル・現カテゴリ・主要流入クエリ・推奨新カテゴリ・URL変更有無を一覧化</li>
+    <li style="margin:8px 0;"><strong>チームレビュー</strong> — 振り分け表を内野チーム（小田+松本）と後藤さんで確認</li>
+    <li style="margin:8px 0;"><strong>段階的な移行実行</strong> — WordPress上でカテゴリ変更 + 301リダイレクト確認</li>
+  </ol>
+</div>
+
+</div>
+
+<!-- ========== FOOTER ========== -->
+<div class="footer">
+  <div class="container">
+    Strategists SEO Analysis Report — 株式会社トップティア<br>
+    Data source: Google Search Console API (sc-domain:akagiconsulting.com) ｜ Period: 2025/12/09 〜 2026/03/08
+  </div>
+</div>
+
+</body>
+</html>

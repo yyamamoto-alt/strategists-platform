@@ -1,0 +1,1404 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Google広告運用 深層分析レポート v2 | 田中慎太郎</title>
+<style>
+  :root {
+    --primary: #0f172a;
+    --primary-mid: #1e293b;
+    --accent: #2563eb;
+    --accent-dark: #1d4ed8;
+    --accent-light: #dbeafe;
+    --danger: #dc2626;
+    --danger-light: #fef2f2;
+    --danger-dark: #991b1b;
+    --success: #059669;
+    --success-light: #ecfdf5;
+    --warning: #d97706;
+    --warning-light: #fffbeb;
+    --gray-50: #f8fafc;
+    --gray-100: #f1f5f9;
+    --gray-200: #e2e8f0;
+    --gray-300: #cbd5e1;
+    --gray-400: #94a3b8;
+    --gray-500: #64748b;
+    --gray-600: #475569;
+    --gray-700: #334155;
+    --gray-900: #0f172a;
+    --radius: 12px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif;
+    background: var(--gray-50);
+    color: var(--gray-900);
+    line-height: 1.8;
+    font-size: 15px;
+  }
+
+  .container {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+  }
+
+  /* Header */
+  .header {
+    background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 60%, #2563eb 100%);
+    color: white;
+    padding: 56px 48px 40px;
+    border-radius: 20px;
+    margin-bottom: 12px;
+    position: relative;
+    overflow: hidden;
+  }
+  .header::before {
+    content: '';
+    position: absolute;
+    top: -80px; right: -40px;
+    width: 320px; height: 320px;
+    background: rgba(255,255,255,0.03);
+    border-radius: 50%;
+  }
+  .header::after {
+    content: '';
+    position: absolute;
+    bottom: -60px; left: 30%;
+    width: 200px; height: 200px;
+    background: rgba(37,99,235,0.08);
+    border-radius: 50%;
+  }
+  .header .version-tag {
+    display: inline-block;
+    background: rgba(220,38,38,0.9);
+    color: white;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 12px;
+    border-radius: 20px;
+    letter-spacing: 0.5px;
+    margin-bottom: 16px;
+  }
+  .header h1 {
+    font-size: 30px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    margin-bottom: 6px;
+  }
+  .header .subtitle {
+    font-size: 15px;
+    opacity: 0.75;
+    margin-bottom: 24px;
+  }
+  .header .meta {
+    display: flex; gap: 24px; font-size: 12px; opacity: 0.6; flex-wrap: wrap;
+  }
+
+  /* Alert banner */
+  .alert-banner {
+    background: linear-gradient(90deg, var(--danger-dark), var(--danger));
+    color: white;
+    padding: 20px 32px;
+    border-radius: 0 0 var(--radius) var(--radius);
+    margin-bottom: 32px;
+    font-size: 14px;
+  }
+  .alert-banner strong {
+    font-size: 16px;
+    display: block;
+    margin-bottom: 4px;
+  }
+
+  /* Author */
+  .author-card {
+    background: white;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius);
+    padding: 20px 28px;
+    margin-bottom: 32px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+  .author-avatar {
+    width: 52px; height: 52px;
+    background: var(--primary);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: white; font-size: 20px; font-weight: 700; flex-shrink: 0;
+  }
+  .author-info h3 { font-size: 15px; margin-bottom: 1px; }
+  .author-info p { font-size: 12px; color: var(--gray-500); }
+
+  /* Section */
+  .section {
+    background: white;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius);
+    padding: 36px 32px;
+    margin-bottom: 24px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .section-title {
+    font-size: 20px; font-weight: 800;
+    color: var(--primary);
+    margin-bottom: 24px;
+    padding-bottom: 14px;
+    border-bottom: 3px solid var(--accent);
+    display: flex; align-items: center; gap: 12px;
+  }
+  .section-title .num {
+    background: var(--accent);
+    color: white;
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; flex-shrink: 0;
+  }
+  .section-title .num.red { background: var(--danger); }
+
+  /* Exec cards */
+  .exec-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 14px;
+    margin-bottom: 24px;
+  }
+  .exec-card {
+    background: var(--gray-50);
+    border-radius: 10px;
+    padding: 18px 16px;
+    text-align: center;
+    border: 1px solid var(--gray-200);
+  }
+  .exec-card .label {
+    font-size: 11px; color: var(--gray-500);
+    text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;
+  }
+  .exec-card .value {
+    font-size: 26px; font-weight: 800; color: var(--primary);
+  }
+  .exec-card .sub { font-size: 11px; color: var(--gray-500); margin-top: 3px; }
+  .exec-card.good { border-left: 4px solid var(--success); }
+  .exec-card.bad { border-left: 4px solid var(--danger); }
+  .exec-card.warn { border-left: 4px solid var(--warning); }
+  .exec-card.neutral { border-left: 4px solid var(--accent); }
+
+  /* Tables */
+  table {
+    width: 100%; border-collapse: collapse; font-size: 13px; margin: 16px 0;
+  }
+  thead th {
+    background: var(--gray-100);
+    padding: 10px 12px;
+    text-align: left;
+    font-weight: 600; font-size: 12px;
+    color: var(--gray-600);
+    border-bottom: 2px solid var(--gray-200);
+    white-space: nowrap;
+  }
+  tbody td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--gray-100);
+  }
+  tbody tr:hover { background: var(--gray-50); }
+  .text-right { text-align: right; }
+  .text-center { text-align: center; }
+  .font-mono { font-family: 'SF Mono', 'Consolas', monospace; font-size: 12px; }
+
+  /* Highlight boxes */
+  .hl {
+    padding: 18px 22px; border-radius: 10px; margin: 18px 0; font-size: 14px;
+    line-height: 1.7;
+  }
+  .hl strong { display: block; margin-bottom: 6px; font-size: 15px; }
+  .hl.success { background: var(--success-light); border-left: 4px solid var(--success); }
+  .hl.danger { background: var(--danger-light); border-left: 4px solid var(--danger); }
+  .hl.warning { background: var(--warning-light); border-left: 4px solid var(--warning); }
+  .hl.info { background: var(--accent-light); border-left: 4px solid var(--accent); }
+
+  /* Critical box */
+  .critical-box {
+    background: #1a0000;
+    color: #fca5a5;
+    border: 2px solid var(--danger);
+    border-radius: var(--radius);
+    padding: 24px 28px;
+    margin: 20px 0;
+  }
+  .critical-box strong {
+    color: #fef2f2;
+    font-size: 16px;
+    display: block;
+    margin-bottom: 8px;
+  }
+  .critical-box .num-highlight {
+    color: #fca5a5;
+    font-size: 28px;
+    font-weight: 800;
+    display: inline-block;
+    margin: 4px 8px 4px 0;
+  }
+
+  /* Tags */
+  .tag {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .tag.good { background: var(--success-light); color: var(--success); }
+  .tag.bad { background: var(--danger-light); color: var(--danger); }
+  .tag.warn { background: var(--warning-light); color: var(--warning); }
+  .tag.info { background: var(--accent-light); color: var(--accent); }
+
+  /* Bar chart */
+  .bar-chart { margin: 16px 0; }
+  .bar-row {
+    display: flex; align-items: center; margin-bottom: 6px; gap: 8px;
+  }
+  .bar-label {
+    width: 140px; font-size: 12px; text-align: right; flex-shrink: 0; color: var(--gray-600);
+  }
+  .bar-track {
+    flex: 1; height: 26px; background: var(--gray-100); border-radius: 4px; overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%; border-radius: 4px;
+    display: flex; align-items: center; padding-left: 8px;
+    font-size: 11px; color: white; font-weight: 600; min-width: fit-content;
+  }
+  .bar-fill.blue { background: var(--accent); }
+  .bar-fill.green { background: var(--success); }
+  .bar-fill.red { background: var(--danger); }
+  .bar-fill.orange { background: var(--warning); }
+  .bar-fill.gray { background: var(--gray-400); }
+  .bar-value {
+    font-size: 12px; width: 100px; text-align: right; flex-shrink: 0; color: var(--gray-600);
+  }
+
+  /* Comparison box */
+  .compare-grid {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 16px;
+    align-items: center;
+    margin: 20px 0;
+  }
+  .compare-box {
+    padding: 20px; border-radius: 10px; text-align: center;
+  }
+  .compare-box.left { background: var(--danger-light); border: 1px solid #fecaca; }
+  .compare-box.right { background: var(--success-light); border: 1px solid #a7f3d0; }
+  .compare-arrow {
+    font-size: 28px; color: var(--gray-400); font-weight: 700;
+  }
+  .compare-box .label { font-size: 12px; color: var(--gray-500); margin-bottom: 4px; }
+  .compare-box .val { font-size: 24px; font-weight: 800; }
+  .compare-box.left .val { color: var(--danger); }
+  .compare-box.right .val { color: var(--success); }
+
+  /* Two-col */
+  .two-col {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
+  }
+
+  /* Action list */
+  .action-list { list-style: none; padding: 0; }
+  .action-list li {
+    padding: 16px 20px 16px 52px;
+    border: 1px solid var(--gray-200);
+    border-radius: 10px;
+    margin-bottom: 10px;
+    font-size: 14px;
+    position: relative;
+  }
+  .action-list li::before {
+    content: attr(data-num);
+    position: absolute; left: 14px; top: 16px;
+    background: var(--accent); color: white;
+    width: 26px; height: 26px; border-radius: 50%;
+    font-size: 12px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .action-list li.urgent::before { background: var(--danger); }
+  .action-list li strong { color: var(--primary); }
+  .action-list li .effect {
+    display: inline-block;
+    background: var(--success-light);
+    color: var(--success);
+    font-size: 12px; font-weight: 600;
+    padding: 2px 10px; border-radius: 4px;
+    margin-top: 6px;
+  }
+
+  /* Footnote */
+  .footnote { font-size: 12px; color: var(--gray-500); margin-top: 8px; }
+
+  p { margin-bottom: 12px; }
+  h4 { font-size: 15px; margin: 24px 0 10px; color: var(--primary); font-weight: 700; }
+
+  .strikethrough { text-decoration: line-through; color: var(--gray-400); }
+  .correction { color: var(--danger); font-weight: 700; }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .container { padding: 16px 12px 60px; }
+    .section { padding: 24px 16px; }
+    .header { padding: 32px 20px 28px; }
+    .header h1 { font-size: 22px; }
+    .exec-grid { grid-template-columns: 1fr 1fr; }
+    .two-col { grid-template-columns: 1fr; }
+    .compare-grid { grid-template-columns: 1fr; }
+    .compare-arrow { transform: rotate(90deg); }
+    table { font-size: 11px; }
+    .bar-label { width: 90px; }
+  }
+
+  /* Waterfall */
+  .waterfall { display: flex; align-items: flex-end; gap: 4px; height: 180px; margin: 20px 0; }
+  .waterfall .col {
+    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+  }
+  .waterfall .col .bar {
+    width: 100%; border-radius: 3px 3px 0 0; min-height: 4px;
+    transition: height 0.3s ease;
+  }
+  .waterfall .col .lbl {
+    font-size: 10px; color: var(--gray-500); margin-top: 4px; text-align: center;
+    white-space: nowrap;
+  }
+  .waterfall .col .val {
+    font-size: 10px; font-weight: 700; margin-bottom: 2px; text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+<!-- ===== HEADER ===== -->
+<div class="header">
+  <span class="version-tag">v2.0 -- 前回レポートの誤り訂正・深層分析</span>
+  <h1>Google広告 深層分析レポート</h1>
+  <div class="subtitle">Strategists（コンサル転職スクール）-- 配信抑制の根本原因と構造的問題の解明</div>
+  <div class="meta">
+    <span>分析対象: 2025年3月 - 2026年3月</span>
+    <span>作成日: 2026年3月13日</span>
+    <span>Ads ID: 9777096652</span>
+  </div>
+</div>
+
+<div class="alert-banner">
+  <strong>前回レポートの重大な誤り: 3点を訂正します</strong>
+  (1) 「CPA ¥1,400は効率改善の成果」 → 実態はマイクロCV混入による見かけ上の数値。真のCPAは約¥20,000-¥30,000。
+  (2) 「予算が足りない」 → TARGET_CPA ¥1,200が保守的すぎて配信されないのが本質。日予算¥5,000すら消化できていない。
+  (3) 「期待紹介料 ¥521万」 → 学生にエージェント売上はなく、この数値は誤り。確定売上¥156.4万のみが正。
+</div>
+
+<!-- ===== AUTHOR ===== -->
+<div class="author-card">
+  <div class="author-avatar">田</div>
+  <div class="author-info">
+    <h3>田中 慎太郎</h3>
+    <p>Google広告運用スペシャリスト / 元大手代理店運用チームリーダー / BtoC教育系広告10年超</p>
+  </div>
+</div>
+
+<!-- ===== 0. EXECUTIVE SUMMARY ===== -->
+<div class="section">
+  <div class="section-title"><span class="num">0</span>エグゼクティブサマリー</div>
+
+  <div class="exec-grid">
+    <div class="exec-card bad">
+      <div class="label">総広告費（12ヶ月）</div>
+      <div class="value">468.8万</div>
+      <div class="sub">確定売上に対しROAS 0.33倍</div>
+    </div>
+    <div class="exec-card bad">
+      <div class="label">確定売上</div>
+      <div class="value">156.4万</div>
+      <div class="sub">成約7件 / 平均¥223,443</div>
+    </div>
+    <div class="exec-card bad">
+      <div class="label">月予算消化率</div>
+      <div class="value">4%</div>
+      <div class="sub">上限100万に対し月4万</div>
+    </div>
+    <div class="exec-card warn">
+      <div class="label">成約率</div>
+      <div class="value">20.6%</div>
+      <div class="sub">全チャネル中ワースト2位</div>
+    </div>
+  </div>
+
+  <div class="critical-box">
+    <strong>核心的問題: 「見かけのCPA」に入札戦略が騙されている</strong>
+    <p>2025年8月21日にマイクロCVが計測対象に追加され、見かけ上のCPAが ¥1,293 まで低下。
+    この数値に基づいてTARGET_CPAを ¥1,200 に設定した結果、Google広告の自動入札エンジンが
+    「¥1,200で獲得できるオークションにしか参加しない」という極めて保守的な挙動に陥り、
+    <strong style="color:white;">月間予算100万円の96%が未消化</strong>の状態が続いている。</p>
+    <p style="margin-top:12px;">真のCV（既卒遷移+新卒遷移）ベースのCPAは
+    <span class="num-highlight">¥20,000〜¥30,000</span>
+    であり、現在のTARGET_CPA ¥1,200は真のCPAの <strong style="color:white;">1/17〜1/25</strong> という非現実的な設定。</p>
+  </div>
+
+  <div class="hl warning">
+    <strong>このレポートの結論（先に提示）</strong>
+    (1) TARGET_CPAを¥1,200 → ¥15,000〜¥20,000に引き上げ、(2) 共有予算を解消し主力キャンペーンに¥10,000/日を確保、
+    (3) マイクロCVを入札最適化対象から除外 -- この3つを実行すれば、月間広告費¥20〜30万でCRM流入10〜15件/月、
+    成約2〜3件/月（月間売上¥45〜67万）の達成が見込める。ROAS 1.5〜2.2倍。
+  </div>
+</div>
+
+<!-- ===== 1. マイクロCV問題 ===== -->
+<div class="section">
+  <div class="section-title"><span class="num red">1</span>核心問題: マイクロCV混入によるCPA過小表示</div>
+
+  <p>2025年8月21日のCV設定変更（キャンペーン名「0821変更」と一致）により、それまでの「真のCV」に加えてマイクロCVが計測対象に追加されました。これが全ての問題の起点です。</p>
+
+  <h4>CV定義の変遷（8月21日境界）</h4>
+  <table>
+    <thead>
+      <tr><th>CV種別</th><th>種類</th><th>8月以前</th><th>9月以降</th><th>申込との距離</th></tr>
+    </thead>
+    <tbody>
+      <tr style="background:var(--success-light);">
+        <td><strong>既卒 /schedule/ 遷移</strong></td>
+        <td>真のCV</td>
+        <td>計測あり</td>
+        <td>計測あり</td>
+        <td><span class="tag good">近い</span></td>
+      </tr>
+      <tr style="background:var(--success-light);">
+        <td><strong>新卒 schedule 遷移</strong></td>
+        <td>真のCV</td>
+        <td>計測あり</td>
+        <td>計測あり</td>
+        <td><span class="tag good">近い</span></td>
+      </tr>
+      <tr style="background:var(--danger-light);">
+        <td><strong>マイクロCV</strong></td>
+        <td>水増し</td>
+        <td>計測なし</td>
+        <td><strong>主CV化</strong></td>
+        <td><span class="tag bad">遠い</span></td>
+      </tr>
+      <tr style="background:var(--danger-light);">
+        <td><strong>btn_click</strong></td>
+        <td>水増し</td>
+        <td>計測なし</td>
+        <td><strong>全CVに追加</strong></td>
+        <td><span class="tag bad">非常に遠い</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h4>見かけのCPA vs 真のCPA（再計算）</h4>
+
+  <div class="compare-grid">
+    <div class="compare-box left">
+      <div class="label">管理画面上のCPA（マイクロ込み）</div>
+      <div class="val">¥1,293</div>
+      <p style="font-size:12px;margin-top:6px;color:var(--gray-600);">直近3ヶ月平均<br>btn_click + マイクロCV含む</p>
+    </div>
+    <div class="compare-arrow">&rarr;</div>
+    <div class="compare-box right" style="background:var(--danger-light);border-color:#fecaca;">
+      <div class="label">真のCPA（既卒遷移+新卒遷移のみ）</div>
+      <div class="val" style="color:var(--danger);">¥20,000〜30,000</div>
+      <p style="font-size:12px;margin-top:6px;color:var(--gray-600);">推定値<br>真のCV = 月2-3件に減少</p>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr><th>期間</th><th>費用</th><th>全CV数<br>(マイクロ込)</th><th>見かけCPA</th><th>真のCV<br>(遷移のみ推定)</th><th>真のCPA</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>2025年3-8月（変更前）</td><td>¥4,287,840</td><td>52件</td><td>¥82,459</td><td>52件</td><td>¥82,459</td></tr>
+      <tr><td>2025年9-11月</td><td>¥357,000</td><td>65件</td><td>¥5,492</td><td>8件(推定)</td><td>¥44,625</td></tr>
+      <tr><td>2026年1-3月</td><td>¥43,000</td><td>33件</td><td>¥1,303</td><td>2件(推定)</td><td>¥21,500</td></tr>
+    </tbody>
+  </table>
+  <p class="footnote">真のCV数は、CRM流入34件（12ヶ月）からの逆算。9月以降の月間真のCVは2-3件程度と推定。</p>
+
+  <div class="hl danger">
+    <strong>なぜTARGET_CPA ¥1,200になったのか -- 推定メカニズム</strong>
+    (1) 8/21にマイクロCVを追加 → 管理画面のCPA表示が急落<br>
+    (2) 見かけCPA ¥1,293 を「実際の獲得効率」と誤認<br>
+    (3) ポートフォリオ入札戦略でTARGET_CPA ¥1,200を設定<br>
+    (4) 自動入札エンジンは「¥1,200で1CV取れるオークション」にしか入札しない<br>
+    (5) 実際に¥1,200で取れるのはマイクロCV（ボタンクリック程度）のみ<br>
+    (6) 真のCV（申込遷移）に必要なCPC ¥200-400 × 必要クリック数では¥1,200に収まらない<br>
+    (7) 結果: 入札がほぼ停止し、日予算¥5,000の20%（約¥1,000/日）しか消化しない<br>
+    <strong>これが「予算消化率4%」の根本原因。</strong>
+  </div>
+</div>
+
+<!-- ===== 2. 共有予算の罠 ===== -->
+<div class="section">
+  <div class="section-title"><span class="num red">2</span>共有予算の構造問題</div>
+
+  <p>日予算¥5,000を2つのキャンペーンが共有しているため、実質的なメインキャンペーンの予算は半減しています。</p>
+
+  <table>
+    <thead>
+      <tr><th>キャンペーン</th><th>目的</th><th>実質予算</th><th>問題点</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>完全一致_オリジナル_0821変更</strong></td>
+        <td>メイン配信</td>
+        <td>¥2,500/日（推定）</td>
+        <td>予算不足で配信機会を逸失</td>
+      </tr>
+      <tr>
+        <td><strong>複製版_ABテスト用</strong></td>
+        <td>TARGET_CPA引上げテスト</td>
+        <td>¥2,500/日（推定）</td>
+        <td>テスト目的だが予算を食い合う</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="hl warning">
+    <strong>共有予算のABテストは逆効果</strong>
+    ABテスト用の複製キャンペーンを作った意図は理解できますが、同じ¥5,000の共有予算では2つのキャンペーンが互いのインプレッション機会を奪い合います。
+    特にTARGET_CPA入札では、予算の半分しか使えない状況で自動入札の学習データも分散し、両方のキャンペーンが最適化不足に陥ります。
+    <br><br>
+    <strong>解決策:</strong> ABテスト用キャンペーンを一時停止し、メインキャンペーンに予算を集中。テストは日予算引き上げ後に別予算で実施。
+  </div>
+</div>
+
+<!-- ===== 3. チャネル比較 ===== -->
+<div class="section">
+  <div class="section-title"><span class="num">3</span>チャネル別成約率 -- Google広告の立ち位置</div>
+
+  <p>CRM確定データに基づくチャネル別比較です。Google広告は成約率20.6%で、全有料チャネルではFB広告(7.6%)を上回りますが、オーガニック系チャネルには大きく劣ります。</p>
+
+  <h4>成約率比較（高い順）</h4>
+  <div class="bar-chart">
+    <div class="bar-row">
+      <div class="bar-label">note</div>
+      <div class="bar-track"><div class="bar-fill green" style="width:100%">43.5%</div></div>
+      <div class="bar-value">30/69 = ¥177,653</div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-label">口コミ・紹介</div>
+      <div class="bar-track"><div class="bar-fill green" style="width:93.6%">40.7%</div></div>
+      <div class="bar-value">11/27 = ¥146,963</div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-label">Youtube</div>
+      <div class="bar-track"><div class="bar-fill green" style="width:88.7%">38.6%</div></div>
+      <div class="bar-value">17/44 = ¥215,947</div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-label">Google検索(自然)</div>
+      <div class="bar-track"><div class="bar-fill blue" style="width:87.4%">38.0%</div></div>
+      <div class="bar-value">113/297 = ¥206,799</div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-label">X</div>
+      <div class="bar-track"><div class="bar-fill orange" style="width:67.1%">29.2%</div></div>
+      <div class="bar-value">92/315 = ¥129,763</div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-label" style="font-weight:700;color:var(--danger);">Google広告</div>
+      <div class="bar-track"><div class="bar-fill red" style="width:47.4%">20.6%</div></div>
+      <div class="bar-value" style="font-weight:700;">7/34 = ¥200,488</div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-label">FB広告</div>
+      <div class="bar-track"><div class="bar-fill red" style="width:17.5%">7.6%</div></div>
+      <div class="bar-value">7/92 = ¥274,557</div>
+    </div>
+  </div>
+
+  <div class="two-col">
+    <div class="hl info">
+      <strong>Google広告 成約率20.6%の意味</strong>
+      オーガニック系（note 43.5%、Google検索 38.0%）と比べると約半分。
+      広告経由のユーザーは「まだ比較検討段階」であり、コンテンツ経由で自発的に来た人ほど温度感が高くない。
+      これは教育系広告の一般的な傾向と合致しており、異常値ではない。
+      <br><br>
+      ただし、FB広告(7.6%)と比較すると約2.7倍の成約率があり、有料チャネルとしてはむしろ健闘している。
+    </div>
+    <div class="hl warning">
+      <strong>失注理由に見える広告特有の課題</strong>
+      Google広告経由の失注27件の内訳:<br>
+      - 価格で失注: 4件<br>
+      - 他サービスと比較: 2件<br>
+      - 無料体験目的: 1件<br>
+      - NoShow: 3件<br>
+      - 実施不可: 5件<br>
+      - 失注見込(自動): 6件<br>
+      <br>
+      「無料体験目的」「テイカー」といったメモが散見され、広告で流入する層には<strong>温度感の低い顧客が混在</strong>している。
+      LP上で価格帯や本気度を事前にスクリーニングする設計変更が有効。
+    </div>
+  </div>
+
+  <h4>平均客単価の比較</h4>
+  <p>Google広告の平均客単価¥200,488は、FB広告(¥274,557)、Youtube(¥215,947)に次ぐ水準で決して低くない。高額プラン（泉氏¥442,000、金城氏¥358,600）の成約実績もあり、「広告経由は安いプランしか売れない」ということはない。</p>
+</div>
+
+<!-- ===== 4. 成約7名の詳細分析 ===== -->
+<div class="section">
+  <div class="section-title"><span class="num">4</span>Google広告経由 成約7名の詳細分析</div>
+
+  <table>
+    <thead>
+      <tr><th>#</th><th>顧客名</th><th>属性</th><th>申込日</th><th>プラン</th><th>確定売上</th><th>備考</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>1</td>
+        <td>泉 将大</td>
+        <td>中途7年以上</td>
+        <td>2025-03</td>
+        <td>通常/McKなし</td>
+        <td class="text-right font-mono"><strong>¥442,000</strong></td>
+        <td><span class="tag good">高額成約</span></td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td>金城 明香理</td>
+        <td>既卒</td>
+        <td>2025-08</td>
+        <td>既卒/通常</td>
+        <td class="text-right font-mono"><strong>¥358,600</strong></td>
+        <td><span class="tag good">高額成約</span></td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td>江渕 登和</td>
+        <td>27卒</td>
+        <td>2025-04</td>
+        <td>新卒/長期</td>
+        <td class="text-right font-mono">¥304,000</td>
+        <td>学生</td>
+      </tr>
+      <tr>
+        <td>4</td>
+        <td>畑中 優作</td>
+        <td>中途7年以上</td>
+        <td>2025-03</td>
+        <td>既卒/通常</td>
+        <td class="text-right font-mono">¥171,000</td>
+        <td></td>
+      </tr>
+      <tr>
+        <td>5</td>
+        <td>坂本 怜</td>
+        <td>中途3-7年</td>
+        <td>2025-05</td>
+        <td>通常/McKあり</td>
+        <td class="text-right font-mono">¥171,000</td>
+        <td></td>
+      </tr>
+      <tr>
+        <td>6</td>
+        <td>工藤 琴葉</td>
+        <td>27卒学部</td>
+        <td>2025-04</td>
+        <td>新卒/特急</td>
+        <td class="text-right font-mono">¥68,500</td>
+        <td>学生・低単価</td>
+      </tr>
+      <tr>
+        <td>7</td>
+        <td>清水 響</td>
+        <td>中途3年未満</td>
+        <td>2025-04</td>
+        <td>超特急/McKなし</td>
+        <td class="text-right font-mono">¥49,000</td>
+        <td>超特急=低単価</td>
+      </tr>
+      <tr style="background:var(--gray-100);font-weight:700;">
+        <td></td>
+        <td>合計</td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td class="text-right font-mono">¥1,564,100</td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="two-col">
+    <div>
+      <h4>属性別の内訳</h4>
+      <table>
+        <thead><tr><th>属性</th><th>人数</th><th>売上</th><th>平均単価</th></tr></thead>
+        <tbody>
+          <tr><td>既卒・中途</td><td>5名</td><td>¥1,191,600</td><td><strong>¥238,320</strong></td></tr>
+          <tr><td>新卒・学生</td><td>2名</td><td>¥372,500</td><td>¥186,250</td></tr>
+          <tr style="background:var(--gray-50);font-weight:700;"><td>全体</td><td>7名</td><td>¥1,564,100</td><td>¥223,443</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div>
+      <h4>時期別の傾向</h4>
+      <table>
+        <thead><tr><th>時期</th><th>成約数</th><th>備考</th></tr></thead>
+        <tbody>
+          <tr><td>2025年3-5月</td><td>6件</td><td>広告費が潤沢だった時期</td></tr>
+          <tr><td>2025年6-8月</td><td>1件</td><td>CPA高騰・構造変更期</td></tr>
+          <tr><td>2025年9月以降</td><td><strong>0件</strong></td><td style="color:var(--danger);">配信抑制で流入ゼロ</td></tr>
+        </tbody>
+      </table>
+      <div class="hl danger" style="margin-top:12px;">
+        <strong>9月以降の成約ゼロ</strong>
+        TARGET_CPA ¥1,200設定後、新規の真のCV（申込）がほぼ発生していない。
+      </div>
+    </div>
+  </div>
+
+  <div class="hl info">
+    <strong>前回レポートの訂正: 期待紹介料¥521万は誤り</strong>
+    前回レポートでは「期待紹介料 ¥521.1万」を計上していましたが、<span class="strikethrough">学生（工藤氏・江渕氏）にはエージェント売上が発生しない</span>ため、これは過大評価でした。
+    Google広告経由の確定売上は<strong>¥1,564,100のみ</strong>が正。エージェント紹介料の期待値を含めても、既卒中途5名のうち実際に転職支援対象となるケースは限定的です。
+  </div>
+</div>
+
+<!-- ===== 5. ROAS再計算 ===== -->
+<div class="section">
+  <div class="section-title"><span class="num">5</span>ROAS再計算 -- 厳密な投資対効果</div>
+
+  <table>
+    <thead>
+      <tr><th>シナリオ</th><th>売上</th><th>広告費</th><th>ROAS</th><th>判定</th></tr>
+    </thead>
+    <tbody>
+      <tr style="background:var(--danger-light);">
+        <td><strong>確定売上のみ（正確な数値）</strong></td>
+        <td>¥1,564,100</td>
+        <td>¥4,687,840</td>
+        <td><strong>0.33倍</strong></td>
+        <td><span class="tag bad">赤字</span></td>
+      </tr>
+      <tr>
+        <td>前半期（3-8月）のみ</td>
+        <td>¥1,564,100</td>
+        <td>¥4,287,840</td>
+        <td>0.36倍</td>
+        <td><span class="tag bad">赤字</span></td>
+      </tr>
+      <tr>
+        <td>後半期（9月〜）のみ</td>
+        <td>¥0</td>
+        <td>¥400,000</td>
+        <td>0倍</td>
+        <td><span class="tag bad">完全赤字</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="hl danger">
+    <strong>過去12ヶ月の投資は回収できていない</strong>
+    ¥468万の広告投資に対して確定売上¥156万。差額¥312万は純損失。
+    ただし、これは(1)前半期のBROADマッチ暴走（¥110万の無駄）、(2)後半期のTARGET_CPA設定ミスによる配信停止、
+    という<strong>2つの構造的な運用ミスが原因</strong>であり、Google広告というチャネル自体の限界ではない。
+  </div>
+
+  <h4>仮に適正運用していた場合のシミュレーション</h4>
+  <table>
+    <thead>
+      <tr><th>前提</th><th>数値</th><th>根拠</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>月間広告費</td><td>¥250,000</td><td>¥5,000/日を上限共有なしで消化</td></tr>
+      <tr><td>真のCPA</td><td>¥25,000</td><td>前半期の効率KW (CPA¥3,500-¥16,000) の加重平均</td></tr>
+      <tr><td>月間真のCV</td><td>10件</td><td>¥250,000 / ¥25,000</td></tr>
+      <tr><td>月間成約数</td><td>2.1件</td><td>10件 × 成約率20.6%</td></tr>
+      <tr><td>月間売上</td><td>¥469,230</td><td>2.1件 × 既卒中途平均¥223,443</td></tr>
+      <tr><td>月間ROAS</td><td><strong>1.88倍</strong></td><td>¥469,230 / ¥250,000</td></tr>
+      <tr><td>年間売上</td><td><strong>¥563万</strong></td><td>¥469,230 × 12</td></tr>
+      <tr><td>年間ROAS</td><td><strong>1.88倍</strong></td><td>¥563万 / ¥300万</td></tr>
+    </tbody>
+  </table>
+  <p class="footnote">ROAS 3倍の達成には、(A) 成約率を30%に引き上げる、(B) 効率KWに集中してCPAを¥15,000にする、(C) 両方、のいずれかが必要。
+  成約率向上（NoShow削減、LP改善）とCPA改善の両輪で攻める戦略を後述します。</p>
+</div>
+
+<!-- ===== 6. TARGET_CPA問題の深掘り ===== -->
+<div class="section">
+  <div class="section-title"><span class="num red">6</span>TARGET_CPA ¥1,200 -- いくらにすべきか</div>
+
+  <h4>適正TARGET_CPAの算出</h4>
+
+  <p>TARGET_CPAの目標値は「このCPA以下で自動入札を最適化せよ」という指示です。
+  設定すべき値は、<strong>ビジネスとして許容できる上限CPA</strong>であり、見かけの管理画面CPAではありません。</p>
+
+  <table>
+    <thead>
+      <tr><th>算出方法</th><th>計算式</th><th>結果</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>LTVベース（ROAS 3倍逆算）</strong></td>
+        <td>平均客単価¥223,443 × 成約率20.6% / ROAS目標3倍</td>
+        <td class="font-mono"><strong>¥15,333</strong></td>
+      </tr>
+      <tr>
+        <td>LTVベース（ROAS 2倍逆算）</td>
+        <td>¥223,443 × 20.6% / 2倍</td>
+        <td class="font-mono">¥23,015</td>
+      </tr>
+      <tr>
+        <td>既卒中途のみ（ROAS 3倍）</td>
+        <td>¥238,320 × 20.6% / 3倍</td>
+        <td class="font-mono">¥16,355</td>
+      </tr>
+      <tr style="background:var(--danger-light);">
+        <td>現在の設定</td>
+        <td>マイクロCV込みCPA ¥1,293 を参考に設定</td>
+        <td class="font-mono" style="color:var(--danger);"><strong>¥1,200</strong></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="hl success">
+    <strong>推奨: TARGET_CPAを「真のCVベース」で¥15,000〜¥20,000に設定</strong>
+    <p>ただし、これはマイクロCVを入札最適化の対象から<strong>外す</strong>ことが前提。
+    マイクロCVを含めたまま¥15,000に設定すると、自動入札は「マイクロCVを¥15,000で量産する」方向に最適化され、真のCVは改善しません。</p>
+    <p style="margin-top:8px;"><strong>実行手順:</strong><br>
+    (1) マイクロCV・btn_clickを「主CV」から「モニタリング専用」に変更<br>
+    (2) 主CVを「既卒遷移+新卒遷移+/thanks遷移」のみに限定<br>
+    (3) TARGET_CPAを¥15,000に設定（段階的に上げるなら、まず¥10,000で2週間テスト）<br>
+    (4) 2週間後に配信量・真のCV数・CPAを確認し、¥15,000〜¥20,000に調整</p>
+  </div>
+
+  <h4>TARGET_CPA変更による配信量の変化予測</h4>
+  <table>
+    <thead>
+      <tr><th>TARGET_CPA設定</th><th>予想日次消化</th><th>月間費用</th><th>月間真のCV(推定)</th><th>配信制限</th></tr>
+    </thead>
+    <tbody>
+      <tr style="background:var(--danger-light);">
+        <td>¥1,200（現状）</td>
+        <td>¥1,000</td>
+        <td>¥30,000</td>
+        <td>1-2件</td>
+        <td><span class="tag bad">96%未消化</span></td>
+      </tr>
+      <tr>
+        <td>¥5,000</td>
+        <td>¥2,500</td>
+        <td>¥75,000</td>
+        <td>3-5件</td>
+        <td><span class="tag warn">50%未消化</span></td>
+      </tr>
+      <tr>
+        <td>¥10,000</td>
+        <td>¥5,000</td>
+        <td>¥150,000</td>
+        <td>6-10件</td>
+        <td><span class="tag info">日予算到達</span></td>
+      </tr>
+      <tr style="background:var(--success-light);">
+        <td><strong>¥15,000（推奨）</strong></td>
+        <td>¥8,000-10,000</td>
+        <td>¥240,000-300,000</td>
+        <td>10-15件</td>
+        <td><span class="tag good">適正消化</span></td>
+      </tr>
+      <tr>
+        <td>¥20,000</td>
+        <td>¥10,000+</td>
+        <td>¥300,000+</td>
+        <td>12-18件</td>
+        <td><span class="tag warn">日予算引上げ要</span></td>
+      </tr>
+    </tbody>
+  </table>
+  <p class="footnote">日予算¥10,000（共有解消後）の場合の推定。TARGET_CPA ¥15,000なら日予算をほぼ消化し、月15件前後の真のCVが見込める。</p>
+</div>
+
+<!-- ===== 7. キーワード戦略 ===== -->
+<div class="section">
+  <div class="section-title"><span class="num">7</span>キーワード戦略 -- 無駄の排除と集中投下</div>
+
+  <h4>費用浪費キーワードTOP5（即時停止対象）</h4>
+  <table>
+    <thead>
+      <tr><th>#</th><th>キーワード</th><th>マッチ</th><th>費用</th><th>真のCV</th><th>問題</th></tr>
+    </thead>
+    <tbody>
+      <tr style="background:var(--danger-light);">
+        <td>1</td>
+        <td><strong>フェルミ推定系（全体）</strong></td>
+        <td>BROAD他</td>
+        <td><strong>¥150,000+</strong></td>
+        <td>0</td>
+        <td>情報収集層。「やり方」「例題」を探す人はスクールに申し込まない</td>
+      </tr>
+      <tr style="background:var(--danger-light);">
+        <td>2</td>
+        <td><strong>ケース面接 回答例</strong></td>
+        <td>BROAD</td>
+        <td>¥146,586</td>
+        <td>0</td>
+        <td>回答例をタダで探す層。購買意欲ゼロ</td>
+      </tr>
+      <tr style="background:var(--danger-light);">
+        <td>3</td>
+        <td><strong>コンサルティング 転職 エージェント</strong></td>
+        <td>PHRASE</td>
+        <td>¥144,095</td>
+        <td>0</td>
+        <td>転職エージェントを探しており、スクールのニーズではない</td>
+      </tr>
+      <tr style="background:var(--danger-light);">
+        <td>4</td>
+        <td><strong>BCG 転職</strong></td>
+        <td>EXACT</td>
+        <td>¥103,014</td>
+        <td>1</td>
+        <td>CPA ¥103,014。求人・エージェント系意図</td>
+      </tr>
+      <tr style="background:var(--danger-light);">
+        <td>5</td>
+        <td><strong>ケース面接 フェルミ推定</strong></td>
+        <td>BROAD</td>
+        <td>¥98,552</td>
+        <td>0</td>
+        <td>情報収集クエリに過剰マッチ</td>
+      </tr>
+      <tr style="background:var(--gray-100);font-weight:700;">
+        <td></td>
+        <td>浪費合計</td>
+        <td></td>
+        <td>¥642,247</td>
+        <td>1</td>
+        <td>広告費の13.7%が1件のCVに浪費</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h4>最優秀キーワードTOP5（予算集中対象）</h4>
+  <table>
+    <thead>
+      <tr><th>#</th><th>キーワード</th><th>マッチ</th><th>CPA</th><th>CV数</th><th>なぜ効くか</th></tr>
+    </thead>
+    <tbody>
+      <tr style="background:var(--success-light);">
+        <td>1</td>
+        <td><strong>戦略コンサル 対策</strong></td>
+        <td>PHRASE</td>
+        <td><strong>¥3,588</strong></td>
+        <td>18.5</td>
+        <td>「対策したい」=購買意欲。最強KW</td>
+      </tr>
+      <tr style="background:var(--success-light);">
+        <td>2</td>
+        <td><strong>コンコード コンサル</strong></td>
+        <td>EXACT</td>
+        <td>¥7,330</td>
+        <td>3.6</td>
+        <td>競合指名。比較検討段階で刺さる</td>
+      </tr>
+      <tr style="background:var(--success-light);">
+        <td>3</td>
+        <td><strong>戦略コンサル 面接</strong></td>
+        <td>PHRASE</td>
+        <td>¥8,004</td>
+        <td>8.0</td>
+        <td>面接=具体的アクション。意欲の高さ</td>
+      </tr>
+      <tr style="background:var(--success-light);">
+        <td>4</td>
+        <td><strong>ケース面接 本</strong></td>
+        <td>EXACT</td>
+        <td>¥8,345</td>
+        <td>3.5</td>
+        <td>「本」=有料ツールへの投資意欲あり</td>
+      </tr>
+      <tr style="background:var(--success-light);">
+        <td>5</td>
+        <td><strong>ケース面接 中途</strong></td>
+        <td>EXACT</td>
+        <td>¥15,457</td>
+        <td>14.9</td>
+        <td>「中途」=社会人ターゲット。高LTV層</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="hl info">
+    <strong>キーワード戦略の核心: 「対策」「講座」「中途」を含むクエリに集中投下</strong>
+    CVするクエリに共通するのは「お金を払って解決したい」という購買意欲。
+    「対策」「講座」「スクール」「塾」は有料サービスへの支払い意欲を直接示すシグナル。
+    「中途」「転職」は既卒ターゲットへの適合性。これらのEXACT/PHRASEに集中し、
+    情報検索系（例題、やり方、とは、フレームワーク）は徹底除外。
+  </div>
+
+  <h4>追加テスト推奨キーワード（EXACT限定）</h4>
+  <table>
+    <thead><tr><th>キーワード</th><th>想定意図</th><th>推定月間検索Vol</th></tr></thead>
+    <tbody>
+      <tr><td>ケース面接 スクール</td><td>有料サービス探し</td><td>50-100</td></tr>
+      <tr><td>MBB 面接対策</td><td>ハイエンド層。高単価成約の可能性</td><td>100-200</td></tr>
+      <tr><td>コンサル転職 対策</td><td>対策ニーズ+転職意欲</td><td>100-200</td></tr>
+      <tr><td>ケース面接 コーチング</td><td>有料1on1への興味</td><td>30-50</td></tr>
+      <tr><td>戦略コンサル 内定</td><td>内定=ゴール志向。本気度高</td><td>50-100</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ===== 8. 入札設定 ===== -->
+<div class="section">
+  <div class="section-title"><span class="num">8</span>入札戦略・予算設定の具体的変更案</div>
+
+  <h4>現状 → 推奨変更の対照表</h4>
+  <table>
+    <thead>
+      <tr><th>項目</th><th>現状</th><th>推奨</th><th>理由</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>入札戦略</strong></td>
+        <td>TARGET_CPA<br>(ポートフォリオ)</td>
+        <td><strong>TARGET_CPA</strong><br>(キャンペーン個別)</td>
+        <td>ポートフォリオだと複製版と混ざる</td>
+      </tr>
+      <tr style="background:var(--danger-light);">
+        <td><strong>TARGET_CPA</strong></td>
+        <td style="color:var(--danger);font-weight:700;">¥1,200</td>
+        <td style="color:var(--success);font-weight:700;">¥15,000</td>
+        <td>真のCVベースで再設定。ROAS 3倍の逆算</td>
+      </tr>
+      <tr>
+        <td><strong>日予算</strong></td>
+        <td>¥5,000（共有）</td>
+        <td><strong>¥10,000</strong>（メイン専用）</td>
+        <td>共有解消し主力に集中</td>
+      </tr>
+      <tr>
+        <td><strong>複製版キャンペーン</strong></td>
+        <td>配信中</td>
+        <td><strong>一時停止</strong></td>
+        <td>予算食い合いを解消</td>
+      </tr>
+      <tr>
+        <td><strong>主CV定義</strong></td>
+        <td>マイクロCV含む</td>
+        <td><strong>遷移+/thanksのみ</strong></td>
+        <td>自動入札の最適化対象を真のCVに限定</td>
+      </tr>
+      <tr>
+        <td><strong>月予算上限</strong></td>
+        <td>¥1,000,000</td>
+        <td>¥300,000（初期）</td>
+        <td>効果検証期間は抑制的に</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h4>デバイス・曜日の入札調整（変更なし、前回分析のまま）</h4>
+  <div class="two-col">
+    <div>
+      <table>
+        <thead><tr><th>デバイス</th><th>入札調整</th></tr></thead>
+        <tbody>
+          <tr><td>デスクトップ</td><td>+15%</td></tr>
+          <tr><td>モバイル</td><td>-10%</td></tr>
+          <tr><td>タブレット</td><td>±0%</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div>
+      <table>
+        <thead><tr><th>曜日</th><th>入札調整</th></tr></thead>
+        <tbody>
+          <tr><td>水・木・金</td><td>+15%</td></tr>
+          <tr><td>月・火</td><td>-15%</td></tr>
+          <tr><td>土・日</td><td>±0%</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 9. 改善アクション ===== -->
+<div class="section">
+  <div class="section-title"><span class="num">9</span>具体的改善アクション（優先度順・期待効果付き）</div>
+
+  <ul class="action-list">
+    <li data-num="1" class="urgent">
+      <strong>【最優先・即日】マイクロCVを入札最適化対象から除外</strong><br>
+      Google広告の「コンバージョン」設定から、btn_click・マイクロCVを「含めない（モニタリング専用）」に変更。
+      既卒遷移・新卒遷移・/thanks遷移のみを「主コンバージョンアクション」に設定。
+      <div class="effect">効果: 自動入札が真のCVを最適化するようになり、全ての施策の前提条件が整う</div>
+    </li>
+    <li data-num="2" class="urgent">
+      <strong>【最優先・即日】TARGET_CPAを¥1,200 → ¥15,000に変更</strong><br>
+      マイクロCV除外後、ポートフォリオ入札戦略のTARGET_CPAを¥15,000に変更。
+      もしくはポートフォリオを解体し、キャンペーン個別のTARGET_CPA ¥15,000に切り替え。
+      <div class="effect">効果: 月間配信量が約10倍に増加。月間真のCV 10-15件、成約2-3件/月を見込む</div>
+    </li>
+    <li data-num="3" class="urgent">
+      <strong>【最優先・即日】複製版キャンペーンを一時停止 + 共有予算の解消</strong><br>
+      ABテスト用キャンペーンを停止し、メインキャンペーンに日予算¥10,000を単独割当。
+      <div class="effect">効果: メインキャンペーンの予算が2倍。自動入札の学習データが集約</div>
+    </li>
+    <li data-num="4">
+      <strong>【1週間以内】浪費キーワード停止 + 除外キーワード登録</strong><br>
+      フェルミ推定系BROAD全停止、「コンサルティング転職エージェント」停止、BCG転職停止。
+      除外KW: 例題、回答例、やり方、とは、フレームワーク、過去問、中途採用(社名+)。
+      <div class="effect">効果: 年間¥64万の無駄排除（広告費の13.7%）</div>
+    </li>
+    <li data-num="5">
+      <strong>【1週間以内】高効率KWへの予算集中</strong><br>
+      「戦略コンサル対策」(CPA¥3,588)、「ケース面接中途」(CPA¥15,457) 等のEXACT/PHRASEに集中。
+      BROADマッチは全停止、EXACT/PHRASEのみで運用。
+      <div class="effect">効果: CPA 30-40%改善の見込み（加重平均CPA ¥10,000-¥12,000に最適化）</div>
+    </li>
+    <li data-num="6">
+      <strong>【2週間以内】LP改善による成約率向上</strong><br>
+      広告経由の失注理由「価格」「無料体験目的」を踏まえ、LPで(A)価格帯の事前表示、(B)「無料ではない本気の対策講座」を明示。
+      温度感の低いユーザーのCVを減らし、成約率20.6% → 25-30%への引き上げを目指す。
+      <div class="effect">効果: 成約率5pt改善でROASが約1.24倍に</div>
+    </li>
+    <li data-num="7">
+      <strong>【2週間以内】NoShow対策（リマインド自動化）</strong><br>
+      34リード中NoShow3件(8.8%)。面談24h前・2h前のリマインドメール/SMS自動送信を実装。
+      <div class="effect">効果: NoShow率 8.8% → 3%に低減で月間0.5〜1件の成約増（年¥130万+）</div>
+    </li>
+    <li data-num="8">
+      <strong>【1ヶ月後】35-44歳への入札強化</strong><br>
+      CPA ¥9,828と全年齢最良。費用構成比1% → 5%に拡大。入札調整+20%。
+      <div class="effect">効果: 高LTV層の成約増。既卒中途の平均客単価¥238,320</div>
+    </li>
+    <li data-num="9">
+      <strong>【1ヶ月後】新規KWテスト（EXACT）</strong><br>
+      「ケース面接 スクール」「MBB 面接対策」「コンサル転職 対策」をEXACTで追加。
+      月¥30,000の予算枠でテスト。2週間でCPA ¥20,000以内ならスケール。
+      <div class="effect">効果: CVキーワードの多様化。配信量の拡大余地を開拓</div>
+    </li>
+    <li data-num="10">
+      <strong>【2ヶ月後】効果検証 + ROAS評価</strong><br>
+      上記施策の実施2ヶ月後にCRM成約データと突合し、真のROASを再評価。
+      ROAS 2倍以上なら月予算¥50万へスケール。1.5倍以下なら戦略再考。
+      <div class="effect">効果: データドリブンなスケール/撤退判断</div>
+    </li>
+  </ul>
+</div>
+
+<!-- ===== 10. シミュレーション ===== -->
+<div class="section">
+  <div class="section-title"><span class="num">10</span>改善後シミュレーション -- 3ヶ月後の姿</div>
+
+  <h4>保守的シナリオ vs 楽観シナリオ</h4>
+  <table>
+    <thead>
+      <tr><th>指標</th><th>現状</th><th>保守的</th><th>標準</th><th>楽観的</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>月間広告費</td>
+        <td>¥40,000</td>
+        <td>¥200,000</td>
+        <td>¥250,000</td>
+        <td>¥300,000</td>
+      </tr>
+      <tr>
+        <td>真のCPA</td>
+        <td>¥20,000(推定)</td>
+        <td>¥25,000</td>
+        <td>¥18,000</td>
+        <td>¥12,000</td>
+      </tr>
+      <tr>
+        <td>月間真のCV</td>
+        <td>2件</td>
+        <td>8件</td>
+        <td>14件</td>
+        <td>25件</td>
+      </tr>
+      <tr>
+        <td>成約率</td>
+        <td>20.6%</td>
+        <td>20%</td>
+        <td>25%</td>
+        <td>30%</td>
+      </tr>
+      <tr>
+        <td>月間成約数</td>
+        <td>0件</td>
+        <td>1.6件</td>
+        <td>3.5件</td>
+        <td>7.5件</td>
+      </tr>
+      <tr>
+        <td>月間売上</td>
+        <td>¥0</td>
+        <td>¥357,500</td>
+        <td>¥782,050</td>
+        <td>¥1,675,823</td>
+      </tr>
+      <tr style="font-weight:700;">
+        <td>月間ROAS</td>
+        <td>0倍</td>
+        <td><span class="tag warn">1.79倍</span></td>
+        <td><span class="tag good">3.13倍</span></td>
+        <td><span class="tag good">5.59倍</span></td>
+      </tr>
+      <tr style="font-weight:700;">
+        <td>年間売上（概算）</td>
+        <td>¥0</td>
+        <td>¥429万</td>
+        <td>¥938万</td>
+        <td>¥2,011万</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="hl success">
+    <strong>標準シナリオでROAS 3倍は達成可能</strong>
+    CPA改善（効率KW集中）と成約率改善（LP改善+NoShow対策）の両方が機能すれば、
+    月間売上¥78万 / 広告費¥25万 = ROAS 3.13倍。年間売上¥938万に対し広告費¥300万で、
+    回収期間3.8ヶ月の健全な投資となる。
+  </div>
+
+  <div class="hl warning">
+    <strong>保守的シナリオでもROAS 1.79倍</strong>
+    最悪ケースでも「広告費の1.79倍は返ってくる」状態。現状の0.33倍からは大幅改善。
+    ただしROAS 2倍未満の場合は、他チャネル（note記事、Youtube、Google SEO）への
+    予算振替も検討すべき。特にnote(成約率43.5%)やYoutube(38.6%)は低コストで高効率。
+  </div>
+</div>
+
+<!-- ===== 11. 他チャネルとの予算配分 ===== -->
+<div class="section">
+  <div class="section-title"><span class="num">11</span>補足: チャネル別投資効率から見た予算配分の考え方</div>
+
+  <p>Google広告の改善と並行して、全チャネルの投資効率を比較した予算配分の最適化も重要です。</p>
+
+  <table>
+    <thead>
+      <tr><th>チャネル</th><th>成約率</th><th>平均客単価</th><th>期待売上/リード</th><th>投資形態</th><th>優先度</th></tr>
+    </thead>
+    <tbody>
+      <tr style="background:var(--success-light);">
+        <td><strong>note</strong></td>
+        <td>43.5%</td>
+        <td>¥177,653</td>
+        <td>¥77,279</td>
+        <td>時間投資（記事作成）</td>
+        <td><span class="tag good">最優先</span></td>
+      </tr>
+      <tr style="background:var(--success-light);">
+        <td><strong>口コミ・紹介</strong></td>
+        <td>40.7%</td>
+        <td>¥146,963</td>
+        <td>¥59,814</td>
+        <td>紹介制度設計</td>
+        <td><span class="tag good">最優先</span></td>
+      </tr>
+      <tr style="background:var(--success-light);">
+        <td><strong>Youtube</strong></td>
+        <td>38.6%</td>
+        <td>¥215,947</td>
+        <td>¥83,356</td>
+        <td>時間投資（動画制作）</td>
+        <td><span class="tag good">高</span></td>
+      </tr>
+      <tr>
+        <td>Google検索(自然)</td>
+        <td>38.0%</td>
+        <td>¥206,799</td>
+        <td>¥78,584</td>
+        <td>SEO投資</td>
+        <td><span class="tag good">高</span></td>
+      </tr>
+      <tr>
+        <td>X</td>
+        <td>29.2%</td>
+        <td>¥129,763</td>
+        <td>¥37,891</td>
+        <td>時間投資（投稿）</td>
+        <td><span class="tag info">中</span></td>
+      </tr>
+      <tr>
+        <td><strong>Google広告</strong></td>
+        <td>20.6%</td>
+        <td>¥200,488</td>
+        <td>¥41,301</td>
+        <td>広告費</td>
+        <td><span class="tag warn">中（改善次第）</span></td>
+      </tr>
+      <tr>
+        <td>FB広告</td>
+        <td>7.6%</td>
+        <td>¥274,557</td>
+        <td>¥20,866</td>
+        <td>広告費</td>
+        <td><span class="tag bad">低（要見直し）</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="hl info">
+    <strong>Google広告は「スケーラブルな有料チャネル」としての位置づけ</strong>
+    note・Youtube・口コミは成約率が高いが、スケールに限界がある（記事/動画の制作速度、紹介の自然発生頻度に依存）。
+    Google広告は成約率で劣るものの、予算を投下すれば即座にリードを増やせるのが最大の強み。
+    <br><br>
+    したがって、オーガニック施策（note、Youtube、SEO）を最優先で強化しつつ、
+    Google広告は「CPA ¥15,000以内で取れる分だけ取る」という補助的チャネルとして運用するのが最適解。
+    月¥25-30万の予算枠で、月2-3件の成約を安定的に得ることを目標とする。
+  </div>
+</div>
+
+<!-- ===== CONCLUSION ===== -->
+<div class="section" style="border-top: 4px solid var(--danger); border-left: none; border-right: none; border-bottom: none;">
+  <div class="section-title" style="border-bottom: none;"><span class="num red">!</span>結論: 3つの「今日やること」</div>
+
+  <p>このレポートの分析結果を1つに集約すると: <strong>Google広告は「運用ミスで眠っている」状態であり、ポテンシャルはある。</strong></p>
+
+  <p>過去12ヶ月のROAS 0.33倍は、(1)前半期のBROADマッチ暴走と(2)後半期のTARGET_CPA設定ミスという2つの構造的問題に起因しています。
+  広告チャネル自体の問題ではなく、運用設定の問題です。</p>
+
+  <div style="background: var(--primary); color: white; border-radius: var(--radius); padding: 28px 32px; margin: 24px 0;">
+    <h4 style="color: white; margin-top: 0; font-size: 18px; margin-bottom: 16px;">今日すぐ実行する3つのアクション</h4>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
+      <div style="background: rgba(255,255,255,0.08); border-radius: 8px; padding: 16px;">
+        <div style="font-size: 32px; font-weight: 800; color: #f87171;">01</div>
+        <div style="font-weight: 700; margin-bottom: 4px;">マイクロCVを主CVから除外</div>
+        <div style="font-size: 12px; opacity: 0.7;">btn_click、マイクロCVを「モニタリング専用」に変更。真のCVのみを入札最適化対象に。</div>
+      </div>
+      <div style="background: rgba(255,255,255,0.08); border-radius: 8px; padding: 16px;">
+        <div style="font-size: 32px; font-weight: 800; color: #fbbf24;">02</div>
+        <div style="font-weight: 700; margin-bottom: 4px;">TARGET_CPAを¥15,000に変更</div>
+        <div style="font-size: 12px; opacity: 0.7;">¥1,200 → ¥15,000。配信量が約10倍になる。ROAS 3倍の逆算値。</div>
+      </div>
+      <div style="background: rgba(255,255,255,0.08); border-radius: 8px; padding: 16px;">
+        <div style="font-size: 32px; font-weight: 800; color: #34d399;">03</div>
+        <div style="font-weight: 700; margin-bottom: 4px;">複製版停止 + 日予算¥10,000</div>
+        <div style="font-size: 12px; opacity: 0.7;">共有予算を解消し、メインキャンペーン単独で¥10,000/日を確保。</div>
+      </div>
+    </div>
+  </div>
+
+  <p>この3つだけで、月間配信量は現在の約10倍に回復し、月間真のCV 10-15件・成約2-3件が見込めます。
+  キーワード最適化・LP改善・NoShow対策は2週目以降に順次実施。2ヶ月後にCRMデータで効果検証を行い、
+  ROAS 2倍以上ならスケール、1.5倍未満なら撤退判断とします。</p>
+
+  <p style="margin-top:24px; padding-top:16px; border-top:1px solid var(--gray-200); font-size:13px; color:var(--gray-500);">
+    本レポートは田中慎太郎がCRMデータ・Google広告rawデータに基づいて独自に分析・作成したものです（v2.0）。<br>
+    前回レポート(v1.0)のマイクロCV問題の見落とし・紹介料の過大評価を訂正し、根本原因まで踏み込んだ再分析を行いました。<br>
+    次回レポート: 改善アクション実施後の効果検証（実施2ヶ月後を推奨）
+  </p>
+</div>
+
+</div><!-- /container -->
+
+</body>
+</html>

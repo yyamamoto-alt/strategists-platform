@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>Strategists ブログ構造変更プラン</title>
+<style>
+  body {
+    font-family: 'Hiragino Kaku Gothic ProN', sans-serif;
+    max-width: 720px;
+    margin: 40px auto;
+    padding: 0 24px;
+    color: #222;
+    line-height: 1.9;
+    font-size: 15px;
+  }
+  h1 { font-size: 22px; border-bottom: 2px solid #222; padding-bottom: 8px; }
+  h2 { font-size: 17px; margin-top: 36px; border-left: 4px solid #dc2626; padding-left: 12px; }
+  h3 { font-size: 15px; margin-top: 20px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; margin: 12px 0; }
+  th { background: #f5f5f5; padding: 8px 12px; text-align: left; border: 1px solid #ddd; font-weight: 600; }
+  td { padding: 8px 12px; border: 1px solid #ddd; vertical-align: top; }
+  ul, ol { padding-left: 22px; }
+  li { margin: 4px 0; }
+  .meta { font-size: 13px; color: #888; margin-bottom: 24px; }
+  .tag { background: #eee; padding: 1px 6px; border-radius: 3px; font-size: 13px; }
+  code { background: #f5f5f5; padding: 1px 4px; font-size: 13px; }
+</style>
+</head>
+<body>
+
+<h1>Strategists ブログ サイト構造変更プラン</h1>
+<p class="meta">2026年3月11日 ｜ 対象: akagiconsulting.com/blog（WordPress / 144記事）</p>
+
+<!-- ==================== -->
+<h2>1. 結論</h2>
+
+<p>現在の8カテゴリを<strong>4カテゴリに再編</strong>し、<strong>1記事=1カテゴリ</strong>のルールを導入する。</p>
+
+<table>
+  <tr><th>新カテゴリ</th><th>slug</th><th>概算記事数</th><th>内容</th></tr>
+  <tr><td><strong>ケース面接</strong></td><td>case-interview</td><td>~40</td><td>対策法、ステージ別、フレームワーク</td></tr>
+  <tr><td><strong>フェルミ推定</strong></td><td>fermi-estimate</td><td>~20</td><td>やり方、例題</td></tr>
+  <tr><td><strong>企業研究</strong></td><td>information</td><td>~70</td><td>ファーム別の選考情報・過去問（業態タグで細分化）</td></tr>
+  <tr><td><strong>コンサル転職</strong></td><td>career（新設）</td><td>~14</td><td>体験談、転職/就活ガイド</td></tr>
+</table>
+
+<p>将来的に「<strong>コンサル業界</strong>（industry）」を5つ目として追加予定（新規記事が5本以上揃ってから）。</p>
+
+<!-- ==================== -->
+<h2>2. 理由</h2>
+
+<ol>
+  <li><strong>カニバリゼーションの解消</strong> — 144記事中48記事（33%）が複数カテゴリに重複登録されている。パーマリンク構造が <code>/%category%/%post_id%/</code> のため、1記事に複数のURLが存在しうる状態。Googleの評価が分散している。</li>
+  <li><strong>使われていないカテゴリの整理</strong> — recommend（6記事）とexperiences（5記事）は直近90日の検索流入がゼロ。behavior（2記事）とnews（1記事）も独立カテゴリとして維持する意味がない。</li>
+  <li><strong>カテゴリまとめページのSEO活用</strong> — 現在のカテゴリページは時系列の記事一覧で、SEO的な価値がほぼない。4つに絞って各カテゴリのランディングページを作り込む方が効果的。</li>
+</ol>
+
+<!-- ==================== -->
+<h2>3. 背景</h2>
+
+<h3>現状の数字（Search Console直近90日）</h3>
+<table>
+  <tr><th>カテゴリ</th><th>記事数</th><th>クリック</th><th>表示回数</th><th>備考</th></tr>
+  <tr><td>fermi-estimate</td><td>48</td><td>4,741</td><td>225,211</td><td>主力だが case-interview と重複多</td></tr>
+  <tr><td>information</td><td>52</td><td>4,568</td><td>274,131</td><td>主力</td></tr>
+  <tr><td>case-interview</td><td>91</td><td>2,956</td><td>113,137</td><td>記事数最多だが重複で膨れている</td></tr>
+  <tr><td>recommend</td><td>6</td><td>0</td><td>0</td><td>流入ゼロ</td></tr>
+  <tr><td>experiences</td><td>5</td><td>0</td><td>0</td><td>流入ゼロ</td></tr>
+  <tr><td>behavior</td><td>2</td><td>20</td><td>557</td><td>少なすぎて独立不要</td></tr>
+  <tr><td>news</td><td>1</td><td>4</td><td>64</td><td>少なすぎて独立不要</td></tr>
+</table>
+<p style="font-size:13px;color:#888;">※ 記事数合計が144を超えるのは重複登録のため。</p>
+
+<h3>競合の構造（参考にした点）</h3>
+<ul>
+  <li><strong>Movin</strong> — 業態別（戦略/総合/IT等）で企業を分類。まとめページの手動キュレーションが秀逸</li>
+  <li><strong>MyVision</strong> — 記事テーマ別にCTAをカスタマイズ（年収記事→「年収情報を聞く」等）</li>
+  <li><strong>コンサルキャリア</strong> — カテゴリ（1つ）+タグ（複数）の二軸運用で600記事を整理</li>
+</ul>
+
+<h3>振り分けの基本ルール</h3>
+<p>「その記事への<strong>主な検索流入クエリ</strong>」で判断する。</p>
+<ul>
+  <li>「BCG ケース面接」で流入 → <strong>企業研究</strong>（企業名が主軸）</li>
+  <li>「ケース面接 対策」で流入 → <strong>ケース面接</strong>（対策法が主軸）</li>
+  <li>「フェルミ推定 例題」で流入 → <strong>フェルミ推定</strong></li>
+  <li>体験談・転職ガイド → <strong>コンサル転職</strong></li>
+</ul>
+
+<h3>URL変更について</h3>
+<ul>
+  <li>slug（case-interview, fermi-estimate, information）を維持するため、<strong>同じカテゴリに残る記事はURL変更なし</strong></li>
+  <li>カテゴリが変わる記事（約45件）はURLが変わるが、<strong>WordPressが自動で301リダイレクト</strong>を設定する（実機検証済み）</li>
+  <li>万が一の場合は .htaccess で手動301を追加</li>
+</ul>
+
+<!-- ==================== -->
+<h2>4. 後藤さんに相談・判断いただきたいこと</h2>
+
+<table>
+  <tr><th>#</th><th>論点</th><th>我々の仮説</th></tr>
+  <tr>
+    <td>1</td>
+    <td><strong>企業別記事の分類先</strong><br>「BCG ケース面接」のような記事は「ケース面接」か「企業研究」か？</td>
+    <td>企業名KWで流入しているものは「企業研究」に統一する案。<br>理由: 流入クエリの主軸が企業名であり、ユーザーはその企業の情報を求めている</td>
+  </tr>
+  <tr>
+    <td>2</td>
+    <td><strong>4カテゴリで十分か</strong><br>「コンサル転職 (career)」を新設するか、informationに含めるか</td>
+    <td>新設する案。<br>理由: 体験談・転職ガイドは企業研究と性質が違う。将来の新規記事の受け皿にもなる</td>
+  </tr>
+  <tr>
+    <td>3</td>
+    <td><strong>移行スピード</strong><br>段階移行（1日5記事、8週間）vs 一括移行</td>
+    <td>段階移行を推奨。<br>理由: 上位記事のURL変更は順位低下リスクがあり、モニタリングしながら進めたい</td>
+  </tr>
+  <tr>
+    <td>4</td>
+    <td><strong>カテゴリまとめページの必要性と優先度</strong><br>カテゴリ再編と同時にやるか、後からでいいか</td>
+    <td>再編を先にやり、まとめページは後から追加する案。<br>理由: まとめページの制作には時間がかかるため、カニバリ解消を先行させたい</td>
+  </tr>
+  <tr>
+    <td>5</td>
+    <td><strong>タグページのnoindex</strong><br>tag/ と page/（ページネーション）をnoindexにしてよいか</td>
+    <td>noindex推奨。<br>理由: 直近90日でtag 45ページ計43クリック、page 12ページ計1クリック。SEO価値がほぼない</td>
+  </tr>
+  <tr>
+    <td>6</td>
+    <td><strong>その他、構造変更に伴い気をつけるべきこと</strong><br>我々が見落としているリスクや考慮点があれば</td>
+    <td>—</td>
+  </tr>
+</table>
+
+<!-- ==================== -->
+<h2>5. 実装に向けてのTODO</h2>
+
+<h3>Claude（AI）側</h3>
+<table>
+  <tr><th>#</th><th>タスク</th><th>ステータス</th></tr>
+  <tr><td>1</td><td>全144記事の振り分け表を作成（タイトル・現カテゴリ・主要流入クエリ・推奨新カテゴリ・URL変更有無）</td><td>後藤さん確認後に着手</td></tr>
+  <tr><td>2</td><td>WordPressに新カテゴリ「career」を作成</td><td>振り分け表合意後</td></tr>
+  <tr><td>3</td><td>カテゴリ変更の実行（WordPress CLI経由で段階的に）</td><td>振り分け表合意後</td></tr>
+  <tr><td>4</td><td>301リダイレクトの動作確認（各記事）</td><td>移行と同時</td></tr>
+  <tr><td>5</td><td>tag / page のnoindex設定</td><td>移行完了後</td></tr>
+  <tr><td>6</td><td>Search Consoleのモニタリング（順位変動チェック）</td><td>移行期間中</td></tr>
+</table>
+
+<h3>人間チーム側</h3>
+<table>
+  <tr><th>#</th><th>タスク</th><th>担当</th></tr>
+  <tr><td>1</td><td>本プランのレビュー・フィードバック</td><td>後藤さん</td></tr>
+  <tr><td>2</td><td>振り分け表のレビュー（特に判断が微妙な記事の最終決定）</td><td>後藤さん + 内野チーム</td></tr>
+  <tr><td>3</td><td>カテゴリまとめページの原稿作成（構成案はClaudeが作成、最終原稿は人間）</td><td>内野チーム</td></tr>
+  <tr><td>4</td><td>新規記事の執筆方針決定（Phase 2の「コンサル業界」カテゴリ用）</td><td>内野チーム + 後藤さん</td></tr>
+  <tr><td>5</td><td>移行後の効果測定・レポート確認</td><td>全員</td></tr>
+</table>
+
+<p style="margin-top:32px;font-size:13px;color:#888;">— 以上 —</p>
+
+</body>
+</html>

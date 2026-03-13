@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>総合コンサル事業 定例アジェンダ</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --red: #C13028;
+      --red-light: #e8453b;
+      --red-pale: #fdf2f1;
+      --dark: #1a1a1a;
+      --mid: #555;
+      --light: #888;
+      --border: #e8e0de;
+      --bg: #faf9f8;
+      --white: #ffffff;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Noto Sans JP', sans-serif;
+      background: var(--bg);
+      color: var(--dark);
+      line-height: 1.7;
+      font-size: 14px;
+    }
+
+    .page {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 48px 32px 80px;
+    }
+
+    /* ヘッダー */
+    .header {
+      border-left: 4px solid var(--red);
+      padding-left: 20px;
+      margin-bottom: 40px;
+    }
+    .header-label {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--red);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+    .header h1 {
+      font-family: 'DM Serif Display', serif;
+      font-size: 26px;
+      font-weight: 400;
+      color: var(--dark);
+      line-height: 1.3;
+      margin-bottom: 8px;
+    }
+    .header-meta {
+      font-size: 12px;
+      color: var(--light);
+      display: flex;
+      gap: 20px;
+    }
+
+    /* サマリーボックス */
+    .summary-box {
+      background: var(--red);
+      color: white;
+      border-radius: 10px;
+      padding: 22px 26px;
+      margin-bottom: 40px;
+    }
+    .summary-box h2 {
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      opacity: 0.8;
+      margin-bottom: 12px;
+    }
+    .summary-box p {
+      font-size: 14px;
+      line-height: 1.8;
+      opacity: 0.95;
+    }
+
+    /* セクション */
+    .section {
+      margin-bottom: 36px;
+    }
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+    }
+    .section-num {
+      background: var(--red);
+      color: white;
+      font-size: 11px;
+      font-weight: 700;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .section-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--dark);
+    }
+    .section-time {
+      margin-left: auto;
+      font-size: 11px;
+      color: var(--light);
+      background: #f0eded;
+      padding: 2px 10px;
+      border-radius: 20px;
+    }
+
+    .section-body {
+      padding-left: 36px;
+    }
+
+    /* ポイントリスト */
+    .point-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .point-list li {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+    }
+    .point-list li::before {
+      content: '›';
+      color: var(--red);
+      font-size: 16px;
+      font-weight: 700;
+      flex-shrink: 0;
+      line-height: 1.5;
+    }
+
+    /* 課題ボックス */
+    .issue-box {
+      background: var(--red-pale);
+      border: 1px solid #f0d5d3;
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin-bottom: 12px;
+    }
+    .issue-box .label {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--red);
+      letter-spacing: 0.1em;
+      margin-bottom: 6px;
+    }
+    .issue-box p {
+      font-size: 13px;
+      color: var(--mid);
+    }
+
+    /* 2カラムグリッド */
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-top: 12px;
+    }
+    .card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 16px;
+    }
+    .card .card-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--red);
+      margin-bottom: 8px;
+    }
+    .card p {
+      font-size: 13px;
+      color: var(--mid);
+      line-height: 1.6;
+    }
+
+    /* 料金テーブル */
+    .pricing-table {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      margin-top: 12px;
+    }
+    .pricing-row {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 1fr;
+      padding: 12px 18px;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+      align-items: center;
+    }
+    .pricing-row:last-child { border-bottom: none; }
+    .pricing-row.header-row {
+      background: #f5f3f2;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--light);
+      letter-spacing: 0.08em;
+    }
+    .price-main {
+      font-weight: 700;
+      color: var(--red);
+      font-size: 15px;
+    }
+    .price-strike {
+      color: var(--light);
+      text-decoration: line-through;
+      font-size: 12px;
+    }
+
+    /* 集客戦略 */
+    .channel-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-top: 12px;
+    }
+    .channel-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px;
+      text-align: center;
+    }
+    .channel-icon {
+      font-size: 22px;
+      margin-bottom: 6px;
+    }
+    .channel-name {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--dark);
+      margin-bottom: 4px;
+    }
+    .channel-desc {
+      font-size: 11px;
+      color: var(--light);
+    }
+
+    /* ゴールボックス */
+    .goal-box {
+      background: var(--dark);
+      color: white;
+      border-radius: 10px;
+      padding: 20px 24px;
+      margin-top: 12px;
+    }
+    .goal-box .goal-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      color: var(--red-light);
+      margin-bottom: 8px;
+    }
+    .goal-box p {
+      font-size: 14px;
+      line-height: 1.8;
+      opacity: 0.9;
+    }
+
+    /* アクションアイテム */
+    .action-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .action-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 16px;
+    }
+    .action-check {
+      width: 18px;
+      height: 18px;
+      border: 2px solid var(--border);
+      border-radius: 4px;
+      flex-shrink: 0;
+    }
+    .action-text {
+      font-size: 13px;
+      flex: 1;
+    }
+    .action-owner {
+      font-size: 11px;
+      color: var(--light);
+      background: #f0eded;
+      padding: 2px 10px;
+      border-radius: 20px;
+    }
+
+    /* フッター */
+    .footer {
+      margin-top: 48px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+      font-size: 11px;
+      color: var(--light);
+      text-align: center;
+    }
+
+    @media print {
+      body { background: white; }
+      .page { padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <!-- ヘッダー -->
+  <div class="header">
+    <div class="header-label">Internal Meeting Agenda</div>
+    <h1>総合コンサル事業 戦略定例</h1>
+    <div class="header-meta">
+      <span>📅 2026年3月14日（土）</span>
+      <span>👥 総合コンサルチーム</span>
+      <span>⏱ 想定60〜90分</span>
+    </div>
+  </div>
+
+  <!-- 会議の前提・目的 -->
+  <div class="summary-box">
+    <h2>THIS MEETING'S PURPOSE</h2>
+    <p>
+      総合コンサル事業を継続・強化する前提のもと、現状課題の認識を揃え、
+      新しいターゲット・プロダクト・プライシング・集客の方向性を定める。
+      予算議論より先に<strong>「戦略の方向性」を確定させる</strong>ことを本日の最優先とする。
+    </p>
+  </div>
+
+  <!-- AGENDA 1: 現状課題 -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">1</div>
+      <div class="section-title">現状課題の直視｜なぜ今の顧客層では限界があるか</div>
+      <div class="section-time">15分</div>
+    </div>
+    <div class="section-body">
+      <div class="issue-box">
+        <div class="label">課題認識</div>
+        <p>現状、総合コンサル事業での受注が伸び悩んでいる。その根本的な原因を正直に言語化する。</p>
+      </div>
+      <ul class="point-list">
+        <li>現在来ている候補者層の実態：他エージェントに相手にされない人・転職を走りきれない人・リテラシーが低い層が多く、総合コンサル受験者として成立しにくい</li>
+        <li>→ 「経歴・実力ともに総合コンサルに受かる素地がある人」が来ていない</li>
+        <li>結論：<strong>ターゲット顧客を外に取りに行かないといけない</strong>　現状の流入に依存していては変わらない</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- AGENDA 3: ターゲット再定義 -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">2</div>
+      <div class="section-title">ターゲット再定義｜誰に売るか</div>
+      <div class="section-time">15分</div>
+    </div>
+    <div class="section-body">
+      <ul class="point-list">
+        <li>理想ターゲット：総合コンサルへの転職意欲があり、ある程度素地のある社会人（経歴・ポテンシャル）</li>
+        <li>獲得したいのは「紹介報酬につながる候補者」＝最終的に総合コンサルファームに入社できる人材</li>
+        <li>スクール経由で集客し、信頼を獲得してから人材紹介へ橋渡しするルートを設計する</li>
+      </ul>
+      <div class="two-col" style="margin-top:14px;">
+        <div class="card">
+          <div class="card-title">🎯 狙うべき人物像</div>
+          <p>事業会社5〜10年目・外資金融・公務員などから総合コンサルへのキャリアチェンジを検討している層</p>
+        </div>
+        <div class="card">
+          <div class="card-title">❌ 現状来ている層（課題）</div>
+          <p>エージェント未登録・転職意欲が曖昧・スペックが総合コンサル基準に届かない候補者</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AGENDA 4: プロダクト設計 -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">3</div>
+      <div class="section-title">プロダクト再設計｜何を売るか</div>
+      <div class="section-time">20分</div>
+    </div>
+    <div class="section-body">
+      <div class="issue-box">
+        <div class="label">現状の問題点</div>
+        <p>戦略コンサル向け塾のコンテンツをそのまま転用しており、「総合コンサル向け」の価値が薄い。ケース面接対策に偏りすぎている。</p>
+      </div>
+
+      <p style="margin: 14px 0 8px; font-weight: 700; font-size: 13px;">コンセプト転換の方向性</p>
+      <ul class="point-list">
+        <li><strong>From：</strong>ケース面接対策（選考突破のための準備）</li>
+        <li><strong>To：</strong>「総合コンサルタントになるための事前学習講座」＝入社後に活躍するための知識・スキルを先取り習得</li>
+      </ul>
+
+      <div class="two-col" style="margin-top: 16px;">
+        <div class="card">
+          <div class="card-title">📚 盛り込みたいコンテンツ（議論）</div>
+          <p>・入社前に知っておきたいコンサル仕事術<br>・プロジェクト進行の基礎<br>・総合コンサルで実際につまずくポイント<br>・デッキ・資料の作り方</p>
+        </div>
+        <div class="card">
+          <div class="card-title">✅ 補助金の最低条件（確定事項）</div>
+          <p>・ケース面接対策 4回<br>・キャリア相談<br>→ これはコンテンツに組み込む形で対応可</p>
+        </div>
+      </div>
+
+      <p style="margin: 16px 0 8px; font-size: 12px; color: var(--light);">💬 チームへの問い：「総合コンサルを目指す人が事前に学びたいこと・入社後につまずくことは何か？」各自の視点を共有</p>
+    </div>
+  </div>
+
+  <!-- AGENDA 5: プライシング -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">4</div>
+      <div class="section-title">プライシング｜いくらで売るか</div>
+      <div class="section-time">10分</div>
+    </div>
+    <div class="section-body">
+      <div class="pricing-table">
+        <div class="pricing-row header-row">
+          <div>プラン</div>
+          <div>定価</div>
+          <div>補助金</div>
+          <div>実質負担</div>
+        </div>
+        <div class="pricing-row">
+          <div><strong>スタンダードプラン</strong><br><span style="font-size:11px; color: var(--light)">講座 + 面接対策4回 + キャリア相談</span></div>
+          <div class="price-strike">¥200,000</div>
+          <div style="color: #2a9d5c; font-weight: 600;">▲50%</div>
+          <div class="price-main">¥100,000</div>
+        </div>
+      </div>
+      <ul class="point-list" style="margin-top: 14px;">
+        <li>定価200,000円・補助金で半額還元・顧客実負担<strong>100,000円</strong>をフィックスとして設定</li>
+        <li>補助金採択済みエージェント＋スクールの組み合わせでコスト回収しながら、人材紹介報酬でマネタイズ</li>
+        <li>「補助金を使ってコンサルタントになれる講座」としてポジショニング</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- AGENDA 6: 集客 -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">5</div>
+      <div class="section-title">集客設計｜どう集めるか</div>
+      <div class="section-time">10分</div>
+    </div>
+    <div class="section-body">
+      <div class="channel-grid">
+        <div class="channel-card">
+          <div class="channel-icon">🌐</div>
+          <div class="channel-name">LP（ランディングページ）</div>
+          <div class="channel-desc">コードで簡易作成・まず出す</div>
+        </div>
+        <div class="channel-card">
+          <div class="channel-icon">📣</div>
+          <div class="channel-name">Web広告</div>
+          <div class="channel-desc">LP公開後に配信開始</div>
+        </div>
+        <div class="channel-card">
+          <div class="channel-icon">📝</div>
+          <div class="channel-name">SEO記事（既存資産）</div>
+          <div class="channel-desc">上位表示中の記事からLPへ誘導</div>
+        </div>
+      </div>
+      <ul class="point-list" style="margin-top: 14px;">
+        <li>現状、総合コンサル関連の検索でブログ記事が上位表示されているものがある → そこへCTAを追加してLPへ誘導</li>
+        <li>まずLPをシンプルに作り、広告とSEOの2本柱で集客を回す</li>
+        <li>「経産省採択・補助金で学べるコンサルタント養成講座」の訴求軸でLP設計</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ゴールの整理 -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">6</div>
+      <div class="section-title">本事業で目指すゴール（再確認）</div>
+      <div class="section-time">5分</div>
+    </div>
+    <div class="section-body">
+      <div class="goal-box">
+        <div class="goal-label">STRATEGIC GOAL</div>
+        <p>
+          スクールで「総合コンサルを目指す質の高い候補者」を集客し、
+          信頼を積み上げた上で<strong>人材紹介につなげ、紹介報酬を得る</strong>。<br>
+          スクール収益（¥100,000/人）でコストを回収しながら、
+          本命の人材紹介報酬で利益を最大化するモデルを構築する。
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- アクションアイテム -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">✓</div>
+      <div class="section-title">本日の決定事項・ネクストアクション</div>
+      <div class="section-time"></div>
+    </div>
+    <div class="section-body">
+      <ul class="action-list">
+        <li class="action-item">
+          <div class="action-check"></div>
+          <div class="action-text">プロダクトコンセプトの確定：「ケース対策」か「入社前学習」か方向性を決定</div>
+          <div class="action-owner">チーム全員</div>
+        </li>
+        <li class="action-item">
+          <div class="action-check"></div>
+          <div class="action-text">コンテンツ案のリストアップ：「総合コンサル志望者が学びたいこと」を各自整理</div>
+          <div class="action-owner">次回までに</div>
+        </li>
+        <li class="action-item">
+          <div class="action-check"></div>
+          <div class="action-text">LP草案の作成（シンプルなHTMLで可）</div>
+          <div class="action-owner">Yudai</div>
+        </li>
+        <li class="action-item">
+          <div class="action-check"></div>
+          <div class="action-text">既存SEO記事へのCTA追加・LP導線の設計</div>
+          <div class="action-owner">Yudai</div>
+        </li>
+        <li class="action-item">
+          <div class="action-check"></div>
+          <div class="action-text">プライシング200,000円（実負担100,000円）を正式フィックスとして合意</div>
+          <div class="action-owner">代表判断</div>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="footer">
+    Strategists / TopTier — 総合コンサル事業 戦略定例｜2026.03.14
+  </div>
+
+</div>
+</body>
+</html>

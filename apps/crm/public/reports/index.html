@@ -3,84 +3,118 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Google Ads Analysis Reports - Strategists</title>
+<title>Reports - Strategists</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: 'Helvetica Neue', Arial, 'Hiragino Sans', sans-serif; background: #f5f5f5; color: #333; }
   .container { max-width: 900px; margin: 0 auto; padding: 40px 20px; }
   h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; color: #1a1a2e; }
   .subtitle { color: #666; font-size: 14px; margin-bottom: 40px; }
-  .card { background: white; border-radius: 12px; padding: 28px 32px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); transition: transform 0.2s, box-shadow 0.2s; text-decoration: none; display: block; color: inherit; }
+  h2 { font-size: 18px; font-weight: 700; color: #1a1a2e; margin: 36px 0 16px; padding-bottom: 8px; border-bottom: 2px solid #e5e5e5; }
+  .card { background: white; border-radius: 12px; padding: 20px 24px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); transition: transform 0.2s, box-shadow 0.2s; text-decoration: none; display: block; color: inherit; }
   .card:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
-  .card-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
-  .card-title { font-size: 20px; font-weight: 700; margin-bottom: 8px; color: #1a1a2e; }
-  .card-desc { font-size: 14px; color: #666; line-height: 1.6; }
-  .card-meta { font-size: 12px; color: #999; margin-top: 12px; }
-  .label-main { color: #2563eb; }
-  .label-p1 { color: #dc2626; }
-  .label-p2 { color: #059669; }
-  .label-p3 { color: #7c3aed; }
-  .card-main { border-left: 4px solid #2563eb; }
-  .card-p1 { border-left: 4px solid #dc2626; }
-  .card-p2 { border-left: 4px solid #059669; }
-  .card-p3 { border-left: 4px solid #7c3aed; }
-  .label-deep { color: #0891b2; }
-  .card-deep { border-left: 4px solid #0891b2; background: linear-gradient(135deg, #fff, #f0fdfa); }
-  .divider { height: 1px; background: #e5e5e5; margin: 32px 0; }
-  .note { background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 16px 20px; font-size: 13px; color: #92400e; line-height: 1.6; margin-top: 32px; }
+  .card-title { font-size: 16px; font-weight: 700; margin-bottom: 4px; color: #1a1a2e; }
+  .card-desc { font-size: 13px; color: #666; line-height: 1.5; }
+  .card-meta { font-size: 11px; color: #999; margin-top: 8px; }
+  .cat-ads { border-left: 4px solid #2563eb; }
+  .cat-seo { border-left: 4px solid #059669; }
+  .cat-agenda { border-left: 4px solid #dc2626; }
+  .cat-marketing { border-left: 4px solid #7c3aed; }
+  .cat-lp { border-left: 4px solid #f59e0b; }
 </style>
 </head>
 <body>
 <div class="container">
-  <h1>Google Ads Analysis Reports</h1>
-  <p class="subtitle">Strategists (コンサル転職スクール) | 分析期間: 2025年3月〜2026年3月 | 最終更新: 2026年3月14日</p>
+  <h1>Strategists Reports</h1>
+  <p class="subtitle">レポート・分析資料一覧</p>
 
-  <a href="deep-analysis-google-ads-2026-03.html" class="card card-deep">
-    <div class="card-label label-deep">DEEP RESEARCH / 最新・推奨</div>
-    <div class="card-title">Google広告 ディープ分析レポート — 飽和度 vs アップサイド診断</div>
-    <div class="card-desc">検索クエリ9,800件超をインテント別に11カテゴリ分類。IS10%=90%の機会損失の根本原因（TARGET CPA ¥1,200 × マイクロCV）を因果チェーンで解明。フェルミ推定¥487K/CV=0の無駄を特定。広告グループ別IS推移、キーワード別飽和度、4段階改善シミュレーション付き。</div>
-    <div class="card-meta">70KB | ディープリサーチ分析 | 2026年3月14日生成</div>
+  <!-- Ads -->
+  <h2>Google Ads 分析</h2>
+
+  <a href="ads/deep-analysis-google-ads-2026-03.html" class="card cat-ads">
+    <div class="card-title">Google広告 ディープ分析レポート</div>
+    <div class="card-desc">検索クエリ9,800件超のインテント別分類。IS10%=90%の機会損失の根本原因解明。4段階改善シミュレーション付き。</div>
+    <div class="card-meta">2026年3月 | Deep Research</div>
   </a>
 
-  <div class="divider"></div>
-
-  <p style="font-size:13px; color:#666; margin-bottom:20px; font-weight:600;">以下は過去のレポート（参考）</p>
-
-  <a href="google-ads-analysis-2026-03.html" class="card card-main">
-    <div class="card-label label-main">REPORT v5.0 / ベースレポート</div>
-    <div class="card-title">Google広告 運用分析レポート</div>
-    <div class="card-desc">メインキャンペーン「完全一致_オリジナル_0821変更」を中心に、12ヶ月間のパフォーマンスを包括的に分析。月次トレンド、キーワード、デバイス、CRM連携データを網羅。</div>
-    <div class="card-meta">62KB | 基本分析</div>
+  <a href="ads/google-ads-analysis-2026-03.html" class="card cat-ads">
+    <div class="card-title">Google広告 運用分析レポート v5.0</div>
+    <div class="card-desc">12ヶ月間のパフォーマンスを包括的に分析。月次トレンド、キーワード、デバイス、CRM連携データを網羅。</div>
+    <div class="card-meta">2026年3月 | ベースレポート</div>
   </a>
 
-  <div class="divider"></div>
-
-  <p style="font-size:13px; color:#666; margin-bottom:20px; font-weight:600;">以下3レポートは、同じrawデータを異なる専門家の視点から独立に分析したものです。</p>
-
-  <a href="analysis-persona1-ads-specialist.html" class="card card-p1">
-    <div class="card-label label-p1">PERSONA 1 / 田中慎太郎</div>
-    <div class="card-title">Google Ads運用専門家の分析</div>
-    <div class="card-desc">大手代理店の運用チームリーダー経験10年。キーワード戦略の深掘り、マッチタイプ最適化、除外KW候補、入札戦略の妥当性評価。BROADのCPA¥192K vs EXACTの¥14Kという格差を指摘。具体的な改善アクション10項目。</div>
-    <div class="card-meta">50KB | 運用テクニカル視点</div>
+  <a href="ads/analysis-persona1-ads-specialist.html" class="card cat-ads">
+    <div class="card-title">Google Ads運用専門家の分析（田中慎太郎）</div>
+    <div class="card-desc">キーワード戦略の深掘り、マッチタイプ最適化、入札戦略の妥当性評価。</div>
+    <div class="card-meta">2026年3月 | Persona 1</div>
   </a>
 
-  <a href="analysis-persona2-ads-strategist.html" class="card card-p2">
-    <div class="card-label label-p2">PERSONA 2 / 鈴木美咲</div>
-    <div class="card-title">元Googleコンサルのアトリビューション分析</div>
-    <div class="card-desc">元Google広告コンサルチーム出身。コンバージョンの質を階層分類し「真のCPA」を¥78,131と再計算。IS10%=90%の機会損失を定量化し、IS30%/50%/80%の3シナリオで投資計画を提示。現状評価C+、ポテンシャルA-。</div>
-    <div class="card-meta">60KB | アトリビューション・予算最適化視点</div>
+  <a href="ads/analysis-persona2-ads-strategist.html" class="card cat-ads">
+    <div class="card-title">元Googleコンサルのアトリビューション分析（鈴木美咲）</div>
+    <div class="card-desc">コンバージョンの質を階層分類し「真のCPA」を再計算。IS改善シナリオ提示。</div>
+    <div class="card-meta">2026年3月 | Persona 2</div>
   </a>
 
-  <a href="analysis-persona3-strategy-consultant.html" class="card card-p3">
-    <div class="card-label label-p3">PERSONA 3 / 高橋亮介</div>
-    <div class="card-title">元マッキンゼーの戦略分析</div>
-    <div class="card-desc">ユニットエコノミクスから逆算した投資判断。CAC¥66.9万 vs LTVの構造分析。Google広告は全成約の2.2%=補完チャネル。「期待しすぎず月20万で効率運用」「全判断の前にCV計測を正常化せよ」が核心メッセージ。</div>
-    <div class="card-meta">45KB | 事業戦略・投資判断視点</div>
+  <a href="ads/analysis-persona3-strategy-consultant.html" class="card cat-ads">
+    <div class="card-title">元マッキンゼーの戦略分析（高橋亮介）</div>
+    <div class="card-desc">ユニットエコノミクスから逆算した投資判断。CAC vs LTVの構造分析。</div>
+    <div class="card-meta">2026年3月 | Persona 3</div>
   </a>
 
-  <div class="note">
-    <strong>使い方:</strong> 4つのレポートを比較し、共通する指摘（特にCV計測の問題、フェルミ推定KWの非効率性、IS10%の機会損失）と、視点が分かれる部分（予算規模の適正値、Google広告の事業的位置づけ）を確認した上で、最終版レポートの方向性をご判断ください。
-  </div>
+  <!-- SEO -->
+  <h2>SEO / サイト構造</h2>
+
+  <a href="seo/Strategists_SEOレポート.html" class="card cat-seo">
+    <div class="card-title">ブログ SEO分析 & サイト構造リデザインプラン</div>
+    <div class="card-desc">Strategistsブログの包括的SEO分析。キーワード順位、コンテンツ改善提案。</div>
+    <div class="card-meta">2026年3月</div>
+  </a>
+
+  <a href="seo/Strategists_サイト構造変更プラン.html" class="card cat-seo">
+    <div class="card-title">サイト構造変更プラン（詳細版）</div>
+    <div class="card-desc">ブログのサイト構造リデザイン詳細プラン。</div>
+    <div class="card-meta">2026年3月</div>
+  </a>
+
+  <a href="seo/Strategists_構造変更プラン_共有用.html" class="card cat-seo">
+    <div class="card-title">サイト構造変更プラン（共有用）</div>
+    <div class="card-desc">外部共有向けのサイト構造変更プランサマリー。</div>
+    <div class="card-meta">2026年3月</div>
+  </a>
+
+  <!-- Agenda -->
+  <h2>ミーティングアジェンダ</h2>
+
+  <a href="agenda/agenda_consulting_team.html" class="card cat-agenda">
+    <div class="card-title">総合コンサル事業 戦略定例</div>
+    <div class="card-desc">ターゲット再定義、プロダクト再設計、プライシング、集客設計の方向性を定める戦略定例アジェンダ。</div>
+    <div class="card-meta">2026年3月14日</div>
+  </a>
+
+  <!-- Marketing -->
+  <h2>マーケティング</h2>
+
+  <a href="marketing/youtube-keyword-attack-list.html" class="card cat-marketing">
+    <div class="card-title">YouTube Keyword Attack List</div>
+    <div class="card-desc">YouTube SEO向けキーワードリスト。</div>
+    <div class="card-meta">2026年3月</div>
+  </a>
+
+  <!-- LP -->
+  <h2>LP デザイン</h2>
+
+  <a href="lp/akagi-lp-redesign.html" class="card cat-lp">
+    <div class="card-title">ケース面接対策塾 LP（リデザイン案）</div>
+    <div class="card-desc">Strategists LPのリデザイン提案。</div>
+    <div class="card-meta">2026年3月</div>
+  </a>
+
+  <a href="lp/akagi-lp-clone.html" class="card cat-lp">
+    <div class="card-title">ケース面接対策塾 LP（クローン）</div>
+    <div class="card-desc">既存LPのクローン版。</div>
+    <div class="card-meta">2026年3月</div>
+  </a>
+
 </div>
 </body>
 </html>
