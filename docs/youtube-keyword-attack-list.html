@@ -3,386 +3,450 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>YouTube Keyword Attack List | Strategists</title>
+<title>YouTube Keyword Attack List v2 | Strategists</title>
 <style>
-  :root { --bg: #0f1117; --surface: #1a1d27; --raised: #22263a; --border: #2a2e3f; --brand: #6366f1; --text: #e2e8f0; --muted: #94a3b8; --green: #34d399; --red: #f87171; --yellow: #fbbf24; --blue: #60a5fa; --pink: #f472b6; --orange: #fb923c; }
+  :root { --bg: #0f1117; --surface: #1a1d27; --raised: #22263a; --border: #2a2e3f; --brand: #6366f1; --text: #e2e8f0; --muted: #94a3b8; --green: #34d399; --red: #f87171; --yellow: #fbbf24; --blue: #60a5fa; --pink: #f472b6; --orange: #fb923c; --cyan: #22d3ee; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; padding: 24px; line-height: 1.5; }
   h1 { font-size: 1.75rem; margin-bottom: 4px; }
-  h2 { font-size: 1.25rem; margin: 32px 0 12px; color: var(--brand); border-bottom: 1px solid var(--border); padding-bottom: 8px; }
-  h3 { font-size: 1rem; margin: 20px 0 8px; color: var(--blue); }
-  .subtitle { color: var(--muted); font-size: 0.85rem; margin-bottom: 24px; }
-  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
-  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin: 16px 0; }
-  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 16px 0; }
+  h2 { font-size: 1.2rem; margin: 36px 0 8px; color: var(--brand); border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+  h3 { font-size: 0.95rem; margin: 16px 0 6px; color: var(--blue); }
+  .subtitle { color: var(--muted); font-size: 0.8rem; margin-bottom: 24px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 12px 0; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin: 12px 0; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 12px 0; }
   .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
   .kpi { text-align: center; }
-  .kpi .num { font-size: 2rem; font-weight: 800; background: linear-gradient(135deg, var(--brand), var(--blue)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-  .kpi .label { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-top: 4px; }
-  table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
-  th { background: var(--raised); color: var(--muted); font-weight: 600; text-align: left; padding: 8px 10px; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px; position: sticky; top: 0; }
-  td { padding: 7px 10px; border-bottom: 1px solid var(--border); }
+  .kpi .num { font-size: 2rem; font-weight: 800; }
+  .kpi .num-green { color: var(--green); }
+  .kpi .num-red { color: var(--red); }
+  .kpi .num-blue { color: var(--blue); }
+  .kpi .num-yellow { color: var(--yellow); }
+  .kpi .label { font-size: 0.65rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-top: 4px; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+  th { background: var(--raised); color: var(--muted); font-weight: 600; text-align: left; padding: 8px 10px; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.5px; position: sticky; top: 0; z-index: 1; }
+  td { padding: 6px 10px; border-bottom: 1px solid var(--border); }
   tr:hover td { background: var(--raised); }
-  .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 0.65rem; font-weight: 600; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 0.62rem; font-weight: 600; }
   .badge-s { background: #34d39920; color: var(--green); }
   .badge-a { background: #60a5fa20; color: var(--blue); }
   .badge-b { background: #fbbf2420; color: var(--yellow); }
-  .badge-c { background: #fb923c20; color: var(--orange); }
-  .badge-d { background: #94a3b820; color: var(--muted); }
+  .badge-c { background: #94a3b820; color: var(--muted); }
   .badge-high { background: #f4727120; color: var(--red); }
   .badge-mid { background: #fbbf2420; color: var(--yellow); }
-  .badge-low { background: #34d39920; color: var(--green); }
-  .bar { height: 6px; border-radius: 3px; background: var(--border); position: relative; overflow: hidden; }
-  .bar-fill { height: 100%; border-radius: 3px; }
-  .source-yt { background: var(--red); }
-  .source-sc { background: var(--blue); }
-  .source-ads { background: var(--green); }
-  .source-web { background: var(--pink); }
-  .tag { display: inline-block; padding: 1px 6px; border-radius: 4px; font-size: 0.65rem; margin: 1px 2px; }
-  .tag-covered { background: #34d39915; color: var(--green); border: 1px solid #34d39930; }
-  .tag-gap { background: #f8717115; color: var(--red); border: 1px solid #f8717130; }
-  .tag-partial { background: #fbbf2415; color: var(--yellow); border: 1px solid #fbbf2430; }
-  .heat-5 { background: #6366f150; } .heat-4 { background: #6366f135; } .heat-3 { background: #6366f125; } .heat-2 { background: #6366f115; } .heat-1 { background: #6366f108; }
+  .badge-low { background: #94a3b820; color: var(--muted); }
+  .tag { display: inline-block; padding: 1px 6px; border-radius: 4px; font-size: 0.62rem; }
+  .tag-rank { background: #34d39918; color: var(--green); border: 1px solid #34d39930; }
+  .tag-weak { background: #fbbf2418; color: var(--yellow); border: 1px solid #fbbf2430; }
+  .tag-none { background: #f8717118; color: var(--red); border: 1px solid #f8717130; }
+  .tag-strat { background: #6366f118; color: var(--brand); border: 1px solid #6366f130; }
+  .tag-sogo { background: #94a3b818; color: var(--muted); border: 1px solid #94a3b830; }
   .right { text-align: right; }
   .center { text-align: center; }
-  .text-green { color: var(--green); } .text-red { color: var(--red); } .text-yellow { color: var(--yellow); } .text-blue { color: var(--blue); } .text-muted { color: var(--muted); }
+  .text-green { color: var(--green); } .text-red { color: var(--red); } .text-yellow { color: var(--yellow); } .text-blue { color: var(--blue); } .text-muted { color: var(--muted); } .text-pink { color: var(--pink); }
   .scroll-table { max-height: 600px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; }
-  .legend { display: flex; gap: 16px; margin: 8px 0; font-size: 0.75rem; color: var(--muted); flex-wrap: wrap; }
-  .legend-item { display: flex; align-items: center; gap: 4px; }
-  .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
-  .section-desc { color: var(--muted); font-size: 0.85rem; margin-bottom: 12px; }
-  .priority-row-s td { border-left: 3px solid var(--green); }
-  .priority-row-a td { border-left: 3px solid var(--blue); }
-  .priority-row-b td { border-left: 3px solid var(--yellow); }
-  .priority-row-c td { border-left: 3px solid var(--orange); }
-  .cv-highlight { background: linear-gradient(90deg, #34d39910, transparent); }
-  .gap-highlight { background: linear-gradient(90deg, #f8717108, transparent); }
-  .nowrap { white-space: nowrap; }
+  .insight { background: var(--raised); border-left: 3px solid var(--brand); padding: 12px 16px; border-radius: 0 8px 8px 0; margin: 12px 0; font-size: 0.85rem; }
+  .insight strong { color: var(--brand); }
+  .alert { background: #f8717110; border-left: 3px solid var(--red); padding: 12px 16px; border-radius: 0 8px 8px 0; margin: 12px 0; font-size: 0.85rem; }
+  .alert strong { color: var(--red); }
+  .bar-container { display: flex; align-items: center; gap: 6px; }
+  .bar { height: 8px; border-radius: 4px; min-width: 2px; }
+  .bar-search { background: var(--green); }
+  .bar-other { background: var(--border); }
+  .pct { font-size: 0.7rem; color: var(--muted); white-space: nowrap; }
+  .version-tabs { display: flex; gap: 4px; margin-bottom: 16px; }
+  .version-tab { padding: 4px 12px; font-size: 0.75rem; border-radius: 6px; cursor: pointer; border: 1px solid var(--border); color: var(--muted); background: transparent; }
+  .version-tab.active { background: var(--brand); color: white; border-color: var(--brand); }
+  .firm-strat { color: var(--brand); font-weight: 600; }
+  .firm-sogo { color: var(--muted); }
   @media (max-width: 768px) { .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
 
+<div class="version-tabs">
+  <button class="version-tab active">v2 (current)</button>
+  <button class="version-tab" onclick="alert('v1は初版。v2で全面改訂: 検索ランキング推定・戦略コンサル軸の再構成')">v1</button>
+</div>
+
 <h1>YouTube Keyword Attack List</h1>
-<p class="subtitle">Strategists / コンサル転職スクール — 2026年3月13日作成<br>
-データソース: YouTube Analytics検索語句(116件) × Search Console(601件) × Google Ads(157件) × Webリサーチ</p>
+<p class="subtitle">Strategists — 2026-03-13 v2<br>
+v2変更点: <span class="text-red">検索順位推定を追加</span> / <span class="text-red">戦略コンサルvs総合コンサルの軸で再構成</span> / <span class="text-red">カバレッジを「上位表示動画数」に修正</span> / <span class="text-red">CV導線を意識した企画提案</span></p>
 
-<!-- KPI Cards -->
+<!-- ========== EXECUTIVE SUMMARY ========== -->
+<h2>Executive Summary: 現在のYouTube検索プレゼンス</h2>
+
 <div class="grid-4">
-  <div class="card kpi"><div class="num">87</div><div class="label">攻略対象キーワード</div></div>
-  <div class="card kpi"><div class="num">31</div><div class="label">動画カバー済み</div></div>
-  <div class="card kpi"><div class="num">56</div><div class="label">未カバー (チャンス)</div></div>
-  <div class="card kpi"><div class="num">14</div><div class="label">CV実績あり (Ads)</div></div>
+  <div class="card kpi"><div class="num num-green">5</div><div class="label">上位表示KW<br>(検索で実際に獲れている)</div></div>
+  <div class="card kpi"><div class="num num-red">0</div><div class="label">戦略ファーム名KW<br>(MBB/RB/ADL/カーニー)</div></div>
+  <div class="card kpi"><div class="num num-yellow">91%</div><div class="label">検索依存度トップ動画<br>(「対策厨」)</div></div>
+  <div class="card kpi"><div class="num num-blue">¥2,545</div><div class="label">CPA最安KW<br>(「戦略コンサル対策」)</div></div>
 </div>
 
-<!-- ========== SECTION 1: Master Keyword List ========== -->
-<h2>1. マスターキーワードリスト（優先度順）</h2>
-<p class="section-desc">YouTube検索語句・Search Console・Google Ads・Webリサーチを統合し、CVインテント×検索需要×カバレッジで優先度スコアリング</p>
-
-<div class="legend">
-  <div class="legend-item"><div class="legend-dot" style="background:var(--red)"></div>YouTube検索</div>
-  <div class="legend-item"><div class="legend-dot" style="background:var(--blue)"></div>Search Console</div>
-  <div class="legend-item"><div class="legend-dot" style="background:var(--green)"></div>Google Ads (CV実績)</div>
-  <div class="legend-item"><div class="legend-dot" style="background:var(--pink)"></div>Webリサーチ</div>
+<div class="insight">
+  <strong>現状の一言:</strong> YouTube検索で「ケース面接」「ケース面接 対策」「マッキンゼー」の3語は検索流入を獲得できている。
+  しかし、<strong>戦略コンサルファーム別のケース面接対策</strong>（マッキンゼー ケース面接、BCG ケース面接、ベイン ケース面接 等）は<strong>動画が1本もない</strong>。
+  一方、SCでは「ベイカレント ケース面接」「アビーム ケース面接」等の<strong>総合コンサル系がトラフィックの大半</strong>を占めており、本来狙うべき戦略ファーム向けコンテンツが手薄。
 </div>
 
-<div class="scroll-table">
+<div class="alert">
+  <strong>最大のギャップ:</strong> Google Adsで最もCVを取れているのは「戦略コンサル 対策」(17.5CV/¥2,545 CPA) と「ケース面接 中途」(13.9CV)。
+  この2つのKWに対応するYouTube動画は<strong>0本</strong>。広告費で獲っている顧客をYouTubeで無料獲得できる余地が大きい。
+</div>
+
+<!-- ========== SECTION 1: 現状の検索プレゼンス ========== -->
+<h2>1. 現在のYouTube検索ポジション（推定）</h2>
+<p style="color:var(--muted);font-size:0.8rem;margin-bottom:12px">YouTube Analytics「検索語句別ビュー数」から、各キーワードで最も検索流入を獲得している動画＝上位表示されている動画と推定。</p>
+
+<div class="card">
 <table>
 <thead>
+<tr><th>検索キーワード</th><th class="right">検索流入計</th><th>推定#1動画</th><th class="right">シェア</th><th class="center">推定ポジション</th><th>評価</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>ケース面接</strong></td><td class="right">16,136</td><td>対策厨はどう評価されるのか？（1,480views）</td><td class="right">9.2%</td><td class="center"><span class="tag tag-weak">中位</span></td><td>超ビッグワード。分散的に流入あるが1本で独占できていない</td></tr>
+<tr><td><strong>ケース面接 対策</strong></td><td class="right">4,152</td><td>対策厨はどう評価されるのか？（527views）</td><td class="right">12.7%</td><td class="center"><span class="tag tag-weak">中位</span></td><td>対策系は流入あるが、明確な#1動画がない</td></tr>
+<tr><td><strong>マッキンゼー</strong></td><td class="right">5,187</td><td>McKinsey社員の特徴（1,453views）</td><td class="right">28.0%</td><td class="center"><span class="tag tag-rank">上位</span></td><td class="text-green">ファーム名で上位。検索依存度81%。強い</td></tr>
+<tr><td><strong>戦略コンサル</strong></td><td class="right">5,578</td><td>アベイラブル期間の過ごし方（340views）</td><td class="right">6.1%</td><td class="center"><span class="tag tag-weak">分散</span></td><td>27本に分散。特定動画が独占できていない</td></tr>
+<tr><td><strong>ベインアンドカンパニー</strong></td><td class="right">1,265</td><td>Bain社員の特徴（342views）</td><td class="right">27.0%</td><td class="center"><span class="tag tag-rank">上位</span></td><td class="text-green">ファーム名で上位。検索依存度58%</td></tr>
+<tr><td><strong>フェルミ推定</strong></td><td class="right">1,059</td><td>（主要動画の特定困難）</td><td class="right">—</td><td class="center"><span class="tag tag-weak">不明</span></td><td>検索流入はあるが、どの動画が獲っているか不明確</td></tr>
+<tr><td><strong>激務</strong></td><td class="right">882</td><td>戦略コンサル激務の一年目（293views）</td><td class="right">33.2%</td><td class="center"><span class="tag tag-rank">上位</span></td><td class="text-green">ニッチKWで上位独占</td></tr>
+<tr><td><strong>コンサル 激務</strong></td><td class="right">608</td><td>戦略コンサル激務の一年目（181views）</td><td class="right">29.8%</td><td class="center"><span class="tag tag-rank">上位</span></td><td class="text-green">同上</td></tr>
+<tr><td><strong>シンプレクス</strong></td><td class="right">502</td><td>（2本に分散）</td><td class="right">—</td><td class="center"><span class="tag tag-weak">中位</span></td><td>ターゲット外のKW</td></tr>
+<tr><td><strong>ケース面接 コンサル</strong></td><td class="right">1,947</td><td>対策厨は…（168views）</td><td class="right">8.6%</td><td class="center"><span class="tag tag-weak">分散</span></td><td>14本に分散。独占動画なし</td></tr>
+<tr><td><strong>AIケース面接</strong></td><td class="right">160</td><td>対策厨は…（42views）</td><td class="right">26.3%</td><td class="center"><span class="tag tag-rank">上位</span></td><td class="text-green">新興KWで先行ポジション</td></tr>
+<tr><td><strong>ケース面接 売上向上</strong></td><td class="right">23</td><td>売上向上のお題を徹底解説</td><td class="right">—</td><td class="center"><span class="tag tag-rank">上位</span></td><td class="text-green">SC順位1.0。ニッチKWを完全独占</td></tr>
+<tr><td><strong>アクセンチュア ケース面接</strong></td><td class="right">135</td><td>（7本に分散）</td><td class="right">—</td><td class="center"><span class="tag tag-weak">中位</span></td><td class="firm-sogo">総合コンサル</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="insight">
+  <strong>検索で「獲れている」KW（5語）:</strong> マッキンゼー / ベインアンドカンパニー / 激務・コンサル激務 / AIケース面接 / ケース面接 売上向上<br>
+  <strong>検索で「分散して弱い」KW:</strong> ケース面接 / 戦略コンサル / ケース面接 対策 / ケース面接 コンサル（流入はあるが特定動画が#1を取れていない）<br>
+  <strong>検索で「不在」のKW:</strong> マッキンゼー ケース面接 / BCG ケース面接 / ベイン ケース面接 / ローランドベルガー / ATカーニー / 戦略コンサル 対策 / ケース面接 中途 / フェルミ推定 例題
+</div>
+
+<!-- ========== SECTION 2: 動画別の検索プレゼンス ========== -->
+<h2>2. 動画別: 検索エンジンとしてのパフォーマンス</h2>
+<p style="color:var(--muted);font-size:0.8rem;margin-bottom:12px">各動画の再生数のうち、YouTube検索からの流入がどれだけを占めるか。検索依存度が高い＝検索エンジンとして機能している動画。</p>
+
+<div class="card">
+<table>
+<thead>
+<tr><th>動画</th><th class="right">総再生</th><th class="right">YT検索</th><th class="center">検索依存度</th><th>獲得している検索KW</th></tr>
+</thead>
+<tbody>
 <tr>
-  <th>#</th>
-  <th>キーワード</th>
-  <th>カテゴリ</th>
-  <th class="center">優先度</th>
-  <th class="center">CVインテント</th>
-  <th class="right">YT検索views</th>
-  <th class="right">SC imp</th>
-  <th class="right">SC clicks</th>
-  <th class="right">Ads CV</th>
-  <th class="right">Ads cost</th>
-  <th class="center">自社動画数</th>
-  <th class="center">カバレッジ</th>
-  <th>アクション</th>
+  <td><strong>対策厨はどう評価されるのか？</strong></td><td class="right">4,838</td><td class="right">4,415</td>
+  <td class="center"><div class="bar-container"><div class="bar bar-search" style="width:91px"></div><div class="bar bar-other" style="width:9px"></div><span class="pct">91.3%</span></div></td>
+  <td>ケース面接, ケース面接 対策, ケース面接 コンサル, アクセンチュア ケース面接, コンサル 面接</td>
 </tr>
-</thead>
-<tbody>
-<!-- PRIORITY S: CV実績あり × 高インテント -->
-<tr class="priority-row-s cv-highlight"><td>1</td><td><strong>ケース面接 対策</strong></td><td>面接対策</td><td class="center"><span class="badge badge-s">S</span></td><td class="center"><span class="badge badge-high">HIGH</span></td><td class="right">4,152</td><td class="right">39</td><td class="right">14</td><td class="right">—</td><td class="right">—</td><td class="center">15</td><td class="center"><span class="tag tag-covered">充実</span></td><td>更新・最適化</td></tr>
-<tr class="priority-row-s cv-highlight"><td>2</td><td><strong>戦略コンサル 面接</strong></td><td>面接対策</td><td class="center"><span class="badge badge-s">S</span></td><td class="center"><span class="badge badge-high">HIGH</span></td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="right">8.0</td><td class="right">¥54,122</td><td class="center">0</td><td class="center"><span class="tag tag-gap">未対応</span></td><td>新規動画 必須</td></tr>
-<tr class="priority-row-s cv-highlight"><td>3</td><td><strong>ケース面接 中途</strong></td><td>面接対策</td><td class="center"><span class="badge badge-s">S</span></td><td class="center"><span class="badge badge-high">HIGH</span></td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="right">13.9</td><td class="right">¥144,449</td><td class="center">0</td><td class="center"><span class="tag tag-gap">未対応</span></td><td>新規動画 必須</td></tr>
-<tr class="priority-row-s cv-highlight"><td>4</td><td><strong>戦略コンサル 対策</strong></td><td>面接対策</td><td class="center"><span class="badge badge-s">S</span></td><td class="center"><span class="badge badge-high">HIGH</span></td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="right">17.5</td><td class="right">¥44,536</td><td class="center">0</td><td class="center"><span class="tag tag-gap">未対応</span></td><td>新規動画 必須</td></tr>
-<tr class="priority-row-s cv-highlight"><td>5</td><td><strong>フェルミ推定 対策</strong></td><td>面接対策</td><td class="center"><span class="badge badge-s">S</span></td><td class="center"><span class="badge badge-high">HIGH</span></td><td class="right">1,059</td><td class="right">—</td><td class="right">—</td><td class="right">7.0</td><td class="right">¥30,625</td><td class="center">7</td><td class="center"><span class="tag tag-covered">充実</span></td><td>専用動画で深掘り</td></tr>
-<tr class="priority-row-s cv-highlight"><td>6</td><td><strong>外資コンサル 面接 対策</strong></td><td>面接対策</td><td class="center"><span class="badge badge-s">S</span></td><td class="center"><span class="badge badge-high">HIGH</span></td><td class="right">17</td><td class="right">—</td><td class="right">—</td><td class="right">3.3</td><td class="right">¥44,024</td><td class="center">2</td><td class="center"><span class="tag tag-partial">不足</span></td><td>専用動画作成</td></tr>
-<tr class="priority-row-s cv-highlight"><td>7</td><td><strong>ケース面接 解答例</strong></td><td>面接対策</td><td class="center"><span class="badge badge-s">S</span></td><td class="center"><span class="badge badge-high">HIGH</span></td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="right">2.0</td><td class="right">¥55,356</td><td class="center">0</td><td class="center"><span class="tag tag-gap">未対応</span></td><td>新規動画 必須</td></tr>
-<tr class="priority-row-s cv-highlight"><td>8</td><td><strong>コンサル 面接 対策</strong></td><td>面接対策</td><td class="center"><span class="badge badge-s">S</span></td><td class="center"><span class="badge badge-high">HIGH</span></td><td class="right">22</td><td class="right">—</td><td class="right">—</td><td class="right">3.0</td><td class="right">¥21,858</td><td class="center">1</td><td class="center"><span class="tag tag-partial">不足</span></td><td>専用動画作成</td></tr>
-<tr class="priority-row-s cv-highlight"><td>9</td><td><strong>コンサル転職 面接</strong></td><td>転職</td><td class="center"><span class="badge badge-s">S</span></td><td class="center"><span class="badge badge-high">HIGH</span></td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="right">4.0</td><td class="right">¥26,880</td><td class="center">0</td><td class="center"><span class="tag tag-gap">未対応</span></td><td>新規動画 必須</td></tr>
-
-<!-- PRIORITY A: 高需要 × 高インテント -->
-<tr class="priority-row-a"><td>10</td><td><strong>ケース面接</strong></td><td>面接対策</td><td class="center"><span class="badge badge-a">A</span></td><td class="center"><span class="badge badge-high">HIGH</span></td><td class="right">16,136</td><td class="right">56</td><td class="right">8</td><td class="right">—</td><td class="right">—</td><td class="center">26</td><td class="center"><span class="tag tag-covered">充実</span></td><td>ヘッドKW維持強化</td></tr>
-<tr class="priority-row-a"><td>11</td><td><strong>ケース面接 コンサル</strong></td><td>面接対策</td><td class="center"><span class="badge badge-a">A</span></td><td class="center"><span class="badge badge-high">HIGH</span></td><td class="right">1,947</td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="center">14</td><td class="center"><span class="tag tag-covered">充実</span></td><td>タイトル最適化</td></tr>
-<tr class="priority-row-a"><td>12</td><td><strong>ケース面接 売上向上</strong></td><td>面接対策</td><td class="center"><span class="badge badge-a">A</span></td><td class="center"><span class="badge badge-high">HIGH</span></td><td class="right">23</td><td class="right">50</td><td class="right">41</td><td class="right">—</td><td class="right">—</td><td class="center">3</td><td class="center"><span class="tag tag-covered">対応済</span></td><td>SC順位1位 維持</td></tr>
-<tr class="priority-row-a"><td>13</td><td><strong>ケース面接 フレームワーク</strong></td><td>面接対策</td><td class="center"><span class="badge badge-a">A</span></td><td class="center"><span class="badge badge-high">HIGH</span></td><td class="right">23</td><td class="right">231</td><td class="right">25</td><td class="right">—</td><td class="right">—</td><td class="center">1</td><td class="center"><span class="tag tag-partial">不足</span></td><td>動画追加で深掘り</td></tr>
-<tr class="priority-row-a"><td>14</td><td><strong>ケース面接 例題</strong></td><td>面接対策</td><td class="center"><span class="badge badge-a">A</span></td><td class="center"><span class="badge badge-high">HIGH</span></td><td class="right">—</td><td class="right">137</td><td class="right">27</td><td class="right">—</td><td class="right">—</td><td class="center">0</td><td class="center"><span class="tag tag-gap">未対応</span></td><td>新規動画 推奨</td></tr>
-<tr class="priority-row-a gap-highlight"><td>15</td><td><strong>ベイカレント ケース面接</strong></td><td>ファーム別</td><td class="center"><span class="badge badge-a">A</span></td><td class="center"><span class="badge badge-high">HIGH</span></td><td class="right">—</td><td class="right">490</td><td class="right">115</td><td class="right">—</td><td class="right">—</td><td class="center">0</td><td class="center"><span class="tag tag-gap">未対応</span></td><td>SC上位 → 動画化</td></tr>
-<tr class="priority-row-a gap-highlight"><td>16</td><td><strong>アクセンチュア ケース面接</strong></td><td>ファーム別</td><td class="center"><span class="badge badge-a">A</span></td><td class="center"><span class="badge badge-high">HIGH</span></td><td class="right">135</td><td class="right">405</td><td class="right">41</td><td class="right">—</td><td class="right">—</td><td class="center">7</td><td class="center"><span class="tag tag-covered">対応済</span></td><td>SC順位11→改善余地</td></tr>
-<tr class="priority-row-a gap-highlight"><td>17</td><td><strong>デロイト ケース面接</strong></td><td>ファーム別</td><td class="center"><span class="badge badge-a">A</span></td><td class="center"><span class="badge badge-high">HIGH</span></td><td class="right">3</td><td class="right">393</td><td class="right">87</td><td class="right">—</td><td class="right">—</td><td class="center">2</td><td class="center"><span class="tag tag-partial">不足</span></td><td>専用動画作成</td></tr>
-<tr class="priority-row-a gap-highlight"><td>18</td><td><strong>アビーム ケース面接</strong></td><td>ファーム別</td><td class="center"><span class="badge badge-a">A</span></td><td class="center"><span class="badge badge-high">HIGH</span></td><td class="right">—</td><td class="right">368</td><td class="right">116</td><td class="right">—</td><td class="right">—</td><td class="center">0</td><td class="center"><span class="tag tag-gap">未対応</span></td><td>SC上位 → 動画化</td></tr>
-<tr class="priority-row-a gap-highlight"><td>19</td><td><strong>PWC ケース面接</strong></td><td>ファーム別</td><td class="center"><span class="badge badge-a">A</span></td><td class="center"><span class="badge badge-high">HIGH</span></td><td class="right">—</td><td class="right">228</td><td class="right">89</td><td class="right">—</td><td class="right">—</td><td class="center">0</td><td class="center"><span class="tag tag-gap">未対応</span></td><td>SC上位 → 動画化</td></tr>
-<tr class="priority-row-a gap-highlight"><td>20</td><td><strong>BCG ケース面接</strong></td><td>ファーム別</td><td class="center"><span class="badge badge-a">A</span></td><td class="center"><span class="badge badge-high">HIGH</span></td><td class="right">33</td><td class="right">71</td><td class="right">28</td><td class="right">—</td><td class="right">—</td><td class="center">1</td><td class="center"><span class="tag tag-partial">不足</span></td><td>専用動画作成</td></tr>
-<tr class="priority-row-a"><td>21</td><td><strong>ケース面接 新規事業</strong></td><td>面接対策</td><td class="center"><span class="badge badge-a">A</span></td><td class="center"><span class="badge badge-high">HIGH</span></td><td class="right">—</td><td class="right">51</td><td class="right">34</td><td class="right">—</td><td class="right">—</td><td class="center">0</td><td class="center"><span class="tag tag-gap">未対応</span></td><td>SC順位1.2 → 動画化</td></tr>
-<tr class="priority-row-a"><td>22</td><td><strong>ケース面接 因数分解</strong></td><td>面接対策</td><td class="center"><span class="badge badge-a">A</span></td><td class="center"><span class="badge badge-high">HIGH</span></td><td class="right">—</td><td class="right">37</td><td class="right">18</td><td class="right">—</td><td class="right">—</td><td class="center">0</td><td class="center"><span class="tag tag-gap">未対応</span></td><td>SC上位 → 動画化</td></tr>
-<tr class="priority-row-a"><td>23</td><td><strong>ケース面接 ロジックツリー</strong></td><td>面接対策</td><td class="center"><span class="badge badge-a">A</span></td><td class="center"><span class="badge badge-high">HIGH</span></td><td class="right">8</td><td class="right">32</td><td class="right">9</td><td class="right">—</td><td class="right">—</td><td class="center">1</td><td class="center"><span class="tag tag-partial">不足</span></td><td>動画追加</td></tr>
-<tr class="priority-row-a"><td>24</td><td><strong>フェルミ推定 例題</strong></td><td>面接対策</td><td class="center"><span class="badge badge-a">A</span></td><td class="center"><span class="badge badge-high">HIGH</span></td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="right">0.4</td><td class="right">¥9,571</td><td class="center">0</td><td class="center"><span class="tag tag-gap">未対応</span></td><td>新規動画 推奨</td></tr>
-<tr class="priority-row-a"><td>25</td><td><strong>ケース面接 ボロボロ</strong></td><td>面接体験</td><td class="center"><span class="badge badge-a">A</span></td><td class="center"><span class="badge badge-mid">MID</span></td><td class="right">—</td><td class="right">287</td><td class="right">32</td><td class="right">—</td><td class="right">—</td><td class="center">0</td><td class="center"><span class="tag tag-gap">未対応</span></td><td>体験談系動画</td></tr>
-<tr class="priority-row-a"><td>26</td><td><strong>ケース面接 ノー勉</strong></td><td>面接体験</td><td class="center"><span class="badge badge-a">A</span></td><td class="center"><span class="badge badge-mid">MID</span></td><td class="right">—</td><td class="right">56</td><td class="right">22</td><td class="right">—</td><td class="right">—</td><td class="center">0</td><td class="center"><span class="tag tag-gap">未対応</span></td><td>挑戦系動画</td></tr>
-
-<!-- PRIORITY A: ファーム名系 大チャンス -->
-<tr class="priority-row-a gap-highlight"><td>27</td><td><strong>ローランドベルガー ケース面接</strong></td><td>ファーム別</td><td class="center"><span class="badge badge-a">A</span></td><td class="center"><span class="badge badge-high">HIGH</span></td><td class="right">—</td><td class="right">38</td><td class="right">14</td><td class="right">—</td><td class="right">—</td><td class="center">0</td><td class="center"><span class="tag tag-gap">未対応</span></td><td>動画化</td></tr>
-<tr class="priority-row-a gap-highlight"><td>28</td><td><strong>ATカーニー ケース面接</strong></td><td>ファーム別</td><td class="center"><span class="badge badge-a">A</span></td><td class="center"><span class="badge badge-high">HIGH</span></td><td class="right">—</td><td class="right">26</td><td class="right">13</td><td class="right">—</td><td class="right">—</td><td class="center">0</td><td class="center"><span class="tag tag-gap">未対応</span></td><td>動画化</td></tr>
-<tr class="priority-row-a gap-highlight"><td>29</td><td><strong>ベイン ケース面接</strong></td><td>ファーム別</td><td class="center"><span class="badge badge-a">A</span></td><td class="center"><span class="badge badge-high">HIGH</span></td><td class="right">—</td><td class="right">22</td><td class="right">15</td><td class="right">—</td><td class="right">—</td><td class="center">0</td><td class="center"><span class="tag tag-gap">未対応</span></td><td>動画化</td></tr>
-<tr class="priority-row-a gap-highlight"><td>30</td><td><strong>EY ケース面接</strong></td><td>ファーム別</td><td class="center"><span class="badge badge-a">A</span></td><td class="center"><span class="badge badge-high">HIGH</span></td><td class="right">—</td><td class="right">11</td><td class="right">4</td><td class="right">—</td><td class="right">—</td><td class="center">0</td><td class="center"><span class="tag tag-gap">未対応</span></td><td>動画化</td></tr>
-<tr class="priority-row-a gap-highlight"><td>31</td><td><strong>マッキンゼー ケース面接</strong></td><td>ファーム別</td><td class="center"><span class="badge badge-a">A</span></td><td class="center"><span class="badge badge-high">HIGH</span></td><td class="right">—</td><td class="right">5</td><td class="right">4</td><td class="right">—</td><td class="right">—</td><td class="center">0</td><td class="center"><span class="tag tag-gap">未対応</span></td><td>動画化（MBB権威性）</td></tr>
-
-<!-- PRIORITY B: 中需要 × CV接点 -->
-<tr class="priority-row-b"><td>32</td><td><strong>戦略コンサル</strong></td><td>認知</td><td class="center"><span class="badge badge-b">B</span></td><td class="center"><span class="badge badge-mid">MID</span></td><td class="right">5,578</td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="center">27</td><td class="center"><span class="tag tag-covered">充実</span></td><td>ヘッドKW維持</td></tr>
-<tr class="priority-row-b"><td>33</td><td><strong>マッキンゼー</strong></td><td>ファーム名</td><td class="center"><span class="badge badge-b">B</span></td><td class="center"><span class="badge badge-mid">MID</span></td><td class="right">5,187</td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="center">10</td><td class="center"><span class="tag tag-covered">充実</span></td><td>維持</td></tr>
-<tr class="priority-row-b"><td>34</td><td><strong>ベインアンドカンパニー</strong></td><td>ファーム名</td><td class="center"><span class="badge badge-b">B</span></td><td class="center"><span class="badge badge-mid">MID</span></td><td class="right">1,265</td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="center">6</td><td class="center"><span class="tag tag-covered">対応済</span></td><td>維持</td></tr>
-<tr class="priority-row-b cv-highlight"><td>35</td><td><strong>コンサル 転職 未経験</strong></td><td>転職</td><td class="center"><span class="badge badge-b">B</span></td><td class="center"><span class="badge badge-high">HIGH</span></td><td class="right">1</td><td class="right">—</td><td class="right">—</td><td class="right">2.6</td><td class="right">¥14,685</td><td class="center">1</td><td class="center"><span class="tag tag-partial">不足</span></td><td>専用動画作成</td></tr>
-<tr class="priority-row-b cv-highlight"><td>36</td><td><strong>コンサル 転職 対策</strong></td><td>転職</td><td class="center"><span class="badge badge-b">B</span></td><td class="center"><span class="badge badge-high">HIGH</span></td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="right">1.5</td><td class="right">¥13,237</td><td class="center">0</td><td class="center"><span class="tag tag-gap">未対応</span></td><td>新規動画</td></tr>
-<tr class="priority-row-b"><td>37</td><td><strong>コンサル 激務</strong></td><td>業界理解</td><td class="center"><span class="badge badge-b">B</span></td><td class="center"><span class="badge badge-mid">MID</span></td><td class="right">608</td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="center">5</td><td class="center"><span class="tag tag-covered">対応済</span></td><td>維持</td></tr>
-<tr class="priority-row-b"><td>38</td><td><strong>激務</strong></td><td>業界理解</td><td class="center"><span class="badge badge-b">B</span></td><td class="center"><span class="badge badge-mid">MID</span></td><td class="right">882</td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="center">4</td><td class="center"><span class="tag tag-covered">対応済</span></td><td>維持</td></tr>
-<tr class="priority-row-b gap-highlight"><td>39</td><td><strong>NQ診断</strong></td><td>選考対策</td><td class="center"><span class="badge badge-b">B</span></td><td class="center"><span class="badge badge-mid">MID</span></td><td class="right">—</td><td class="right">459</td><td class="right">153</td><td class="right">—</td><td class="right">—</td><td class="center">0</td><td class="center"><span class="tag tag-gap">未対応</span></td><td>SC1位級→動画化大チャンス</td></tr>
-<tr class="priority-row-b gap-highlight"><td>40</td><td><strong>NTTデータ経営研究所 難易度</strong></td><td>ファーム別</td><td class="center"><span class="badge badge-b">B</span></td><td class="center"><span class="badge badge-mid">MID</span></td><td class="right">—</td><td class="right">351</td><td class="right">28</td><td class="right">—</td><td class="right">—</td><td class="center">0</td><td class="center"><span class="tag tag-gap">未対応</span></td><td>ファーム解説動画</td></tr>
-<tr class="priority-row-b gap-highlight"><td>41</td><td><strong>ノースサンド 選考フロー</strong></td><td>ファーム別</td><td class="center"><span class="badge badge-b">B</span></td><td class="center"><span class="badge badge-mid">MID</span></td><td class="right">—</td><td class="right">261</td><td class="right">61</td><td class="right">—</td><td class="right">—</td><td class="center">0</td><td class="center"><span class="tag tag-gap">未対応</span></td><td>選考フロー解説動画</td></tr>
-<tr class="priority-row-b gap-highlight"><td>42</td><td><strong>アクセンチュア ケース面接 過去問</strong></td><td>ファーム別</td><td class="center"><span class="badge badge-b">B</span></td><td class="center"><span class="badge badge-high">HIGH</span></td><td class="right">—</td><td class="right">235</td><td class="right">71</td><td class="right">—</td><td class="right">—</td><td class="center">0</td><td class="center"><span class="tag tag-gap">未対応</span></td><td>過去問解説動画</td></tr>
-<tr class="priority-row-b"><td>43</td><td><strong>AIケース面接</strong></td><td>面接対策</td><td class="center"><span class="badge badge-b">B</span></td><td class="center"><span class="badge badge-high">HIGH</span></td><td class="right">160</td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="center">6</td><td class="center"><span class="tag tag-covered">対応済</span></td><td>最新トレンド更新</td></tr>
-<tr class="priority-row-b"><td>44</td><td><strong>MBB</strong></td><td>ファーム名</td><td class="center"><span class="badge badge-b">B</span></td><td class="center"><span class="badge badge-mid">MID</span></td><td class="right">151</td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="center">5</td><td class="center"><span class="tag tag-covered">対応済</span></td><td>維持</td></tr>
-
-<!-- ファーム別 SCで需要確認済み -->
-<tr class="priority-row-b gap-highlight"><td>45</td><td><strong>ベイカレント ケース面接 過去問</strong></td><td>ファーム別</td><td class="center"><span class="badge badge-b">B</span></td><td class="center"><span class="badge badge-high">HIGH</span></td><td class="right">—</td><td class="right">89</td><td class="right">55</td><td class="right">—</td><td class="right">—</td><td class="center">0</td><td class="center"><span class="tag tag-gap">未対応</span></td><td>過去問解説動画</td></tr>
-<tr class="priority-row-b gap-highlight"><td>46</td><td><strong>デロイト 最終面接 落ちる</strong></td><td>ファーム別</td><td class="center"><span class="badge badge-b">B</span></td><td class="center"><span class="badge badge-mid">MID</span></td><td class="right">—</td><td class="right">92</td><td class="right">28</td><td class="right">—</td><td class="right">—</td><td class="center">0</td><td class="center"><span class="tag tag-gap">未対応</span></td><td>失敗分析動画</td></tr>
-<tr class="priority-row-b gap-highlight"><td>47</td><td><strong>BCG ケース面接 過去問</strong></td><td>ファーム別</td><td class="center"><span class="badge badge-b">B</span></td><td class="center"><span class="badge badge-high">HIGH</span></td><td class="right">—</td><td class="right">37</td><td class="right">28</td><td class="right">—</td><td class="right">—</td><td class="center">0</td><td class="center"><span class="tag tag-gap">未対応</span></td><td>過去問解説動画</td></tr>
-<tr class="priority-row-b gap-highlight"><td>48</td><td><strong>デロイト ケース面接 過去問</strong></td><td>ファーム別</td><td class="center"><span class="badge badge-b">B</span></td><td class="center"><span class="badge badge-high">HIGH</span></td><td class="right">—</td><td class="right">63</td><td class="right">29</td><td class="right">—</td><td class="right">—</td><td class="center">0</td><td class="center"><span class="tag tag-gap">未対応</span></td><td>過去問解説動画</td></tr>
-<tr class="priority-row-b gap-highlight"><td>49</td><td><strong>PWC ケース面接 過去問</strong></td><td>ファーム別</td><td class="center"><span class="badge badge-b">B</span></td><td class="center"><span class="badge badge-high">HIGH</span></td><td class="right">—</td><td class="right">30</td><td class="right">17</td><td class="right">—</td><td class="right">—</td><td class="center">0</td><td class="center"><span class="tag tag-gap">未対応</span></td><td>過去問解説動画</td></tr>
-<tr class="priority-row-b gap-highlight"><td>50</td><td><strong>ケース面接 企業一覧</strong></td><td>面接対策</td><td class="center"><span class="badge badge-b">B</span></td><td class="center"><span class="badge badge-high">HIGH</span></td><td class="right">—</td><td class="right">54</td><td class="right">35</td><td class="right">—</td><td class="right">—</td><td class="center">0</td><td class="center"><span class="tag tag-gap">未対応</span></td><td>まとめ動画</td></tr>
-
-<!-- PRIORITY B: Webリサーチ基盤 -->
-<tr class="priority-row-b gap-highlight"><td>51</td><td><strong>コンサル 年収</strong></td><td>キャリア</td><td class="center"><span class="badge badge-b">B</span></td><td class="center"><span class="badge badge-mid">MID</span></td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="center">0</td><td class="center"><span class="tag tag-gap">未対応</span></td><td>年収ランキング動画</td></tr>
-<tr class="priority-row-b gap-highlight"><td>52</td><td><strong>コンサル 転職 エージェント</strong></td><td>転職</td><td class="center"><span class="badge badge-b">B</span></td><td class="center"><span class="badge badge-mid">MID</span></td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="center">0</td><td class="center"><span class="tag tag-gap">未対応</span></td><td>比較動画</td></tr>
-<tr class="priority-row-b gap-highlight"><td>53</td><td><strong>コンサル 志望動機</strong></td><td>面接対策</td><td class="center"><span class="badge badge-b">B</span></td><td class="center"><span class="badge badge-high">HIGH</span></td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="center">0</td><td class="center"><span class="tag tag-gap">未対応</span></td><td>志望動機対策動画</td></tr>
-<tr class="priority-row-b gap-highlight"><td>54</td><td><strong>コンサル 逆質問</strong></td><td>面接対策</td><td class="center"><span class="badge badge-b">B</span></td><td class="center"><span class="badge badge-high">HIGH</span></td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="center">0</td><td class="center"><span class="tag tag-gap">未対応</span></td><td>逆質問対策動画</td></tr>
-<tr class="priority-row-b gap-highlight"><td>55</td><td><strong>ケース面接 失敗 / 落ちた</strong></td><td>面接体験</td><td class="center"><span class="badge badge-b">B</span></td><td class="center"><span class="badge badge-mid">MID</span></td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="center">0</td><td class="center"><span class="tag tag-gap">未対応</span></td><td>再生数伸びやすい体験談</td></tr>
-
-<!-- PRIORITY C: 中長期 -->
-<tr class="priority-row-c"><td>56</td><td><strong>戦略コンサル 1日</strong></td><td>業界理解</td><td class="center"><span class="badge badge-c">C</span></td><td class="center"><span class="badge badge-low">LOW</span></td><td class="right">34</td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="center">2</td><td class="center"><span class="tag tag-covered">対応済</span></td><td>維持</td></tr>
-<tr class="priority-row-c"><td>57</td><td><strong>BCG</strong></td><td>ファーム名</td><td class="center"><span class="badge badge-c">C</span></td><td class="center"><span class="badge badge-low">LOW</span></td><td class="right">33</td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="center">1</td><td class="center"><span class="tag tag-partial">不足</span></td><td>ファーム紹介動画</td></tr>
-<tr class="priority-row-c"><td>58</td><td><strong>ボストンコンサルティング</strong></td><td>ファーム名</td><td class="center"><span class="badge badge-c">C</span></td><td class="center"><span class="badge badge-low">LOW</span></td><td class="right">29</td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="center">3</td><td class="center"><span class="tag tag-covered">対応済</span></td><td>維持</td></tr>
-<tr class="priority-row-c"><td>59</td><td><strong>ポストコンサル</strong></td><td>キャリア</td><td class="center"><span class="badge badge-c">C</span></td><td class="center"><span class="badge badge-low">LOW</span></td><td class="right">7</td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="center">1</td><td class="center"><span class="tag tag-partial">不足</span></td><td>退職後キャリア動画</td></tr>
-<tr class="priority-row-c"><td>60</td><td><strong>3C分析</strong></td><td>スキル</td><td class="center"><span class="badge badge-c">C</span></td><td class="center"><span class="badge badge-low">LOW</span></td><td class="right">13</td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="center">1</td><td class="center"><span class="tag tag-partial">不足</span></td><td>フレームワーク解説</td></tr>
-<tr class="priority-row-c gap-highlight"><td>61</td><td><strong>ロジカルシンキング 鍛え方</strong></td><td>スキル</td><td class="center"><span class="badge badge-c">C</span></td><td class="center"><span class="badge badge-mid">MID</span></td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="center">0</td><td class="center"><span class="tag tag-gap">未対応</span></td><td>入門系動画</td></tr>
-<tr class="priority-row-c gap-highlight"><td>62</td><td><strong>MECE とは</strong></td><td>スキル</td><td class="center"><span class="badge badge-c">C</span></td><td class="center"><span class="badge badge-low">LOW</span></td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="center">0</td><td class="center"><span class="tag tag-gap">未対応</span></td><td>基礎知識動画</td></tr>
-<tr class="priority-row-c gap-highlight"><td>63</td><td><strong>コンサル 本 おすすめ</strong></td><td>学習</td><td class="center"><span class="badge badge-c">C</span></td><td class="center"><span class="badge badge-low">LOW</span></td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="center">0</td><td class="center"><span class="tag tag-gap">未対応</span></td><td>書籍紹介動画</td></tr>
-<tr class="priority-row-c gap-highlight"><td>64</td><td><strong>コンサル 就活</strong></td><td>就活</td><td class="center"><span class="badge badge-c">C</span></td><td class="center"><span class="badge badge-mid">MID</span></td><td class="right">5</td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="center">2</td><td class="center"><span class="tag tag-partial">不足</span></td><td>新卒向け動画</td></tr>
-<tr class="priority-row-c gap-highlight"><td>65</td><td><strong>DXコンサル 転職</strong></td><td>転職</td><td class="center"><span class="badge badge-c">C</span></td><td class="center"><span class="badge badge-mid">MID</span></td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="center">0</td><td class="center"><span class="tag tag-gap">未対応</span></td><td>成長分野動画</td></tr>
-<tr class="priority-row-c gap-highlight"><td>66</td><td><strong>コンサル キャリアパス</strong></td><td>キャリア</td><td class="center"><span class="badge badge-c">C</span></td><td class="center"><span class="badge badge-mid">MID</span></td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="center">0</td><td class="center"><span class="tag tag-gap">未対応</span></td><td>キャリア解説動画</td></tr>
-<tr class="priority-row-c gap-highlight"><td>67</td><td><strong>ビヘイビアー面接 対策</strong></td><td>面接対策</td><td class="center"><span class="badge badge-c">C</span></td><td class="center"><span class="badge badge-high">HIGH</span></td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="center">0</td><td class="center"><span class="tag tag-gap">未対応</span></td><td>行動面接対策動画</td></tr>
-<tr class="priority-row-c gap-highlight"><td>68</td><td><strong>戦略コンサル 年収 ランキング</strong></td><td>キャリア</td><td class="center"><span class="badge badge-c">C</span></td><td class="center"><span class="badge badge-low">LOW</span></td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="center">0</td><td class="center"><span class="tag tag-gap">未対応</span></td><td>ランキング動画</td></tr>
-<tr class="priority-row-c gap-highlight"><td>69</td><td><strong>コンサル 1年目 リアル</strong></td><td>業界理解</td><td class="center"><span class="badge badge-c">C</span></td><td class="center"><span class="badge badge-low">LOW</span></td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="center">0</td><td class="center"><span class="tag tag-gap">未対応</span></td><td>リアル系動画</td></tr>
-
-<!-- Ads CV but lower priority -->
-<tr class="priority-row-c cv-highlight"><td>70</td><td><strong>フェルミ推定 練習</strong></td><td>面接対策</td><td class="center"><span class="badge badge-c">C</span></td><td class="center"><span class="badge badge-high">HIGH</span></td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="right">1.0</td><td class="right">¥7,133</td><td class="center">0</td><td class="center"><span class="tag tag-gap">未対応</span></td><td>練習問題動画</td></tr>
-<tr class="priority-row-c cv-highlight"><td>71</td><td><strong>ケース面接 オンライン</strong></td><td>面接対策</td><td class="center"><span class="badge badge-c">C</span></td><td class="center"><span class="badge badge-high">HIGH</span></td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="right">1.5</td><td class="right">¥11,210</td><td class="center">0</td><td class="center"><span class="tag tag-gap">未対応</span></td><td>オンライン対策動画</td></tr>
-<tr class="priority-row-c cv-highlight"><td>72</td><td><strong>戦略ファーム 面接</strong></td><td>面接対策</td><td class="center"><span class="badge badge-c">C</span></td><td class="center"><span class="badge badge-high">HIGH</span></td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="right">1.0</td><td class="right">¥3,479</td><td class="center">0</td><td class="center"><span class="tag tag-gap">未対応</span></td><td>新規動画</td></tr>
-
-<!-- Additional keywords from various sources -->
-<tr class="priority-row-c gap-highlight"><td>73</td><td><strong>サイモンクチャー</strong></td><td>ファーム名</td><td class="center"><span class="badge badge-c">C</span></td><td class="center"><span class="badge badge-low">LOW</span></td><td class="right">—</td><td class="right">308</td><td class="right">38</td><td class="right">—</td><td class="right">—</td><td class="center">0</td><td class="center"><span class="tag tag-gap">未対応</span></td><td>ファーム紹介動画</td></tr>
-<tr class="priority-row-c gap-highlight"><td>74</td><td><strong>アクセンチュア 選考フロー</strong></td><td>ファーム別</td><td class="center"><span class="badge badge-c">C</span></td><td class="center"><span class="badge badge-mid">MID</span></td><td class="right">—</td><td class="right">227</td><td class="right">6</td><td class="right">—</td><td class="right">—</td><td class="center">0</td><td class="center"><span class="tag tag-gap">未対応</span></td><td>選考フロー解説</td></tr>
-<tr class="priority-row-c gap-highlight"><td>75</td><td><strong>ベイカレント 選考フロー</strong></td><td>ファーム別</td><td class="center"><span class="badge badge-c">C</span></td><td class="center"><span class="badge badge-mid">MID</span></td><td class="right">—</td><td class="right">191</td><td class="right">18</td><td class="right">—</td><td class="right">—</td><td class="center">0</td><td class="center"><span class="tag tag-gap">未対応</span></td><td>選考フロー解説</td></tr>
-<tr class="priority-row-c gap-highlight"><td>76</td><td><strong>日本の駅の数 フェルミ</strong></td><td>面接対策</td><td class="center"><span class="badge badge-c">C</span></td><td class="center"><span class="badge badge-mid">MID</span></td><td class="right">—</td><td class="right">36</td><td class="right">21</td><td class="right">—</td><td class="right">—</td><td class="center">0</td><td class="center"><span class="tag tag-gap">未対応</span></td><td>フェルミ実演動画</td></tr>
-<tr class="priority-row-c"><td>77</td><td><strong>strategy&</strong></td><td>ファーム名</td><td class="center"><span class="badge badge-c">C</span></td><td class="center"><span class="badge badge-low">LOW</span></td><td class="right">35</td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="center">4</td><td class="center"><span class="tag tag-covered">対応済</span></td><td>維持</td></tr>
-<tr class="priority-row-c"><td>78</td><td><strong>アーサーディリトル</strong></td><td>ファーム名</td><td class="center"><span class="badge badge-c">C</span></td><td class="center"><span class="badge badge-low">LOW</span></td><td class="right">8</td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="center">1</td><td class="center"><span class="tag tag-partial">不足</span></td><td>ADL紹介動画</td></tr>
-<tr class="priority-row-c gap-highlight"><td>79</td><td><strong>コンサル 面接 志望動機</strong></td><td>面接対策</td><td class="center"><span class="badge badge-c">C</span></td><td class="center"><span class="badge badge-high">HIGH</span></td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="right">0.5</td><td class="right">¥2,998</td><td class="center">0</td><td class="center"><span class="tag tag-gap">未対応</span></td><td>志望動機動画</td></tr>
-<tr class="priority-row-c gap-highlight"><td>80</td><td><strong>コンサル Webテスト 中途</strong></td><td>選考対策</td><td class="center"><span class="badge badge-c">C</span></td><td class="center"><span class="badge badge-mid">MID</span></td><td class="right">—</td><td class="right">21</td><td class="right">11</td><td class="right">—</td><td class="right">—</td><td class="center">0</td><td class="center"><span class="tag tag-gap">未対応</span></td><td>Webテスト対策動画</td></tr>
-<tr class="priority-row-c gap-highlight"><td>81</td><td><strong>ケース面接 前提確認</strong></td><td>面接対策</td><td class="center"><span class="badge badge-c">C</span></td><td class="center"><span class="badge badge-high">HIGH</span></td><td class="right">—</td><td class="right">18</td><td class="right">8</td><td class="right">—</td><td class="right">—</td><td class="center">0</td><td class="center"><span class="tag tag-gap">未対応</span></td><td>テクニック動画</td></tr>
-<tr class="priority-row-c gap-highlight"><td>82</td><td><strong>ケース面接 市場規模</strong></td><td>面接対策</td><td class="center"><span class="badge badge-c">C</span></td><td class="center"><span class="badge badge-high">HIGH</span></td><td class="right">—</td><td class="right">7</td><td class="right">4</td><td class="right">—</td><td class="right">—</td><td class="center">0</td><td class="center"><span class="tag tag-gap">未対応</span></td><td>市場規模推定動画</td></tr>
-<tr class="priority-row-c gap-highlight"><td>83</td><td><strong>ケース面接 成長戦略</strong></td><td>面接対策</td><td class="center"><span class="badge badge-c">C</span></td><td class="center"><span class="badge badge-high">HIGH</span></td><td class="right">—</td><td class="right">5</td><td class="right">3</td><td class="right">—</td><td class="right">—</td><td class="center">0</td><td class="center"><span class="tag tag-gap">未対応</span></td><td>成長戦略ケース動画</td></tr>
-<tr class="priority-row-c"><td>84</td><td><strong>戦略コンサル 転職</strong></td><td>転職</td><td class="center"><span class="badge badge-c">C</span></td><td class="center"><span class="badge badge-high">HIGH</span></td><td class="right">5</td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="center">3</td><td class="center"><span class="tag tag-covered">対応済</span></td><td>タイトル最適化</td></tr>
-<tr class="priority-row-c gap-highlight"><td>85</td><td><strong>ケース面接 メモ / 書き方</strong></td><td>面接対策</td><td class="center"><span class="badge badge-c">C</span></td><td class="center"><span class="badge badge-high">HIGH</span></td><td class="right">—</td><td class="right">6</td><td class="right">2</td><td class="right">—</td><td class="right">—</td><td class="center">0</td><td class="center"><span class="tag tag-gap">未対応</span></td><td>ニッチ実用動画</td></tr>
-<tr class="priority-row-c gap-highlight"><td>86</td><td><strong>コンサル 面接 落ちた</strong></td><td>面接体験</td><td class="center"><span class="badge badge-c">C</span></td><td class="center"><span class="badge badge-mid">MID</span></td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="center">0</td><td class="center"><span class="tag tag-gap">未対応</span></td><td>失敗談動画</td></tr>
-<tr class="priority-row-c gap-highlight"><td>87</td><td><strong>コンサル 第二新卒</strong></td><td>転職</td><td class="center"><span class="badge badge-c">C</span></td><td class="center"><span class="badge badge-mid">MID</span></td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td class="center">0</td><td class="center"><span class="tag tag-gap">未対応</span></td><td>第二新卒対策動画</td></tr>
+<tr>
+  <td><strong>ケース面接で最初に考えるべきこと</strong></td><td class="right">2,168</td><td class="right">1,817</td>
+  <td class="center"><div class="bar-container"><div class="bar bar-search" style="width:84px"></div><div class="bar bar-other" style="width:16px"></div><span class="pct">83.8%</span></div></td>
+  <td>ケース面接, ケース面接 対策, ケース面接 コンサル</td>
+</tr>
+<tr>
+  <td><strong>McKinsey社員の特徴</strong></td><td class="right">3,147</td><td class="right">2,559</td>
+  <td class="center"><div class="bar-container"><div class="bar bar-search" style="width:81px"></div><div class="bar bar-other" style="width:19px"></div><span class="pct">81.3%</span></div></td>
+  <td class="firm-strat">マッキンゼー (1,453), mckinsey (74), マッキンゼー 面接 (6)</td>
+</tr>
+<tr>
+  <td><strong>アベイラブル期間の過ごし方</strong></td><td class="right">1,601</td><td class="right">1,305</td>
+  <td class="center"><div class="bar-container"><div class="bar bar-search" style="width:82px"></div><div class="bar bar-other" style="width:18px"></div><span class="pct">81.5%</span></div></td>
+  <td>戦略コンサル (340), コンサル アベイラブル (51), アクセンチュア (6)</td>
+</tr>
+<tr>
+  <td><strong>Bain社員の特徴</strong></td><td class="right">1,461</td><td class="right">853</td>
+  <td class="center"><div class="bar-container"><div class="bar bar-search" style="width:58px"></div><div class="bar bar-other" style="width:42px"></div><span class="pct">58.4%</span></div></td>
+  <td class="firm-strat">ベインアンドカンパニー (342), bain and company (43), ベイン (104), bain (37)</td>
+</tr>
+<tr>
+  <td><strong>BCG社員の特徴</strong></td><td class="right">1,002</td><td class="right">511</td>
+  <td class="center"><div class="bar-container"><div class="bar bar-search" style="width:51px"></div><div class="bar bar-other" style="width:49px"></div><span class="pct">51.0%</span></div></td>
+  <td class="firm-strat">bcg (33), ボストンコンサルティング (29), bcg コンサル (29), ボスコン (23)</td>
+</tr>
+<tr>
+  <td><strong>戦略コンサル激務の一年目</strong></td><td class="right">2,980</td><td class="right">1,420</td>
+  <td class="center"><div class="bar-container"><div class="bar bar-search" style="width:48px"></div><div class="bar bar-other" style="width:52px"></div><span class="pct">47.6%</span></div></td>
+  <td>激務 (293), コンサル 激務 (181), 戦略コンサル (134), マッキンゼー 激務 (15)</td>
+</tr>
+<tr>
+  <td><strong>売上向上ケースは何を考えるべきか</strong></td><td class="right">2,192</td><td class="right">876</td>
+  <td class="center"><div class="bar-container"><div class="bar bar-search" style="width:40px"></div><div class="bar bar-other" style="width:60px"></div><span class="pct">39.9%</span></div></td>
+  <td>ケース面接 (206), ケース面接 売上向上 (23), ケース面接 コンサル (53)</td>
+</tr>
+<tr>
+  <td><strong>MBB社員のリアルな1日</strong></td><td class="right">1,698</td><td class="right">646</td>
+  <td class="center"><div class="bar-container"><div class="bar bar-search" style="width:38px"></div><div class="bar bar-other" style="width:62px"></div><span class="pct">38.0%</span></div></td>
+  <td>戦略コンサル (174), コンサル 一日 (20), マッキンゼー (100), 外資コンサル (17)</td>
+</tr>
 </tbody>
 </table>
 </div>
 
-<!-- ========== SECTION 2: Gap Analysis ========== -->
-<h2>2. ギャップ分析: SC上位なのにYouTubeに動画がないテーマ</h2>
-<p class="section-desc">Search ConsoleでWebトラフィックが来ているのに、YouTubeに対応動画がないテーマ = 動画化の大チャンス</p>
+<!-- ========== SECTION 3: 戦略コンサル vs 総合コンサル ========== -->
+<h2>3. 核心: 戦略コンサル vs 総合コンサル — どこを狙うか</h2>
 
-<div class="card">
-<table>
-<thead>
-<tr><th>#</th><th>Search Consoleクエリ</th><th class="right">SC imp</th><th class="right">SC clicks</th><th class="right">平均順位</th><th class="center">YT動画</th><th>評価</th></tr>
-</thead>
-<tbody>
-<tr class="gap-highlight"><td>1</td><td><strong>ベイカレント ケース面接</strong></td><td class="right">490</td><td class="right">115</td><td class="right">3.5</td><td class="center">0本</td><td><span class="badge badge-s">即動画化</span></td></tr>
-<tr class="gap-highlight"><td>2</td><td><strong>NQ診断</strong></td><td class="right">459</td><td class="right">153</td><td class="right">3.3</td><td class="center">0本</td><td><span class="badge badge-s">即動画化</span></td></tr>
-<tr class="gap-highlight"><td>3</td><td><strong>デロイト ケース面接</strong></td><td class="right">393</td><td class="right">87</td><td class="right">3.7</td><td class="center">2本</td><td><span class="badge badge-a">深掘り</span></td></tr>
-<tr class="gap-highlight"><td>4</td><td><strong>アビーム ケース面接</strong></td><td class="right">368</td><td class="right">116</td><td class="right">2.3</td><td class="center">0本</td><td><span class="badge badge-s">即動画化</span></td></tr>
-<tr class="gap-highlight"><td>5</td><td><strong>NTTデータ経営研究所 難易度</strong></td><td class="right">351</td><td class="right">28</td><td class="right">2.4</td><td class="center">0本</td><td><span class="badge badge-a">動画化推奨</span></td></tr>
-<tr class="gap-highlight"><td>6</td><td><strong>ノースサンド 選考フロー</strong></td><td class="right">261</td><td class="right">61</td><td class="right">1.9</td><td class="center">0本</td><td><span class="badge badge-a">動画化推奨</span></td></tr>
-<tr class="gap-highlight"><td>7</td><td><strong>アクセンチュア ケース面接 過去問</strong></td><td class="right">235</td><td class="right">71</td><td class="right">4.9</td><td class="center">0本</td><td><span class="badge badge-s">即動画化</span></td></tr>
-<tr class="gap-highlight"><td>8</td><td><strong>ケース面接 フレームワーク</strong></td><td class="right">231</td><td class="right">25</td><td class="right">8.1</td><td class="center">1本</td><td><span class="badge badge-a">深掘り</span></td></tr>
-<tr class="gap-highlight"><td>9</td><td><strong>PWC ケース面接</strong></td><td class="right">228</td><td class="right">89</td><td class="right">2.6</td><td class="center">0本</td><td><span class="badge badge-s">即動画化</span></td></tr>
-<tr class="gap-highlight"><td>10</td><td><strong>ベイカレント 選考フロー</strong></td><td class="right">191</td><td class="right">18</td><td class="right">7.3</td><td class="center">0本</td><td><span class="badge badge-a">動画化推奨</span></td></tr>
-<tr class="gap-highlight"><td>11</td><td><strong>ケース面接 例題</strong></td><td class="right">137</td><td class="right">27</td><td class="right">15.7</td><td class="center">0本</td><td><span class="badge badge-a">動画化推奨</span></td></tr>
-<tr class="gap-highlight"><td>12</td><td><strong>ケース面接 ボロボロ</strong></td><td class="right">287</td><td class="right">32</td><td class="right">5.5</td><td class="center">0本</td><td><span class="badge badge-a">動画化推奨</span></td></tr>
-<tr class="gap-highlight"><td>13</td><td><strong>デロイト 最終面接 落ちる</strong></td><td class="right">92</td><td class="right">28</td><td class="right">3.6</td><td class="center">0本</td><td><span class="badge badge-a">動画化推奨</span></td></tr>
-<tr class="gap-highlight"><td>14</td><td><strong>ベイカレント ケース面接 過去問</strong></td><td class="right">89</td><td class="right">55</td><td class="right">1.4</td><td class="center">0本</td><td><span class="badge badge-s">即動画化</span></td></tr>
-<tr class="gap-highlight"><td>15</td><td><strong>ケース面接 ノー勉</strong></td><td class="right">56</td><td class="right">22</td><td class="right">1.3</td><td class="center">0本</td><td><span class="badge badge-a">動画化推奨</span></td></tr>
-</tbody>
-</table>
-</div>
-
-<!-- ========== SECTION 3: Coverage Analysis ========== -->
-<h2>3. カバレッジ分析: 検索語句 × 自社動画数</h2>
-<p class="section-desc">YouTube内で実際に検索されているキーワードに対して、自社動画が何本ヒットするか。1本だけ＝深掘り余地あり。</p>
-
-<div class="grid-3">
-  <div class="card">
-    <h3 class="text-green">充実カバー (5本以上)</h3>
-    <table>
-    <thead><tr><th>キーワード</th><th class="right">YT views</th><th class="center">動画数</th></tr></thead>
-    <tbody>
-      <tr><td>ケース面接</td><td class="right">16,136</td><td class="center">26</td></tr>
-      <tr><td>戦略コンサル</td><td class="right">5,578</td><td class="center">27</td></tr>
-      <tr><td>ケース面接 対策</td><td class="right">4,152</td><td class="center">15</td></tr>
-      <tr><td>ケース面接 コンサル</td><td class="right">1,947</td><td class="center">14</td></tr>
-      <tr><td>マッキンゼー</td><td class="right">5,187</td><td class="center">10</td></tr>
-      <tr><td>コンサル</td><td class="right">42</td><td class="center">11</td></tr>
-      <tr><td>戦コン</td><td class="right">47</td><td class="center">10</td></tr>
-      <tr><td>コンサルティング業界</td><td class="right">18</td><td class="center">8</td></tr>
-      <tr><td>フェルミ推定</td><td class="right">1,059</td><td class="center">7</td></tr>
-      <tr><td>アクセンチュア ケース面接</td><td class="right">135</td><td class="center">7</td></tr>
-      <tr><td>ベインアンドカンパニー</td><td class="right">1,265</td><td class="center">6</td></tr>
-      <tr><td>AIケース面接</td><td class="right">160</td><td class="center">6</td></tr>
-      <tr><td>コンサル 激務</td><td class="right">608</td><td class="center">5</td></tr>
-      <tr><td>MBB</td><td class="right">151</td><td class="center">5</td></tr>
-    </tbody>
-    </table>
-  </div>
-
-  <div class="card">
-    <h3 class="text-yellow">1-2本のみ (深掘り余地)</h3>
-    <table>
-    <thead><tr><th>キーワード</th><th class="right">YT views</th><th class="center">動画数</th></tr></thead>
-    <tbody>
-      <tr><td>シンプレクス</td><td class="right">502</td><td class="center">2</td></tr>
-      <tr><td>ベイン</td><td class="right">104</td><td class="center">2</td></tr>
-      <tr><td>外資コンサル</td><td class="right">17</td><td class="center">2</td></tr>
-      <tr><td>マッキンゼー 激務</td><td class="right">15</td><td class="center">2</td></tr>
-      <tr><td>コンサル 一日</td><td class="right">20</td><td class="center">2</td></tr>
-      <tr><td>戦略コンサル 1日</td><td class="right">34</td><td class="center">2</td></tr>
-      <tr><td>ケース面接 フレームワーク</td><td class="right">23</td><td class="center">1</td></tr>
-      <tr><td>コンサル アベイラブル</td><td class="right">51</td><td class="center">1</td></tr>
-      <tr><td>アクセンチュア 面接</td><td class="right">47</td><td class="center">1</td></tr>
-      <tr><td>コンサル 面接</td><td class="right">22</td><td class="center">1</td></tr>
-      <tr><td>コンサルのリアル</td><td class="right">20</td><td class="center">1</td></tr>
-      <tr><td>3C分析</td><td class="right">13</td><td class="center">1</td></tr>
-      <tr><td>ロジックツリー</td><td class="right">8</td><td class="center">1</td></tr>
-      <tr><td>アーサーディリトル</td><td class="right">8</td><td class="center">1</td></tr>
-      <tr><td>ポストコンサル</td><td class="right">7</td><td class="center">1</td></tr>
-      <tr><td>BCG</td><td class="right">33</td><td class="center">1</td></tr>
-    </tbody>
-    </table>
-  </div>
-
-  <div class="card">
-    <h3 class="text-red">CV実績KW × YT未対応</h3>
-    <p class="section-desc" style="margin-bottom:8px">Google AdsでCVが取れているのにYouTube動画がないキーワード</p>
-    <table>
-    <thead><tr><th>キーワード</th><th class="right">Ads CV</th><th class="right">費用</th></tr></thead>
-    <tbody>
-      <tr class="cv-highlight"><td>戦略コンサル 対策</td><td class="right">17.5</td><td class="right">¥44,536</td></tr>
-      <tr class="cv-highlight"><td>ケース面接 中途</td><td class="right">13.9</td><td class="right">¥144,449</td></tr>
-      <tr class="cv-highlight"><td>戦略コンサル 面接</td><td class="right">8.0</td><td class="right">¥54,122</td></tr>
-      <tr class="cv-highlight"><td>コンサル転職 面接</td><td class="right">4.0</td><td class="right">¥26,880</td></tr>
-      <tr class="cv-highlight"><td>外資コンサル 面接対策</td><td class="right">3.3</td><td class="right">¥44,024</td></tr>
-      <tr class="cv-highlight"><td>コンサル 面接 対策</td><td class="right">3.0</td><td class="right">¥21,858</td></tr>
-      <tr class="cv-highlight"><td>コンサル 転職 未経験</td><td class="right">2.6</td><td class="right">¥14,685</td></tr>
-      <tr class="cv-highlight"><td>ケース面接 解答例</td><td class="right">2.0</td><td class="right">¥55,356</td></tr>
-      <tr class="cv-highlight"><td>コンサル 転職 対策</td><td class="right">1.5</td><td class="right">¥13,237</td></tr>
-      <tr class="cv-highlight"><td>ケース面接 オンライン</td><td class="right">1.5</td><td class="right">¥11,210</td></tr>
-      <tr class="cv-highlight"><td>フェルミ推定 練習</td><td class="right">1.0</td><td class="right">¥7,133</td></tr>
-      <tr class="cv-highlight"><td>戦略ファーム 面接</td><td class="right">1.0</td><td class="right">¥3,479</td></tr>
-    </tbody>
-    </table>
-  </div>
-</div>
-
-<!-- ========== SECTION 4: Priority Action Plan ========== -->
-<h2>4. 優先アクションプラン: 次に作るべき動画TOP10</h2>
-<p class="section-desc">CV実績 × 検索需要 × カバレッジギャップ を総合的に判断した推奨順</p>
-
-<div class="card">
-<table>
-<thead>
-<tr><th class="center">順位</th><th>推奨動画テーマ</th><th>根拠</th><th>想定キーワード</th><th class="center">CV期待</th></tr>
-</thead>
-<tbody>
-<tr style="background:#34d39908"><td class="center"><strong>1</strong></td><td><strong>【完全版】ケース面接 中途の攻略法</strong></td><td>Ads CV 13.9件 / ¥144K費用 → 最高CV単価KW。動画0本。</td><td>ケース面接 中途, 戦略コンサル 面接, コンサル 面接 対策</td><td class="center"><span class="badge badge-high">極高</span></td></tr>
-<tr style="background:#34d39908"><td class="center"><strong>2</strong></td><td><strong>戦略コンサル面接 対策ロードマップ</strong></td><td>Ads CV 17.5件（最多CV）。専用動画なし。</td><td>戦略コンサル 対策, 戦略コンサル 面接, 外資コンサル 面接 対策</td><td class="center"><span class="badge badge-high">極高</span></td></tr>
-<tr style="background:#34d39908"><td class="center"><strong>3</strong></td><td><strong>【過去問】ベイカレント ケース面接 徹底解説</strong></td><td>SC imp 490 + clicks 115。SC順位3.5なのにYT動画0本。</td><td>ベイカレント ケース面接, ベイカレント ケース面接 過去問</td><td class="center"><span class="badge badge-mid">高</span></td></tr>
-<tr style="background:#34d39908"><td class="center"><strong>4</strong></td><td><strong>【過去問】アビーム ケース面接 完全攻略</strong></td><td>SC imp 368 + clicks 116。SC順位2.3で上位なのにYT動画0本。</td><td>アビーム ケース面接, アビームコンサルティング ケース面接</td><td class="center"><span class="badge badge-mid">高</span></td></tr>
-<tr style="background:#34d39908"><td class="center"><strong>5</strong></td><td><strong>ケース面接 解答例3選</strong></td><td>Ads CV 2件 + ¥55K。「例題」SC imp 137。動画0本。</td><td>ケース面接 解答例, ケース面接 例題, ケース面接 過去問</td><td class="center"><span class="badge badge-high">極高</span></td></tr>
-<tr><td class="center"><strong>6</strong></td><td><strong>【過去問】PWCケース面接 攻略</strong></td><td>SC imp 228 + clicks 89。SC順位2.6。動画0本。</td><td>PWC ケース面接, PWC ケース面接 過去問</td><td class="center"><span class="badge badge-mid">高</span></td></tr>
-<tr><td class="center"><strong>7</strong></td><td><strong>NQ診断とは？完全対策ガイド</strong></td><td>SC imp 459 + clicks 153。ニッチだが検索1位級。動画0本。</td><td>NQ診断, NQ診断とは, NQ診断 対策</td><td class="center"><span class="badge badge-mid">中</span></td></tr>
-<tr><td class="center"><strong>8</strong></td><td><strong>ケース面接 フレームワーク完全解説</strong></td><td>SC imp 231 + YT views 23。SC順位8.1 = 改善余地。動画1本のみ。</td><td>ケース面接 フレームワーク, ケース面接 ロジックツリー, 3C分析</td><td class="center"><span class="badge badge-mid">中</span></td></tr>
-<tr><td class="center"><strong>9</strong></td><td><strong>ケース面接で落ちた話【ボロボロ体験談】</strong></td><td>SC imp 287 + 「ノー勉」56。失敗談系は再生数が伸びやすい。</td><td>ケース面接 ボロボロ, ケース面接 ノー勉, ケース面接 落ちた</td><td class="center"><span class="badge badge-mid">中</span></td></tr>
-<tr><td class="center"><strong>10</strong></td><td><strong>コンサル転職 未経験からの完全ガイド</strong></td><td>Ads CV 2.6件。市場拡大中（2兆円突破）。動画1本のみ。</td><td>コンサル 転職 未経験, コンサル 転職 対策, コンサル 第二新卒</td><td class="center"><span class="badge badge-high">高</span></td></tr>
-</tbody>
-</table>
-</div>
-
-<!-- ========== SECTION 5: Scoring Methodology ========== -->
-<h2>5. スコアリング方法論</h2>
 <div class="grid-2">
   <div class="card">
-    <h3>優先度ランク定義</h3>
+    <h3 class="firm-strat">戦略コンサルファーム（ターゲット）</h3>
+    <p style="font-size:0.75rem;color:var(--muted);margin-bottom:8px">MBB + ローランドベルガー + ADL + カーニー + Strategy& + オリバーワイマン + DI</p>
     <table>
-    <thead><tr><th>ランク</th><th>条件</th></tr></thead>
+    <thead><tr><th>ファーム × ケース面接</th><th class="center">YT動画</th><th class="right">SC imp</th><th class="right">SC clicks</th><th>現状</th></tr></thead>
     <tbody>
-      <tr><td><span class="badge badge-s">S</span></td><td>Ads CV実績あり + 自社動画0-1本 → 即座に新規動画作成</td></tr>
-      <tr><td><span class="badge badge-a">A</span></td><td>YT検索 or SC高imp + HIGH CVインテント + カバレッジ不足</td></tr>
-      <tr><td><span class="badge badge-b">B</span></td><td>需要確認済みだがCVまでの距離がある or カバー済み</td></tr>
-      <tr><td><span class="badge badge-c">C</span></td><td>中長期的に取るべき / 認知拡大目的 / ロングテール</td></tr>
+      <tr><td class="firm-strat">マッキンゼー ケース面接</td><td class="center text-red">0本</td><td class="right">5</td><td class="right">4</td><td><span class="tag tag-none">完全未対応</span></td></tr>
+      <tr><td class="firm-strat">BCG ケース面接</td><td class="center text-red">0本</td><td class="right">71</td><td class="right">28</td><td><span class="tag tag-none">完全未対応</span></td></tr>
+      <tr><td class="firm-strat">ベイン ケース面接</td><td class="center text-red">0本</td><td class="right">22</td><td class="right">15</td><td><span class="tag tag-none">完全未対応</span></td></tr>
+      <tr><td class="firm-strat">ローランドベルガー ケース面接</td><td class="center text-red">0本</td><td class="right">38</td><td class="right">14</td><td><span class="tag tag-none">完全未対応</span></td></tr>
+      <tr><td class="firm-strat">ATカーニー ケース面接</td><td class="center text-red">0本</td><td class="right">26</td><td class="right">13</td><td><span class="tag tag-none">完全未対応</span></td></tr>
+      <tr><td class="firm-strat">Strategy& 面接</td><td class="center text-red">0本</td><td class="right">5</td><td class="right">3</td><td><span class="tag tag-none">完全未対応</span></td></tr>
+      <tr><td class="firm-strat">オリバーワイマン</td><td class="center text-red">0本</td><td class="right">61</td><td class="right">8</td><td><span class="tag tag-none">完全未対応</span></td></tr>
+      <tr><td class="firm-strat">ドリームインキュベータ</td><td class="center text-red">0本</td><td class="right">7</td><td class="right">3</td><td><span class="tag tag-none">完全未対応</span></td></tr>
     </tbody>
     </table>
+    <div class="alert" style="margin-top:12px">
+      <strong>戦略ファーム×ケース面接の専用動画は全滅。</strong><br>
+      「マッキンゼー」「ベイン」のファーム名単体では上位表示できているが、<br>
+      「○○ ケース面接」という<strong>CV直結の検索意図に対応する動画がゼロ</strong>。
+    </div>
   </div>
+
   <div class="card">
-    <h3>CVインテント分類</h3>
+    <h3 class="firm-sogo">総合コンサルファーム（SC上位だが非ターゲット）</h3>
+    <p style="font-size:0.75rem;color:var(--muted);margin-bottom:8px">ベイカレント、アクセンチュア、デロイト、アビーム、PwC、EY、NTTデータ経営研等</p>
     <table>
-    <thead><tr><th>レベル</th><th>基準</th></tr></thead>
+    <thead><tr><th>ファーム × ケース面接</th><th class="center">YT動画</th><th class="right">SC imp</th><th class="right">SC clicks</th><th>現状</th></tr></thead>
     <tbody>
-      <tr><td><span class="badge badge-high">HIGH</span></td><td>「対策」「練習」「解答例」「過去問」等の行動的検索意図。スクール申込に直結。</td></tr>
-      <tr><td><span class="badge badge-mid">MID</span></td><td>「ケース面接」「面接」等の情報収集。ファーム名+面接系。CV可能性あり。</td></tr>
-      <tr><td><span class="badge badge-low">LOW</span></td><td>「年収」「激務」「1日」等の業界理解。認知拡大には有効だがCVまで遠い。</td></tr>
+      <tr><td class="firm-sogo">ベイカレント ケース面接</td><td class="center text-red">0本</td><td class="right">490</td><td class="right">115</td><td>SC上位だが動画なし</td></tr>
+      <tr><td class="firm-sogo">アクセンチュア ケース面接</td><td class="center text-yellow">7本※</td><td class="right">405</td><td class="right">41</td><td>動画あるがSC順位11.2</td></tr>
+      <tr><td class="firm-sogo">デロイト ケース面接</td><td class="center text-yellow">2本※</td><td class="right">393</td><td class="right">87</td><td>SC順位3.7</td></tr>
+      <tr><td class="firm-sogo">アビーム ケース面接</td><td class="center text-red">0本</td><td class="right">368</td><td class="right">116</td><td>SC上位だが動画なし</td></tr>
+      <tr><td class="firm-sogo">PwC ケース面接</td><td class="center text-red">0本</td><td class="right">228</td><td class="right">89</td><td>SC上位だが動画なし</td></tr>
+      <tr><td class="firm-sogo">EY ケース面接</td><td class="center text-red">0本</td><td class="right">11</td><td class="right">4</td><td>—</td></tr>
+    </tbody>
+    </table>
+    <p style="font-size:0.72rem;color:var(--muted);margin-top:8px">※「動画あり」= タイトルに含む動画数。ただしそのKWで上位表示されているかは別問題。<br>
+    総合コンサル系はSCトラフィックが圧倒的に多いが、<strong>我々のターゲット顧客（戦略コンサル志望者）とは層が異なる</strong>。<br>
+    取れば取れるが、CV率は戦略ファーム系の方が高いと推定。</p>
+  </div>
+</div>
+
+<div class="insight">
+  <strong>戦略的判断:</strong> 総合コンサル系（ベイカレント、アビーム等）はSCトラフィックが大きいが、我々の本業は<strong>戦略コンサル転職・ケース面接対策</strong>。
+  限られたリソースで最大CVを狙うなら、<strong>まず戦略ファーム×ケース面接の動画を埋め</strong>、余力で総合コンサル系をカバーする順序が正しい。
+</div>
+
+<!-- ========== SECTION 4: CVにつながるKW ========== -->
+<h2>4. CV実績から逆算: 動画化すべきキーワード</h2>
+<p style="color:var(--muted);font-size:0.8rem;margin-bottom:12px">Google Adsで実際にCVを獲得しているキーワード ＝ お金を払ってでも獲りたい検索意図。これをYouTubeで無料獲得する。</p>
+
+<div class="card">
+<table>
+<thead>
+<tr><th>Adsキーワード</th><th class="right">CV計</th><th class="right">うち申込</th><th class="right">Ads費用</th><th class="right">CPA</th><th class="center">YT動画</th><th>動画化による期待効果</th></tr>
+</thead>
+<tbody>
+<tr style="background:#34d39908"><td><strong>戦略コンサル 対策</strong></td><td class="right">17.5</td><td class="right">2.0</td><td class="right">¥44,536</td><td class="right">¥2,545</td><td class="center text-red">0本</td><td>最高CV数。「戦略コンサル対策ロードマップ」的な動画で獲得可</td></tr>
+<tr style="background:#34d39908"><td><strong>ケース面接 中途</strong></td><td class="right">13.9</td><td class="right">2.0</td><td class="right">¥144,449</td><td class="right">¥10,392</td><td class="center text-red">0本</td><td>CPA最悪=広告効率が悪い。YouTubeで代替すれば¥144K/年の削減</td></tr>
+<tr style="background:#34d39908"><td><strong>戦略コンサル 面接</strong></td><td class="right">8.0</td><td class="right">1.0</td><td class="right">¥54,122</td><td class="right">¥6,765</td><td class="center text-red">0本</td><td>「対策」と合わせて攻めるべき</td></tr>
+<tr><td><strong>ケース 面接</strong></td><td class="right">7.0</td><td class="right">—</td><td class="right">¥76,839</td><td class="right">¥10,977</td><td class="center text-yellow">26本</td><td>既にカバーしているが、検索#1を取れていない</td></tr>
+<tr><td><strong>フェルミ推定 対策</strong></td><td class="right">7.0</td><td class="right">1.0</td><td class="right">¥30,625</td><td class="right">¥4,375</td><td class="center text-yellow">7本</td><td>「フェルミ推定」で流入あり。「対策」に特化した動画がない</td></tr>
+<tr><td><strong>戦コン 面接</strong></td><td class="right">5.5</td><td class="right">—</td><td class="right">¥5,231</td><td class="right text-green">¥951</td><td class="center text-red">0本</td><td>CPA最安!  即動画化で投資回収</td></tr>
+<tr><td><strong>マッキンゼー 対策</strong></td><td class="right">5.0</td><td class="right">—</td><td class="right">¥4,336</td><td class="right text-green">¥867</td><td class="center text-red">0本</td><td class="firm-strat">戦略ファーム名 × 対策。CPA最安クラス</td></tr>
+<tr><td><strong>コンサル転職 面接</strong></td><td class="right">4.0</td><td class="right">—</td><td class="right">¥26,880</td><td class="right">¥6,720</td><td class="center text-red">0本</td><td>転職層向け。中途ケース面接と合わせて</td></tr>
+<tr><td><strong>外資コンサル 面接 対策</strong></td><td class="right">3.3</td><td class="right">—</td><td class="right">¥44,024</td><td class="right">¥13,341</td><td class="center text-yellow">2本</td><td>外資系括りの動画。専用動画で強化</td></tr>
+<tr><td><strong>コンサル 面接 対策</strong></td><td class="right">3.0</td><td class="right">—</td><td class="right">¥21,858</td><td class="right">¥7,286</td><td class="center text-yellow">1本</td><td>汎用KW。タイトル最適化で対応可</td></tr>
+<tr><td><strong>コンサル 転職 未経験</strong></td><td class="right">2.6</td><td class="right">—</td><td class="right">¥14,685</td><td class="right">¥5,648</td><td class="center text-yellow">1本</td><td>未経験層の取り込み</td></tr>
+<tr><td><strong>ケース面接 解答例</strong></td><td class="right">2.0</td><td class="right">—</td><td class="right">¥55,356</td><td class="right">¥27,678</td><td class="center text-red">0本</td><td>CPA高い＝競合激しい。動画で差別化</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="insight">
+  <strong>Ads費用→YouTube代替の試算:</strong> 上記12KWの年間Ads費用合計 <strong>¥522,141</strong>。
+  これらのKWで上位表示できる動画を作れば、同等のCV（78件/年）をYouTubeから無料獲得できる可能性がある。
+</div>
+
+<!-- ========== SECTION 5: 優先アクションプラン ========== -->
+<h2>5. 優先アクションプラン: 作るべき動画</h2>
+<p style="color:var(--muted);font-size:0.8rem;margin-bottom:12px">CV実績 × 戦略ファーム重視 × 検索ギャップ で優先順位付け</p>
+
+<div class="card">
+<table>
+<thead>
+<tr><th class="center">#</th><th>動画テーマ</th><th>狙うKW</th><th>なぜ今作るべきか</th><th class="center">CV期待</th></tr>
+</thead>
+<tbody>
+<tr style="background:#6366f108;border-left:3px solid var(--green)">
+  <td class="center"><strong>1</strong></td>
+  <td><strong>【中途向け】ケース面接 完全攻略ガイド</strong></td>
+  <td>ケース面接 中途, 戦略コンサル 面接, 戦コン 面接</td>
+  <td>Ads CV計 <strong>27.4件</strong>（中途+戦略コンサル面接+戦コン面接）。Ads費用¥204K。最大のCV空白地帯。</td>
+  <td class="center"><span class="badge badge-high">極高</span></td>
+</tr>
+<tr style="background:#6366f108;border-left:3px solid var(--green)">
+  <td class="center"><strong>2</strong></td>
+  <td><strong>戦略コンサル対策 全体ロードマップ</strong></td>
+  <td>戦略コンサル 対策, 外資コンサル 面接 対策, コンサル 面接 対策</td>
+  <td>Ads CV <strong>17.5件</strong>（CPA¥2,545＝最効率KW）。対策の全体像を示す動画。CTA→スクール申込の導線が自然。</td>
+  <td class="center"><span class="badge badge-high">極高</span></td>
+</tr>
+<tr style="background:#6366f108;border-left:3px solid var(--brand)">
+  <td class="center"><strong>3</strong></td>
+  <td><strong>【過去問解説】マッキンゼー ケース面接</strong></td>
+  <td>マッキンゼー ケース面接, マッキンゼー 対策, マッキンゼー 面接</td>
+  <td class="firm-strat">「マッキンゼー」でYT上位表示済み。<strong>ケース面接特化動画を追加すればCV直結</strong>。「マッキンゼー 対策」はAds CPA¥867。</td>
+  <td class="center"><span class="badge badge-high">高</span></td>
+</tr>
+<tr style="background:#6366f108;border-left:3px solid var(--brand)">
+  <td class="center"><strong>4</strong></td>
+  <td><strong>【過去問解説】BCG ケース面接</strong></td>
+  <td>BCG ケース面接, BCG ケース面接 過去問, BCG 面接</td>
+  <td class="firm-strat">SC imp 71 / clicks 28。BCG社員の特徴動画（51%検索依存）は既にあるが、ケース面接特化が0。</td>
+  <td class="center"><span class="badge badge-high">高</span></td>
+</tr>
+<tr style="background:#6366f108;border-left:3px solid var(--brand)">
+  <td class="center"><strong>5</strong></td>
+  <td><strong>【過去問解説】ベイン ケース面接</strong></td>
+  <td>ベイン ケース面接, ベイン 中途面接</td>
+  <td class="firm-strat">「ベインアンドカンパニー」でYT上位。ケース面接特化で検索意図を完全カバー。SC clicks 15。</td>
+  <td class="center"><span class="badge badge-high">高</span></td>
+</tr>
+<tr style="border-left:3px solid var(--brand)">
+  <td class="center"><strong>6</strong></td>
+  <td><strong>【過去問解説】ローランドベルガー ケース面接</strong></td>
+  <td>ローランドベルガー ケース面接, ローランドベルガー 面接</td>
+  <td class="firm-strat">SC imp 38。欧州戦略ファーム志望者のニッチ需要。競合動画も少ないはず。</td>
+  <td class="center"><span class="badge badge-mid">中</span></td>
+</tr>
+<tr style="border-left:3px solid var(--brand)">
+  <td class="center"><strong>7</strong></td>
+  <td><strong>【過去問解説】ATカーニー ケース面接</strong></td>
+  <td>ATカーニー ケース面接, ATカーニー 面接</td>
+  <td class="firm-strat">SC imp 26。戦略ファーム網羅のために必要。</td>
+  <td class="center"><span class="badge badge-mid">中</span></td>
+</tr>
+<tr style="border-left:3px solid var(--blue)">
+  <td class="center"><strong>8</strong></td>
+  <td><strong>ケース面接 例題3選 解答プロセス完全解説</strong></td>
+  <td>ケース面接 解答例, ケース面接 例題, フェルミ推定 例題</td>
+  <td>「解答例」Ads CV 2.0 (CPA¥27,678=高い)。「例題」SC imp 137。具体例を見せる動画は再生数が伸びやすい。</td>
+  <td class="center"><span class="badge badge-high">高</span></td>
+</tr>
+<tr style="border-left:3px solid var(--blue)">
+  <td class="center"><strong>9</strong></td>
+  <td><strong>フェルミ推定 対策 実演解説</strong></td>
+  <td>フェルミ推定 対策, フェルミ推定 練習, フェルミ推定 例題</td>
+  <td>Ads CV 7.0。「フェルミ推定」で流入はあるが「対策」「練習」に特化した動画がない。</td>
+  <td class="center"><span class="badge badge-mid">中</span></td>
+</tr>
+<tr style="border-left:3px solid var(--yellow)">
+  <td class="center"><strong>10</strong></td>
+  <td><strong>コンサル転職 未経験からの完全ロードマップ</strong></td>
+  <td>コンサル 転職 未経験, コンサル 転職 対策, コンサル 第二新卒</td>
+  <td>Ads CV 2.6。市場拡大中（コンサル業界2兆円突破）。裾野を広げる入口コンテンツ。</td>
+  <td class="center"><span class="badge badge-mid">中</span></td>
+</tr>
+</tbody>
+</table>
+</div>
+
+<div class="insight">
+  <strong>CV導線の設計:</strong><br>
+  動画 → 概要欄「無料ケース面接診断」or「無料カウンセリング」リンク → LP → 申込<br>
+  動画内CTA: 「MBBケース面接の過去問集を概要欄で無料配布しています」等<br>
+  <strong>#1-2は汎用的CVコンテンツ、#3-7はファーム名KWでロングテール流入を狙う構造</strong>
+</div>
+
+<!-- ========== SECTION 6: SC × YT Cross ========== -->
+<h2>6. Webで検索されているのにYouTubeに動画がないテーマ</h2>
+<p style="color:var(--muted);font-size:0.8rem;margin-bottom:12px">Search Consoleで実際にトラフィックが来ている ＝ 需要が証明されている。そこにYouTube動画を投入すれば、Google検索結果に動画サムネイルが表示されSC順位も上がる可能性。</p>
+
+<div class="grid-2">
+  <div class="card">
+    <h3 class="firm-strat">戦略コンサル系ギャップ（優先）</h3>
+    <table>
+    <thead><tr><th>SCクエリ</th><th class="right">imp</th><th class="right">clicks</th><th class="right">SC順位</th></tr></thead>
+    <tbody>
+      <tr><td>BCG ケース面接</td><td class="right">71</td><td class="right">28</td><td class="right">3.2</td></tr>
+      <tr><td>BCG ケース面接 過去問</td><td class="right">37</td><td class="right">28</td><td class="right">1.9</td></tr>
+      <tr><td>ローランドベルガー ケース面接</td><td class="right">38</td><td class="right">14</td><td class="right">3.8</td></tr>
+      <tr><td>ATカーニー ケース面接</td><td class="right">26</td><td class="right">13</td><td class="right">4.0</td></tr>
+      <tr><td>ベイン ケース面接</td><td class="right">22</td><td class="right">15</td><td class="right">3.0</td></tr>
+      <tr><td>マッキンゼー ケース面接</td><td class="right">5</td><td class="right">4</td><td class="right">10.9</td></tr>
+      <tr><td>BCG 最終面接 中途</td><td class="right">12</td><td class="right">7</td><td class="right">1.8</td></tr>
+      <tr><td>ボスコン 面接</td><td class="right">11</td><td class="right">7</td><td class="right">1.8</td></tr>
+      <tr><td>オリバーワイマン</td><td class="right">61</td><td class="right">8</td><td class="right">8.1</td></tr>
+      <tr><td>ドリームインキュベータ 最終面接</td><td class="right">7</td><td class="right">3</td><td class="right">15.4</td></tr>
+    </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3>ケース面接テクニック系ギャップ</h3>
+    <table>
+    <thead><tr><th>SCクエリ</th><th class="right">imp</th><th class="right">clicks</th><th class="right">SC順位</th></tr></thead>
+    <tbody>
+      <tr><td>ケース面接 フレームワーク</td><td class="right">231</td><td class="right">25</td><td class="right">8.1</td></tr>
+      <tr><td>ケース面接 ボロボロ</td><td class="right">287</td><td class="right">32</td><td class="right">5.5</td></tr>
+      <tr><td>ケース面接 例題</td><td class="right">137</td><td class="right">27</td><td class="right">15.7</td></tr>
+      <tr><td>ケース面接 因数分解</td><td class="right">37</td><td class="right">18</td><td class="right">1.9</td></tr>
+      <tr><td>ケース面接 ノー勉</td><td class="right">56</td><td class="right">22</td><td class="right">1.3</td></tr>
+      <tr><td>ケース面接 新規事業</td><td class="right">51</td><td class="right">34</td><td class="right">1.2</td></tr>
+      <tr><td>ケース面接 前提確認</td><td class="right">18</td><td class="right">8</td><td class="right">6.0</td></tr>
+      <tr><td>ケース面接 市場規模</td><td class="right">7</td><td class="right">4</td><td class="right">7.8</td></tr>
+      <tr><td>フェルミ推定 難問</td><td class="right">16</td><td class="right">9</td><td class="right">3.4</td></tr>
+      <tr><td>日本の駅の数 フェルミ</td><td class="right">36</td><td class="right">21</td><td class="right">1.2</td></tr>
     </tbody>
     </table>
   </div>
 </div>
 
-<div class="card" style="margin-top:16px">
-  <h3>データソース説明</h3>
-  <div class="grid-4" style="margin:8px 0 0">
-    <div><div class="legend-item"><div class="legend-dot" style="background:var(--red)"></div><strong>YouTube検索 (116語句)</strong></div><p style="font-size:0.75rem;color:var(--muted);margin-top:4px">YouTube Analytics API の insightTrafficSourceDetail。実際にYouTube内検索で自社動画に流入した語句と再生数。</p></div>
-    <div><div class="legend-item"><div class="legend-dot" style="background:var(--blue)"></div><strong>Search Console (601クエリ)</strong></div><p style="font-size:0.75rem;color:var(--muted);margin-top:4px">Google検索でakagiconsulting.comに流入したクエリ。YouTubeと重複するテーマ＝「Webで検索されてるがYT動画がない」を発見。</p></div>
-    <div><div class="legend-item"><div class="legend-dot" style="background:var(--green)"></div><strong>Google Ads (157KW)</strong></div><p style="font-size:0.75rem;color:var(--muted);margin-top:4px">広告キーワードのCV実績。CV数とコストから「お金を払ってでも獲りたい検索意図」を特定。</p></div>
-    <div><div class="legend-item"><div class="legend-dot" style="background:var(--pink)"></div><strong>Webリサーチ</strong></div><p style="font-size:0.75rem;color:var(--muted);margin-top:4px">競合チャンネル分析、YouTube SEOベストプラクティス、業界トレンド。検索ボリューム推定の補完。</p></div>
+<!-- ========== SECTION 7: まとめ ========== -->
+<h2>7. 戦略サマリー</h2>
+
+<div class="card" style="padding:20px">
+  <div class="grid-3" style="margin:0">
+    <div>
+      <h3 style="color:var(--green)">今すぐ作る（1-2ヶ月）</h3>
+      <ol style="font-size:0.82rem;padding-left:20px;line-height:2">
+        <li>ケース面接 中途 完全攻略</li>
+        <li>戦略コンサル対策ロードマップ</li>
+        <li>マッキンゼー ケース面接 過去問</li>
+        <li>BCG ケース面接 過去問</li>
+        <li>ベイン ケース面接 過去問</li>
+      </ol>
+      <p style="font-size:0.72rem;color:var(--muted);margin-top:8px">期待効果: Ads CV 52件相当の検索流入を獲得</p>
+    </div>
+    <div>
+      <h3 style="color:var(--yellow)">次に作る（3-4ヶ月）</h3>
+      <ol style="font-size:0.82rem;padding-left:20px;line-height:2">
+        <li>ローランドベルガー ケース面接</li>
+        <li>ATカーニー ケース面接</li>
+        <li>ケース面接 例題・解答例</li>
+        <li>フェルミ推定 対策 実演</li>
+        <li>コンサル転職 未経験ガイド</li>
+      </ol>
+      <p style="font-size:0.72rem;color:var(--muted);margin-top:8px">戦略ファーム網羅 + ロングテールKW獲得</p>
+    </div>
+    <div>
+      <h3 style="color:var(--muted)">余力があれば</h3>
+      <ol style="font-size:0.82rem;padding-left:20px;line-height:2">
+        <li>ベイカレント ケース面接（SC需要大）</li>
+        <li>アビーム ケース面接（SC需要大）</li>
+        <li>PwC ケース面接（SC需要大）</li>
+        <li>ケース面接 フレームワーク完全版</li>
+        <li>年収ランキング / キャリアパス</li>
+      </ol>
+      <p style="font-size:0.72rem;color:var(--muted);margin-top:8px">総合コンサル系はSC需要大だがCVとの距離がある</p>
+    </div>
   </div>
 </div>
 
-<p style="text-align:center; color:var(--muted); font-size:0.75rem; margin-top:32px; padding-bottom:24px">
-  Generated by Claude Code — 2026-03-13 | データ期間: 2024-01-01〜2026-03-13
+<p style="text-align:center; color:var(--muted); font-size:0.72rem; margin-top:32px; padding-bottom:24px">
+  Generated by Claude Code — 2026-03-13 v2 | データ: YouTube Analytics + Search Console + Google Ads (2024-01〜2026-03)
 </p>
 
 </body>
