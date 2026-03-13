@@ -114,11 +114,31 @@ function PagesTab({ pageDailyRows, searchQueries }: { pageDailyRows: PageDailyRo
         });
       }
     }
+    // Sort descending (most recent first)
+    const sortedPKs = Array.from(allPKs).sort().reverse();
+
     return {
       pages: Array.from(pageMap.values()).sort((a, b) => b.totals[metric] - a.totals[metric]),
-      periodKeys: Array.from(allPKs).sort(),
+      periodKeys: sortedPKs,
     };
   }, [seoRows, period, metric]);
+
+  // Detect current (incomplete) period and compute estimate multiplier
+  const { currentPK, estimateMultiplier } = useMemo(() => {
+    const now = new Date();
+    if (period === "month") {
+      const curMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+      const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+      // GA4 data lags ~2 days, so use (today - 2) as elapsed
+      const elapsed = Math.max(1, now.getDate() - 2);
+      return { currentPK: curMonth, estimateMultiplier: daysInMonth / elapsed };
+    }
+    // For weekly, estimate current week
+    const curWeek = getWeekKey(now.toISOString().slice(0, 10));
+    const dow = now.getDay();
+    const elapsed = dow === 0 ? 7 : dow; // Mon=1..Sun=7
+    return { currentPK: curWeek, estimateMultiplier: 7 / Math.max(1, elapsed - 1) }; // -1 for data lag
+  }, [period]);
 
   const maxVal = useMemo(() => {
     let mv = 0;
@@ -162,9 +182,16 @@ function PagesTab({ pageDailyRows, searchQueries }: { pageDailyRows: PageDailyRo
                 <th className="text-left py-2.5 px-3 text-gray-400 w-20">種別</th>
                 <th className="text-left py-2.5 px-3 text-gray-400 min-w-[250px]">ページ</th>
                 <th className="text-right py-2.5 px-2 text-gray-400 w-20">合計</th>
-                {periodKeys.map(pk => (
-                  <th key={pk} className="text-center py-2.5 px-1 text-gray-500 w-16 whitespace-nowrap">{periodLabel(pk, period)}</th>
-                ))}
+                {periodKeys.map(pk => {
+                  const isEstimate = pk === currentPK;
+                  const label = isEstimate ? `${periodLabel(pk, period)}E` : periodLabel(pk, period);
+                  return (
+                    <th key={pk} className={`text-center py-2.5 px-1 w-16 whitespace-nowrap ${isEstimate ? "text-brand" : "text-gray-500"}`}
+                      title={isEstimate ? "日数経過による着地見込み" : ""}>
+                      {label}
+                    </th>
+                  );
+                })}
               </tr>
             </thead>
             <tbody>
@@ -191,10 +218,18 @@ function PagesTab({ pageDailyRows, searchQueries }: { pageDailyRows: PageDailyRo
                       </td>
                       <td className="text-right py-2 px-2 text-white font-medium">{p.totals[metric].toLocaleString()}</td>
                       {periodKeys.map(pk => {
-                        const val = p.periods[pk]?.[metric] || 0;
+                        const raw = p.periods[pk]?.[metric] || 0;
+                        const isEstimate = pk === currentPK;
+                        const display = isEstimate && raw > 0 ? Math.round(raw * estimateMultiplier) : raw;
                         return (
-                          <td key={pk} className={`text-center py-2 px-1 ${heatmapBg(val, maxVal)}`}>
-                            <span className={val > 0 ? "text-white/80" : "text-gray-700"}>{val > 0 ? val.toLocaleString() : ""}</span>
+                          <td key={pk} className={`text-center py-2 px-1 ${heatmapBg(raw, maxVal)}`}>
+                            {isEstimate && raw > 0 ? (
+                              <span className="text-brand/80" title={`実績: ${raw.toLocaleString()}`}>
+                                {display.toLocaleString()}
+                              </span>
+                            ) : (
+                              <span className={raw > 0 ? "text-white/80" : "text-gray-700"}>{raw > 0 ? raw.toLocaleString() : ""}</span>
+                            )}
                           </td>
                         );
                       })}
