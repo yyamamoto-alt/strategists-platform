@@ -29,8 +29,8 @@ const MONITOR_CHANNELS = [
   { id: "C0951QVAJ5N", name: "#ceo_report" },
 ];
 
-// Report channel
-const REPORT_CHANNEL = "C08LGNJMW87"; // #web_develop
+// Report destination: DM to 山本さん
+const REPORT_CHANNEL = "D0AK3RUR3QR"; // DM: 山本 雄大
 
 interface BotMessage {
   channel: string;
