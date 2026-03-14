@@ -54,7 +54,7 @@ export async function PATCH(
   const allowedFields = [
     "title", "description", "lesson_type", "video_url",
     "markdown_content", "content_format", "duration_minutes", "sort_order",
-    "is_active", "copy_protected",
+    "is_active", "copy_protected", "thumbnail_url",
   ];
 
   const updates: Record<string, any> = {};

@@ -29,6 +29,7 @@ interface Lesson {
   sort_order: number;
   duration_minutes: number | null;
   module_id: string | null;
+  thumbnail_url: string | null;
 }
 
 interface ContentDetail {
@@ -99,6 +100,7 @@ export default function ContentDetailPage() {
       video_url: lesson.video_url || "",
       content_url: lesson.content_url || "",
       duration_minutes: lesson.duration_minutes,
+      thumbnail_url: lesson.thumbnail_url || "",
     });
   };
 
@@ -197,6 +199,9 @@ export default function ContentDetailPage() {
                   }`}>
                     {lesson.lesson_type}
                   </span>
+                  {lesson.thumbnail_url && (
+                    <img src={lesson.thumbnail_url} alt="" className="w-8 h-10 object-cover rounded border border-white/10" />
+                  )}
                   <span className="text-sm text-white font-medium">{lesson.title}</span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -234,6 +239,27 @@ export default function ContentDetailPage() {
                       >
                         {LESSON_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
                       </select>
+                    </div>
+                  </div>
+
+                  {/* サムネイル */}
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">サムネイルURL（画像）</label>
+                    <div className="flex gap-3 items-start">
+                      <input
+                        type="url"
+                        value={editForm.thumbnail_url || ""}
+                        onChange={(e) => setEditForm((p) => ({ ...p, thumbnail_url: e.target.value }))}
+                        placeholder="https://example.com/image.jpg"
+                        className="flex-1 px-3 py-2 bg-surface-elevated border border-white/10 rounded-lg text-white text-sm focus:ring-2 focus:ring-brand focus:outline-none"
+                      />
+                      {editForm.thumbnail_url && (
+                        <img
+                          src={editForm.thumbnail_url}
+                          alt="サムネイルプレビュー"
+                          className="w-16 h-20 object-cover rounded border border-white/10"
+                        />
+                      )}
                     </div>
                   </div>
 
