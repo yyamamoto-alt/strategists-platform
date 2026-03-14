@@ -15,16 +15,13 @@ export function CopyProtectedWrapper({ children, enabled = true }: Props) {
       }
       if (e.key === "PrintScreen") e.preventDefault();
     };
-    const handleContextMenu = (e: Event) => e.preventDefault();
     const handleDragStart = (e: Event) => e.preventDefault();
 
     document.addEventListener("keydown", handleKeyDown);
-    document.addEventListener("contextmenu", handleContextMenu);
     document.addEventListener("dragstart", handleDragStart);
 
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
-      document.removeEventListener("contextmenu", handleContextMenu);
       document.removeEventListener("dragstart", handleDragStart);
     };
   }, [enabled]);

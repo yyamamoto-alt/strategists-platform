@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { BookOpen, Clock, Video, FileText, ChevronDown, ChevronRight, Users, Play, CheckCircle, Eye, Circle, ExternalLink } from "lucide-react";
+import { BookOpen, Clock, Video, FileText, ChevronDown, ChevronRight, Users, CheckCircle, Eye, Circle, ExternalLink } from "lucide-react";
 import { useState } from "react";
 import type { Course, Module, Lesson } from "@/types/database";
 
@@ -116,7 +116,7 @@ export function CoursePageClient({ courses, courseDataMap, forms, noAccessMessag
       )}
 
       {/* コースヘッダー */}
-      <div className="bg-gradient-to-r from-brand to-purple-700 rounded-xl p-8 mb-8">
+      <div className="bg-gradient-to-r from-brand to-[#0a0a0a] rounded-xl p-8 mb-8">
         {course.category && (
           <div className="mb-3">
             <span className="text-xs px-2 py-0.5 rounded-full bg-white/20 text-white">{course.category}</span>
@@ -143,11 +143,10 @@ export function CoursePageClient({ courses, courseDataMap, forms, noAccessMessag
         )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-8">
+      <div className="max-w-5xl mx-auto">
+        <div className="space-y-8">
           {/* カリキュラム */}
           <div>
-            <h2 className="text-xl font-bold text-white mb-4">{course.title}のカリキュラム</h2>
             {modules.length === 0 ? (
               <p className="text-gray-400 text-sm">まだ教材が追加されていません</p>
             ) : (
@@ -216,37 +215,6 @@ export function CoursePageClient({ courses, courseDataMap, forms, noAccessMessag
           )}
         </div>
 
-        {/* サイドバー */}
-        <div>
-          <div className="bg-surface-elevated rounded-xl p-6 sticky top-6">
-            <h3 className="text-lg font-bold text-white mb-3">
-              {progressPercent > 0 ? "学習を続ける" : "受講中"}
-            </h3>
-            {progressPercent > 0 && (
-              <div className="mb-4">
-                <div className="flex items-center justify-between text-sm mb-1">
-                  <span className="text-gray-400">進捗</span>
-                  <span className="text-white font-medium">{progressPercent}%</span>
-                </div>
-                <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-                  <div className="h-full bg-brand rounded-full transition-all duration-500" style={{ width: `${progressPercent}%` }} />
-                </div>
-              </div>
-            )}
-            <p className="text-sm text-gray-400 mb-4">
-              {progressPercent === 100
-                ? "全レッスン完了！おめでとうございます！"
-                : progressPercent > 0
-                  ? "前回の続きから学習を再開しましょう"
-                  : "このコースで学習を進めましょう"}
-            </p>
-            {resumeLesson && (
-              <Link href={`/courses/${slug}/learn/${resumeLesson.id}`} className="w-full bg-brand hover:bg-brand-dark text-white py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2">
-                <Play className="w-4 h-4" />{progressPercent > 0 ? "続きから学習" : "学習を始める"}
-              </Link>
-            )}
-          </div>
-        </div>
       </div>
     </div>
   );

@@ -14,3 +14,47 @@
     -moz-osx-font-smoothing: grayscale;
   }
 }
+
+/* Light mode overrides */
+.theme-light {
+  --surface: #FAFAFA;
+  --surface-raised: #F5F5F5;
+  --surface-card: #FFFFFF;
+  --surface-elevated: #F0F0F0;
+  color: #1a1a1a;
+  background-color: #FAFAFA;
+}
+
+.theme-light .bg-surface { background-color: #FAFAFA; }
+.theme-light .bg-surface-card { background-color: #FFFFFF; }
+.theme-light .bg-surface-elevated { background-color: #F0F0F0; }
+.theme-light .bg-surface-raised { background-color: #F5F5F5; }
+.theme-light .bg-surface-raised-lms { background-color: #F5F3F0; }
+
+.theme-light .text-white { color: #1a1a1a; }
+.theme-light .text-gray-200 { color: #333333; }
+.theme-light .text-gray-300 { color: #444444; }
+.theme-light .text-gray-400 { color: #666666; }
+.theme-light .text-gray-500 { color: #888888; }
+.theme-light .text-gray-600 { color: #999999; }
+
+.theme-light .border-white\/10 { border-color: rgba(0, 0, 0, 0.1); }
+.theme-light .border-white\/\[0\.08\] { border-color: rgba(0, 0, 0, 0.08); }
+.theme-light .border-white\/\[0\.06\] { border-color: rgba(0, 0, 0, 0.06); }
+.theme-light .border-white\/5 { border-color: rgba(0, 0, 0, 0.05); }
+.theme-light .border-red-900\/30 { border-color: rgba(220, 38, 38, 0.15); }
+
+.theme-light .bg-white\/5 { background-color: rgba(0, 0, 0, 0.03); }
+.theme-light .bg-white\/10 { background-color: rgba(0, 0, 0, 0.06); }
+.theme-light .bg-white\/20 { background-color: rgba(0, 0, 0, 0.1); }
+.theme-light .bg-white\/\[0\.05\] { background-color: rgba(0, 0, 0, 0.03); }
+.theme-light .bg-white\/\[0\.06\] { background-color: rgba(0, 0, 0, 0.04); }
+.theme-light .hover\:bg-white\/5:hover { background-color: rgba(0, 0, 0, 0.03); }
+.theme-light .hover\:bg-white\/10:hover { background-color: rgba(0, 0, 0, 0.06); }
+.theme-light .hover\:bg-white\/\[0\.06\]:hover { background-color: rgba(0, 0, 0, 0.04); }
+
+/* Light mode prose */
+.theme-light .prose-invert { --tw-prose-body: #333; --tw-prose-headings: #1a1a1a; --tw-prose-links: #C13028; --tw-prose-bold: #1a1a1a; --tw-prose-code: #C13028; }
+.theme-light .prose pre { background-color: #F5F5F5 !important; border-color: rgba(0,0,0,0.1) !important; }
+.theme-light .prose blockquote { background-color: #F5F3F0 !important; }
+.theme-light .prose code { background-color: rgba(0,0,0,0.04) !important; }

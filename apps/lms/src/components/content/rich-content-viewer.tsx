@@ -1,18 +1,34 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { CopyProtectedWrapper } from "./copy-protected-wrapper";
+import { slugify } from "@/lib/toc-utils";
 
 interface Props {
   content: string;
   protected?: boolean;
+  proseClass?: string;
 }
 
-export function RichContentViewer({ content, protected: isProtected = true }: Props) {
+export function RichContentViewer({ content, protected: isProtected = true, proseClass = "prose-base" }: Props) {
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!contentRef.current) return;
+    const headings = contentRef.current.querySelectorAll("h2, h3");
+    headings.forEach((el, i) => {
+      if (!el.id) {
+        el.id = slugify(el.textContent || "", i);
+      }
+    });
+  }, [content]);
+
   return (
     <CopyProtectedWrapper enabled={isProtected}>
       <div
+        ref={contentRef}
         className={[
-          "prose prose-invert prose-base max-w-none",
+          `prose prose-invert ${proseClass} max-w-none`,
           "prose-headings:text-white prose-headings:font-bold",
           "prose-h1:text-2xl prose-h1:border-b-2 prose-h1:border-[#DC2626]/30 prose-h1:pb-3 prose-h1:mb-6",
           "prose-h2:text-xl prose-h2:mt-10 prose-h2:mb-4 prose-h2:pb-2 prose-h2:border-b prose-h2:border-white/10",

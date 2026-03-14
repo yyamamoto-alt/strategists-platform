@@ -1,6 +1,8 @@
 "use client";
 
-import { User, Briefcase, GraduationCap, BookOpen, UserCheck, ExternalLink, MessageCircle, Calendar } from "lucide-react";
+import { User, Briefcase, GraduationCap, BookOpen, UserCheck, ExternalLink, MessageCircle, Calendar, Clock, CheckCircle, Eye, Circle } from "lucide-react";
+import Link from "next/link";
+import { useState, useEffect } from "react";
 
 interface MentorInfo {
   name: string;
@@ -131,6 +133,80 @@ function MentorsSection({ mentors }: { mentors: MentorInfo[] }) {
   );
 }
 
+interface RecentLesson {
+  id: string;
+  title: string;
+  courseSlug: string;
+  courseTitle: string;
+  status: string;
+  updatedAt: string;
+}
+
+function statusIcon(s: string) {
+  switch (s) {
+    case "完了": return <CheckCircle className="w-4 h-4 text-green-400 shrink-0" />;
+    case "閲覧済み": return <Eye className="w-4 h-4 text-blue-400 shrink-0" />;
+    case "進行中": return <Circle className="w-4 h-4 text-yellow-400 shrink-0" />;
+    default: return <Circle className="w-4 h-4 text-gray-600 shrink-0" />;
+  }
+}
+
+function RecentLessonsSection() {
+  const [lessons, setLessons] = useState<RecentLesson[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/recent-lessons")
+      .then(r => r.json())
+      .then(d => setLessons(d.lessons || []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="bg-surface-card border border-white/10 rounded-xl p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Clock className="w-4 h-4 text-brand" />
+          <h2 className="text-sm font-semibold text-white">最近のレッスン</h2>
+        </div>
+        <div className="space-y-2">
+          {[1,2,3].map(i => <div key={i} className="h-12 bg-white/5 rounded-lg animate-pulse" />)}
+        </div>
+      </div>
+    );
+  }
+
+  if (lessons.length === 0) return null;
+
+  return (
+    <div className="bg-surface-card border border-white/10 rounded-xl overflow-hidden">
+      <div className="px-4 py-3 border-b border-white/10 flex items-center gap-2">
+        <Clock className="w-4 h-4 text-brand" />
+        <h2 className="text-sm font-semibold text-white">最近のレッスン</h2>
+      </div>
+      <div className="divide-y divide-white/[0.06]">
+        {lessons.map(lesson => (
+          <Link
+            key={lesson.id}
+            href={`/courses/${lesson.courseSlug}/learn/${lesson.id}`}
+            className="flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-colors"
+          >
+            {statusIcon(lesson.status)}
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-gray-200 truncate">{lesson.title}</p>
+              <p className="text-xs text-gray-500">{lesson.courseTitle}</p>
+            </div>
+            <span className="text-[10px] text-gray-600 shrink-0">
+              {new Date(lesson.updatedAt).toLocaleDateString("ja-JP", { month: "short", day: "numeric" })}
+            </span>
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function MyPageClient({ data }: { data: MyPageData | null }) {
   if (!data?.customer) {
     return (
@@ -150,6 +226,8 @@ export function MyPageClient({ data }: { data: MyPageData | null }) {
   return (
     <div className="p-6 bg-surface min-h-screen space-y-4 max-w-3xl">
       <h1 className="text-2xl font-bold text-white">マイページ</h1>
+
+      <RecentLessonsSection />
 
       <MentorsSection mentors={mentors || []} />
 

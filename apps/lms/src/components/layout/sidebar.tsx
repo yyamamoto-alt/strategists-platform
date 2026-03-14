@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
 import { startNavigationProgress } from "./navigation-progress";
+import { SearchBar } from "./search-bar";
 
 interface NavItem {
   name: string;
@@ -17,6 +18,7 @@ interface NavItem {
 
 const learningNavigation: NavItem[] = [
   { name: "コース", href: "/courses", icon: "📚" },
+  { name: "ケース面接DB", href: "/case-db", icon: "🧩" },
   { name: "課題", href: "/assignments-lms", icon: "📝" },
   { name: "プログレスシート", href: "/progress-sheets", icon: "📋" },
   { name: "お知らせ", href: "/announcements", icon: "🔔" },
@@ -142,6 +144,9 @@ export function Sidebar() {
         </div>
       </div>
       <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+        <div className="mb-4">
+          <SearchBar />
+        </div>
         <NavSection title="学習" items={learningNavigation} role={role} />
         {subsidyEligible && (
           <NavSection title="補助金" items={[{ name: "補助金適用の方", href: "/subsidy-info", icon: "💰" }]} role={role} />
