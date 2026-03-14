@@ -30,7 +30,7 @@ export function LpTab({ traffic, pageDailyRows }: LpTabProps) {
       </div>
       {lpTab === "main" && <LpTrafficTrendTab traffic={traffic} landingPage="/" />}
       {lpTab === "lp3" && <LpTrafficTrendTab traffic={traffic} landingPage="/lp3/" />}
-      {lpTab === "content" && pageDailyRows && <ContentTab pageDailyRows={pageDailyRows} />}
+      {lpTab === "content" && pageDailyRows && <ContentTab pageDailyRows={pageDailyRows} traffic={traffic} />}
     </div>
   );
 }

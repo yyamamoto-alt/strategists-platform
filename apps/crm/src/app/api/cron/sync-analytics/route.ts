@@ -175,8 +175,13 @@ async function syncOneDay(
 
   // 2. GA4: LP流入経路別
   const trafficRows: AnyRow[] = [];
-  for (const lp of ["/", "/lp3/"]) {
-    const matchType = lp === "/" ? "EXACT" : "BEGINS_WITH";
+  const lpTargets: { lp: string; matchType: string; filterValue: string }[] = [
+    { lp: "/", matchType: "EXACT", filterValue: "/" },
+    { lp: "/lp3/", matchType: "BEGINS_WITH", filterValue: "/lp3" },
+    { lp: "/contents/", matchType: "BEGINS_WITH", filterValue: "/contents/" },
+    { lp: "/voice/", matchType: "BEGINS_WITH", filterValue: "/voice/" },
+  ];
+  for (const { lp, matchType, filterValue } of lpTargets) {
     const ga4Traffic = await fetchGA4Report(accessToken, {
       dateRanges: [{ startDate: dateStr, endDate: dateStr }],
       dimensions: [
@@ -184,6 +189,8 @@ async function syncOneDay(
         { name: "sessionMedium" },
         { name: "sessionCampaignName" },
         { name: "sessionDefaultChannelGroup" },
+        // contents/voice の場合、具体的なパスも取得
+        ...(lp === "/contents/" || lp === "/voice/" ? [{ name: "landingPage" }] : []),
       ],
       metrics: [
         { name: "sessions" },
@@ -194,17 +201,20 @@ async function syncOneDay(
       dimensionFilter: {
         filter: {
           fieldName: "landingPage",
-          stringFilter: { matchType, value: lp === "/" ? "/" : "/lp3" },
+          stringFilter: { matchType, value: filterValue },
         },
       },
-      limit: "100",
+      limit: "200",
       orderBys: [{ metric: { metricName: "sessions" }, desc: true }],
     });
 
     for (const r of ga4Traffic.rows || []) {
+      const dimCount = r.dimensionValues.length;
+      // contents/voice は landingPage ディメンションあり (5th)
+      const landingPage = dimCount > 4 ? r.dimensionValues[4].value : lp;
       trafficRows.push({
         date: dateStr,
-        landing_page: lp,
+        landing_page: landingPage,
         source: r.dimensionValues[0].value,
         medium: r.dimensionValues[1].value,
         campaign: r.dimensionValues[2].value,
