@@ -16,7 +16,11 @@ export default async function MyPage() {
   }
 
   const admin = createAdminClient();
-  const email = session.user.email;
+  const isAdmin = session.role === "admin" || session.role === "mentor";
+
+  // 管理者はプレビュー用の受講生データを表示
+  const ADMIN_PREVIEW_EMAIL = "erika.ohbayashi@gmail.com";
+  const email = isAdmin ? ADMIN_PREVIEW_EMAIL : session.user.email;
   const userId = session.user.id;
 
   // メールアドレスで顧客を検索
@@ -28,6 +32,17 @@ export default async function MyPage() {
 
   if (!customer) {
     return <MyPageClient data={{ customer: null, contract: null, learning: null, mentors: [] }} />;
+  }
+
+  // 管理者プレビュー時: 対象ユーザーのuser_idを取得（student_mentors検索用）
+  let targetUserId = userId;
+  if (isAdmin) {
+    const { data: targetRole } = await admin
+      .from("user_roles")
+      .select("user_id")
+      .eq("customer_id", customer.id)
+      .maybeSingle() as { data: { user_id: string } | null };
+    if (targetRole) targetUserId = targetRole.user_id;
   }
 
   // 契約情報・学習情報・メンター紐付けを並列取得
@@ -47,7 +62,7 @@ export default async function MyPage() {
     admin
       .from("student_mentors")
       .select("mentor_id, role")
-      .eq("user_id", userId)
+      .eq("user_id", targetUserId)
       .eq("is_active", true)
       .order("role", { ascending: true }) as unknown as Promise<{ data: { mentor_id: string; role: string }[] | null }>,
   ]);

@@ -51,7 +51,7 @@ export default async function AssignmentsLmsPage() {
   const isAdmin = session?.role === "admin" || session?.role === "mentor";
   // 管理者はテスト用アカウントのデータを表示、受講生は自分のデータのみ
   const userEmail = isAdmin
-    ? "tomo.tshiro@hotmail.com"
+    ? "erika.ohbayashi@gmail.com"
     : session?.user?.email || null;
   const assignments = await fetchAssignments(userEmail);
   return <AssignmentsClient assignments={assignments} isAdmin={isAdmin} />;
