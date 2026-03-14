@@ -11,6 +11,9 @@ export interface PageDailyRow {
   pageviews: number;
   sessions: number;
   users: number;
+  avg_session_duration?: number;
+  bounce_rate?: number;
+  schedule_visits?: number;
 }
 
 export interface TrafficDaily {
@@ -76,7 +79,7 @@ export async function fetchPageDailyRows(days: number = 90): Promise<PageDailyRo
   while (true) {
     const { data, error } = await supabase()
       .from("analytics_page_daily")
-      .select("date,page_path,page_title,segment,pageviews,sessions,users")
+      .select("date,page_path,page_title,segment,pageviews,sessions,users,avg_session_duration,bounce_rate,schedule_visits")
       .gte("date", from)
       .lte("date", to)
       .order("date", { ascending: true })
