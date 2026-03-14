@@ -12,10 +12,9 @@ export default async function CaseDbPage() {
   const supabase = createAdminClient();
   const { data: problems } = await supabase
     .from("case_problems")
-    .select("*")
-    .order("company");
+    .select("id, company, no, tags, question, is_public")
+    .order("company")
+    .order("no");
 
-  const categories = [...new Set((problems || []).map((p: any) => p.category).filter(Boolean))] as string[];
-
-  return <CaseDbClient problems={problems || []} categories={categories} />;
+  return <CaseDbClient problems={problems || []} />;
 }

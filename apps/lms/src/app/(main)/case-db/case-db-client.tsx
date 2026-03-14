@@ -1,210 +1,200 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { ChevronDown, ChevronUp, Search } from "lucide-react";
 
 interface CaseProblem {
   id: string;
   company: string;
-  problem_text: string;
-  category: string | null;
-  difficulty: string | null;
-  hint: string | null;
-  solution_outline: string | null;
+  no: number;
+  tags: string[];
+  question: string;
   is_public: boolean;
 }
 
-const difficultyColors: Record<string, string> = {
-  "初級": "bg-green-900/50 text-green-300",
-  "中級": "bg-yellow-900/50 text-yellow-300",
-  "上級": "bg-red-900/50 text-red-300",
+interface Props {
+  problems: CaseProblem[];
+}
+
+const COMPANIES = [
+  "BCG", "Bain", "McKinsey", "Strategy&", "A.T. Kearney",
+  "Roland Berger", "Arthur D. Little", "Dream Incubator",
+  "アクセンチュア", "B&DX", "FM", "KPMG",
+];
+
+const TAG_TYPES = [
+  "フェルミ", "売上向上", "利益", "全社戦略", "公共",
+  "網羅構造", "論点", "発展系", "抽象",
+];
+
+const TAG_COLORS: Record<string, string> = {
+  "フェルミ": "bg-red-900/40 text-red-300 border-red-800/50",
+  "売上向上": "bg-blue-900/40 text-blue-300 border-blue-800/50",
+  "利益": "bg-green-900/40 text-green-300 border-green-800/50",
+  "全社戦略": "bg-purple-900/40 text-purple-300 border-purple-800/50",
+  "公共": "bg-amber-900/40 text-amber-300 border-amber-800/50",
+  "網羅構造": "bg-cyan-900/40 text-cyan-300 border-cyan-800/50",
+  "論点": "bg-orange-900/40 text-orange-300 border-orange-800/50",
+  "発展系": "bg-pink-900/40 text-pink-300 border-pink-800/50",
+  "抽象": "bg-slate-700/40 text-slate-300 border-slate-600/50",
 };
 
-export function CaseDbClient({
-  problems,
-  categories,
-}: {
-  problems: CaseProblem[];
-  categories: string[];
-}) {
-  const [companyFilter, setCompanyFilter] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("");
-  const [difficultyFilter, setDifficultyFilter] = useState("");
-  const [keyword, setKeyword] = useState("");
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+export function CaseDbClient({ problems }: Props) {
+  const [selectedCompany, setSelectedCompany] = useState<string | null>(null);
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
-    return problems.filter((p) => {
-      if (companyFilter && !p.company.toLowerCase().includes(companyFilter.toLowerCase())) {
-        return false;
-      }
-      if (categoryFilter && p.category !== categoryFilter) {
-        return false;
-      }
-      if (difficultyFilter && p.difficulty !== difficultyFilter) {
-        return false;
-      }
-      if (keyword) {
-        const q = keyword.toLowerCase();
-        const matchesCompany = p.company.toLowerCase().includes(q);
-        const matchesText = p.problem_text.toLowerCase().includes(q);
-        const matchesHint = p.hint?.toLowerCase().includes(q);
-        const matchesSolution = p.solution_outline?.toLowerCase().includes(q);
-        if (!matchesCompany && !matchesText && !matchesHint && !matchesSolution) {
-          return false;
-        }
-      }
-      return true;
-    });
-  }, [problems, companyFilter, categoryFilter, difficultyFilter, keyword]);
+    let result = problems;
+    if (selectedCompany) result = result.filter((p) => p.company === selectedCompany);
+    if (selectedTag) result = result.filter((p) => p.tags.includes(selectedTag));
+    return result;
+  }, [problems, selectedCompany, selectedTag]);
+
+  // Group by company
+  const grouped = useMemo(() => {
+    const map = new Map<string, CaseProblem[]>();
+    for (const p of filtered) {
+      if (!map.has(p.company)) map.set(p.company, []);
+      map.get(p.company)!.push(p);
+    }
+    const sorted = new Map<string, CaseProblem[]>();
+    for (const c of COMPANIES) {
+      if (map.has(c)) sorted.set(c, map.get(c)!);
+    }
+    return sorted;
+  }, [filtered]);
 
   return (
     <div className="p-6 bg-surface min-h-screen">
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-white">ケース面接データベース</h1>
-        <p className="text-sm text-gray-400 mt-1">
-          企業別のケース面接問題を検索・閲覧できます。ヒントや解答の方針も確認可能です。
-        </p>
-      </div>
-
-      {/* Filter bar */}
-      <div className="flex flex-wrap items-center gap-3 mb-6">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-          <input
-            type="text"
-            placeholder="キーワード検索..."
-            value={keyword}
-            onChange={(e) => setKeyword(e.target.value)}
-            className="pl-9 pr-3 py-2 bg-surface-elevated border border-white/10 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-brand"
-          />
+      <div className="max-w-5xl mx-auto">
+        {/* Header */}
+        <div className="text-center mb-10">
+          <h1 className="text-3xl font-bold text-white mb-3">過去問データベース</h1>
+          <p className="text-gray-400 text-sm">
+            戦略コンサルティングファームのケース面接過去問を企業別・タイプ別に検索
+          </p>
         </div>
-        <input
-          type="text"
-          placeholder="企業名で絞り込み"
-          value={companyFilter}
-          onChange={(e) => setCompanyFilter(e.target.value)}
-          className="px-3 py-2 bg-surface-elevated border border-white/10 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-brand"
-        />
-        <select
-          value={categoryFilter}
-          onChange={(e) => setCategoryFilter(e.target.value)}
-          className="px-3 py-2 bg-surface-elevated border border-white/10 rounded-lg text-sm text-white focus:outline-none focus:border-brand"
-        >
-          <option value="">全カテゴリ</option>
-          {categories.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
-        </select>
-        <select
-          value={difficultyFilter}
-          onChange={(e) => setDifficultyFilter(e.target.value)}
-          className="px-3 py-2 bg-surface-elevated border border-white/10 rounded-lg text-sm text-white focus:outline-none focus:border-brand"
-        >
-          <option value="">全難易度</option>
-          <option value="初級">初級</option>
-          <option value="中級">中級</option>
-          <option value="上級">上級</option>
-        </select>
-      </div>
 
-      {/* Results count */}
-      <p className="text-xs text-gray-500 mb-4">
-        {filtered.length} 件の問題
-      </p>
-
-      {/* Cards grid */}
-      {filtered.length === 0 ? (
-        <div className="text-center py-12 text-gray-500">
-          条件に一致する問題が見つかりません
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {filtered.map((p) => {
-            const isExpanded = expandedId === p.id;
-            return (
-              <div
-                key={p.id}
-                className="bg-surface-elevated rounded-xl border border-white/10 overflow-hidden"
-              >
+        {/* Company filter tabs */}
+        <div className="mb-6">
+          <p className="text-xs text-gray-500 uppercase tracking-wider mb-3 font-semibold">企業で絞り込む</p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setSelectedCompany(null)}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors border ${
+                !selectedCompany
+                  ? "bg-brand text-white border-brand"
+                  : "bg-transparent text-gray-400 border-white/10 hover:border-white/20 hover:text-white"
+              }`}
+            >
+              ALL
+            </button>
+            {COMPANIES.map((c) => {
+              const count = problems.filter((p) => p.company === c).length;
+              return (
                 <button
-                  onClick={() => setExpandedId(isExpanded ? null : p.id)}
-                  className="w-full p-4 text-left"
+                  key={c}
+                  onClick={() => setSelectedCompany(selectedCompany === c ? null : c)}
+                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors border ${
+                    selectedCompany === c
+                      ? "bg-brand text-white border-brand"
+                      : "bg-transparent text-gray-400 border-white/10 hover:border-white/20 hover:text-white"
+                  }`}
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-white font-semibold text-sm truncate">
-                          {p.company}
-                        </span>
-                        {p.category && (
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-white/10 text-gray-300 whitespace-nowrap">
-                            {p.category}
-                          </span>
-                        )}
-                        {p.difficulty && (
-                          <span
-                            className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${difficultyColors[p.difficulty] || "bg-gray-700 text-gray-300"}`}
-                          >
-                            {p.difficulty}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-sm text-gray-300 line-clamp-2">
-                        {p.problem_text}
-                      </p>
-                    </div>
-                    <div className="flex-shrink-0 mt-1">
-                      {isExpanded ? (
-                        <ChevronUp className="w-4 h-4 text-gray-400 transition-transform" />
-                      ) : (
-                        <ChevronDown className="w-4 h-4 text-gray-400 transition-transform" />
-                      )}
-                    </div>
-                  </div>
+                  {c}
+                  <span className="ml-1 opacity-60">{count}</span>
                 </button>
-
-                {/* Expanded content */}
-                {isExpanded && (
-                  <div className="px-4 pb-4 border-t border-white/5 pt-3 space-y-3">
-                    <div>
-                      <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">
-                        問題文
-                      </h4>
-                      <p className="text-sm text-gray-200 whitespace-pre-wrap">
-                        {p.problem_text}
-                      </p>
-                    </div>
-                    {p.hint && (
-                      <div>
-                        <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">
-                          ヒント
-                        </h4>
-                        <p className="text-sm text-gray-300 whitespace-pre-wrap">
-                          {p.hint}
-                        </p>
-                      </div>
-                    )}
-                    {p.solution_outline && (
-                      <div>
-                        <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">
-                          解答の方針
-                        </h4>
-                        <p className="text-sm text-gray-300 whitespace-pre-wrap">
-                          {p.solution_outline}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
-      )}
+
+        {/* Tag filter */}
+        <div className="mb-8">
+          <p className="text-xs text-gray-500 uppercase tracking-wider mb-3 font-semibold">問題タイプ</p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setSelectedTag(null)}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors border ${
+                !selectedTag
+                  ? "bg-white/10 text-white border-white/20"
+                  : "bg-transparent text-gray-400 border-white/10 hover:text-white"
+              }`}
+            >
+              すべて
+            </button>
+            {TAG_TYPES.map((t) => (
+              <button
+                key={t}
+                onClick={() => setSelectedTag(selectedTag === t ? null : t)}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors border ${
+                  selectedTag === t
+                    ? TAG_COLORS[t] || "bg-white/10 text-white border-white/20"
+                    : "bg-transparent text-gray-400 border-white/10 hover:text-white"
+                }`}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Results count */}
+        <p className="text-sm text-gray-500 mb-4">{filtered.length} 件の問題</p>
+
+        {/* Problem tables grouped by company */}
+        <div className="space-y-8">
+          {Array.from(grouped.entries()).map(([company, companyProblems]) => (
+            <div key={company}>
+              <h2 className="text-lg font-bold text-white mb-3 flex items-center gap-2">
+                {company}
+                <span className="text-xs text-gray-500 font-normal">{companyProblems.length}問</span>
+              </h2>
+              <div className="bg-surface-elevated rounded-xl border border-white/10 overflow-hidden">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-white/10 bg-white/[0.03]">
+                      <th className="text-left py-2.5 px-4 text-xs font-semibold text-gray-500 w-12">No</th>
+                      <th className="text-left py-2.5 px-4 text-xs font-semibold text-gray-500 w-40">問題タイプ</th>
+                      <th className="text-left py-2.5 px-4 text-xs font-semibold text-gray-500">問題文</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {companyProblems.sort((a, b) => a.no - b.no).map((p, i) => (
+                      <tr
+                        key={p.id}
+                        className={`border-b border-white/[0.06] last:border-0 hover:bg-[rgba(200,16,46,0.04)] transition-colors ${
+                          i % 2 === 1 ? "bg-white/[0.015]" : ""
+                        }`}
+                      >
+                        <td className="py-2.5 px-4 text-sm text-gray-500 align-top">{p.no}</td>
+                        <td className="py-2.5 px-4 align-top">
+                          <div className="flex flex-wrap gap-1">
+                            {p.tags.map((tag) => (
+                              <span
+                                key={tag}
+                                className={`text-[10px] px-1.5 py-0.5 rounded border ${TAG_COLORS[tag] || "bg-white/10 text-gray-300 border-white/10"}`}
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="py-2.5 px-4 text-sm text-gray-200 leading-relaxed">{p.question}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {filtered.length === 0 && (
+          <div className="text-center py-16 text-gray-500">
+            該当する問題がありません
+          </div>
+        )}
+      </div>
     </div>
   );
 }
