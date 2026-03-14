@@ -84,6 +84,19 @@ export function SubsidyInfoClient({ progress }: { progress: SubsidyProgress | nu
         リスキリングを通じたキャリアアップ支援事業による補助金プランをご利用の方向けの重要なご案内です。
       </p>
 
+      {/* 重要な注意事項 */}
+      <div className="bg-red-900/20 border border-red-500/30 rounded-xl p-6 mb-6">
+        <h2 className="text-lg font-bold text-red-400 mb-3">重要な注意事項</h2>
+        <p className="text-gray-300 text-sm leading-relaxed">
+          指導期間内（<span className="text-white font-bold">3ヶ月以内</span>）に上記3要件を満たさない場合、
+          <span className="text-red-400 font-bold">補助額相当分をご請求させていただきます</span>。
+        </p>
+        <p className="text-gray-400 text-sm mt-3">
+          期間内に計画的に受講を進めていただくようお願いいたします。
+          ご不明な点がございましたら、担当メンターまたは support@akagiconsulting.com までお問い合わせください。
+        </p>
+      </div>
+
       {/* 達成状況サマリー */}
       <div className={`rounded-xl p-5 mb-6 border ${
         allMet
@@ -176,19 +189,6 @@ export function SubsidyInfoClient({ progress }: { progress: SubsidyProgress | nu
             )}
           </ConditionCard>
         </div>
-      </div>
-
-      {/* 注意事項 */}
-      <div className="bg-red-900/20 border border-red-500/30 rounded-xl p-6 mb-6">
-        <h2 className="text-lg font-bold text-red-400 mb-3">重要な注意事項</h2>
-        <p className="text-gray-300 text-sm leading-relaxed">
-          指導期間内（<span className="text-white font-bold">3ヶ月以内</span>）に上記3要件を満たさない場合、
-          <span className="text-red-400 font-bold">補助額相当分をご請求させていただきます</span>。
-        </p>
-        <p className="text-gray-400 text-sm mt-3">
-          期間内に計画的に受講を進めていただくようお願いいたします。
-          ご不明な点がございましたら、担当メンターまたは support@akagiconsulting.com までお問い合わせください。
-        </p>
       </div>
 
       {/* 補助金の概要 */}
