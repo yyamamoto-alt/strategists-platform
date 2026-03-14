@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import type { TrafficDaily, Period } from "./shared";
+import type { TrafficDaily, Period, PageDailyRow } from "./shared";
 import {
   getWeekKey,
   getMonthKey,
@@ -11,21 +11,26 @@ import {
 } from "./shared";
 
 /* ───────── LP Tab Container ───────── */
+import { ContentTab } from "./ContentTab";
+
 interface LpTabProps {
   traffic: TrafficDaily[];
+  pageDailyRows?: PageDailyRow[];
 }
 
-export function LpTab({ traffic }: LpTabProps) {
-  const [lpTab, setLpTab] = useState<"main" | "lp3">("main");
+export function LpTab({ traffic, pageDailyRows }: LpTabProps) {
+  const [lpTab, setLpTab] = useState<"main" | "lp3" | "content">("main");
 
   return (
     <div className="space-y-4">
       <div className="flex gap-2">
         <SubTab label="メインLP" active={lpTab === "main"} onClick={() => setLpTab("main")} />
         <SubTab label="面談申込特化LP" active={lpTab === "lp3"} onClick={() => setLpTab("lp3")} />
+        <SubTab label="コンテンツ/インタビュー" active={lpTab === "content"} onClick={() => setLpTab("content")} />
       </div>
       {lpTab === "main" && <LpTrafficTrendTab traffic={traffic} landingPage="/" />}
       {lpTab === "lp3" && <LpTrafficTrendTab traffic={traffic} landingPage="/lp3/" />}
+      {lpTab === "content" && pageDailyRows && <ContentTab pageDailyRows={pageDailyRows} />}
     </div>
   );
 }

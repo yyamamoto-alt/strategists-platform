@@ -39,7 +39,7 @@ export type {
 };
 
 /* ───────── Types ───────── */
-export type MainTab = "seo" | "lp" | "content" | "ads" | "meta_ads" | "youtube" | "heatmap";
+export type MainTab = "seo" | "lp" | "ads" | "meta_ads" | "youtube" | "heatmap";
 export type SeoSub = "pages" | "ctr" | "cannibalization" | "decay" | "keywords" | "hourly";
 export type Period = "week" | "month";
 export type Metric = "pageviews" | "sessions" | "users";
