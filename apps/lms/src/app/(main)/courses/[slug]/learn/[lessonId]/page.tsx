@@ -23,16 +23,13 @@ export default async function LessonPlayerPage({
     const supabase = createAdminClient();
     const decodedSlug = decodeURIComponent(slug);
 
-    // session と course を並列取得
-    const [session, courseQueryResult] = await Promise.all([
+    // session と course(slug/id両方) を並列取得
+    const [session, bySlugResult, byIdResult] = await Promise.all([
       getLmsSession(),
-      supabase
-        .from("courses")
-        .select("id")
-        .or(`slug.eq.${decodedSlug},id.eq.${decodedSlug}`)
-        .limit(1) as unknown as Promise<{ data: any[] | null }>,
+      supabase.from("courses").select("id").eq("slug", decodedSlug).maybeSingle(),
+      supabase.from("courses").select("id").eq("id", decodedSlug).maybeSingle(),
     ]);
-    const course = courseQueryResult.data?.[0] || null;
+    const course = (bySlugResult.data || byIdResult.data) as any;
 
     if (!course) {
       return <LessonPlayerClient slug={slug} lessonId={lessonId} allLessons={[]} progressMap={{}} customerId={null} />;
