@@ -70,7 +70,7 @@ export function CourseDetailClient({ course, modules, slug, progressMap, forms }
   return (
     <div className="p-6 bg-surface min-h-screen">
       {/* コースヘッダー */}
-      <div className="bg-gradient-to-r from-brand to-[#0a0a0a] rounded-xl p-8 mb-8">
+      <div className="bg-gradient-to-r from-[#0a0a0a] to-brand rounded-xl p-8 mb-8">
         <div className="flex items-center gap-2 mb-3">
           {course.category && <span className="text-xs px-2 py-0.5 rounded-full bg-white/20 text-white">{course.category}</span>}
         </div>
