@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, Fragment } from "react";
 import type { PageDailyRow, TrafficDaily } from "@/components/analytics/shared";
 import { getWeekKey, heatmapBg, SITE_BASE } from "@/components/analytics/shared";
 
@@ -26,9 +26,12 @@ function formatVal(metric: ContentMetric, val: number): string {
 
 export function ContentTab({ pageDailyRows, traffic }: { pageDailyRows: PageDailyRow[]; traffic?: TrafficDaily[] }) {
   const [metric, setMetric] = useState<ContentMetric>("users");
+  const [expandedPage, setExpandedPage] = useState<string | null>(null);
 
   const contentRows = useMemo(
-    () => pageDailyRows.filter((r) => r.page_path.startsWith("/contents/") || r.page_path.startsWith("/voice/")),
+    () => pageDailyRows.filter((r) =>
+      r.page_path.startsWith("/contents/") || r.page_path.startsWith("/voice/")
+    ),
     [pageDailyRows]
   );
 
@@ -38,6 +41,55 @@ export function ContentTab({ pageDailyRows, traffic }: { pageDailyRows: PageDail
     return Array.from(set).sort();
   }, [contentRows]);
 
+  // Traffic by page (for referrer detail)
+  const trafficByPage = useMemo(() => {
+    const map = new Map<string, { source: string; medium: string; sessions: number; users: number; cv: number }[]>();
+    if (!traffic) return map;
+    for (const t of traffic) {
+      if (!t.landing_page.startsWith("/contents/") && !t.landing_page.startsWith("/voice/")) continue;
+      if (!map.has(t.landing_page)) map.set(t.landing_page, []);
+      map.get(t.landing_page)!.push({
+        source: t.source || "(direct)",
+        medium: t.medium || "(none)",
+        sessions: t.sessions,
+        users: t.users,
+        cv: t.schedule_visits || 0,
+      });
+    }
+    // Aggregate by source/medium
+    const result = new Map<string, { source: string; medium: string; sessions: number; users: number; cv: number }[]>();
+    for (const [page, rows] of map) {
+      const agg = new Map<string, { source: string; medium: string; sessions: number; users: number; cv: number }>();
+      for (const r of rows) {
+        const key = `${r.source}/${r.medium}`;
+        const cur = agg.get(key) || { source: r.source, medium: r.medium, sessions: 0, users: 0, cv: 0 };
+        cur.sessions += r.sessions;
+        cur.users += r.users;
+        cur.cv += r.cv;
+        agg.set(key, cur);
+      }
+      result.set(page, Array.from(agg.values()).sort((a, b) => b.sessions - a.sessions));
+    }
+    return result;
+  }, [traffic]);
+
+  // Build CV data from traffic
+  const cvByPageWeek = useMemo(() => {
+    const map = new Map<string, Map<string, { cv: number; sessions: number }>>();
+    if (!traffic) return map;
+    for (const t of traffic) {
+      if (!t.landing_page.startsWith("/contents/") && !t.landing_page.startsWith("/voice/")) continue;
+      const wk = getWeekKey(t.date);
+      if (!map.has(t.landing_page)) map.set(t.landing_page, new Map());
+      const m = map.get(t.landing_page)!;
+      const cur = m.get(wk) || { cv: 0, sessions: 0 };
+      cur.cv += t.schedule_visits || 0;
+      cur.sessions += t.sessions;
+      m.set(wk, cur);
+    }
+    return map;
+  }, [traffic]);
+
   const { pages, matrix, maxVal } = useMemo(() => {
     const pageMap = new Map<string, {
       path: string;
@@ -46,21 +98,6 @@ export function ContentTab({ pageDailyRows, traffic }: { pageDailyRows: PageDail
       totalUsers: number;
       weekData: Map<string, { users: number; sessions: number; bounce: number; bounceN: number; duration: number; durationN: number; cv: number }>;
     }>();
-
-    // Build CV data from traffic (landing page = content/voice page)
-    const cvByPageWeek = new Map<string, Map<string, { cv: number; sessions: number }>>();
-    if (traffic) {
-      for (const t of traffic) {
-        if (!t.landing_page.startsWith("/contents/") && !t.landing_page.startsWith("/voice/")) continue;
-        const wk = getWeekKey(t.date);
-        if (!cvByPageWeek.has(t.landing_page)) cvByPageWeek.set(t.landing_page, new Map());
-        const m = cvByPageWeek.get(t.landing_page)!;
-        const cur = m.get(wk) || { cv: 0, sessions: 0 };
-        cur.cv += t.schedule_visits || 0;
-        cur.sessions += t.sessions;
-        m.set(wk, cur);
-      }
-    }
 
     for (const r of contentRows) {
       const key = r.page_path;
@@ -85,7 +122,6 @@ export function ContentTab({ pageDailyRows, traffic }: { pageDailyRows: PageDail
       wd.sessions += r.sessions;
       if (r.bounce_rate != null) { wd.bounce += r.bounce_rate * r.sessions; wd.bounceN += r.sessions; }
       if (r.avg_session_duration) { wd.duration += r.avg_session_duration * r.sessions; wd.durationN += r.sessions; }
-      // CV from traffic data
       const cvData = cvByPageWeek.get(key)?.get(wk);
       if (cvData) wd.cv = cvData.cv;
     }
@@ -114,7 +150,9 @@ export function ContentTab({ pageDailyRows, traffic }: { pageDailyRows: PageDail
     }
 
     return { pages: sortedPages, matrix: mtx, maxVal: mx };
-  }, [contentRows, weeks, metric]);
+  }, [contentRows, weeks, metric, cvByPageWeek]);
+
+  const colCount = weeks.length + 2; // page col + weeks + total
 
   return (
     <div className="space-y-3">
@@ -155,41 +193,85 @@ export function ContentTab({ pageDailyRows, traffic }: { pageDailyRows: PageDail
               const displayTotal = metric === "bounce_rate" || metric === "avg_duration" || metric === "cvr"
                 ? (weeksWithData > 0 ? total / weeksWithData : 0)
                 : total;
+              const isExpanded = expandedPage === page.path;
+              const referrers = trafficByPage.get(page.path) || [];
 
               return (
-                <tr key={page.path} className="border-b border-white/5 hover:bg-white/5">
-                  <td className="px-3 py-2 sticky left-0 bg-surface-raised z-10">
-                    <div className="flex items-center gap-1.5">
-                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                        page.category === "contents" ? "bg-purple-400" : "bg-teal-400"
-                      }`} />
-                      <div className="min-w-0">
-                        <div className="text-gray-300 truncate max-w-[280px]" title={page.title}>
-                          {page.title.length > 40 ? page.title.substring(0, 40) + "..." : page.title}
+                <Fragment key={page.path}>
+                  <tr
+                    className={`border-b border-white/5 hover:bg-white/5 cursor-pointer ${isExpanded ? "bg-white/5" : ""}`}
+                    onClick={() => setExpandedPage(isExpanded ? null : page.path)}
+                  >
+                    <td className="px-3 py-2 sticky left-0 bg-surface-raised z-10">
+                      <div className="flex items-center gap-1.5">
+                        <span className={`text-[10px] transition-transform ${isExpanded ? "rotate-90" : ""}`}>▶</span>
+                        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                          page.category === "contents" ? "bg-purple-400" : "bg-teal-400"
+                        }`} />
+                        <div className="min-w-0">
+                          <div className="text-gray-300 truncate max-w-[260px]" title={page.title}>
+                            {page.title.length > 38 ? page.title.substring(0, 38) + "..." : page.title}
+                          </div>
+                          <a
+                            href={SITE_BASE + page.path}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[10px] text-gray-500 hover:text-brand"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {page.path}
+                          </a>
                         </div>
-                        <a
-                          href={SITE_BASE + page.path}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-[10px] text-gray-500 hover:text-brand"
-                        >
-                          {page.path}
-                        </a>
                       </div>
-                    </div>
-                  </td>
-                  {weeks.map((wk) => {
-                    const val = row.get(wk) || 0;
-                    return (
-                      <td key={wk} className={`text-center px-2 py-2 text-gray-300 ${heatmapBg(val, maxVal)}`}>
-                        {formatVal(metric, val)}
+                    </td>
+                    {weeks.map((wk) => {
+                      const val = row.get(wk) || 0;
+                      return (
+                        <td key={wk} className={`text-center px-2 py-2 text-gray-300 ${heatmapBg(val, maxVal)}`}>
+                          {formatVal(metric, val)}
+                        </td>
+                      );
+                    })}
+                    <td className="text-center px-3 py-2 text-white font-medium bg-white/5">
+                      {formatVal(metric, displayTotal)}
+                    </td>
+                  </tr>
+
+                  {/* 展開: 流入元詳細 */}
+                  {isExpanded && (
+                    <tr className="border-b border-white/10 bg-white/[0.02]">
+                      <td colSpan={colCount} className="px-6 py-3">
+                        <div className="max-w-lg">
+                          <p className="text-[10px] text-gray-500 font-medium mb-2">流入元（ランディングページとしての流入）</p>
+                          {referrers.length === 0 ? (
+                            <p className="text-[10px] text-gray-600">データなし（次回同期後に表示されます）</p>
+                          ) : (
+                            <table className="w-full text-[10px]">
+                              <thead>
+                                <tr className="border-b border-white/10">
+                                  <th className="text-left py-1 text-gray-500">ソース / メディア</th>
+                                  <th className="text-right py-1 px-2 text-gray-500">セッション</th>
+                                  <th className="text-right py-1 px-2 text-gray-500">ユーザー</th>
+                                  <th className="text-right py-1 px-2 text-gray-500">CV</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {referrers.slice(0, 10).map((ref, i) => (
+                                  <tr key={i} className="border-b border-white/5">
+                                    <td className="py-1 text-gray-300">{ref.source} / {ref.medium}</td>
+                                    <td className="text-right py-1 px-2 text-gray-400">{ref.sessions}</td>
+                                    <td className="text-right py-1 px-2 text-gray-400">{ref.users}</td>
+                                    <td className="text-right py-1 px-2 text-gray-400">{ref.cv || ""}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          )}
+                        </div>
                       </td>
-                    );
-                  })}
-                  <td className="text-center px-3 py-2 text-white font-medium bg-white/5">
-                    {formatVal(metric, displayTotal)}
-                  </td>
-                </tr>
+                    </tr>
+                  )}
+                </Fragment>
               );
             })}
             <tr className="border-t border-white/10 bg-white/5">
@@ -217,6 +299,7 @@ export function ContentTab({ pageDailyRows, traffic }: { pageDailyRows: PageDail
       <div className="flex gap-4 text-[10px] text-gray-500">
         <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-purple-400" /> コンテンツ (/contents/)</span>
         <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-teal-400" /> インタビュー (/voice/)</span>
+        <span className="text-gray-600">行をクリックで流入元を表示</span>
       </div>
     </div>
   );

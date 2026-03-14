@@ -26,7 +26,7 @@ export function LpTab({ traffic, pageDailyRows }: LpTabProps) {
       <div className="flex gap-2">
         <SubTab label="メインLP" active={lpTab === "main"} onClick={() => setLpTab("main")} />
         <SubTab label="面談申込特化LP" active={lpTab === "lp3"} onClick={() => setLpTab("lp3")} />
-        <SubTab label="コンテンツ/インタビュー" active={lpTab === "content"} onClick={() => setLpTab("content")} />
+        <SubTab label="ページ別分析" active={lpTab === "content"} onClick={() => setLpTab("content")} />
       </div>
       {lpTab === "main" && <LpTrafficTrendTab traffic={traffic} landingPage="/" />}
       {lpTab === "lp3" && <LpTrafficTrendTab traffic={traffic} landingPage="/lp3/" />}
