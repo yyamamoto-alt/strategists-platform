@@ -7,6 +7,10 @@
     {
       "path": "/api/cron/webhook-health-check",
       "schedule": "0 0,6,12,18 * * *"
+    },
+    {
+      "path": "/api/cron/competitor-check",
+      "schedule": "0 21 * * 1,5"
     }
   ]
 }

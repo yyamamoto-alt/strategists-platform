@@ -29,6 +29,7 @@ const navGroups: NavGroup[] = [
       { name: "顧客DB", href: "/customers" },
       { name: "パイプライン", href: "/pipeline" },
       { name: "マーケティング分析", href: "/analytics" },
+      { name: "競合分析", href: "/competitors" },
     ],
   },
   {

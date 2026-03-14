@@ -574,6 +574,66 @@ export async function notifyCalendarEvent(text: string) {
 }
 
 // ================================================================
+// 競合分析通知
+// ================================================================
+
+/** 競合サイト変更通知 */
+export async function notifyCompetitorChange(data: {
+  siteName: string;
+  url: string;
+  changeType: string;
+  summary: string;
+}) {
+  const channel = await getNotifyConfig("competitor_change", "C07FT8WTKF1"); // #strategy_division
+  if (!channel) return;
+
+  const typeLabel: Record<string, string> = {
+    price_change: "💰 料金変更",
+    new_service: "🆕 新サービス",
+    design_change: "🎨 デザイン変更",
+    content_change: "📝 コンテンツ更新",
+    minor_update: "🔄 軽微な更新",
+  };
+
+  const lines = [
+    `🔍 *競合サイト変更検知*`,
+    `*サイト:* ${data.siteName}`,
+    `*種別:* ${typeLabel[data.changeType] || data.changeType}`,
+    `*概要:* ${data.summary}`,
+    `*URL:* ${data.url}`,
+    ``,
+    `詳細はCRMの競合分析ページで確認: https://strategists-crm.vercel.app/competitors`,
+  ];
+
+  await sendSlackMessage(channel, lines.join("\n"), {
+    username: "競合ウォッチャー",
+  });
+}
+
+/** Meta広告検出通知 */
+export async function notifyMetaAdDetected(data: {
+  competitorName: string;
+  adCount: number;
+  summary: string;
+}) {
+  const channel = await getNotifyConfig("competitor_change", "C07FT8WTKF1"); // #strategy_division
+  if (!channel) return;
+
+  const lines = [
+    `📢 *競合 Meta広告検出*`,
+    `*競合:* ${data.competitorName}`,
+    `*広告数:* ${data.adCount}件`,
+    `*概要:* ${data.summary}`,
+    ``,
+    `詳細はCRMの競合分析ページで確認: https://strategists-crm.vercel.app/competitors`,
+  ];
+
+  await sendSlackMessage(channel, lines.join("\n"), {
+    username: "競合ウォッチャー",
+  });
+}
+
+// ================================================================
 // システム自動化 ON/OFF チェック
 // ================================================================
 
