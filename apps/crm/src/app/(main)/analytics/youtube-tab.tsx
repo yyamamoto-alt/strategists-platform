@@ -226,18 +226,20 @@ function YouTubeVideoTable({ youtubeVideos, youtubeDaily, channelDaily }: {
     };
   }, [channelDaily, youtubeVideos]);
 
-  // Chart data with granularity
-  const viewsChartData = useMemo(() =>
-    aggregateByGranularity(channelDaily, chartGranularity, items => ({
+  // Chart data with granularity (drop last point — incomplete period looks like a dip)
+  const viewsChartData = useMemo(() => {
+    const all = aggregateByGranularity(channelDaily, chartGranularity, items => ({
       total_views: items.reduce((s, r) => s + r.total_views, 0),
-    })),
-  [channelDaily, chartGranularity]);
+    }));
+    return all.length > 1 ? all.slice(0, -1) : all;
+  }, [channelDaily, chartGranularity]);
 
-  const minutesChartData = useMemo(() =>
-    aggregateByGranularity(channelDaily, chartGranularity, items => ({
+  const minutesChartData = useMemo(() => {
+    const all = aggregateByGranularity(channelDaily, chartGranularity, items => ({
       estimated_minutes_watched: items.reduce((s, r) => s + r.estimated_minutes_watched, 0),
-    })),
-  [channelDaily, chartGranularity]);
+    }));
+    return all.length > 1 ? all.slice(0, -1) : all;
+  }, [channelDaily, chartGranularity]);
 
   // Monthly publish count
   const publishData = useMemo(() => {

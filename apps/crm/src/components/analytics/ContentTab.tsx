@@ -108,7 +108,7 @@ export function ContentTab({ pageDailyRows, traffic }: { pageDailyRows: PageDail
     return map;
   }, [traffic, periodKey]);
 
-  const { pages, matrix, maxVal } = useMemo(() => {
+  const { pages, matrix, maxVal, cvFractions } = useMemo(() => {
     const pageMap = new Map<string, {
       path: string;
       title: string;
@@ -148,8 +148,10 @@ export function ContentTab({ pageDailyRows, traffic }: { pageDailyRows: PageDail
 
     let mx = 0;
     const mtx = new Map<string, Map<string, number>>();
+    const cvFractions = new Map<string, Map<string, { cv: number; sessions: number }>>();
     for (const page of sortedPages) {
       const row = new Map<string, number>();
+      const frRow = new Map<string, { cv: number; sessions: number }>();
       for (const wk of periods) {
         const wd = page.weekData.get(wk);
         let val = 0;
@@ -160,14 +162,16 @@ export function ContentTab({ pageDailyRows, traffic }: { pageDailyRows: PageDail
             case "avg_duration": val = wd.durationN > 0 ? wd.duration / wd.durationN : 0; break;
             case "cvr": val = wd.sessions > 0 ? wd.cv / wd.sessions : 0; break;
           }
+          frRow.set(wk, { cv: wd.cv, sessions: wd.sessions });
         }
         row.set(wk, val);
         if (val > mx) mx = val;
       }
       mtx.set(page.path, row);
+      cvFractions.set(page.path, frRow);
     }
 
-    return { pages: sortedPages, matrix: mtx, maxVal: mx };
+    return { pages: sortedPages, matrix: mtx, maxVal: mx, cvFractions };
   }, [contentRows, periods, metric, cvByPageWeek, periodKey]);
 
   const colCount = periods.length + 2; // page col + weeks + total
@@ -253,14 +257,23 @@ export function ContentTab({ pageDailyRows, traffic }: { pageDailyRows: PageDail
                     </td>
                     {periods.map((wk) => {
                       const val = row.get(wk) || 0;
+                      const fr = metric === "cvr" ? cvFractions.get(page.path)?.get(wk) : null;
                       return (
                         <td key={wk} className={`text-center px-2 py-2 text-gray-300 ${heatmapBg(val, maxVal)}`}>
-                          {formatVal(metric, val)}
+                          {metric === "cvr" && fr
+                            ? <span>{fr.cv}/{fr.sessions}</span>
+                            : formatVal(metric, val)}
                         </td>
                       );
                     })}
                     <td className="text-center px-3 py-2 text-white font-medium bg-white/5">
-                      {formatVal(metric, displayTotal)}
+                      {metric === "cvr" ? (() => {
+                        const allFr = cvFractions.get(page.path);
+                        if (!allFr) return "";
+                        let totalCV = 0, totalSess = 0;
+                        for (const f of allFr.values()) { totalCV += f.cv; totalSess += f.sessions; }
+                        return <span>{totalCV}/{totalSess}</span>;
+                      })() : formatVal(metric, displayTotal)}
                     </td>
                   </tr>
 
