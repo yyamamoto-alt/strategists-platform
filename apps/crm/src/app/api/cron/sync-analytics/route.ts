@@ -180,6 +180,8 @@ async function syncOneDay(
     { lp: "/lp3/", matchType: "BEGINS_WITH", filterValue: "/lp3" },
     { lp: "/contents/", matchType: "BEGINS_WITH", filterValue: "/contents/" },
     { lp: "/voice/", matchType: "BEGINS_WITH", filterValue: "/voice/" },
+    { lp: "/keikensha/", matchType: "BEGINS_WITH", filterValue: "/keikensha" },
+    { lp: "/kaihatsutaidan/", matchType: "BEGINS_WITH", filterValue: "/kaihatsutaidan" },
   ];
   for (const { lp, matchType, filterValue } of lpTargets) {
     const ga4Traffic = await fetchGA4Report(accessToken, {

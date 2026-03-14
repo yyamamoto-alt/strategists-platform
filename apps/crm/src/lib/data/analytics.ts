@@ -93,20 +93,28 @@ export async function fetchPageDailyRows(days: number = 90): Promise<PageDailyRo
   return all;
 }
 
-/** LP流入経路（90日、日別生データ） */
-export async function fetchTrafficSources(days: number = 90): Promise<TrafficDaily[]> {
+/** LP流入経路（日別生データ） */
+export async function fetchTrafficSources(days: number = 180): Promise<TrafficDaily[]> {
   const { from, to } = dateRange(days);
 
-  const { data, error } = await supabase()
-    .from("analytics_traffic_daily")
-    .select("*")
-    .gte("date", from)
-    .lte("date", to)
-    .order("date", { ascending: true })
-    .limit(5000);
-
-  if (error) throw new Error(error.message);
-  return data || [];
+  const all: TrafficDaily[] = [];
+  let offset = 0;
+  const PAGE_SIZE = 1000;
+  while (true) {
+    const { data, error } = await supabase()
+      .from("analytics_traffic_daily")
+      .select("*")
+      .gte("date", from)
+      .lte("date", to)
+      .order("date", { ascending: true })
+      .range(offset, offset + PAGE_SIZE - 1);
+    if (error) throw new Error(error.message);
+    if (!data || data.length === 0) break;
+    all.push(...data);
+    if (data.length < PAGE_SIZE) break;
+    offset += PAGE_SIZE;
+  }
+  return all;
 }
 
 /** 検索クエリ（30日、ページ×クエリ集計済み） */

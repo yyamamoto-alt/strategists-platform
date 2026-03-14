@@ -2,7 +2,9 @@
 
 import { useState, useMemo, Fragment } from "react";
 import type { PageDailyRow, TrafficDaily } from "@/components/analytics/shared";
-import { getWeekKey, heatmapBg, SITE_BASE } from "@/components/analytics/shared";
+import { getWeekKey, getMonthKey, heatmapBg, SITE_BASE } from "@/components/analytics/shared";
+
+type Granularity = "weekly" | "monthly";
 
 type ContentMetric = "users" | "avg_duration" | "bounce_rate" | "cvr";
 
@@ -24,31 +26,46 @@ function formatVal(metric: ContentMetric, val: number): string {
   return val.toLocaleString();
 }
 
+// Normalize path: remove trailing slash for matching
+function normPath(p: string): string {
+  return p.length > 1 && p.endsWith("/") ? p.slice(0, -1) : p;
+}
+
+// Check if a path is a content/voice page
+function isContentPage(p: string): boolean {
+  const n = normPath(p);
+  if (n === "/" || n.startsWith("/blog") || n.startsWith("/lp") || n.startsWith("/schedule")) return false;
+  return n.startsWith("/contents") || n.startsWith("/voice") ||
+         n.startsWith("/keikensha") || n.startsWith("/kaihatsutaidan");
+}
+
 export function ContentTab({ pageDailyRows, traffic }: { pageDailyRows: PageDailyRow[]; traffic?: TrafficDaily[] }) {
   const [metric, setMetric] = useState<ContentMetric>("users");
+  const [granularity, setGranularity] = useState<Granularity>("weekly");
   const [expandedPage, setExpandedPage] = useState<string | null>(null);
 
   const contentRows = useMemo(
-    () => pageDailyRows.filter((r) =>
-      r.page_path.startsWith("/contents/") || r.page_path.startsWith("/voice/")
-    ),
+    () => pageDailyRows.filter((r) => isContentPage(r.page_path)),
     [pageDailyRows]
   );
 
-  const weeks = useMemo(() => {
+  const periodKey = granularity === "weekly" ? getWeekKey : getMonthKey;
+
+  const periods = useMemo(() => {
     const set = new Set<string>();
-    for (const r of contentRows) set.add(getWeekKey(r.date));
-    return Array.from(set).sort();
-  }, [contentRows]);
+    for (const r of contentRows) set.add(periodKey(r.date));
+    return Array.from(set).sort().reverse(); // newest first
+  }, [contentRows, periodKey]);
 
   // Traffic by page (for referrer detail)
   const trafficByPage = useMemo(() => {
     const map = new Map<string, { source: string; medium: string; sessions: number; users: number; cv: number }[]>();
     if (!traffic) return map;
     for (const t of traffic) {
-      if (!t.landing_page.startsWith("/contents/") && !t.landing_page.startsWith("/voice/")) continue;
-      if (!map.has(t.landing_page)) map.set(t.landing_page, []);
-      map.get(t.landing_page)!.push({
+      if (!isContentPage(t.landing_page)) continue;
+      const lp = normPath(t.landing_page);
+      if (!map.has(lp)) map.set(lp, []);
+      map.get(lp)!.push({
         source: t.source || "(direct)",
         medium: t.medium || "(none)",
         sessions: t.sessions,
@@ -71,24 +88,25 @@ export function ContentTab({ pageDailyRows, traffic }: { pageDailyRows: PageDail
       result.set(page, Array.from(agg.values()).sort((a, b) => b.sessions - a.sessions));
     }
     return result;
-  }, [traffic]);
+  }, [traffic, periodKey]);
 
   // Build CV data from traffic
   const cvByPageWeek = useMemo(() => {
     const map = new Map<string, Map<string, { cv: number; sessions: number }>>();
     if (!traffic) return map;
     for (const t of traffic) {
-      if (!t.landing_page.startsWith("/contents/") && !t.landing_page.startsWith("/voice/")) continue;
-      const wk = getWeekKey(t.date);
-      if (!map.has(t.landing_page)) map.set(t.landing_page, new Map());
-      const m = map.get(t.landing_page)!;
+      if (!isContentPage(t.landing_page)) continue;
+      const lp = normPath(t.landing_page);
+      const wk = periodKey(t.date);
+      if (!map.has(lp)) map.set(lp, new Map());
+      const m = map.get(lp)!;
       const cur = m.get(wk) || { cv: 0, sessions: 0 };
       cur.cv += t.schedule_visits || 0;
       cur.sessions += t.sessions;
       m.set(wk, cur);
     }
     return map;
-  }, [traffic]);
+  }, [traffic, periodKey]);
 
   const { pages, matrix, maxVal } = useMemo(() => {
     const pageMap = new Map<string, {
@@ -113,7 +131,7 @@ export function ContentTab({ pageDailyRows, traffic }: { pageDailyRows: PageDail
       const page = pageMap.get(key)!;
       page.totalUsers += r.users;
 
-      const wk = getWeekKey(r.date);
+      const wk = periodKey(r.date);
       if (!page.weekData.has(wk)) {
         page.weekData.set(wk, { users: 0, sessions: 0, bounce: 0, bounceN: 0, duration: 0, durationN: 0, cv: 0 });
       }
@@ -122,7 +140,7 @@ export function ContentTab({ pageDailyRows, traffic }: { pageDailyRows: PageDail
       wd.sessions += r.sessions;
       if (r.bounce_rate != null) { wd.bounce += r.bounce_rate * r.sessions; wd.bounceN += r.sessions; }
       if (r.avg_session_duration) { wd.duration += r.avg_session_duration * r.sessions; wd.durationN += r.sessions; }
-      const cvData = cvByPageWeek.get(key)?.get(wk);
+      const cvData = cvByPageWeek.get(normPath(key))?.get(wk);
       if (cvData) wd.cv = cvData.cv;
     }
 
@@ -132,7 +150,7 @@ export function ContentTab({ pageDailyRows, traffic }: { pageDailyRows: PageDail
     const mtx = new Map<string, Map<string, number>>();
     for (const page of sortedPages) {
       const row = new Map<string, number>();
-      for (const wk of weeks) {
+      for (const wk of periods) {
         const wd = page.weekData.get(wk);
         let val = 0;
         if (wd) {
@@ -150,24 +168,34 @@ export function ContentTab({ pageDailyRows, traffic }: { pageDailyRows: PageDail
     }
 
     return { pages: sortedPages, matrix: mtx, maxVal: mx };
-  }, [contentRows, weeks, metric, cvByPageWeek]);
+  }, [contentRows, periods, metric, cvByPageWeek, periodKey]);
 
-  const colCount = weeks.length + 2; // page col + weeks + total
+  const colCount = periods.length + 2; // page col + weeks + total
 
   return (
     <div className="space-y-3">
-      <div className="flex gap-1 bg-white/5 rounded-lg p-0.5 w-fit">
-        {METRICS.map((m) => (
-          <button
-            key={m.key}
-            onClick={() => setMetric(m.key)}
-            className={`px-3 py-1 text-xs rounded-md transition-colors ${
-              metric === m.key ? "bg-brand text-white" : "text-gray-400 hover:text-white"
-            }`}
-          >
-            {m.label}
-          </button>
-        ))}
+      <div className="flex items-center justify-between">
+        <div className="flex gap-1 bg-white/5 rounded-lg p-0.5 w-fit">
+          {METRICS.map((m) => (
+            <button
+              key={m.key}
+              onClick={() => setMetric(m.key)}
+              className={`px-3 py-1 text-xs rounded-md transition-colors ${
+                metric === m.key ? "bg-brand text-white" : "text-gray-400 hover:text-white"
+              }`}
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-1 bg-white/5 rounded-lg p-0.5">
+          {([["weekly", "週別"], ["monthly", "月別"]] as const).map(([v, label]) => (
+            <button key={v} onClick={() => setGranularity(v)}
+              className={`px-3 py-1 text-xs rounded-md transition-colors ${granularity === v ? "bg-brand text-white" : "text-gray-400 hover:text-white"}`}>
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="bg-surface-raised border border-white/10 rounded-xl overflow-x-auto">
@@ -177,7 +205,7 @@ export function ContentTab({ pageDailyRows, traffic }: { pageDailyRows: PageDail
               <th className="text-left px-3 py-2 text-gray-500 font-medium sticky left-0 bg-surface-raised min-w-[300px] z-10">
                 ページ ({pages.length})
               </th>
-              {weeks.map((wk) => (
+              {periods.map((wk) => (
                 <th key={wk} className="text-center px-2 py-2 text-gray-500 font-medium min-w-[56px] whitespace-nowrap">
                   {wk.slice(5)}
                 </th>
@@ -189,12 +217,12 @@ export function ContentTab({ pageDailyRows, traffic }: { pageDailyRows: PageDail
             {pages.map((page) => {
               const row = matrix.get(page.path)!;
               const total = Array.from(row.values()).reduce((a, b) => a + b, 0);
-              const weeksWithData = weeks.filter((wk) => (row.get(wk) || 0) > 0).length;
+              const weeksWithData = periods.filter((wk) => (row.get(wk) || 0) > 0).length;
               const displayTotal = metric === "bounce_rate" || metric === "avg_duration" || metric === "cvr"
                 ? (weeksWithData > 0 ? total / weeksWithData : 0)
                 : total;
               const isExpanded = expandedPage === page.path;
-              const referrers = trafficByPage.get(page.path) || [];
+              const referrers = trafficByPage.get(normPath(page.path)) || [];
 
               return (
                 <Fragment key={page.path}>
@@ -223,7 +251,7 @@ export function ContentTab({ pageDailyRows, traffic }: { pageDailyRows: PageDail
                         </div>
                       </div>
                     </td>
-                    {weeks.map((wk) => {
+                    {periods.map((wk) => {
                       const val = row.get(wk) || 0;
                       return (
                         <td key={wk} className={`text-center px-2 py-2 text-gray-300 ${heatmapBg(val, maxVal)}`}>
@@ -275,7 +303,7 @@ export function ContentTab({ pageDailyRows, traffic }: { pageDailyRows: PageDail
             })}
             <tr className="border-t border-white/10 bg-white/5">
               <td className="px-3 py-2 text-gray-400 font-medium sticky left-0 bg-white/5 z-10">合計</td>
-              {weeks.map((wk) => {
+              {periods.map((wk) => {
                 let weekTotal = 0;
                 for (const page of pages) {
                   weekTotal += matrix.get(page.path)?.get(wk) || 0;

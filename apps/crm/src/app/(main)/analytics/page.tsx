@@ -23,8 +23,8 @@ import { AnalyticsClient } from "./analytics-client";
 export default async function AnalyticsPage() {
   // Use allSettled so one failing fetch doesn't break the entire page
   const results = await Promise.allSettled([
-    fetchPageDailyRows(90),
-    fetchTrafficSources(90),
+    fetchPageDailyRows(180),
+    fetchTrafficSources(180),
     fetchSearchQueries(),
     fetchSearchDailyRows(90),
     fetchHourlyData(90),
