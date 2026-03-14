@@ -2,20 +2,6 @@
 
 import { useState, useEffect, useCallback } from "react";
 
-interface MetaAd {
-  id: string;
-  page_name: string;
-  page_id: string;
-  bodies: string[];
-  link_titles: string[];
-  link_captions: string[];
-  start_date: string | null;
-  stop_date: string | null;
-  creation_time: string | null;
-  platforms: string[];
-  estimated_audience: { lower_bound?: number; upper_bound?: number } | null;
-}
-
 interface CompetitorSite {
   id: string;
   name: string;
@@ -57,11 +43,6 @@ export default function CompetitorsClient() {
   const [newName, setNewName] = useState("");
   const [newUrl, setNewUrl] = useState("");
 
-  // Meta Ads
-  const [metaQuery, setMetaQuery] = useState("");
-  const [metaAds, setMetaAds] = useState<MetaAd[]>([]);
-  const [metaLoading, setMetaLoading] = useState(false);
-  const [metaError, setMetaError] = useState("");
 
   const fetchData = useCallback(async () => {
     try {
@@ -139,27 +120,6 @@ export default function CompetitorsClient() {
       fetchData();
     } catch (e) {
       console.error("Failed to mark all read:", e);
-    }
-  };
-
-  const handleSearchMetaAds = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!metaQuery.trim()) return;
-    setMetaLoading(true);
-    setMetaError("");
-    try {
-      const res = await fetch(`/api/competitors/meta-ads?query=${encodeURIComponent(metaQuery)}`);
-      const data = await res.json();
-      if (data.error) {
-        setMetaError(data.error);
-        setMetaAds([]);
-      } else {
-        setMetaAds(data.ads || []);
-      }
-    } catch {
-      setMetaError("検索に失敗しました");
-    } finally {
-      setMetaLoading(false);
     }
   };
 
@@ -396,7 +356,7 @@ export default function CompetitorsClient() {
                     </a>
                     <div className="flex items-center gap-3 mt-1">
                       <span className="text-xs text-gray-500">
-                        頻度: {site.check_frequency === "daily" ? "毎日" : "毎週"}
+                        頻度: {site.check_frequency === "daily" ? "毎日" : site.check_frequency === "mon_fri" ? "月・金" : site.check_frequency === "weekly" ? "毎週" : site.check_frequency}
                       </span>
                       {site.last_checked_at && (
                         <span className="text-xs text-gray-500">
@@ -433,125 +393,52 @@ export default function CompetitorsClient() {
       {/* Meta広告 */}
       {tab === "meta-ads" && (
         <div className="space-y-4">
-          <form onSubmit={handleSearchMetaAds} className="flex gap-3">
-            <input
-              type="text"
-              value={metaQuery}
-              onChange={(e) => setMetaQuery(e.target.value)}
-              placeholder="キーワードで競合の広告を検索（例: ケース面接、コンサル転職）"
-              className="flex-1 px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:ring-1 focus:ring-brand"
-            />
-            <button
-              type="submit"
-              disabled={metaLoading}
-              className="px-6 py-2 bg-brand text-white text-sm rounded-lg hover:bg-brand/80 transition-colors disabled:opacity-50"
-            >
-              {metaLoading ? "検索中..." : "検索"}
-            </button>
-          </form>
+          <div className="bg-surface-raised border border-white/10 rounded-lg p-5">
+            <h3 className="text-sm font-medium text-white mb-2">Meta Ad Library で競合の広告を確認</h3>
+            <p className="text-xs text-gray-400 mb-4">
+              Meta Ad Library APIは日本の商業広告には非対応のため、Webサイトから直接確認できます。
+              以下のリンクからキーワードで検索してください。
+            </p>
 
-          {/* プリセット検索 */}
-          <div className="flex gap-2 flex-wrap">
-            {["ケース面接", "コンサル転職", "戦略コンサル", "MBB", "コンサル対策"].map((keyword) => (
-              <button
-                key={keyword}
-                onClick={() => {
-                  setMetaQuery(keyword);
-                  setMetaLoading(true);
-                  setMetaError("");
-                  fetch(`/api/competitors/meta-ads?query=${encodeURIComponent(keyword)}`)
-                    .then((r) => r.json())
-                    .then((data) => {
-                      if (data.error) {
-                        setMetaError(data.error);
-                        setMetaAds([]);
-                      } else {
-                        setMetaAds(data.ads || []);
-                      }
-                    })
-                    .catch(() => setMetaError("検索に失敗しました"))
-                    .finally(() => setMetaLoading(false));
-                }}
-                className="px-3 py-1 text-xs bg-white/5 text-gray-300 rounded-full hover:bg-white/10 transition-colors"
-              >
-                {keyword}
-              </button>
-            ))}
-          </div>
-
-          {metaError && (
-            <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 text-sm text-red-400">
-              {metaError}
+            <div className="space-y-2 mb-4">
+              {["ケース面接", "コンサル転職", "戦略コンサル", "MBB 対策", "コンサルスクール"].map((keyword) => (
+                <a
+                  key={keyword}
+                  href={`https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=JP&q=${encodeURIComponent(keyword)}&media_type=all`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-between px-4 py-2.5 bg-white/5 rounded-lg hover:bg-white/10 transition-colors group"
+                >
+                  <span className="text-sm text-gray-300 group-hover:text-white">
+                    「{keyword}」で検索
+                  </span>
+                  <span className="text-xs text-gray-500 group-hover:text-brand">
+                    Ad Library →
+                  </span>
+                </a>
+              ))}
             </div>
-          )}
 
-          {metaAds.length > 0 && (
-            <p className="text-sm text-gray-400">{metaAds.length}件の広告が見つかりました</p>
-          )}
-
-          <div className="space-y-3">
-            {metaAds.map((ad) => (
-              <div
-                key={ad.id}
-                className="bg-surface-raised border border-white/10 rounded-lg p-4"
-              >
-                <div className="flex items-start justify-between mb-2">
-                  <div>
-                    <span className="text-sm font-medium text-white">{ad.page_name}</span>
-                    {ad.platforms.length > 0 && (
-                      <span className="ml-2 text-xs text-gray-500">
-                        {ad.platforms.join(", ")}
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    {ad.start_date && (
-                      <span>
-                        {new Date(ad.start_date).toLocaleDateString("ja-JP")}
-                        {ad.stop_date
-                          ? ` 〜 ${new Date(ad.stop_date).toLocaleDateString("ja-JP")}`
-                          : " 〜 配信中"}
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {ad.link_titles.length > 0 && (
-                  <p className="text-sm font-medium text-blue-400 mb-1">
-                    {ad.link_titles[0]}
-                  </p>
-                )}
-
-                {ad.bodies.length > 0 && (
-                  <p className="text-sm text-gray-300 whitespace-pre-wrap">
-                    {ad.bodies[0].length > 300
-                      ? ad.bodies[0].substring(0, 300) + "..."
-                      : ad.bodies[0]}
-                  </p>
-                )}
-
-                {ad.link_captions.length > 0 && (
-                  <p className="text-xs text-gray-500 mt-1">{ad.link_captions[0]}</p>
-                )}
-
-                {ad.estimated_audience && (
-                  <p className="text-xs text-gray-500 mt-2">
-                    推定リーチ: {ad.estimated_audience.lower_bound?.toLocaleString()}
-                    {ad.estimated_audience.upper_bound
-                      ? ` 〜 ${ad.estimated_audience.upper_bound.toLocaleString()}`
-                      : "+"}
-                  </p>
-                )}
-              </div>
-            ))}
-          </div>
-
-          {metaAds.length === 0 && !metaLoading && !metaError && (
-            <div className="text-center py-12 text-gray-500">
-              <p className="text-lg mb-2">Meta広告を検索</p>
-              <p className="text-sm">キーワードを入力するか、プリセットボタンをクリックして競合の広告を検索できます</p>
+            <h3 className="text-sm font-medium text-white mb-2 mt-6">競合ページを直接確認</h3>
+            <div className="space-y-2">
+              {sites.map((site) => (
+                <a
+                  key={site.id}
+                  href={`https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=JP&q=${encodeURIComponent(site.name)}&media_type=all`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-between px-4 py-2.5 bg-white/5 rounded-lg hover:bg-white/10 transition-colors group"
+                >
+                  <span className="text-sm text-gray-300 group-hover:text-white">
+                    {site.name} の広告
+                  </span>
+                  <span className="text-xs text-gray-500 group-hover:text-brand">
+                    Ad Library →
+                  </span>
+                </a>
+              ))}
             </div>
-          )}
+          </div>
         </div>
       )}
     </div>
