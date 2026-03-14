@@ -56,19 +56,21 @@ export function AuthProvider({
   const [avatarUrl, setAvatarUrl] = useState<string | null>(
     useMock ? null : initialAvatarUrl ?? null
   );
-  const [subsidyEligible, setSubsidyEligible] = useState(false);
+  // 管理者/メンターは常に補助金メニューを表示（受講生プレビュー用）
+  const isAdminOrMentor = role === "admin" || role === "mentor";
+  const [subsidyEligible, setSubsidyEligible] = useState(isAdminOrMentor);
   const [loading] = useState(false);
 
-  // 補助金対象チェックをクライアントサイドで遅延実行（非ブロッキング）
+  // 受講生の場合のみ補助金対象チェックをクライアントサイドで遅延実行
   useEffect(() => {
-    if (useMock || !initialCustomerId) return;
+    if (useMock || isAdminOrMentor || !initialCustomerId) return;
     fetch("/api/student/plan")
       .then((r) => r.ok ? r.json() : null)
       .then((data) => {
         if (data?.subsidy_eligible) setSubsidyEligible(true);
       })
       .catch(() => {});
-  }, [useMock, initialCustomerId]);
+  }, [useMock, isAdminOrMentor, initialCustomerId]);
 
   const signOut = async () => {
     try {
