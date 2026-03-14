@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import type { UserRole } from "@strategy-school/shared-db";
 
 interface AuthContextType {
@@ -31,14 +31,14 @@ export function AuthProvider({
   initialRole,
   initialDisplayName,
   initialAvatarUrl,
-  initialSubsidyEligible,
+  initialCustomerId,
 }: {
   children: ReactNode;
   initialUser?: { email: string; id: string } | null;
   initialRole?: UserRole | null;
   initialDisplayName?: string | null;
   initialAvatarUrl?: string | null;
-  initialSubsidyEligible?: boolean;
+  initialCustomerId?: string | null;
 }) {
   const useMock = process.env.NEXT_PUBLIC_USE_MOCK === "true";
 
@@ -56,8 +56,19 @@ export function AuthProvider({
   const [avatarUrl, setAvatarUrl] = useState<string | null>(
     useMock ? null : initialAvatarUrl ?? null
   );
-  const [subsidyEligible] = useState(initialSubsidyEligible ?? false);
+  const [subsidyEligible, setSubsidyEligible] = useState(false);
   const [loading] = useState(false);
+
+  // 補助金対象チェックをクライアントサイドで遅延実行（非ブロッキング）
+  useEffect(() => {
+    if (useMock || !initialCustomerId) return;
+    fetch("/api/student/plan")
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (data?.subsidy_eligible) setSubsidyEligible(true);
+      })
+      .catch(() => {});
+  }, [useMock, initialCustomerId]);
 
   const signOut = async () => {
     try {

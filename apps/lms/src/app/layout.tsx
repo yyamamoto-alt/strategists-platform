@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth-context";
-import { getLmsSession, createLmsServerClient } from "@/lib/supabase/server";
+import { getLmsSession } from "@/lib/supabase/server";
 import { NavigationProgress } from "@/components/layout/navigation-progress";
 import { SWRProvider } from "@/components/swr-provider";
 
@@ -23,7 +23,7 @@ export default async function RootLayout({
   let initialRole: "admin" | "mentor" | "student" | null = null;
   let initialDisplayName: string | null = null;
   let initialAvatarUrl: string | null = null;
-  let initialSubsidyEligible = false;
+  let initialCustomerId: string | null = null;
 
   if (!useMock) {
     try {
@@ -33,19 +33,7 @@ export default async function RootLayout({
         initialRole = session.role;
         initialDisplayName = session.displayName;
         initialAvatarUrl = session.avatarUrl;
-
-        // 補助金対象かチェック
-        if (session.customerId) {
-          try {
-            const supabase = await createLmsServerClient();
-            const { data: contract } = await supabase
-              .from("contracts")
-              .select("subsidy_eligible")
-              .eq("customer_id", session.customerId)
-              .single() as { data: { subsidy_eligible: boolean } | null };
-            if (contract?.subsidy_eligible) initialSubsidyEligible = true;
-          } catch { /* ignore */ }
-        }
+        initialCustomerId = session.customerId;
       }
     } catch {
       // Supabase 未設定の場合はスキップ
@@ -59,7 +47,7 @@ export default async function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
       <body>
-        <AuthProvider initialUser={initialUser} initialRole={initialRole} initialDisplayName={initialDisplayName} initialAvatarUrl={initialAvatarUrl} initialSubsidyEligible={initialSubsidyEligible}>
+        <AuthProvider initialUser={initialUser} initialRole={initialRole} initialDisplayName={initialDisplayName} initialAvatarUrl={initialAvatarUrl} initialCustomerId={initialCustomerId}>
           <SWRProvider>
             <Suspense fallback={null}>
               <NavigationProgress />

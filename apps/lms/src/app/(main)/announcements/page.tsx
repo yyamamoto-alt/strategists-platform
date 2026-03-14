@@ -1,90 +1,71 @@
-"use client";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { getLmsSession } from "@/lib/supabase/server";
+import { AnnouncementsClient } from "./announcements-client";
 
-import { ChevronDown, ChevronUp } from "lucide-react";
-import { useEffect, useState } from "react";
-import type { AnnouncementPriority } from "@strategy-school/shared-db";
+export const dynamic = "force-dynamic";
 
-interface Announcement {
-  id: string;
-  title: string;
-  content: string;
-  priority: AnnouncementPriority;
-  published_at: string | null;
-}
+export default async function AnnouncementsPage() {
+  const useMock = process.env.NEXT_PUBLIC_USE_MOCK === "true";
+  if (useMock) {
+    return <AnnouncementsClient announcements={[]} />;
+  }
 
-const priorityColors: Record<AnnouncementPriority, string> = { low: "border-l-gray-500", normal: "border-l-brand", high: "border-l-orange-500", urgent: "border-l-red-500" };
-const priorityBadges: Record<AnnouncementPriority, string> = { low: "bg-gray-700 text-gray-300", normal: "bg-brand-muted text-brand-light", high: "bg-orange-900/50 text-orange-300", urgent: "bg-red-900/50 text-red-300" };
-const priorityLabels: Record<AnnouncementPriority, string> = { low: "低", normal: "通常", high: "高", urgent: "緊急" };
+  const session = await getLmsSession();
+  if (!session) {
+    return <AnnouncementsClient announcements={[]} />;
+  }
 
-function AutoLinkedText({ text }: { text: string }) {
-  const urlRegex = /(https?:\/\/[^\s]+)/g;
-  const parts = text.split(urlRegex);
-  return (
-    <>
-      {parts.map((part, i) =>
-        urlRegex.test(part) ? (
-          <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="text-brand-light hover:underline break-all">
-            {part}
-          </a>
-        ) : (
-          <span key={i}>{part}</span>
-        )
-      )}
-    </>
-  );
-}
+  const supabase = createAdminClient();
 
-export default function AnnouncementsPage() {
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
-  const [loading, setLoading] = useState(true);
+  // お知らせ取得とプラン情報を並列取得
+  const isAdmin = session.role === "admin" || session.role === "mentor";
 
-  useEffect(() => {
-    async function fetchAnnouncements() {
-      try {
-        const res = await fetch("/api/announcements");
-        if (res.ok) {
-          const data = await res.json();
-          setAnnouncements(data);
-        }
-      } catch (err) {
-        console.error("Failed to fetch announcements:", err);
-      } finally {
-        setLoading(false);
-      }
+  const announcementsPromise = supabase
+    .from("announcements")
+    .select("id, title, content, priority, published_at, target_plan_ids")
+    .eq("is_active", true)
+    .order("published_at", { ascending: false });
+
+  const planPromise = !isAdmin && session.customerId
+    ? Promise.all([
+        supabase
+          .from("contracts")
+          .select("plan_name")
+          .eq("customer_id", session.customerId)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+        supabase.from("plans").select("id, name").eq("is_active", true),
+      ])
+    : null;
+
+  const [announcementsResult, planResult] = await Promise.all([
+    announcementsPromise,
+    planPromise,
+  ]);
+
+  const data = announcementsResult.data || [];
+
+  // プランIDでフィルタリング
+  let planId: string | null = null;
+  if (planResult) {
+    const [contractRes, plansRes] = planResult;
+    const planName = (contractRes.data as any)?.plan_name;
+    const plans = (plansRes.data as any[]) || [];
+    if (planName) {
+      const matched = plans.find(
+        (p: any) => planName.includes(p.name) || p.name.includes(planName)
+      );
+      if (matched) planId = matched.id;
     }
-    fetchAnnouncements();
-  }, []);
+  }
 
-  return (
-    <div className="p-6 bg-surface min-h-screen">
-      <div className="mb-6"><h1 className="text-2xl font-bold text-white">お知らせ</h1><p className="text-sm text-gray-400 mt-1">重要なお知らせ・連絡事項</p></div>
-      {loading ? (
-        <div className="text-center py-12 text-gray-500">読み込み中...</div>
-      ) : announcements.length === 0 ? (
-        <div className="text-center py-12 text-gray-500">お知らせはありません</div>
-      ) : (
-        <div className="space-y-3">
-          {announcements.map((a) => {
-            const isExpanded = expandedId === a.id;
-            return (
-              <div key={a.id} className={`bg-surface-elevated rounded-xl border-l-4 ${priorityColors[a.priority]} overflow-hidden`}>
-                <button onClick={() => setExpandedId(isExpanded ? null : a.id)} className="w-full p-4 text-left flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${priorityBadges[a.priority]}`}>{priorityLabels[a.priority]}</span>
-                    <span className="text-white font-medium">{a.title}</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs text-gray-500">{a.published_at ? new Date(a.published_at).toLocaleDateString("ja-JP") : ""}</span>
-                    {isExpanded ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
-                  </div>
-                </button>
-                {isExpanded && <div className="px-4 pb-4 border-t border-white/10 pt-3"><p className="text-sm text-gray-300 whitespace-pre-wrap"><AutoLinkedText text={a.content} /></p></div>}
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
+  const filtered = isAdmin
+    ? data
+    : data.filter((a: any) => {
+        const targets = a.target_plan_ids || [];
+        return targets.length === 0 || (planId && targets.includes(planId));
+      });
+
+  return <AnnouncementsClient announcements={filtered as any} />;
 }

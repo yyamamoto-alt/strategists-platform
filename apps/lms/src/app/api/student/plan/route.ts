@@ -27,18 +27,23 @@ export async function GET() {
     .eq("id", session.customerId)
     .single() as { data: { attribute: string } | null };
 
-  // contract → plan_name → plan_id
+  // contract → plan_name + subsidy_eligible
   const { data: contract } = await supabase
     .from("contracts")
-    .select("plan_name")
+    .select("plan_name, subsidy_eligible")
     .eq("customer_id", session.customerId)
-    .maybeSingle() as { data: { plan_name: string | null } | null };
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle() as { data: { plan_name: string | null; subsidy_eligible: boolean } | null };
+
+  const subsidyEligible = contract?.subsidy_eligible ?? false;
 
   if (!contract?.plan_name) {
     return NextResponse.json({
       plan: null,
       target_attribute: customer?.attribute || null,
       role: session.role,
+      subsidy_eligible: subsidyEligible,
     });
   }
 
@@ -67,5 +72,6 @@ export async function GET() {
     plan,
     target_attribute: customer?.attribute || null,
     role: session.role,
+    subsidy_eligible: subsidyEligible,
   });
 }

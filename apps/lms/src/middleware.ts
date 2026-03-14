@@ -58,20 +58,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  // /admin/* と /api/admin/* は管理者のみ
-  if (pathname.startsWith("/admin") || pathname.startsWith("/api/admin")) {
-    const { data: roleData } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", user.id)
-      .single();
-
-    const role = (roleData as { role: string } | null)?.role;
-
-    if (role !== "admin" && role !== "mentor") {
-      return NextResponse.redirect(new URL("/courses", request.url));
-    }
-  }
+  // admin/mentor のロールチェックは各ページの getLmsSession() に委任
+  // middleware ではauth.getUser()のみ実行して認証確認に集中
 
   return response;
 }

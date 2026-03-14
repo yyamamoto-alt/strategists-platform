@@ -187,7 +187,7 @@ export function LessonPlayerClient({ slug, lessonId, allLessons, progressMap, cu
           </div>
         </div>
         <div className="p-6 max-w-4xl mx-auto">
-          <h1 className="text-2xl font-bold text-white mb-6">{lesson.title}</h1>
+          <h1 className="text-2xl font-bold text-white mb-6 pb-3 border-b-2 border-[#C9A84C]/30">{lesson.title}</h1>
           {lesson.video_url && lesson.markdown_content && lesson.lesson_type === "動画" ? (
             <div className="mb-6">
               <MultiVideoPlayer

@@ -12,31 +12,50 @@ export default async function StudentsAdminPage() {
 
   const admin = createAdminClient();
 
-  // LMSアカウント一覧
-  const { data: roles } = await admin
-    .from("user_roles")
-    .select("id, user_id, role, customer_id, created_at")
-    .order("created_at", { ascending: false });
+  // LMSアカウント一覧 + 顧客情報 + 招待一覧を並列取得
+  const [rolesResult, customersResult, invitationsResult] = await Promise.all([
+    admin
+      .from("user_roles")
+      .select("id, user_id, role, customer_id, created_at")
+      .order("created_at", { ascending: false }),
+    admin
+      .from("customers")
+      .select("id, name, email"),
+    admin
+      .from("invitations")
+      .select("id, email, display_name, role, token, expires_at, used_at, customer_id, created_at, source")
+      .eq("source", "lms")
+      .order("created_at", { ascending: false }),
+  ]);
 
-  const { data: customers } = await admin
-    .from("customers")
-    .select("id, name, email");
+  const typedRoles = (rolesResult.data || []) as { id: string; user_id: string; role: string; customer_id: string | null; created_at: string }[];
+  const typedCustomers = (customersResult.data || []) as { id: string; name: string; email: string | null }[];
 
-  const typedRoles = (roles || []) as { id: string; user_id: string; role: string; customer_id: string | null; created_at: string }[];
-  const typedCustomers = (customers || []) as { id: string; name: string; email: string | null }[];
+  // auth.admin.listUsers() でバッチ取得（ページネーション対応）
+  const userEmailMap = new Map<string, string>();
+  const perPage = 1000;
+  let page = 1;
+  let hasMore = true;
 
-  // getUserById を並列実行で高速化
-  const userDataResults = await Promise.all(
-    typedRoles.map((role) => admin.auth.admin.getUserById(role.user_id))
-  );
+  while (hasMore) {
+    const { data: { users } } = await admin.auth.admin.listUsers({ page, perPage });
+    for (const u of users) {
+      if (u.id && u.email) {
+        userEmailMap.set(u.id, u.email);
+      }
+    }
+    hasMore = users.length === perPage;
+    page++;
+  }
 
-  const students = typedRoles.map((role, index) => {
-    const userData = userDataResults[index]?.data;
-    const customer = typedCustomers.find((c) => c.id === role.customer_id);
+  const customerMap = new Map(typedCustomers.map((c) => [c.id, c]));
+
+  const students = typedRoles.map((role) => {
+    const customer = role.customer_id ? customerMap.get(role.customer_id) : undefined;
     return {
       id: role.id,
       user_id: role.user_id,
-      email: userData?.user?.email || "不明",
+      email: userEmailMap.get(role.user_id) || "不明",
       role: role.role,
       customer_id: role.customer_id,
       customer_name: customer?.name || null,
@@ -44,17 +63,10 @@ export default async function StudentsAdminPage() {
     };
   });
 
-  // 招待一覧（LMSからの招待のみ）
-  const { data: invitations } = await admin
-    .from("invitations")
-    .select("id, email, display_name, role, token, expires_at, used_at, customer_id, created_at, source")
-    .eq("source", "lms")
-    .order("created_at", { ascending: false });
-
   return (
     <StudentsAdminClient
       students={students}
-      invitations={(invitations as any[]) || []}
+      invitations={(invitationsResult.data as any[]) || []}
     />
   );
 }

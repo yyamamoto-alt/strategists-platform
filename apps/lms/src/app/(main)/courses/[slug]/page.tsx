@@ -22,26 +22,18 @@ export default async function CourseDetailPage({
 
   try {
     const supabase = createAdminClient();
-    const session = await getLmsSession();
-
-    // slugをデコード（URL encoding対策）
     const decodedSlug = decodeURIComponent(slug);
 
-    // まずslugで検索、なければidで検索
-    let { data: course } = await supabase
-      .from("courses")
-      .select("*")
-      .eq("slug", decodedSlug)
-      .maybeSingle() as { data: any };
-
-    if (!course) {
-      const { data: byId } = await supabase
+    // session と course を並列取得
+    const [session, courseQueryResult] = await Promise.all([
+      getLmsSession(),
+      supabase
         .from("courses")
         .select("*")
-        .eq("id", decodedSlug)
-        .maybeSingle() as { data: any };
-      course = byId;
-    }
+        .or(`slug.eq.${decodedSlug},id.eq.${decodedSlug}`)
+        .limit(1) as unknown as Promise<{ data: any[] | null }>,
+    ]);
+    const course = courseQueryResult.data?.[0] || null;
 
     if (!course) {
       console.error(`Course not found: slug="${decodedSlug}"`);

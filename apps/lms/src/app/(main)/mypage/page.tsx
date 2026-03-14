@@ -1,203 +1,123 @@
-"use client";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { getLmsSession } from "@/lib/supabase/server";
+import { MyPageClient } from "./mypage-client";
 
-import { useState, useEffect } from "react";
-import { User, Briefcase, GraduationCap, BookOpen, UserCheck, ExternalLink, MessageCircle, Calendar } from "lucide-react";
+export const dynamic = "force-dynamic";
 
-interface MentorInfo {
-  name: string;
-  booking_url: string | null;
-  line_url: string | null;
-  profile_text: string | null;
-  role: string;
-}
-
-interface MyPageData {
-  customer: {
-    name: string;
-    email: string | null;
-    phone: string | null;
-    attribute: string | null;
-    university: string | null;
-    faculty: string | null;
-    career_history: string | null;
-    target_companies: string | null;
-    target_firm_type: string | null;
-    transfer_intent: string | null;
-  } | null;
-  contract: {
-    plan_name: string;
-    contract_date: string;
-  } | null;
-  learning: {
-    coaching_start_date: string | null;
-    total_sessions: number | null;
-    remaining_sessions: number | null;
-  } | null;
-  mentors: MentorInfo[];
-}
-
-function InfoRow({ label, value }: { label: string; value: string | null | undefined }) {
-  return (
-    <div className="flex items-start py-2.5 border-b border-white/[0.06] last:border-0">
-      <span className="text-xs text-gray-500 w-32 shrink-0 pt-0.5">{label}</span>
-      <span className="text-sm text-gray-200">{value || "-"}</span>
-    </div>
-  );
-}
-
-function Section({ title, icon: Icon, children }: { title: string; icon: typeof User; children: React.ReactNode }) {
-  return (
-    <div className="bg-surface-card border border-white/10 rounded-xl overflow-hidden">
-      <div className="px-4 py-3 border-b border-white/10 flex items-center gap-2">
-        <Icon className="w-4 h-4 text-brand" />
-        <h2 className="text-sm font-semibold text-white">{title}</h2>
-      </div>
-      <div className="px-4 py-1">{children}</div>
-    </div>
-  );
-}
-
-function MentorCard({ mentor }: { mentor: MentorInfo }) {
-  const roleLabel = mentor.role === "primary" ? "主担当" : "副担当";
-  return (
-    <div className="bg-gradient-to-br from-surface-card to-surface-card/80 border border-white/10 rounded-xl overflow-hidden">
-      <div className="p-4 space-y-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-brand/20 flex items-center justify-center">
-            <span className="text-brand font-bold text-lg">{mentor.name.charAt(0)}</span>
-          </div>
-          <div>
-            <p className="text-lg font-bold text-white">{mentor.name}</p>
-            <p className="text-xs text-gray-400">{roleLabel}</p>
-          </div>
-        </div>
-
-        {mentor.profile_text && (
-          <p className="text-sm text-gray-300 leading-relaxed bg-white/[0.03] rounded-lg p-3">
-            {mentor.profile_text}
-          </p>
-        )}
-
-        <div className="space-y-2.5">
-          {mentor.booking_url && (
-            <div>
-              <a
-                href={mentor.booking_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-center gap-2 w-full py-3 px-4 bg-brand hover:bg-brand/90 text-white font-semibold rounded-lg transition-colors text-sm"
-              >
-                <Calendar className="w-4 h-4" />
-                面談を予約する
-                <ExternalLink className="w-3.5 h-3.5 ml-1 opacity-70" />
-              </a>
-              <p className="text-[11px] text-gray-500 mt-1.5 text-center">* ブックマークしておくと便利です</p>
-            </div>
-          )}
-          {mentor.line_url && (
-            <a
-              href={mentor.line_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 w-full py-2.5 px-4 bg-[#06C755] hover:bg-[#06C755]/90 text-white font-semibold rounded-lg transition-colors text-sm"
-            >
-              <MessageCircle className="w-4 h-4" />
-              LINEで友達追加
-              <ExternalLink className="w-3.5 h-3.5 ml-1 opacity-70" />
-            </a>
-          )}
-        </div>
-
-        {!mentor.booking_url && !mentor.line_url && (
-          <p className="text-xs text-gray-500 text-center py-2">メンターの連絡先情報は準備中です。</p>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function MentorsSection({ mentors }: { mentors: MentorInfo[] }) {
-  if (mentors.length === 0) return null;
-  return (
-    <div className="bg-gradient-to-br from-surface-card to-surface-card/80 border border-white/10 rounded-xl overflow-hidden">
-      <div className="px-4 py-3 border-b border-white/10 flex items-center gap-2">
-        <UserCheck className="w-4 h-4 text-brand" />
-        <h2 className="text-sm font-semibold text-white">担当メンター</h2>
-        {mentors.length > 1 && <span className="text-xs text-gray-500">{mentors.length}名</span>}
-      </div>
-      <div className="divide-y divide-white/5">
-        {mentors.map((m, i) => <MentorCard key={i} mentor={m} />)}
-      </div>
-    </div>
-  );
-}
-
-export default function MyPage() {
-  const [data, setData] = useState<MyPageData | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetch("/api/mypage")
-      .then((r) => r.json())
-      .then(setData)
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
-
-  if (loading) return <div className="p-6 text-gray-400">読み込み中...</div>;
-
-  if (!data?.customer) {
-    return (
-      <div className="p-6 bg-surface min-h-screen">
-        <h1 className="text-2xl font-bold text-white mb-4">マイページ</h1>
-        <div className="bg-surface-card border border-white/10 rounded-xl p-8 text-center text-gray-400">
-          <User className="w-12 h-12 mx-auto mb-4 opacity-50" />
-          <p>顧客情報が見つかりません。</p>
-          <p className="text-xs mt-2">ログインメールアドレスに紐づく情報がまだ登録されていない可能性があります。</p>
-        </div>
-      </div>
-    );
+export default async function MyPage() {
+  const useMock = process.env.NEXT_PUBLIC_USE_MOCK === "true";
+  if (useMock) {
+    return <MyPageClient data={null} />;
   }
 
-  const { customer, contract, learning, mentors } = data;
+  const session = await getLmsSession();
+  if (!session?.user) {
+    return <MyPageClient data={null} />;
+  }
+
+  const admin = createAdminClient();
+  const email = session.user.email;
+  const userId = session.user.id;
+
+  // メールアドレスで顧客を検索
+  const { data: customer } = await admin
+    .from("customers")
+    .select("id, name, email, phone, attribute, university, faculty, career_history, target_companies, target_firm_type, transfer_intent")
+    .eq("email", email)
+    .maybeSingle() as { data: Record<string, unknown> | null };
+
+  if (!customer) {
+    return <MyPageClient data={{ customer: null, contract: null, learning: null, mentors: [] }} />;
+  }
+
+  // 契約情報・学習情報・メンター紐付けを並列取得
+  const [contractResult, learningResult, studentMentorResult] = await Promise.all([
+    admin
+      .from("contracts")
+      .select("plan_name, contract_date")
+      .eq("customer_id", customer.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle() as unknown as Promise<{ data: { plan_name: string; contract_date: string } | null }>,
+    admin
+      .from("learning_records")
+      .select("coaching_start_date, total_sessions, remaining_sessions, mentor_name")
+      .eq("customer_id", customer.id)
+      .maybeSingle() as unknown as Promise<{ data: { coaching_start_date: string; total_sessions: number; remaining_sessions: number; mentor_name: string | null } | null }>,
+    admin
+      .from("student_mentors")
+      .select("mentor_id, role")
+      .eq("user_id", userId)
+      .eq("is_active", true)
+      .order("role", { ascending: true }) as unknown as Promise<{ data: { mentor_id: string; role: string }[] | null }>,
+  ]);
+
+  const contract = contractResult.data;
+  const learning = learningResult.data;
+  const studentMentorRows = studentMentorResult.data;
+
+  // メンター情報を取得
+  type MentorInfo = { name: string; booking_url: string | null; line_url: string | null; profile_text: string | null; role: string };
+  let mentors: MentorInfo[] = [];
+
+  if (studentMentorRows && studentMentorRows.length > 0) {
+    const mentorIds = studentMentorRows.map(r => r.mentor_id);
+    const { data: mentorRecords } = await admin
+      .from("mentors")
+      .select("id, name, booking_url, line_url, profile_text")
+      .in("id", mentorIds)
+      .eq("is_active", true) as { data: { id: string; name: string; booking_url: string | null; line_url: string | null; profile_text: string | null }[] | null };
+
+    if (mentorRecords) {
+      const mentorMap = new Map(mentorRecords.map(m => [m.id, m]));
+      for (const row of studentMentorRows) {
+        const rec = mentorMap.get(row.mentor_id);
+        if (rec) {
+          mentors.push({ name: rec.name, booking_url: rec.booking_url, line_url: rec.line_url, profile_text: rec.profile_text, role: row.role });
+        }
+      }
+    }
+  }
+
+  // フォールバック: learning_records.mentor_name or invitations.assigned_mentor_name
+  if (mentors.length === 0) {
+    const mentorName = learning?.mentor_name;
+    let fallbackName: string | null = mentorName || null;
+
+    if (!fallbackName) {
+      const { data: invitation } = await admin
+        .from("invitations")
+        .select("assigned_mentor_name")
+        .eq("email", email)
+        .not("assigned_mentor_name", "is", null)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle() as { data: { assigned_mentor_name: string } | null };
+      fallbackName = invitation?.assigned_mentor_name || null;
+    }
+
+    if (fallbackName) {
+      const { data: mentorData } = await admin
+        .from("mentors")
+        .select("name, booking_url, line_url, profile_text")
+        .eq("name", fallbackName)
+        .eq("is_active", true)
+        .maybeSingle() as { data: { name: string; booking_url: string | null; line_url: string | null; profile_text: string | null } | null };
+      const m = mentorData || { name: fallbackName, booking_url: null, line_url: null, profile_text: null };
+      mentors.push({ ...m, role: "primary" });
+    }
+  }
+
+  const { id: _id, ...safeCustomer } = customer;
 
   return (
-    <div className="p-6 bg-surface min-h-screen space-y-4 max-w-3xl">
-      <h1 className="text-2xl font-bold text-white">マイページ</h1>
-
-      {/* メンターセクション（最上部に目立つ配置） */}
-      <MentorsSection mentors={mentors || []} />
-
-      <Section title="基本情報" icon={User}>
-        <InfoRow label="名前" value={customer.name} />
-        <InfoRow label="メールアドレス" value={customer.email} />
-        <InfoRow label="電話番号" value={customer.phone} />
-        <InfoRow label="属性" value={customer.attribute} />
-        <InfoRow label="大学" value={customer.university} />
-        <InfoRow label="学部" value={customer.faculty} />
-      </Section>
-
-      <Section title="志望・キャリア" icon={Briefcase}>
-        <InfoRow label="志望企業" value={customer.target_companies} />
-        <InfoRow label="対策ファーム意向" value={customer.target_firm_type} />
-        <InfoRow label="経歴" value={customer.career_history} />
-        <InfoRow label="転職意向" value={customer.transfer_intent} />
-      </Section>
-
-      {contract && (
-        <Section title="契約情報" icon={GraduationCap}>
-          <InfoRow label="プラン" value={contract.plan_name} />
-          <InfoRow label="成約日" value={contract.contract_date ? new Date(contract.contract_date).toLocaleDateString("ja-JP") : null} />
-        </Section>
-      )}
-
-      {learning && (
-        <Section title="受講情報" icon={BookOpen}>
-          <InfoRow label="指導開始日" value={learning.coaching_start_date ? new Date(learning.coaching_start_date).toLocaleDateString("ja-JP") : null} />
-          <InfoRow label="総指導回数" value={learning.total_sessions != null ? `${learning.total_sessions}回` : null} />
-          <InfoRow label="残り指導回数" value={learning.remaining_sessions != null ? `${learning.remaining_sessions}回` : null} />
-        </Section>
-      )}
-    </div>
+    <MyPageClient
+      data={{
+        customer: safeCustomer as any,
+        contract,
+        learning,
+        mentors,
+      }}
+    />
   );
 }

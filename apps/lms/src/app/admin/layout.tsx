@@ -1,16 +1,20 @@
-"use client";
+import { getLmsSession } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
+import { AdminLayoutClient } from "./admin-layout-client";
 
-import { Sidebar } from "@/components/layout/sidebar";
-
-export default function AdminLayout({
+export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return (
-    <div className="flex h-screen overflow-hidden">
-      <Sidebar />
-      <main className="flex-1 overflow-y-auto">{children}</main>
-    </div>
-  );
+  const useMock = process.env.NEXT_PUBLIC_USE_MOCK === "true";
+
+  if (!useMock) {
+    const session = await getLmsSession();
+    if (!session || (session.role !== "admin" && session.role !== "mentor")) {
+      redirect("/courses");
+    }
+  }
+
+  return <AdminLayoutClient>{children}</AdminLayoutClient>;
 }
