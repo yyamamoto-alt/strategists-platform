@@ -16,11 +16,11 @@ interface NavItem {
 }
 
 const learningNavigation: NavItem[] = [
-  { name: "マイページ", href: "/mypage", icon: "👤" },
   { name: "コース", href: "/courses", icon: "📚" },
   { name: "課題", href: "/assignments-lms", icon: "📝" },
   { name: "プログレスシート", href: "/progress-sheets", icon: "📋" },
   { name: "お知らせ", href: "/announcements", icon: "🔔" },
+  { name: "設定", href: "/settings", icon: "⚙️" },
 ];
 
 const adminNavigation: NavItem[] = [
