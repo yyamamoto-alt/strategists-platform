@@ -1,6 +1,7 @@
 import { createLmsServerClient, getLmsSession } from "@/lib/supabase/server";
 import { CoursesClient } from "./courses-client";
 import { mockCourses } from "@/lib/mock-data";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
@@ -142,6 +143,12 @@ export default async function CoursesPage() {
         }
       }
       visibleCourses = visibleCourses.filter((c: any) => accessibleCourseIds.has(c.id));
+    }
+
+    // ===== 受講生が1コースのみ → コース詳細に直接リダイレクト =====
+    if (!isAdmin && visibleCourses.length === 1) {
+      const singleCourse = visibleCourses[0];
+      redirect(`/courses/${singleCourse.slug || singleCourse.id}`);
     }
 
     // ===== カリキュラムビューの場合: modules + lessons + progress も取得 =====

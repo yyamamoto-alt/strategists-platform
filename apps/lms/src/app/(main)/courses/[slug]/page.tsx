@@ -17,7 +17,7 @@ export default async function CourseDetailPage({
   if (useMock) {
     const course = mockCourses.find((c) => c.slug === slug || c.id === slug);
     const mods = mockModules.filter((m) => m.course_id === course?.id);
-    return <CourseDetailClient course={course || null} modules={mods} slug={slug} progressMap={{}} />;
+    return <CourseDetailClient course={course || null} modules={mods} slug={slug} progressMap={{}} forms={[]} />;
   }
 
   try {
@@ -34,11 +34,11 @@ export default async function CourseDetailPage({
 
     if (!course) {
       console.error(`Course not found: slug="${decodedSlug}"`);
-      return <CourseDetailClient course={null} modules={[]} slug={slug} progressMap={{}} />;
+      return <CourseDetailClient course={null} modules={[]} slug={slug} progressMap={{}} forms={[]} />;
     }
 
-    // modules + lessons + progress を並列取得
-    const [modulesRes, lessonsRes, progressRes] = await Promise.all([
+    // modules + lessons + progress + forms を並列取得
+    const [modulesRes, lessonsRes, progressRes, formsRes, formAccessRes, contractRes, plansRes] = await Promise.all([
       supabase
         .from("modules")
         .select("*")
@@ -55,6 +55,12 @@ export default async function CourseDetailPage({
             .select("lesson_id, status")
             .eq("customer_id", session.customerId)
         : Promise.resolve({ data: [] }),
+      (supabase as any).from("forms").select("id, title, url, description, sort_order").eq("is_active", true).order("sort_order", { ascending: true }),
+      (supabase as any).from("form_plan_access").select("form_id, plan_id"),
+      session?.customerId
+        ? supabase.from("contracts").select("plan_name").eq("customer_id", session.customerId).order("created_at", { ascending: false }).limit(1).maybeSingle()
+        : Promise.resolve({ data: null }),
+      supabase.from("plans").select("id, name").eq("is_active", true),
     ]);
 
     const modules = modulesRes.data as any[] | null;
@@ -79,11 +85,39 @@ export default async function CourseDetailPage({
       redirect(`/courses/${slug}/learn/${allLessons[0].id}`);
     }
 
-    return <CourseDetailClient course={course} modules={modulesWithLessons} slug={slug} progressMap={progressMap} />;
+    // フォームをプランでフィルタリング
+    const isAdmin = session?.role === "admin" || session?.role === "mentor";
+    const allForms = (formsRes.data || []) as { id: string; title: string; url: string; description: string | null; sort_order: number }[];
+    const allFormAccess = (formAccessRes.data || []) as { form_id: string; plan_id: string }[];
+    const contractData = (contractRes as any)?.data as { plan_name: string } | null;
+    const allPlans = (plansRes.data || []) as { id: string; name: string }[];
+
+    let planId: string | null = null;
+    if (contractData?.plan_name) {
+      const matched = allPlans.find((p) =>
+        contractData.plan_name.includes(p.name) || p.name.includes(contractData.plan_name)
+      );
+      if (matched) planId = matched.id;
+    }
+
+    const formAccessMap: Record<string, string[]> = {};
+    for (const a of allFormAccess) {
+      if (!formAccessMap[a.form_id]) formAccessMap[a.form_id] = [];
+      formAccessMap[a.form_id].push(a.plan_id);
+    }
+
+    const filteredForms = isAdmin
+      ? allForms
+      : allForms.filter((f) => {
+          const pids = formAccessMap[f.id] || [];
+          return pids.length === 0 || (planId && pids.includes(planId));
+        });
+
+    return <CourseDetailClient course={course} modules={modulesWithLessons} slug={slug} progressMap={progressMap} forms={filteredForms} />;
   } catch (e) {
     // redirect() throws a special error, re-throw it
     if (e && typeof e === "object" && "digest" in e) throw e;
     console.error("CourseDetailPage error:", e);
-    return <CourseDetailClient course={null} modules={[]} slug={slug} progressMap={{}} />;
+    return <CourseDetailClient course={null} modules={[]} slug={slug} progressMap={{}} forms={[]} />;
   }
 }
