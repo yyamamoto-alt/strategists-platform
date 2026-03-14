@@ -204,7 +204,6 @@ export function ContentTab({ pageDailyRows, traffic }: { pageDailyRows: PageDail
                   >
                     <td className="px-3 py-2 sticky left-0 bg-surface-raised z-10">
                       <div className="flex items-center gap-1.5">
-                        <span className={`text-[10px] transition-transform ${isExpanded ? "rotate-90" : ""}`}>▶</span>
                         <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
                           page.category === "contents" ? "bg-purple-400" : "bg-teal-400"
                         }`} />
