@@ -27,14 +27,28 @@ export function AnalyticsClient({
   youtubeFunnel,
   youtubeTrafficSources,
   youtubeSearchTerms,
+  lastUpdated,
 }: AnalyticsProps) {
   const [mainTab, setMainTab] = useState<MainTab>("seo");
 
+  const lu = lastUpdated;
+
   return (
     <div className="p-6 space-y-4">
-      <div>
-        <h1 className="text-2xl font-bold text-white">マーケティング分析</h1>
-        <p className="text-sm text-gray-500 mt-1">GA4 + Search Console + Google Ads + Meta Ads + YouTube</p>
+      <div className="flex items-end justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-white">マーケティング分析</h1>
+          <p className="text-sm text-gray-500 mt-1">GA4 + Search Console + Google Ads + Meta Ads + YouTube</p>
+        </div>
+        {lu && (
+          <div className="text-[10px] text-gray-500 text-right space-y-0.5">
+            <p className="text-gray-400 font-medium">最新データ取得日</p>
+            {lu.ga && <p>GA4: {lu.ga}</p>}
+            {lu.ads && <p>Google Ads: {lu.ads}</p>}
+            {lu.meta && <p>Meta Ads: {lu.meta}</p>}
+            {lu.youtube && <p>YouTube: {lu.youtube}</p>}
+          </div>
+        )}
       </div>
 
       <div className="flex gap-1 border-b border-white/10">

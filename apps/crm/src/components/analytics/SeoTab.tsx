@@ -205,7 +205,7 @@ function PagesTab({ pageDailyRows, searchQueries }: { pageDailyRows: PageDailyRo
                       <td className="py-2 px-3">
                         <div className="flex items-center gap-2">
                           <div className="flex-1 min-w-0">
-                            <p className="text-white truncate max-w-sm" title={p.page_title || ""}>{p.page_title || p.page_path}</p>
+                            <p className="text-white truncate max-w-xl" title={p.page_title || ""}>{p.page_title || p.page_path}</p>
                             <p className="text-[10px] text-gray-600 truncate">{p.page_path}</p>
                           </div>
                           <a href={`${SITE_BASE}${p.page_path}`} target="_blank" rel="noopener noreferrer"
@@ -480,7 +480,7 @@ function ContentDecay({ pageDailyRows }: { pageDailyRows: PageDailyRow[] }) {
             {items.slice(0, 30).map(d => (
               <tr key={d.page_path} className="border-b border-white/5 hover:bg-white/5">
                 <td className="py-2 px-3">
-                  <p className="text-white truncate max-w-[200px]" title={d.title || d.page_path}>{d.title || d.page_path}</p>
+                  <p className="text-white truncate max-w-xl" title={d.title || d.page_path}>{d.title || d.page_path}</p>
                   <p className="text-[10px] text-gray-600 truncate">{d.page_path}</p>
                 </td>
                 <td className="text-right py-2 px-2 text-gray-400">{d.prevUU}</td>

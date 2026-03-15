@@ -76,6 +76,12 @@ export interface AnalyticsProps {
   youtubeFunnel: YouTubeFunnelCustomer[];
   youtubeTrafficSources: YouTubeTrafficSource[];
   youtubeSearchTerms: YouTubeSearchTerm[];
+  lastUpdated?: {
+    ga: string | null;
+    ads: string | null;
+    meta: string | null;
+    youtube: string | null;
+  };
 }
 
 /* ───────── Shared Utils ───────── */

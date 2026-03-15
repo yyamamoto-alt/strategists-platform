@@ -61,6 +61,17 @@ export default async function AnalyticsPage() {
   const youtubeTrafficSources = v(results[14], []);
   const youtubeSearchTerms = v(results[15], []);
 
+  // 各データソースの最新日付を取得
+  const latestDate = (rows: { date: string }[]) =>
+    rows.length > 0 ? rows.reduce((max, r) => r.date > max ? r.date : max, rows[0].date) : null;
+
+  const lastUpdated = {
+    ga: latestDate(pageDailyRows),
+    ads: latestDate(adsCampaigns),
+    meta: latestDate(metaCampaigns),
+    youtube: latestDate(youtubeChannelDaily),
+  };
+
   return (
     <AnalyticsClient
       pageDailyRows={pageDailyRows}
@@ -79,6 +90,7 @@ export default async function AnalyticsPage() {
       youtubeFunnel={youtubeFunnel}
       youtubeTrafficSources={youtubeTrafficSources}
       youtubeSearchTerms={youtubeSearchTerms}
+      lastUpdated={lastUpdated}
     />
   );
 }
