@@ -1439,105 +1439,84 @@ function YouTubeKeywordAnalysis({ youtubeVideos, youtubeSearchTerms, trafficSour
         </div>
       </div>
 
-      {/* Main table */}
-      <div className="bg-surface-raised border border-white/10 rounded-xl overflow-hidden">
-        <div className="overflow-x-auto max-h-[700px] overflow-y-auto">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="bg-white/5">
-                <th className="text-left py-2 px-3 text-gray-500 font-medium sticky top-0 bg-[#22263a] z-10">キーワード</th>
-                <th className="text-center py-2 px-3 text-gray-500 font-medium sticky top-0 bg-[#22263a] z-10 whitespace-nowrap">タイプ</th>
-                <th className="text-center py-2 px-3 text-gray-500 font-medium sticky top-0 bg-[#22263a] z-10 whitespace-nowrap">CV意図</th>
-                <th className="text-center py-2 px-3 text-gray-500 font-medium sticky top-0 bg-[#22263a] z-10 whitespace-nowrap">YT検索</th>
-                <th className="text-right py-2 px-3 text-gray-500 font-medium sticky top-0 bg-[#22263a] z-10 whitespace-nowrap">検索流入</th>
-                <th className="text-left py-2 px-3 text-gray-500 font-medium sticky top-0 bg-[#22263a] z-10">推定#1動画</th>
-                <th className="text-right py-2 px-3 text-gray-500 font-medium sticky top-0 bg-[#22263a] z-10 whitespace-nowrap">シェア</th>
-                <th className="text-right py-2 px-3 text-gray-500 font-medium sticky top-0 bg-[#22263a] z-10 whitespace-nowrap">SC imp</th>
-                <th className="text-right py-2 px-3 text-gray-500 font-medium sticky top-0 bg-[#22263a] z-10 whitespace-nowrap">SC clicks</th>
-                <th className="text-right py-2 px-3 text-gray-500 font-medium sticky top-0 bg-[#22263a] z-10 whitespace-nowrap">SC順位</th>
-                <th className="text-right py-2 px-3 text-gray-500 font-medium sticky top-0 bg-[#22263a] z-10 whitespace-nowrap">Ads CV</th>
-                <th className="text-right py-2 px-3 text-gray-500 font-medium sticky top-0 bg-[#22263a] z-10 whitespace-nowrap">Ads費用</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((row, i) => {
-                const coverageBg = row.coverage === "上位" ? "border-l-2 border-l-green-500" : row.coverage === "弱い" ? "border-l-2 border-l-yellow-500" : "border-l-2 border-l-red-500";
-                return (
-                  <tr key={i} className={`${coverageBg} hover:bg-white/5`}>
-                    <td className="py-2 px-3">
-                      <span className="text-white font-medium">{row.keyword}</span>
-                    </td>
-                    <td className="text-center py-2 px-3 whitespace-nowrap">
-                      {row.firmType === "戦略" ? (
-                        <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-indigo-500/20 text-indigo-300">戦略</span>
-                      ) : row.firmType === "総合" ? (
-                        <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-500/20 text-gray-400">総合</span>
-                      ) : (
-                        <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-500/20 text-blue-300">{row.category}</span>
-                      )}
-                    </td>
-                    <td className="text-center py-2 px-3">
-                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                        row.cvIntent === "HIGH" ? "bg-red-500/20 text-red-300" : row.cvIntent === "MID" ? "bg-yellow-500/20 text-yellow-300" : "bg-gray-500/20 text-gray-400"
-                      }`}>{row.cvIntent}</span>
-                    </td>
-                    <td className="text-center py-2 px-3">
-                      {row.coverage === "上位" ? (
-                        <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-green-500/20 text-green-300">上位</span>
-                      ) : row.coverage === "弱い" ? (
-                        <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-yellow-500/20 text-yellow-300">弱い</span>
-                      ) : (
-                        <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-500/20 text-red-300">なし</span>
-                      )}
-                    </td>
-                    <td className="text-right py-2 px-3 text-gray-300 whitespace-nowrap">
-                      {row.ytSearchViews > 0 ? row.ytSearchViews.toLocaleString() : <span className="text-gray-600">—</span>}
-                    </td>
-                    <td className="py-2 px-3 text-gray-300 max-w-[200px] truncate" title={row.topVideoTitle || ""}>
-                      {row.topVideoTitle ? (
-                        <span className="text-gray-300">{row.topVideoTitle}</span>
-                      ) : <span className="text-gray-600">動画なし</span>}
-                    </td>
-                    <td className="text-right py-2 px-3 whitespace-nowrap">
-                      {row.topVideoShare > 0 ? (
-                        <span className={row.topVideoShare >= 25 ? "text-green-400" : "text-yellow-400"}>{row.topVideoShare}%</span>
-                      ) : <span className="text-gray-600">—</span>}
-                    </td>
-                    <td className="text-right py-2 px-3 text-gray-300 whitespace-nowrap">
-                      {row.scImp > 0 ? row.scImp.toLocaleString() : <span className="text-gray-600">—</span>}
-                    </td>
-                    <td className="text-right py-2 px-3 text-gray-300 whitespace-nowrap">
-                      {row.scClicks > 0 ? row.scClicks.toLocaleString() : <span className="text-gray-600">—</span>}
-                    </td>
-                    <td className="text-right py-2 px-3 whitespace-nowrap">
-                      {row.scAvgPos !== null ? (
-                        <span className={row.scAvgPos <= 3 ? "text-green-400" : row.scAvgPos <= 10 ? "text-yellow-400" : "text-gray-400"}>{row.scAvgPos}</span>
-                      ) : <span className="text-gray-600">—</span>}
-                    </td>
-                    <td className="text-right py-2 px-3 whitespace-nowrap">
-                      {row.adsCv > 0 ? (
-                        <span className="text-emerald-300 font-medium">{row.adsCv.toFixed(1)}</span>
-                      ) : <span className="text-gray-600">—</span>}
-                    </td>
-                    <td className="text-right py-2 px-3 whitespace-nowrap">
-                      {row.adsCost > 0 ? (
-                        <span className="text-gray-400">¥{Math.round(row.adsCost).toLocaleString()}</span>
-                      ) : <span className="text-gray-600">—</span>}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      {/* Priority-ranked action list */}
+      <div className="space-y-2">
+        {filtered
+          .map(row => {
+            // Priority scoring
+            let score = 0;
+            const reasons: string[] = [];
 
-      {/* Legend */}
-      <div className="flex gap-4 text-[10px] text-gray-500 flex-wrap">
-        <span><span className="inline-block w-2 h-2 rounded-full bg-green-500 mr-1"></span>上位: 検索流入100+かつシェア20%以上</span>
-        <span><span className="inline-block w-2 h-2 rounded-full bg-yellow-500 mr-1"></span>弱い: 検索流入あるが分散or少量</span>
-        <span><span className="inline-block w-2 h-2 rounded-full bg-red-500 mr-1"></span>なし: 検索流入ゼロ = 動画不在</span>
-        <span>SC = Search Console (Web検索) | Ads CV = Google Adsでの実CV数</span>
+            // CV intent weight
+            if (row.cvIntent === "HIGH") { score += 30; reasons.push("CV意図が高い"); }
+            else if (row.cvIntent === "MID") { score += 15; }
+
+            // Coverage gap = opportunity
+            if (row.coverage === "なし") { score += 25; reasons.push("動画が未対応"); }
+            else if (row.coverage === "弱い") { score += 15; reasons.push("検索流入が分散/少量"); }
+
+            // Ads CV = proven demand
+            if (row.adsCv >= 1) { score += 20; reasons.push(`Ads実績CV ${row.adsCv.toFixed(1)}件（広告費¥${Math.round(row.adsCost).toLocaleString()}）`); }
+
+            // SC search volume
+            if (row.scImp >= 500) { score += 10; reasons.push(`Web検索imp ${row.scImp.toLocaleString()}`); }
+            else if (row.scImp >= 100) { score += 5; }
+
+            // Strategic firm keyword
+            if (row.firmType === "戦略") { score += 5; reasons.push("戦略ファーム名KW"); }
+
+            const action = row.coverage === "なし"
+              ? "新規動画を作成"
+              : row.coverage === "弱い"
+                ? "既存動画のSEO改善 or 新規動画追加"
+                : "現状維持（上位表示済み）";
+
+            return { ...row, score, reasons, action };
+          })
+          .sort((a, b) => b.score - a.score)
+          .map((row, i) => {
+            const priorityColor = row.score >= 50 ? "border-l-red-500 bg-red-500/5" : row.score >= 30 ? "border-l-yellow-500 bg-yellow-500/5" : "border-l-gray-600";
+            const priorityLabel = row.score >= 50 ? "高" : row.score >= 30 ? "中" : "低";
+            const priorityBadge = row.score >= 50 ? "bg-red-500/20 text-red-300" : row.score >= 30 ? "bg-yellow-500/20 text-yellow-300" : "bg-gray-500/20 text-gray-400";
+
+            return (
+              <div key={i} className={`border-l-2 ${priorityColor} rounded-r-lg p-3 hover:bg-white/5 transition-colors`}>
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${priorityBadge}`}>
+                        {priorityLabel}
+                      </span>
+                      <span className="text-sm font-medium text-white">{row.keyword}</span>
+                      <span className={`px-1.5 py-0.5 rounded text-[10px] ${
+                        row.coverage === "上位" ? "bg-green-500/20 text-green-300" : row.coverage === "弱い" ? "bg-yellow-500/20 text-yellow-300" : "bg-red-500/20 text-red-300"
+                      }`}>{row.coverage}</span>
+                      {row.firmType && (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] bg-indigo-500/20 text-indigo-300">{row.firmType}</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-400 mb-1">
+                      <span className="text-gray-300 font-medium">アクション:</span> {row.action}
+                    </p>
+                    {row.reasons.length > 0 && (
+                      <p className="text-[10px] text-gray-500">
+                        理由: {row.reasons.join(" / ")}
+                      </p>
+                    )}
+                    {row.topVideoTitle && (
+                      <p className="text-[10px] text-gray-600 mt-0.5">
+                        現在の#1動画: {row.topVideoTitle} ({row.ytSearchViews.toLocaleString()}検索流入, シェア{row.topVideoShare}%)
+                      </p>
+                    )}
+                  </div>
+                  <div className="text-right shrink-0 ml-4">
+                    <p className="text-lg font-bold text-gray-400">{row.score}</p>
+                    <p className="text-[9px] text-gray-600">スコア</p>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
       </div>
     </div>
   );

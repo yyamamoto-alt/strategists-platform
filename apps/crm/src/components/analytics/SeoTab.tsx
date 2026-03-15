@@ -537,7 +537,7 @@ function KeywordTracking({ searchDailyRows }: { searchDailyRows: SearchDailyRow[
 
     const allWeeks = new Set<string>();
     for (const q of Array.from(qMap.values())) for (const wk of Array.from(q.weeklyPos.keys())) allWeeks.add(wk);
-    const wks = Array.from(allWeeks).sort();
+    const wks = Array.from(allWeeks).sort().reverse();
 
     const sorted = Array.from(qMap.values())
       .filter(q => q.totalClicks > 0 || q.totalImp >= 50)

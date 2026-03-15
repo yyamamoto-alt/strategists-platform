@@ -84,7 +84,7 @@ function LpTrafficTrendTab({ traffic, landingPage }: { traffic: TrafficDaily[]; 
     }
     return {
       sources: Array.from(srcMap.values()).sort((a, b) => b.totals[metric] - a.totals[metric]),
-      periodKeys: Array.from(allPKs).sort(),
+      periodKeys: Array.from(allPKs).sort().reverse(),
     };
   }, [lpRows, period, metric]);
 
