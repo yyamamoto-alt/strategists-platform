@@ -363,6 +363,45 @@ export interface MetaCampaignDaily {
   link_clicks: number;
   landing_page_views: number;
   cv_custom: number;
+  reach: number;
+  frequency: number;
+  cpm: number;
+}
+
+export interface MetaAdsetDaily {
+  date: string;
+  campaign_name: string;
+  adset_name: string;
+  impressions: number;
+  clicks: number;
+  ctr: number;
+  cpc: number;
+  spend: number;
+  link_clicks: number;
+  landing_page_views: number;
+  cv_custom: number;
+  reach: number;
+  frequency: number;
+  cpm: number;
+}
+
+export interface MetaAdDaily {
+  date: string;
+  campaign_name: string;
+  adset_name: string;
+  ad_name: string;
+  ad_id: string | null;
+  impressions: number;
+  clicks: number;
+  ctr: number;
+  cpc: number;
+  spend: number;
+  link_clicks: number;
+  landing_page_views: number;
+  cv_custom: number;
+  reach: number;
+  frequency: number;
+  cpm: number;
 }
 
 /** Meta Ads キャンペーン別日次データ */
@@ -380,6 +419,52 @@ export async function fetchMetaCampaignDaily(days: number = 90): Promise<MetaCam
       .order("date", { ascending: true })
       .range(offset, offset + PAGE_SIZE - 1);
     if (error) { console.error("Meta campaign fetch error:", error.message); break; }
+    if (!data || data.length === 0) break;
+    all.push(...data);
+    if (data.length < PAGE_SIZE) break;
+    offset += PAGE_SIZE;
+  }
+  return all;
+}
+
+/** Meta Ads 広告セット別日次データ */
+export async function fetchMetaAdsetDaily(days: number = 90): Promise<MetaAdsetDaily[]> {
+  const { from, to } = dateRange(days);
+  const all: MetaAdsetDaily[] = [];
+  let offset = 0;
+  const PAGE_SIZE = 1000;
+  while (true) {
+    const { data, error } = await supabase()
+      .from("analytics_meta_adset_daily")
+      .select("*")
+      .gte("date", from)
+      .lte("date", to)
+      .order("date", { ascending: true })
+      .range(offset, offset + PAGE_SIZE - 1);
+    if (error) { console.error("Meta adset fetch error:", error.message); break; }
+    if (!data || data.length === 0) break;
+    all.push(...data);
+    if (data.length < PAGE_SIZE) break;
+    offset += PAGE_SIZE;
+  }
+  return all;
+}
+
+/** Meta Ads 広告（クリエイティブ）別日次データ */
+export async function fetchMetaAdDaily(days: number = 90): Promise<MetaAdDaily[]> {
+  const { from, to } = dateRange(days);
+  const all: MetaAdDaily[] = [];
+  let offset = 0;
+  const PAGE_SIZE = 1000;
+  while (true) {
+    const { data, error } = await supabase()
+      .from("analytics_meta_ad_daily")
+      .select("*")
+      .gte("date", from)
+      .lte("date", to)
+      .order("date", { ascending: true })
+      .range(offset, offset + PAGE_SIZE - 1);
+    if (error) { console.error("Meta ad fetch error:", error.message); break; }
     if (!data || data.length === 0) break;
     all.push(...data);
     if (data.length < PAGE_SIZE) break;

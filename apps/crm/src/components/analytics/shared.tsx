@@ -11,6 +11,8 @@ import type {
   AdsKeywordDaily,
   AdsFunnelCustomer,
   MetaCampaignDaily,
+  MetaAdsetDaily,
+  MetaAdDaily,
   YouTubeVideo,
   YouTubeDaily,
   YouTubeChannelDaily,
@@ -30,6 +32,8 @@ export type {
   AdsKeywordDaily,
   AdsFunnelCustomer,
   MetaCampaignDaily,
+  MetaAdsetDaily,
+  MetaAdDaily,
   YouTubeVideo,
   YouTubeDaily,
   YouTubeChannelDaily,
@@ -69,6 +73,8 @@ export interface AnalyticsProps {
   adsKeywords: AdsKeywordDaily[];
   adsFunnel: AdsFunnelCustomer[];
   metaCampaigns: MetaCampaignDaily[];
+  metaAdsets: MetaAdsetDaily[];
+  metaAds: MetaAdDaily[];
   metaFunnel: AdsFunnelCustomer[];
   youtubeVideos: YouTubeVideo[];
   youtubeDaily: YouTubeDaily[];

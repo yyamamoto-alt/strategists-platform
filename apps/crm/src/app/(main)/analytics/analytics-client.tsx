@@ -20,6 +20,8 @@ export function AnalyticsClient({
   adsKeywords,
   adsFunnel,
   metaCampaigns,
+  metaAdsets,
+  metaAds,
   metaFunnel,
   youtubeVideos,
   youtubeDaily,
@@ -78,7 +80,7 @@ export function AnalyticsClient({
       )}
 
       {mainTab === "meta_ads" && (
-        <MetaAdsTab metaCampaigns={metaCampaigns} metaFunnel={metaFunnel} />
+        <MetaAdsTab metaCampaigns={metaCampaigns} metaAdsets={metaAdsets} metaAds={metaAds} metaFunnel={metaFunnel} />
       )}
 
       {mainTab === "youtube" && (

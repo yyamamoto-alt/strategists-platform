@@ -584,63 +584,72 @@ async function syncOneDay(
     }
   }
 
-  // 6. Meta (Facebook) Ads
+  // 6. Meta (Facebook) Ads — campaign / adset / ad level
   const META_ACCESS_TOKEN = process.env.META_ADS_ACCESS_TOKEN;
   const META_ACCOUNT_ID = process.env.META_ADS_ACCOUNT_ID || "1246885725997282";
   if (META_ACCESS_TOKEN) {
-    try {
-      const metaFields = "campaign_name,impressions,clicks,ctr,cpc,spend,actions";
-      let metaUrl: string | null =
+    // Helper: extract action values from Meta actions array
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const extractActions = (actions: any[]) => {
+      let linkClicks = 0, landingPageViews = 0, cvCustom = 0;
+      for (const action of actions || []) {
+        if (action.action_type === "link_click") linkClicks += parseFloat(action.value || "0");
+        else if (action.action_type === "landing_page_view") landingPageViews += parseFloat(action.value || "0");
+        else if (action.action_type === "offsite_conversion.fb_pixel_custom") cvCustom += parseFloat(action.value || "0");
+      }
+      return { linkClicks, landingPageViews, cvCustom };
+    };
+
+    // Helper: fetch Meta insights for a given level
+    const fetchMetaLevel = async (level: string, fields: string): Promise<AnyRow[]> => {
+      let url: string | null =
         `https://graph.facebook.com/v25.0/act_${META_ACCOUNT_ID}/insights?` +
         new URLSearchParams({
-          fields: metaFields,
+          fields,
           time_increment: "1",
-          level: "campaign",
+          level,
           time_range: JSON.stringify({ since: dateStr, until: dateStr }),
           limit: "500",
-          access_token: META_ACCESS_TOKEN,
+          access_token: META_ACCESS_TOKEN!,
         }).toString();
 
-      const metaRows: AnyRow[] = [];
-
-      while (metaUrl) {
-        const metaRes: Response = await fetch(metaUrl);
-        if (!metaRes.ok) {
-          console.error("Meta Ads API error:", metaRes.status, await metaRes.text().catch(() => ""));
+      const rows: AnyRow[] = [];
+      while (url) {
+        const res: Response = await fetch(url);
+        if (!res.ok) {
+          console.error(`Meta Ads API error (${level}):`, res.status, await res.text().catch(() => ""));
           break;
         }
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const metaJson: any = await metaRes.json();
-
-        for (const row of metaJson.data || []) {
-          // Extract action values
-          let linkClicks = 0;
-          let landingPageViews = 0;
-          let cvCustom = 0;
-          for (const action of row.actions || []) {
-            if (action.action_type === "link_click") linkClicks += parseFloat(action.value || "0");
-            else if (action.action_type === "landing_page_view") landingPageViews += parseFloat(action.value || "0");
-            else if (action.action_type === "offsite_conversion.fb_pixel_custom") cvCustom += parseFloat(action.value || "0");
-          }
-
-          metaRows.push({
-            date: dateStr,
-            campaign_name: row.campaign_name || "Unknown",
-            impressions: parseInt(row.impressions || "0"),
-            clicks: parseInt(row.clicks || "0"),
-            ctr: parseFloat(row.ctr || "0") * 100,
-            cpc: parseFloat(row.cpc || "0"),
-            spend: parseFloat(row.spend || "0"),
-            link_clicks: linkClicks,
-            landing_page_views: landingPageViews,
-            cv_custom: cvCustom,
-          });
-        }
-
-        // Cursor-based pagination
-        metaUrl = metaJson.paging?.next || null;
+        const json: any = await res.json();
+        rows.push(...(json.data || []));
+        url = json.paging?.next || null;
       }
+      return rows;
+    };
 
+    // 6a. Campaign level
+    try {
+      const campaignFields = "campaign_name,impressions,clicks,ctr,cpc,spend,actions,reach,frequency,cpm";
+      const rawCampaigns = await fetchMetaLevel("campaign", campaignFields);
+      const metaRows: AnyRow[] = rawCampaigns.map(row => {
+        const { linkClicks, landingPageViews, cvCustom } = extractActions(row.actions);
+        return {
+          date: dateStr,
+          campaign_name: row.campaign_name || "Unknown",
+          impressions: parseInt(row.impressions || "0"),
+          clicks: parseInt(row.clicks || "0"),
+          ctr: parseFloat(row.ctr || "0") * 100,
+          cpc: parseFloat(row.cpc || "0"),
+          spend: parseFloat(row.spend || "0"),
+          link_clicks: linkClicks,
+          landing_page_views: landingPageViews,
+          cv_custom: cvCustom,
+          reach: parseInt(row.reach || "0"),
+          frequency: parseFloat(row.frequency || "0"),
+          cpm: parseFloat(row.cpm || "0"),
+        };
+      });
       if (metaRows.length > 0) {
         const { error } = await supabase
           .from("analytics_meta_campaign_daily")
@@ -649,8 +658,78 @@ async function syncOneDay(
       }
       dayResult.meta_campaigns = metaRows.length;
     } catch (metaError) {
-      console.error("Meta Ads sync error:", metaError);
+      console.error("Meta Ads campaign sync error:", metaError);
       dayResult.meta_error = metaError instanceof Error ? metaError.message : "Unknown";
+    }
+
+    // 6b. Ad Set level
+    try {
+      const adsetFields = "campaign_name,adset_name,impressions,clicks,ctr,cpc,spend,actions,reach,frequency,cpm";
+      const rawAdsets = await fetchMetaLevel("adset", adsetFields);
+      const adsetRows: AnyRow[] = rawAdsets.map(row => {
+        const { linkClicks, landingPageViews, cvCustom } = extractActions(row.actions);
+        return {
+          date: dateStr,
+          campaign_name: row.campaign_name || "Unknown",
+          adset_name: row.adset_name || "Unknown",
+          impressions: parseInt(row.impressions || "0"),
+          clicks: parseInt(row.clicks || "0"),
+          ctr: parseFloat(row.ctr || "0") * 100,
+          cpc: parseFloat(row.cpc || "0"),
+          spend: parseFloat(row.spend || "0"),
+          link_clicks: linkClicks,
+          landing_page_views: landingPageViews,
+          cv_custom: cvCustom,
+          reach: parseInt(row.reach || "0"),
+          frequency: parseFloat(row.frequency || "0"),
+          cpm: parseFloat(row.cpm || "0"),
+        };
+      });
+      if (adsetRows.length > 0) {
+        const { error } = await supabase
+          .from("analytics_meta_adset_daily")
+          .upsert(adsetRows, { onConflict: "date,campaign_name,adset_name" });
+        if (error) console.error("Meta adset upsert error:", error.message);
+      }
+      dayResult.meta_adsets = adsetRows.length;
+    } catch (adsetError) {
+      console.error("Meta Ads adset sync error:", adsetError);
+    }
+
+    // 6c. Ad (creative) level
+    try {
+      const adFields = "campaign_name,adset_name,ad_name,ad_id,impressions,clicks,ctr,cpc,spend,actions,reach,frequency,cpm";
+      const rawAds = await fetchMetaLevel("ad", adFields);
+      const adRows: AnyRow[] = rawAds.map(row => {
+        const { linkClicks, landingPageViews, cvCustom } = extractActions(row.actions);
+        return {
+          date: dateStr,
+          campaign_name: row.campaign_name || "Unknown",
+          adset_name: row.adset_name || "Unknown",
+          ad_name: row.ad_name || "Unknown",
+          ad_id: row.ad_id || null,
+          impressions: parseInt(row.impressions || "0"),
+          clicks: parseInt(row.clicks || "0"),
+          ctr: parseFloat(row.ctr || "0") * 100,
+          cpc: parseFloat(row.cpc || "0"),
+          spend: parseFloat(row.spend || "0"),
+          link_clicks: linkClicks,
+          landing_page_views: landingPageViews,
+          cv_custom: cvCustom,
+          reach: parseInt(row.reach || "0"),
+          frequency: parseFloat(row.frequency || "0"),
+          cpm: parseFloat(row.cpm || "0"),
+        };
+      });
+      if (adRows.length > 0) {
+        const { error } = await supabase
+          .from("analytics_meta_ad_daily")
+          .upsert(adRows, { onConflict: "date,campaign_name,adset_name,ad_name" });
+        if (error) console.error("Meta ad upsert error:", error.message);
+      }
+      dayResult.meta_ads = adRows.length;
+    } catch (adError) {
+      console.error("Meta Ads ad sync error:", adError);
     }
   }
 

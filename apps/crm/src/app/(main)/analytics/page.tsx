@@ -10,6 +10,8 @@ import {
   fetchAdsKeywordDaily,
   fetchAdsFunnelData,
   fetchMetaCampaignDaily,
+  fetchMetaAdsetDaily,
+  fetchMetaAdDaily,
   fetchMetaFunnelData,
   fetchYouTubeVideos,
   fetchYouTubeDaily,
@@ -39,6 +41,8 @@ export default async function AnalyticsPage() {
     fetchYouTubeFunnelData(),
     fetchYouTubeTrafficSources(),
     fetchYouTubeSearchTerms(),
+    fetchMetaAdsetDaily(365),
+    fetchMetaAdDaily(365),
   ]);
 
   const v = <T,>(r: PromiseSettledResult<T>, fallback: T): T =>
@@ -60,6 +64,8 @@ export default async function AnalyticsPage() {
   const youtubeFunnel = v(results[13], []);
   const youtubeTrafficSources = v(results[14], []);
   const youtubeSearchTerms = v(results[15], []);
+  const metaAdsets = v(results[16], []);
+  const metaAds = v(results[17], []);
 
   // 各データソースの最新日付を取得
   const latestDate = (rows: { date: string }[]) =>
@@ -83,6 +89,8 @@ export default async function AnalyticsPage() {
       adsKeywords={adsKeywords}
       adsFunnel={adsFunnel}
       metaCampaigns={metaCampaigns}
+      metaAdsets={metaAdsets}
+      metaAds={metaAds}
       metaFunnel={metaFunnel}
       youtubeVideos={youtubeVideos}
       youtubeDaily={youtubeDaily}

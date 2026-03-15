@@ -2,21 +2,36 @@
 
 import { useState, useMemo } from "react";
 import {
-  LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend,
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend,
+  LineChart, Line,
 } from "recharts";
-import type { MetaCampaignDaily, AdsFunnelCustomer } from "@/lib/data/analytics";
+import type { MetaCampaignDaily, MetaAdsetDaily, MetaAdDaily, AdsFunnelCustomer } from "@/lib/data/analytics";
 import { SubTab, KpiCard, GranularitySelector, getDataDateRange, getWeekKey, getMonthKey } from "./shared";
 import type { AdsGranularity } from "./shared";
 
+/* ───────── Color palette for stacked bars ───────── */
+const CAMPAIGN_COLORS = [
+  "#f59e0b", "#3b82f6", "#10b981", "#ef4444", "#8b5cf6",
+  "#ec4899", "#06b6d4", "#f97316", "#84cc16", "#6366f1",
+  "#14b8a6", "#e11d48", "#a855f7", "#0ea5e9", "#facc15",
+];
+
+/* ───────── Format yen without K notation ───────── */
+function fmtYen(v: number): string {
+  return `¥${Math.round(v).toLocaleString()}`;
+}
+
 /* ───────── Meta Ads Tab Container ───────── */
-type MetaSub = "overview" | "campaigns" | "funnel";
+type MetaSub = "overview" | "campaigns" | "creatives" | "funnel";
 
 interface MetaAdsTabProps {
   metaCampaigns: MetaCampaignDaily[];
+  metaAdsets: MetaAdsetDaily[];
+  metaAds: MetaAdDaily[];
   metaFunnel: AdsFunnelCustomer[];
 }
 
-export function MetaAdsTab({ metaCampaigns, metaFunnel }: MetaAdsTabProps) {
+export function MetaAdsTab({ metaCampaigns, metaAdsets, metaAds, metaFunnel }: MetaAdsTabProps) {
   const [granularity, setGranularity] = useState<AdsGranularity>("weekly");
   const [metaSub, setMetaSub] = useState<MetaSub>("overview");
 
@@ -31,6 +46,20 @@ export function MetaAdsTab({ metaCampaigns, metaFunnel }: MetaAdsTabProps) {
     if (!from || !to) return metaCampaigns;
     return metaCampaigns.filter(r => r.date >= from && r.date <= to);
   }, [metaCampaigns, dateFrom, dateTo, dataRange]);
+
+  const filteredAdsets = useMemo(() => {
+    const from = dateFrom || dataRange.min;
+    const to = dateTo || dataRange.max;
+    if (!from || !to) return metaAdsets;
+    return metaAdsets.filter(r => r.date >= from && r.date <= to);
+  }, [metaAdsets, dateFrom, dateTo, dataRange]);
+
+  const filteredAds = useMemo(() => {
+    const from = dateFrom || dataRange.min;
+    const to = dateTo || dataRange.max;
+    if (!from || !to) return metaAds;
+    return metaAds.filter(r => r.date >= from && r.date <= to);
+  }, [metaAds, dateFrom, dateTo, dataRange]);
 
   if (metaCampaigns.length === 0) {
     return (
@@ -50,6 +79,7 @@ export function MetaAdsTab({ metaCampaigns, metaFunnel }: MetaAdsTabProps) {
         <div className="flex gap-2 flex-wrap">
           <SubTab label="日別消化" active={metaSub === "overview"} onClick={() => setMetaSub("overview")} />
           <SubTab label="キャンペーン別" active={metaSub === "campaigns"} onClick={() => setMetaSub("campaigns")} />
+          <SubTab label="クリエイティブ別" active={metaSub === "creatives"} onClick={() => setMetaSub("creatives")} />
           <SubTab label="成約顧客リスト" active={metaSub === "funnel"} onClick={() => setMetaSub("funnel")} />
         </div>
         {metaSub !== "funnel" && (
@@ -71,103 +101,107 @@ export function MetaAdsTab({ metaCampaigns, metaFunnel }: MetaAdsTabProps) {
       </div>
       {metaSub === "overview" && <MetaOverview metaCampaigns={filtered} />}
       {metaSub === "campaigns" && <MetaCampaignTable metaCampaigns={filtered} granularity={granularity} setGranularity={setGranularity} />}
+      {metaSub === "creatives" && <MetaCreativeTab metaAdsets={filteredAdsets} metaAds={filteredAds} metaCampaigns={filtered} />}
       {metaSub === "funnel" && <MetaFunnelTab metaFunnel={metaFunnel} />}
     </div>
   );
 }
 
-/* ─── Meta Daily Table + KPI (Overview) ─── */
-function MetaOverview({ metaCampaigns }: { metaCampaigns: MetaCampaignDaily[] }) {
-  const [selectedCampaign, setSelectedCampaign] = useState<string>("__all__");
+/* ═══════════════════════════════════════════
+   OVERVIEW: 積み上げ棒グラフ + 日別テーブル
+   ═══════════════════════════════════════════ */
 
-  const campaignNames = useMemo(() => {
+function MetaOverview({ metaCampaigns }: { metaCampaigns: MetaCampaignDaily[] }) {
+  // Build stacked bar chart data: each date has a bar with campaign segments
+  const { chartData, campaignNames } = useMemo(() => {
+    const dateMap = new Map<string, Record<string, string | number>>();
     const names = new Set<string>();
-    for (const r of metaCampaigns) names.add(r.campaign_name);
-    return Array.from(names).sort();
+
+    for (const r of metaCampaigns) {
+      names.add(r.campaign_name);
+      const existing = dateMap.get(r.date) || { date: r.date };
+      existing[r.campaign_name] = ((existing[r.campaign_name] as number) || 0) + r.spend;
+      dateMap.set(r.date, existing);
+    }
+
+    const sorted = Array.from(dateMap.values()).sort((a, b) =>
+      String(a.date).localeCompare(String(b.date))
+    );
+    return { chartData: sorted, campaignNames: Array.from(names).sort() };
   }, [metaCampaigns]);
 
-  const filteredData = useMemo(() => {
-    if (selectedCampaign === "__all__") return metaCampaigns;
-    return metaCampaigns.filter(r => r.campaign_name === selectedCampaign);
-  }, [metaCampaigns, selectedCampaign]);
-
-  // Aggregate by date
+  // Aggregate by date for table
   const dailyRows = useMemo(() => {
-    const map = new Map<string, { date: string; spend: number; clicks: number; impressions: number; cv_application: number; cv_micro: number }>();
-    for (const r of filteredData) {
+    const map = new Map<string, { date: string; spend: number; clicks: number; impressions: number; cv_application: number; cv_micro: number; reach: number; frequency: number; cpm: number }>();
+    for (const r of metaCampaigns) {
       const ex = map.get(r.date);
       if (ex) {
         ex.spend += r.spend; ex.clicks += r.clicks; ex.impressions += r.impressions;
         ex.cv_application += r.cv_custom; ex.cv_micro += r.link_clicks;
+        ex.reach += r.reach; ex.cpm = ex.impressions > 0 ? (ex.spend / ex.impressions) * 1000 : 0;
       } else {
-        map.set(r.date, { date: r.date, spend: r.spend, clicks: r.clicks, impressions: r.impressions, cv_application: r.cv_custom, cv_micro: r.link_clicks });
+        map.set(r.date, {
+          date: r.date, spend: r.spend, clicks: r.clicks, impressions: r.impressions,
+          cv_application: r.cv_custom, cv_micro: r.link_clicks,
+          reach: r.reach, frequency: r.frequency, cpm: r.cpm,
+        });
       }
     }
     return Array.from(map.values()).sort((a, b) => b.date.localeCompare(a.date));
-  }, [filteredData]);
+  }, [metaCampaigns]);
 
   const totals = useMemo(() => {
-    let spend = 0, clicks = 0, impressions = 0, cvApp = 0, cvMicro = 0;
+    let spend = 0, clicks = 0, impressions = 0, cvApp = 0, cvMicro = 0, reach = 0;
     for (const r of dailyRows) {
       spend += r.spend; clicks += r.clicks; impressions += r.impressions;
-      cvApp += r.cv_application; cvMicro += r.cv_micro;
+      cvApp += r.cv_application; cvMicro += r.cv_micro; reach += r.reach;
     }
     const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
     const cpa = cvApp > 0 ? spend / cvApp : 0;
-    return { spend, clicks, impressions, cvApp, cvMicro, ctr, cpa, days: dailyRows.length };
+    const cpm = impressions > 0 ? (spend / impressions) * 1000 : 0;
+    return { spend, clicks, impressions, cvApp, cvMicro, ctr, cpa, cpm, reach, days: dailyRows.length };
   }, [dailyRows]);
 
-  const chartData = useMemo(() => [...dailyRows].reverse(), [dailyRows]);
+  // CV trend chart data
+  const cvChartData = useMemo(() => [...dailyRows].reverse(), [dailyRows]);
 
   return (
     <div className="space-y-6">
-      {/* Campaign filter */}
-      <div className="flex items-center gap-3">
-        <select value={selectedCampaign} onChange={e => setSelectedCampaign(e.target.value)}
-          className="bg-white/5 border border-white/10 rounded-md px-3 py-1.5 text-xs text-gray-300 max-w-[400px]">
-          <option value="__all__">全キャンペーン</option>
-          {campaignNames.map(n => <option key={n} value={n}>{n}</option>)}
-        </select>
-        <span className="text-gray-600 text-[10px]">{totals.days}日間</span>
+      {/* Stacked bar chart: 広告費推移（キャンペーン別積み上げ） */}
+      <div className="bg-surface-raised border border-white/10 rounded-xl p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-medium text-gray-300">広告費推移（キャンペーン別積み上げ）</h3>
+          <span className="text-[10px] text-gray-500">合計: {fmtYen(totals.spend)} / {totals.days}日間</span>
+        </div>
+        <ResponsiveContainer width="100%" height={300}>
+          <BarChart data={chartData}>
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+            <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#6b7280" }}
+              tickFormatter={(v: string) => v.slice(5)} interval={Math.max(Math.floor(chartData.length / 15), 1)} />
+            <YAxis tick={{ fontSize: 10, fill: "#6b7280" }}
+              tickFormatter={(v: number) => fmtYen(v)} />
+            <Tooltip
+              contentStyle={{ backgroundColor: "#1f2937", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 11 }}
+              labelStyle={{ color: "#9ca3af" }}
+              formatter={(value) => [fmtYen(Number(value)), ""]}
+            />
+            <Legend wrapperStyle={{ fontSize: 10 }} />
+            {campaignNames.map((name, i) => (
+              <Bar key={name} dataKey={name} stackId="spend" fill={CAMPAIGN_COLORS[i % CAMPAIGN_COLORS.length]} />
+            ))}
+          </BarChart>
+        </ResponsiveContainer>
       </div>
 
-      {/* KPI Cards — Google広告と同じ構成 */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        <KpiCard title="合計 費用" value={`¥${Math.round(totals.spend).toLocaleString()}`} sub={<span className="text-gray-500 text-[10px]">期間合計</span>} />
-        <KpiCard title="合計 申し込み" value={totals.cvApp.toFixed(1)} sub={<span className="text-gray-500 text-[10px]">期間合計</span>} />
-        <KpiCard title="申し込みCPA" value={totals.cpa > 0 ? `¥${Math.round(totals.cpa).toLocaleString()}` : "—"} sub={<span className="text-gray-500 text-[10px]">期間平均</span>} />
-        <KpiCard title="CTR" value={`${totals.ctr.toFixed(2)}%`} sub={<span className="text-gray-500 text-[10px]">期間平均</span>} />
-        <KpiCard title="合計 クリック" value={totals.clicks.toLocaleString()} sub={<span className="text-gray-500 text-[10px]">期間合計</span>} />
-        <KpiCard title="合計 マイクロCV" value={totals.cvMicro.toLocaleString()} sub={<span className="text-gray-500 text-[10px]">期間合計</span>} />
-      </div>
-
-      {/* Charts: Cost + CV trend — Google広告と同じ構成 */}
+      {/* CV + CPAトレンド */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="bg-surface-raised border border-white/10 rounded-xl p-5">
-          <h3 className="text-sm font-medium text-gray-300 mb-4">広告費推移（日別）</h3>
-          <ResponsiveContainer width="100%" height={250}>
-            <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-              <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#6b7280" }}
-                tickFormatter={(v: string) => v.slice(5)} interval={Math.max(Math.floor(chartData.length / 12), 1)} />
-              <YAxis tick={{ fontSize: 10, fill: "#6b7280" }}
-                tickFormatter={(v: number) => v >= 1000 ? `${(v/1000).toFixed(0)}k` : String(v)} />
-              <Tooltip
-                contentStyle={{ backgroundColor: "#1f2937", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 12 }}
-                labelStyle={{ color: "#9ca3af" }}
-                formatter={(value) => [`¥${Math.round(Number(value)).toLocaleString()}`, "広告費"]}
-              />
-              <Line type="monotone" dataKey="spend" stroke="#f59e0b" strokeWidth={2} dot={false} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-        <div className="bg-surface-raised border border-white/10 rounded-xl p-5">
           <h3 className="text-sm font-medium text-gray-300 mb-4">申し込み・クリック数推移（日別）</h3>
-          <ResponsiveContainer width="100%" height={250}>
-            <LineChart data={chartData}>
+          <ResponsiveContainer width="100%" height={220}>
+            <LineChart data={cvChartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
               <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#6b7280" }}
-                tickFormatter={(v: string) => v.slice(5)} interval={Math.max(Math.floor(chartData.length / 12), 1)} />
+                tickFormatter={(v: string) => v.slice(5)} interval={Math.max(Math.floor(cvChartData.length / 12), 1)} />
               <YAxis yAxisId="left" tick={{ fontSize: 10, fill: "#6b7280" }} domain={[0, (dataMax: number) => Math.max(dataMax, 5)]} />
               <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10, fill: "#6b7280" }} />
               <Tooltip
@@ -180,9 +214,30 @@ function MetaOverview({ metaCampaigns }: { metaCampaigns: MetaCampaignDaily[] })
             </LineChart>
           </ResponsiveContainer>
         </div>
+        <div className="bg-surface-raised border border-white/10 rounded-xl p-5">
+          <h3 className="text-sm font-medium text-gray-300 mb-4">CPM・フリークエンシー推移</h3>
+          <ResponsiveContainer width="100%" height={220}>
+            <LineChart data={cvChartData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+              <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#6b7280" }}
+                tickFormatter={(v: string) => v.slice(5)} interval={Math.max(Math.floor(cvChartData.length / 12), 1)} />
+              <YAxis yAxisId="left" tick={{ fontSize: 10, fill: "#6b7280" }}
+                tickFormatter={(v: number) => fmtYen(v)} />
+              <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10, fill: "#6b7280" }} />
+              <Tooltip
+                contentStyle={{ backgroundColor: "#1f2937", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 12 }}
+                labelStyle={{ color: "#9ca3af" }}
+                formatter={(value, name) => [name === "CPM" ? fmtYen(Number(value)) : Number(value).toFixed(2), String(name)]}
+              />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <Line yAxisId="left" type="monotone" dataKey="cpm" name="CPM" stroke="#f59e0b" strokeWidth={2} dot={false} />
+              <Line yAxisId="right" type="monotone" dataKey="frequency" name="フリークエンシー" stroke="#ef4444" strokeWidth={2} dot={false} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
       </div>
 
-      {/* Daily table — Google広告と同じカラム構成 */}
+      {/* Daily table */}
       <div className="bg-surface-raised border border-white/10 rounded-xl overflow-hidden">
         <div className="px-5 py-3 border-b border-white/10">
           <h3 className="text-sm font-medium text-gray-300">日別消化状況</h3>
@@ -195,9 +250,11 @@ function MetaOverview({ metaCampaigns }: { metaCampaigns: MetaCampaignDaily[] })
                 <th className="text-right py-2.5 px-3">費用</th>
                 <th className="text-right py-2.5 px-3">クリック</th>
                 <th className="text-right py-2.5 px-3">表示回数</th>
+                <th className="text-right py-2.5 px-3">リーチ</th>
                 <th className="text-right py-2.5 px-3">CTR</th>
+                <th className="text-right py-2.5 px-3">CPM</th>
                 <th className="text-right py-2.5 px-3">申し込み</th>
-                <th className="text-right py-2.5 px-3">マイクロCV</th>
+                <th className="text-right py-2.5 px-3">リンククリック</th>
                 <th className="text-right py-2.5 px-3">CPA</th>
               </tr>
             </thead>
@@ -205,36 +262,41 @@ function MetaOverview({ metaCampaigns }: { metaCampaigns: MetaCampaignDaily[] })
               {dailyRows.map(r => {
                 const ctr = r.impressions > 0 ? (r.clicks / r.impressions) * 100 : 0;
                 const cpa = r.cv_application > 0 ? r.spend / r.cv_application : 0;
+                const cpm = r.impressions > 0 ? (r.spend / r.impressions) * 1000 : 0;
                 return (
                   <tr key={r.date} className="border-b border-white/5 hover:bg-white/5">
                     <td className="py-2.5 px-4 text-white font-medium">{r.date}</td>
-                    <td className="text-right py-2.5 px-3 text-white">¥{Math.round(r.spend).toLocaleString()}</td>
+                    <td className="text-right py-2.5 px-3 text-white">{fmtYen(r.spend)}</td>
                     <td className="text-right py-2.5 px-3 text-gray-300">{r.clicks.toLocaleString()}</td>
                     <td className="text-right py-2.5 px-3 text-gray-400">{r.impressions.toLocaleString()}</td>
+                    <td className="text-right py-2.5 px-3 text-gray-400">{r.reach.toLocaleString()}</td>
                     <td className="text-right py-2.5 px-3 text-gray-400">{ctr.toFixed(2)}%</td>
+                    <td className="text-right py-2.5 px-3 text-gray-400">{fmtYen(cpm)}</td>
                     <td className="text-right py-2.5 px-3">
                       <span className={r.cv_application > 0 ? "text-green-400 font-medium" : "text-gray-600"}>{r.cv_application.toFixed(1)}</span>
                     </td>
                     <td className="text-right py-2.5 px-3">
                       <span className={r.cv_micro > 0 ? "text-blue-400" : "text-gray-600"}>{r.cv_micro > 0 ? r.cv_micro : "—"}</span>
                     </td>
-                    <td className="text-right py-2.5 px-3 text-gray-300">{cpa > 0 ? `¥${Math.round(cpa).toLocaleString()}` : "—"}</td>
+                    <td className="text-right py-2.5 px-3 text-gray-300">{cpa > 0 ? fmtYen(cpa) : "—"}</td>
                   </tr>
                 );
               })}
               {dailyRows.length === 0 && (
-                <tr><td colSpan={8} className="py-8 text-center text-gray-500">データなし</td></tr>
+                <tr><td colSpan={10} className="py-8 text-center text-gray-500">データなし</td></tr>
               )}
               {dailyRows.length > 0 && (
                 <tr className="border-t border-white/20 bg-white/5 font-medium">
                   <td className="py-2.5 px-4 text-white">合計</td>
-                  <td className="text-right py-2.5 px-3 text-white">¥{Math.round(totals.spend).toLocaleString()}</td>
+                  <td className="text-right py-2.5 px-3 text-white">{fmtYen(totals.spend)}</td>
                   <td className="text-right py-2.5 px-3 text-white">{totals.clicks.toLocaleString()}</td>
                   <td className="text-right py-2.5 px-3 text-white">{totals.impressions.toLocaleString()}</td>
+                  <td className="text-right py-2.5 px-3 text-white">{totals.reach.toLocaleString()}</td>
                   <td className="text-right py-2.5 px-3 text-white">{totals.ctr.toFixed(2)}%</td>
+                  <td className="text-right py-2.5 px-3 text-white">{fmtYen(totals.cpm)}</td>
                   <td className="text-right py-2.5 px-3 text-green-400">{totals.cvApp.toFixed(1)}</td>
                   <td className="text-right py-2.5 px-3 text-blue-400">{totals.cvMicro.toLocaleString()}</td>
-                  <td className="text-right py-2.5 px-3 text-white">{totals.cpa > 0 ? `¥${Math.round(totals.cpa).toLocaleString()}` : "—"}</td>
+                  <td className="text-right py-2.5 px-3 text-white">{totals.cpa > 0 ? fmtYen(totals.cpa) : "—"}</td>
                 </tr>
               )}
             </tbody>
@@ -245,7 +307,10 @@ function MetaOverview({ metaCampaigns }: { metaCampaigns: MetaCampaignDaily[] })
   );
 }
 
-/* ─── Campaign Table (with granularity) — Google広告と同じ構成 ─── */
+/* ═══════════════════════════════════════════
+   CAMPAIGN TABLE (with granularity)
+   ═══════════════════════════════════════════ */
+
 function MetaCampaignTable({ metaCampaigns, granularity, setGranularity }: {
   metaCampaigns: MetaCampaignDaily[];
   granularity: AdsGranularity;
@@ -257,11 +322,12 @@ function MetaCampaignTable({ metaCampaigns, granularity, setGranularity }: {
 
     const campMap = new Map<string, {
       name: string;
-      totals: { cost: number; clicks: number; impressions: number; cv_application: number };
+      totals: { cost: number; clicks: number; impressions: number; cv_application: number; reach: number; cpm: number };
       periods: Map<string, { cost: number; clicks: number; impressions: number; cv_application: number }>;
     }>();
     const allPKs = new Set<string>();
     const zero = () => ({ cost: 0, clicks: 0, impressions: 0, cv_application: 0 });
+    const zeroTotals = () => ({ cost: 0, clicks: 0, impressions: 0, cv_application: 0, reach: 0, cpm: 0 });
 
     for (const r of metaCampaigns) {
       const pk = getPK(r.date);
@@ -270,15 +336,21 @@ function MetaCampaignTable({ metaCampaigns, granularity, setGranularity }: {
       if (ex) {
         ex.totals.cost += r.spend; ex.totals.clicks += r.clicks;
         ex.totals.impressions += r.impressions; ex.totals.cv_application += r.cv_custom;
+        ex.totals.reach += r.reach;
         const p = ex.periods.get(pk) || zero();
         p.cost += r.spend; p.clicks += r.clicks; p.impressions += r.impressions; p.cv_application += r.cv_custom;
         ex.periods.set(pk, p);
       } else {
-        const t = zero();
-        t.cost = r.spend; t.clicks = r.clicks; t.impressions = r.impressions; t.cv_application = r.cv_custom;
-        const p = new Map([[pk, { ...t }]]);
+        const t = zeroTotals();
+        t.cost = r.spend; t.clicks = r.clicks; t.impressions = r.impressions; t.cv_application = r.cv_custom; t.reach = r.reach;
+        const p = new Map([[pk, { cost: r.spend, clicks: r.clicks, impressions: r.impressions, cv_application: r.cv_custom }]]);
         campMap.set(r.campaign_name, { name: r.campaign_name, totals: t, periods: p });
       }
+    }
+
+    // Recalculate CPM for totals
+    for (const camp of campMap.values()) {
+      camp.totals.cpm = camp.totals.impressions > 0 ? (camp.totals.cost / camp.totals.impressions) * 1000 : 0;
     }
 
     return {
@@ -305,12 +377,13 @@ function MetaCampaignTable({ metaCampaigns, granularity, setGranularity }: {
             <thead className="sticky top-0 bg-surface-raised z-10">
               <tr className="border-b border-white/10 text-gray-400">
                 <th className="text-left py-2.5 px-3 min-w-[200px]">キャンペーン</th>
-                <th className="text-right py-2.5 px-2 w-20">合計 費用</th>
-                <th className="text-right py-2.5 px-2 w-16">合計 申し込み</th>
-                <th className="text-right py-2.5 px-2 w-16">CPA</th>
+                <th className="text-right py-2.5 px-2 w-24">合計 費用</th>
+                <th className="text-right py-2.5 px-2 w-16">申し込み</th>
+                <th className="text-right py-2.5 px-2 w-20">CPA</th>
                 <th className="text-right py-2.5 px-2 w-16">CTR</th>
+                <th className="text-right py-2.5 px-2 w-20">CPM</th>
                 {periodKeys.map(pk => (
-                  <th key={pk} className="text-center py-2.5 px-1 w-20 whitespace-nowrap text-[10px]">{formatPK(pk)}</th>
+                  <th key={pk} className="text-center py-2.5 px-1 w-24 whitespace-nowrap text-[10px]">{formatPK(pk)}</th>
                 ))}
               </tr>
             </thead>
@@ -318,31 +391,270 @@ function MetaCampaignTable({ metaCampaigns, granularity, setGranularity }: {
               {rows.map(r => {
                 const cpa = r.totals.cv_application > 0 ? r.totals.cost / r.totals.cv_application : 0;
                 const ctr = r.totals.impressions > 0 ? (r.totals.clicks / r.totals.impressions) * 100 : 0;
-                const maxCost = Math.max(...rows.map(x => x.totals.cost));
                 return (
                   <tr key={r.name} className="border-b border-white/5 hover:bg-white/5">
                     <td className="py-2.5 px-3 text-white font-medium truncate max-w-[200px]">{r.name}</td>
-                    <td className="text-right py-2.5 px-2 text-white">¥{Math.round(r.totals.cost).toLocaleString()}</td>
+                    <td className="text-right py-2.5 px-2 text-white">{fmtYen(r.totals.cost)}</td>
                     <td className="text-right py-2.5 px-2">
                       <span className={r.totals.cv_application > 0 ? "text-green-400" : "text-gray-600"}>{r.totals.cv_application.toFixed(1)}</span>
                     </td>
-                    <td className="text-right py-2.5 px-2 text-gray-300">{cpa > 0 ? `¥${Math.round(cpa).toLocaleString()}` : "—"}</td>
+                    <td className="text-right py-2.5 px-2 text-gray-300">{cpa > 0 ? fmtYen(cpa) : "—"}</td>
                     <td className="text-right py-2.5 px-2 text-gray-300">{ctr.toFixed(2)}%</td>
+                    <td className="text-right py-2.5 px-2 text-gray-300">{fmtYen(r.totals.cpm)}</td>
                     {periodKeys.map(pk => {
                       const p = r.periods.get(pk);
                       if (!p) return <td key={pk} className="text-center py-2.5 px-1 text-gray-700">—</td>;
+                      const maxCost = Math.max(...rows.map(x => x.totals.cost));
                       const intensity = maxCost > 0 ? p.cost / maxCost : 0;
                       const bg = intensity > 0.6 ? "bg-purple-500/30" : intensity > 0.3 ? "bg-purple-500/15" : intensity > 0 ? "bg-purple-500/5" : "";
                       return (
-                        <td key={pk} className={`text-center py-2.5 px-1 ${bg}`} title={`費用: ¥${Math.round(p.cost).toLocaleString()} / 申込CV: ${p.cv_application.toFixed(1)}`}>
-                          <span className="text-white/80 text-[10px]">¥{p.cost >= 1000 ? `${(p.cost/1000).toFixed(0)}k` : Math.round(p.cost)}</span>
+                        <td key={pk} className={`text-center py-2.5 px-1 ${bg}`} title={`費用: ${fmtYen(p.cost)} / 申込CV: ${p.cv_application.toFixed(1)}`}>
+                          <span className="text-white/80 text-[10px]">{fmtYen(p.cost)}</span>
                         </td>
                       );
                     })}
                   </tr>
                 );
               })}
-              {rows.length === 0 && <tr><td colSpan={5 + periodKeys.length} className="py-8 text-center text-gray-500">データなし</td></tr>}
+              {rows.length === 0 && <tr><td colSpan={6 + periodKeys.length} className="py-8 text-center text-gray-500">データなし</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════
+   CREATIVE TAB: クリエイティブ別分析
+   キャンペーン / 広告セット フィルタ付き
+   ═══════════════════════════════════════════ */
+
+type CreativeView = "ad" | "adset";
+
+function MetaCreativeTab({ metaAdsets, metaAds, metaCampaigns }: {
+  metaAdsets: MetaAdsetDaily[];
+  metaAds: MetaAdDaily[];
+  metaCampaigns: MetaCampaignDaily[];
+}) {
+  const [view, setView] = useState<CreativeView>("ad");
+  const [selectedCampaign, setSelectedCampaign] = useState<string>("__all__");
+  const [selectedAdset, setSelectedAdset] = useState<string>("__all__");
+  const [sortBy, setSortBy] = useState<string>("spend");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+
+  // Campaign names from campaign-level data
+  const campaignNames = useMemo(() => {
+    const names = new Set<string>();
+    for (const r of metaCampaigns) names.add(r.campaign_name);
+    return Array.from(names).sort();
+  }, [metaCampaigns]);
+
+  // Adset names filtered by selected campaign
+  const adsetNames = useMemo(() => {
+    const names = new Set<string>();
+    const source = view === "ad" ? metaAds : metaAdsets;
+    for (const r of source) {
+      if (selectedCampaign !== "__all__" && r.campaign_name !== selectedCampaign) continue;
+      names.add(r.adset_name);
+    }
+    return Array.from(names).sort();
+  }, [metaAds, metaAdsets, selectedCampaign, view]);
+
+  // Reset adset filter when campaign changes
+  const handleCampaignChange = (v: string) => {
+    setSelectedCampaign(v);
+    setSelectedAdset("__all__");
+  };
+
+  // Aggregated data
+  type AggRow = {
+    name: string; campaign: string; adset: string; ad_id: string | null;
+    spend: number; clicks: number; impressions: number; cv: number; link_clicks: number;
+    reach: number; cpm: number;
+  };
+
+  const aggregatedData: AggRow[] = useMemo(() => {
+    if (view === "adset") {
+      // Aggregate adset-level
+      const map = new Map<string, AggRow>();
+      for (const r of metaAdsets) {
+        if (selectedCampaign !== "__all__" && r.campaign_name !== selectedCampaign) continue;
+        const key = `${r.campaign_name}::${r.adset_name}`;
+        const ex = map.get(key);
+        if (ex) {
+          ex.spend += r.spend; ex.clicks += r.clicks; ex.impressions += r.impressions;
+          ex.cv += r.cv_custom; ex.link_clicks += r.link_clicks; ex.reach += r.reach;
+        } else {
+          map.set(key, {
+            name: r.adset_name, campaign: r.campaign_name, adset: r.adset_name, ad_id: null,
+            spend: r.spend, clicks: r.clicks, impressions: r.impressions,
+            cv: r.cv_custom, link_clicks: r.link_clicks, reach: r.reach, cpm: 0,
+          });
+        }
+      }
+      // Compute derived
+      for (const row of map.values()) {
+        row.cpm = row.impressions > 0 ? (row.spend / row.impressions) * 1000 : 0;
+      }
+      return Array.from(map.values());
+    } else {
+      // Aggregate ad (creative) level
+      const map = new Map<string, AggRow>();
+      for (const r of metaAds) {
+        if (selectedCampaign !== "__all__" && r.campaign_name !== selectedCampaign) continue;
+        if (selectedAdset !== "__all__" && r.adset_name !== selectedAdset) continue;
+        const key = `${r.campaign_name}::${r.adset_name}::${r.ad_name}`;
+        const ex = map.get(key);
+        if (ex) {
+          ex.spend += r.spend; ex.clicks += r.clicks; ex.impressions += r.impressions;
+          ex.cv += r.cv_custom; ex.link_clicks += r.link_clicks; ex.reach += r.reach;
+        } else {
+          map.set(key, {
+            name: r.ad_name, campaign: r.campaign_name, adset: r.adset_name, ad_id: r.ad_id,
+            spend: r.spend, clicks: r.clicks, impressions: r.impressions,
+            cv: r.cv_custom, link_clicks: r.link_clicks, reach: r.reach, cpm: 0,
+          });
+        }
+      }
+      for (const row of map.values()) {
+        row.cpm = row.impressions > 0 ? (row.spend / row.impressions) * 1000 : 0;
+      }
+      return Array.from(map.values());
+    }
+  }, [view, metaAdsets, metaAds, selectedCampaign, selectedAdset]);
+
+  // Sort
+  const sortedData = useMemo(() => {
+    const sorted = [...aggregatedData];
+    sorted.sort((a, b) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const va = (a as any)[sortBy] ?? 0;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const vb = (b as any)[sortBy] ?? 0;
+      return sortDir === "desc" ? vb - va : va - vb;
+    });
+    return sorted;
+  }, [aggregatedData, sortBy, sortDir]);
+
+  const handleSort = (col: string) => {
+    if (sortBy === col) {
+      setSortDir(d => d === "desc" ? "asc" : "desc");
+    } else {
+      setSortBy(col);
+      setSortDir("desc");
+    }
+  };
+
+  const sortIcon = (col: string) => {
+    if (sortBy !== col) return "";
+    return sortDir === "desc" ? " ↓" : " ↑";
+  };
+
+  const noData = metaAds.length === 0 && metaAdsets.length === 0;
+
+  if (noData) {
+    return (
+      <div className="bg-surface-raised border border-white/10 rounded-xl p-8 text-center">
+        <p className="text-gray-500 text-sm">クリエイティブ別データはまだ収集されていません。次回のデータ同期後に表示されます。</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Filters */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex gap-1 bg-white/5 rounded-lg p-0.5">
+          <button onClick={() => setView("ad")}
+            className={`px-3 py-1 text-xs rounded-md transition-colors ${view === "ad" ? "bg-brand text-white" : "text-gray-400 hover:text-white"}`}>
+            広告（クリエイティブ）別
+          </button>
+          <button onClick={() => setView("adset")}
+            className={`px-3 py-1 text-xs rounded-md transition-colors ${view === "adset" ? "bg-brand text-white" : "text-gray-400 hover:text-white"}`}>
+            広告セット別
+          </button>
+        </div>
+
+        <select value={selectedCampaign} onChange={e => handleCampaignChange(e.target.value)}
+          className="bg-white/5 border border-white/10 rounded-md px-3 py-1.5 text-xs text-gray-300 max-w-[300px]">
+          <option value="__all__">全キャンペーン</option>
+          {campaignNames.map(n => <option key={n} value={n}>{n}</option>)}
+        </select>
+
+        {view === "ad" && (
+          <select value={selectedAdset} onChange={e => setSelectedAdset(e.target.value)}
+            className="bg-white/5 border border-white/10 rounded-md px-3 py-1.5 text-xs text-gray-300 max-w-[300px]">
+            <option value="__all__">全広告セット</option>
+            {adsetNames.map(n => <option key={n} value={n}>{n}</option>)}
+          </select>
+        )}
+
+        <span className="text-[10px] text-gray-500">{sortedData.length}件</span>
+      </div>
+
+      {/* Table */}
+      <div className="bg-surface-raised border border-white/10 rounded-xl overflow-hidden">
+        <div className="overflow-x-auto max-h-[700px] overflow-y-auto">
+          <table className="w-full text-xs">
+            <thead className="sticky top-0 bg-surface-raised z-10">
+              <tr className="border-b border-white/10 text-gray-400">
+                <th className="text-left py-2.5 px-3 min-w-[200px]">{view === "ad" ? "広告名" : "広告セット名"}</th>
+                {view === "ad" && <th className="text-left py-2.5 px-3 min-w-[120px]">広告セット</th>}
+                <th className="text-left py-2.5 px-3 min-w-[120px]">キャンペーン</th>
+                <th className="text-right py-2.5 px-2 w-24 cursor-pointer hover:text-white" onClick={() => handleSort("spend")}>
+                  費用{sortIcon("spend")}
+                </th>
+                <th className="text-right py-2.5 px-2 w-16 cursor-pointer hover:text-white" onClick={() => handleSort("impressions")}>
+                  表示回数{sortIcon("impressions")}
+                </th>
+                <th className="text-right py-2.5 px-2 w-16 cursor-pointer hover:text-white" onClick={() => handleSort("clicks")}>
+                  クリック{sortIcon("clicks")}
+                </th>
+                <th className="text-right py-2.5 px-2 w-16">CTR</th>
+                <th className="text-right py-2.5 px-2 w-20 cursor-pointer hover:text-white" onClick={() => handleSort("cpm")}>
+                  CPM{sortIcon("cpm")}
+                </th>
+                <th className="text-right py-2.5 px-2 w-16 cursor-pointer hover:text-white" onClick={() => handleSort("link_clicks")}>
+                  リンククリック{sortIcon("link_clicks")}
+                </th>
+                <th className="text-right py-2.5 px-2 w-16 cursor-pointer hover:text-white" onClick={() => handleSort("cv")}>
+                  CV{sortIcon("cv")}
+                </th>
+                <th className="text-right py-2.5 px-2 w-20">CPA</th>
+                <th className="text-right py-2.5 px-2 w-16 cursor-pointer hover:text-white" onClick={() => handleSort("reach")}>
+                  リーチ{sortIcon("reach")}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {sortedData.map((r, i) => {
+                const ctr = r.impressions > 0 ? (r.clicks / r.impressions) * 100 : 0;
+                const cpa = r.cv > 0 ? r.spend / r.cv : 0;
+                return (
+                  <tr key={i} className="border-b border-white/5 hover:bg-white/5">
+                    <td className="py-2.5 px-3 text-white font-medium truncate max-w-[200px]" title={r.name}>{r.name}</td>
+                    {view === "ad" && <td className="py-2.5 px-3 text-gray-400 truncate max-w-[120px]" title={r.adset}>{r.adset}</td>}
+                    <td className="py-2.5 px-3 text-gray-400 truncate max-w-[120px]" title={r.campaign}>{r.campaign}</td>
+                    <td className="text-right py-2.5 px-2 text-white">{fmtYen(r.spend)}</td>
+                    <td className="text-right py-2.5 px-2 text-gray-400">{r.impressions.toLocaleString()}</td>
+                    <td className="text-right py-2.5 px-2 text-gray-300">{r.clicks.toLocaleString()}</td>
+                    <td className="text-right py-2.5 px-2 text-gray-400">{ctr.toFixed(2)}%</td>
+                    <td className="text-right py-2.5 px-2 text-gray-400">{fmtYen(r.cpm)}</td>
+                    <td className="text-right py-2.5 px-2">
+                      <span className={r.link_clicks > 0 ? "text-blue-400" : "text-gray-600"}>{r.link_clicks > 0 ? r.link_clicks.toLocaleString() : "—"}</span>
+                    </td>
+                    <td className="text-right py-2.5 px-2">
+                      <span className={r.cv > 0 ? "text-green-400 font-medium" : "text-gray-600"}>{r.cv > 0 ? r.cv.toFixed(1) : "—"}</span>
+                    </td>
+                    <td className="text-right py-2.5 px-2 text-gray-300">{cpa > 0 ? fmtYen(cpa) : "—"}</td>
+                    <td className="text-right py-2.5 px-2 text-gray-400">{r.reach > 0 ? r.reach.toLocaleString() : "—"}</td>
+                  </tr>
+                );
+              })}
+              {sortedData.length === 0 && (
+                <tr><td colSpan={view === "ad" ? 12 : 11} className="py-8 text-center text-gray-500">データなし</td></tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -394,7 +706,7 @@ function MetaFunnelTab({ metaFunnel }: { metaFunnel: AdsFunnelCustomer[] }) {
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <KpiCard title="成約顧客数" value={String(kpis.count)} sub={<span className="text-gray-500 text-[10px]">広告経由</span>} />
-        <KpiCard title="見込含売上合計" value={`¥${Math.round(kpis.revenue).toLocaleString()}`} sub={<span className="text-gray-500 text-[10px]">{kpis.count > 0 ? `平均: ¥${Math.round(kpis.revenue / kpis.count).toLocaleString()}` : "—"}</span>} />
+        <KpiCard title="見込含売上合計" value={fmtYen(kpis.revenue)} sub={<span className="text-gray-500 text-[10px]">{kpis.count > 0 ? `平均: ${fmtYen(kpis.revenue / kpis.count)}` : "—"}</span>} />
         <KpiCard title="既卒系" value={String(kpis.kisotsu)} sub={<span className="text-gray-500 text-[10px]">{kpis.count > 0 ? `${((kpis.kisotsu / kpis.count) * 100).toFixed(0)}%` : "—"}</span>} />
         <KpiCard title="新卒系" value={String(kpis.shinsotsu)} sub={<span className="text-gray-500 text-[10px]">{kpis.count > 0 ? `${((kpis.shinsotsu / kpis.count) * 100).toFixed(0)}%` : "—"}</span>} />
       </div>
@@ -433,7 +745,7 @@ function MetaFunnelTab({ metaFunnel }: { metaFunnel: AdsFunnelCustomer[] }) {
                   </td>
                   <td className="py-2.5 px-3 text-gray-400 truncate max-w-[150px]">{c.utm_campaign || "—"}</td>
                   <td className="py-2.5 px-3 text-gray-400 truncate max-w-[150px]">{c.utm_medium || "—"}</td>
-                  <td className="text-right py-2.5 px-3 text-white">{(() => { const agent = (c.referral_category === "フル利用" || c.referral_category === "一部利用") ? c.expected_referral_fee : 0; const ltv = c.confirmed_amount + c.subsidy_amount + agent; return ltv > 0 ? `¥${Math.round(ltv).toLocaleString()}` : "—"; })()}</td>
+                  <td className="text-right py-2.5 px-3 text-white">{(() => { const agent = (c.referral_category === "フル利用" || c.referral_category === "一部利用") ? c.expected_referral_fee : 0; const ltv = c.confirmed_amount + c.subsidy_amount + agent; return ltv > 0 ? fmtYen(ltv) : "—"; })()}</td>
                 </tr>
               ))}
               {closedCustomers.length === 0 && (
