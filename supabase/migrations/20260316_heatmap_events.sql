@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS heatmap_events (
   viewport_h    integer,
   page_h        integer,
   device_type   text NOT NULL CHECK (device_type IN ('pc', 'sp')),
+  lp_version    text DEFAULT 'unknown',
   created_at    timestamptz NOT NULL DEFAULT now()
 );
 

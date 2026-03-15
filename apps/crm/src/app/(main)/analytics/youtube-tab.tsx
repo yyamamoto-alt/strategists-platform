@@ -251,7 +251,7 @@ function YouTubeVideoTable({ youtubeVideos, youtubeDaily, channelDaily }: {
       if (isShort(v)) ex.shorts++;
       map.set(month, ex);
     }
-    return Array.from(map.values()).sort((a, b) => a.month.localeCompare(b.month));
+    return Array.from(map.values()).sort((a, b) => b.month.localeCompare(a.month));
   }, [youtubeVideos]);
 
   // Monthly heatmap data
