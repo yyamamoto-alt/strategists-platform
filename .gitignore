@@ -10,3 +10,4 @@ dist/
 .vercel
 .DS_Store
 .env.prod2
+apps/crm/.env.production
