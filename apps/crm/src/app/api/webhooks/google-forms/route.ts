@@ -203,8 +203,23 @@ export async function POST(request: Request) {
     let progressSheetUrl: string | null = null;
 
     if (formName === "カルテ") {
-      // 1. ProgressSheet作成（カルテ送信ごとに新規作成）
-      if (rawData["お名前"] && rawData["メールアドレス"]) {
+      // 1. ProgressSheet作成（新規顧客のみ。既存顧客は既にシートがあるので作成しない）
+      const shouldCreateSheet = isNew;
+      // 既存顧客でもcontractsにprogress_sheet_urlがない場合は作成する
+      let existingSheetUrl: string | null = null;
+      if (!isNew) {
+        const { data: existingContract } = await db
+          .from("contracts")
+          .select("progress_sheet_url")
+          .eq("customer_id", customerId)
+          .not("progress_sheet_url", "is", null)
+          .limit(1);
+        if (existingContract && existingContract.length > 0) {
+          existingSheetUrl = existingContract[0].progress_sheet_url;
+        }
+      }
+
+      if ((shouldCreateSheet || !existingSheetUrl) && rawData["お名前"] && rawData["メールアドレス"]) {
         const result = await createProgressSheet({
           name: rawData["お名前"],
           email: rawData["メールアドレス"],
@@ -241,6 +256,9 @@ export async function POST(request: Request) {
             });
           }
         }
+      } else {
+        // シート作成不要の場合（既にある）、既存URLを使用
+        progressSheetUrl = existingSheetUrl;
       }
 
       // 2. Slack通知（#biz-dev / #sales_新規申込）
