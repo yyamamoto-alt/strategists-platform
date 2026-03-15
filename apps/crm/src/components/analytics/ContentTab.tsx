@@ -261,7 +261,7 @@ export function ContentTab({ pageDailyRows, traffic }: { pageDailyRows: PageDail
                       return (
                         <td key={wk} className={`text-center px-2 py-2 text-gray-300 ${heatmapBg(val, maxVal)}`}>
                           {metric === "cvr" && fr
-                            ? <span>{fr.cv}/{fr.sessions}</span>
+                            ? <div className="leading-tight"><div className="text-gray-200">{fr.sessions > 0 ? `${(fr.cv / fr.sessions * 100).toFixed(1)}%` : ""}</div><div className="text-[9px] text-gray-500">{fr.cv}/{fr.sessions}</div></div>
                             : formatVal(metric, val)}
                         </td>
                       );
@@ -272,7 +272,7 @@ export function ContentTab({ pageDailyRows, traffic }: { pageDailyRows: PageDail
                         if (!allFr) return "";
                         let totalCV = 0, totalSess = 0;
                         for (const f of allFr.values()) { totalCV += f.cv; totalSess += f.sessions; }
-                        return <span>{totalCV}/{totalSess}</span>;
+                        return <div className="leading-tight"><div>{totalSess > 0 ? `${(totalCV / totalSess * 100).toFixed(1)}%` : ""}</div><div className="text-[9px] text-gray-500">{totalCV}/{totalSess}</div></div>;
                       })() : formatVal(metric, displayTotal)}
                     </td>
                   </tr>
