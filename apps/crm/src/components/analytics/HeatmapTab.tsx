@@ -193,10 +193,26 @@ export function HeatmapTab() {
             <p className="text-sm text-gray-400">クリックヒートマップ</p>
             {clicks.length === 0 && <p className="text-xs text-gray-600 mt-1">データがありません。トラッキング開始後にデータが蓄積されます。</p>}
           </div>
-          <div ref={containerRef} className="relative" style={{ height: device === "sp" ? 800 : 500, background: "#111" }}>
+          <div ref={containerRef} className="relative" style={{
+            width: device === "sp" ? 390 : "100%",
+            height: device === "sp" ? 2400 : 4000,
+            margin: device === "sp" ? "0 auto" : undefined,
+            overflow: "hidden",
+          }}>
+            <iframe
+              src={`https://akagiconsulting.com${page}`}
+              title="LP Preview"
+              className="w-full h-full border-0"
+              style={{
+                pointerEvents: "none",
+                transformOrigin: "top left",
+                transform: device === "sp" ? "scale(1)" : "none",
+              }}
+              sandbox="allow-same-origin"
+            />
             <canvas ref={canvasRef} className="absolute inset-0" style={{ pointerEvents: "none" }} />
             {clicks.length === 0 && (
-              <div className="absolute inset-0 flex items-center justify-center text-gray-600 text-sm">
+              <div className="absolute inset-0 flex items-center justify-center bg-black/50 text-gray-300 text-sm">
                 データ蓄積中...
               </div>
             )}
