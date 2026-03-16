@@ -11,6 +11,10 @@
     {
       "path": "/api/cron/competitor-check",
       "schedule": "0 21 * * 1,5"
+    },
+    {
+      "path": "/api/cron/recompute-attribution",
+      "schedule": "0 22 * * *"
     }
   ]
 }

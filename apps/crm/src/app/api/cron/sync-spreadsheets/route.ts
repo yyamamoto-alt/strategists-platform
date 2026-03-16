@@ -392,9 +392,19 @@ export async function GET(request: Request) {
       .order("created_at", { ascending: false })
       .limit(200);
 
-    const missing = (recentCustomers || []).filter((c: { id: string }) => !attrSet.has(c.id));
+    // 帰属未計算 or 「不明」の顧客を再計算
+    const { data: unknownAttr } = await db
+      .from("customer_channel_attribution")
+      .select("customer_id")
+      .eq("marketing_channel", "不明")
+      .limit(200);
+    const unknownSet = new Set((unknownAttr || []).map((r: { customer_id: string }) => r.customer_id));
 
-    for (const row of missing.slice(0, 50)) {
+    const toRecompute = (recentCustomers || []).filter((c: { id: string }) =>
+      !attrSet.has(c.id) || unknownSet.has(c.id)
+    );
+
+    for (const row of toRecompute.slice(0, 100)) {
       try {
         await computeAttributionForCustomer(row.id);
         attributionFilled++;
