@@ -1189,7 +1189,7 @@ export function computeChannelTrends(
 }
 
 // ================================================================
-// チャネル×属性別 申し込み数 / 成約数 棒グラフ用
+// チャネル×属性×月別 申し込み数 / 成約数 棒グラフ用
 // ================================================================
 
 export interface ChannelAttributeBar {
@@ -1199,59 +1199,50 @@ export interface ChannelAttributeBar {
   total: number;
 }
 
+/** 月別×チャネル別の生データ（1レコード = 1顧客の帰属情報） */
+export interface ChannelMonthlyRaw {
+  month: string;       // "2024/04"
+  channel: string;
+  isShinsotsu: boolean;
+  isClosed: boolean;
+}
+
 /**
- * チャネル×属性別の申し込み数・成約数を集計
- * @param mode "application" = 申し込み数, "closed" = 成約数
- * @param minCount これ以下のチャネルは「その他」にまとめる
+ * 過去24ヶ月分の月別チャネル帰属生データを返す
+ * クライアント側で属性フィルタ・集計を行う
  */
-export function computeChannelAttributeBars(
+export function computeChannelMonthlyRaw(
   customers: CustomerWithRelations[],
   attributionMap: Record<string, ChannelAttribution>,
-  mode: "application" | "closed",
-  minCount: number = 3,
-): ChannelAttributeBar[] {
+): ChannelMonthlyRaw[] {
   const hasAttribution = Object.keys(attributionMap).length > 0;
-  const map = new Map<string, { kisotsu: number; shinsotsu: number }>();
+
+  // 24ヶ月前の月初
+  const now = new Date();
+  const cutoff = new Date(now.getFullYear(), now.getMonth() - 23, 1);
+  const cutoffStr = cutoff.toISOString().slice(0, 10);
+
+  const result: ChannelMonthlyRaw[] = [];
 
   for (const c of customers) {
     if (!c.application_date) continue;
-    if (c.application_date < ANALYTICS_START_DATE) continue;
-
-    // 成約モードの場合、成約ステージのみ
-    if (mode === "closed") {
-      if (!isStageClosed(c.pipeline?.stage)) continue;
-    }
+    if (c.application_date < cutoffStr) continue;
 
     const channel = hasAttribution
       ? (attributionMap[c.id]?.marketing_channel || "不明")
       : (c.utm_source || "不明");
 
-    const shin = isShinsotsu(c.attribute);
+    const month = c.application_date.slice(0, 7).replace("-", "/");
 
-    if (!map.has(channel)) map.set(channel, { kisotsu: 0, shinsotsu: 0 });
-    const m = map.get(channel)!;
-    if (shin) m.shinsotsu++; else m.kisotsu++;
+    result.push({
+      month,
+      channel,
+      isShinsotsu: isShinsotsu(c.attribute),
+      isClosed: isStageClosed(c.pipeline?.stage),
+    });
   }
 
-  // まとめ処理: minCount以下のチャネルを「その他」に
-  const others = { kisotsu: 0, shinsotsu: 0 };
-  const result: ChannelAttributeBar[] = [];
-
-  for (const [channel, m] of map.entries()) {
-    const total = m.kisotsu + m.shinsotsu;
-    if (total <= minCount) {
-      others.kisotsu += m.kisotsu;
-      others.shinsotsu += m.shinsotsu;
-    } else {
-      result.push({ channel, kisotsu: m.kisotsu, shinsotsu: m.shinsotsu, total });
-    }
-  }
-
-  if (others.kisotsu + others.shinsotsu > 0) {
-    result.push({ channel: "その他", kisotsu: others.kisotsu, shinsotsu: others.shinsotsu, total: others.kisotsu + others.shinsotsu });
-  }
-
-  return result.sort((a, b) => b.total - a.total);
+  return result;
 }
 
 // ================================================================
