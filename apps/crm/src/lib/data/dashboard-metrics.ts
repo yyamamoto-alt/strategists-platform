@@ -1189,6 +1189,72 @@ export function computeChannelTrends(
 }
 
 // ================================================================
+// チャネル×属性別 申し込み数 / 成約数 棒グラフ用
+// ================================================================
+
+export interface ChannelAttributeBar {
+  channel: string;
+  kisotsu: number;
+  shinsotsu: number;
+  total: number;
+}
+
+/**
+ * チャネル×属性別の申し込み数・成約数を集計
+ * @param mode "application" = 申し込み数, "closed" = 成約数
+ * @param minCount これ以下のチャネルは「その他」にまとめる
+ */
+export function computeChannelAttributeBars(
+  customers: CustomerWithRelations[],
+  attributionMap: Record<string, ChannelAttribution>,
+  mode: "application" | "closed",
+  minCount: number = 3,
+): ChannelAttributeBar[] {
+  const hasAttribution = Object.keys(attributionMap).length > 0;
+  const map = new Map<string, { kisotsu: number; shinsotsu: number }>();
+
+  for (const c of customers) {
+    if (!c.application_date) continue;
+    if (c.application_date < ANALYTICS_START_DATE) continue;
+
+    // 成約モードの場合、成約ステージのみ
+    if (mode === "closed") {
+      if (!isStageClosed(c.pipeline?.stage)) continue;
+    }
+
+    const channel = hasAttribution
+      ? (attributionMap[c.id]?.marketing_channel || "不明")
+      : (c.utm_source || "不明");
+
+    const shin = isShinsotsu(c.attribute);
+
+    if (!map.has(channel)) map.set(channel, { kisotsu: 0, shinsotsu: 0 });
+    const m = map.get(channel)!;
+    if (shin) m.shinsotsu++; else m.kisotsu++;
+  }
+
+  // まとめ処理: minCount以下のチャネルを「その他」に
+  const others = { kisotsu: 0, shinsotsu: 0 };
+  const result: ChannelAttributeBar[] = [];
+
+  for (const [channel, m] of map.entries()) {
+    const total = m.kisotsu + m.shinsotsu;
+    if (total <= minCount) {
+      others.kisotsu += m.kisotsu;
+      others.shinsotsu += m.shinsotsu;
+    } else {
+      result.push({ channel, kisotsu: m.kisotsu, shinsotsu: m.shinsotsu, total });
+    }
+  }
+
+  if (others.kisotsu + others.shinsotsu > 0) {
+    result.push({ channel: "その他", kisotsu: others.kisotsu, shinsotsu: others.shinsotsu, total: others.kisotsu + others.shinsotsu });
+  }
+
+  return result.sort((a, b) => b.total - a.total);
+}
+
+// ================================================================
 // ダッシュボード直接集計（既存）
 // ================================================================
 
