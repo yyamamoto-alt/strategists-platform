@@ -209,8 +209,8 @@ function MetaOverview({ metaCampaigns }: { metaCampaigns: MetaCampaignDaily[] })
                 labelStyle={{ color: "#9ca3af" }}
               />
               <Legend wrapperStyle={{ fontSize: 11 }} />
-              <Line yAxisId="right" type="monotone" dataKey="clicks" name="クリック" stroke="#3b82f6" strokeWidth={2} dot={false} />
-              <Line yAxisId="left" type="monotone" dataKey="cv_application" name="申し込み" stroke="#10b981" strokeWidth={2} dot={false} />
+              <Line yAxisId="right" type="monotone" dataKey="clicks" name="Meta Ads クリック" stroke="#0668E1" strokeWidth={2} dot={false} />
+              <Line yAxisId="left" type="monotone" dataKey="cv_application" name="Meta Ads 申込" stroke="#00C853" strokeWidth={2} dot={false} />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -230,8 +230,8 @@ function MetaOverview({ metaCampaigns }: { metaCampaigns: MetaCampaignDaily[] })
                 formatter={(value, name) => [name === "CPM" ? fmtYen(Number(value)) : Number(value).toFixed(2), String(name)]}
               />
               <Legend wrapperStyle={{ fontSize: 11 }} />
-              <Line yAxisId="left" type="monotone" dataKey="cpm" name="CPM" stroke="#f59e0b" strokeWidth={2} dot={false} />
-              <Line yAxisId="right" type="monotone" dataKey="frequency" name="フリークエンシー" stroke="#ef4444" strokeWidth={2} dot={false} />
+              <Line yAxisId="left" type="monotone" dataKey="cpm" name="Meta CPM" stroke="#0668E1" strokeWidth={2} dot={false} />
+              <Line yAxisId="right" type="monotone" dataKey="frequency" name="Meta フリークエンシー" stroke="#1877F2" strokeWidth={2} dot={false} />
             </LineChart>
           </ResponsiveContainer>
         </div>

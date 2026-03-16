@@ -350,7 +350,7 @@ function YouTubeVideoTable({ youtubeVideos, youtubeDaily, channelDaily }: {
                 interval={0} />
               <YAxis tick={{ fontSize: 9, fill: "#6b7280" }} />
               <Tooltip contentStyle={{ backgroundColor: "#1f2937", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 11 }} labelStyle={{ color: "#9ca3af" }} />
-              <Line type="monotone" dataKey="total_views" name="視聴数" stroke="#ef4444" strokeWidth={2} dot={chartGranularity !== "daily"} />
+              <Line type="monotone" dataKey="total_views" name="YouTube 視聴数" stroke="#FF0000" strokeWidth={2} dot={chartGranularity !== "daily"} />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -369,7 +369,7 @@ function YouTubeVideoTable({ youtubeVideos, youtubeDaily, channelDaily }: {
                 interval={0} />
               <YAxis tick={{ fontSize: 9, fill: "#6b7280" }} />
               <Tooltip contentStyle={{ backgroundColor: "#1f2937", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 11 }} labelStyle={{ color: "#9ca3af" }} />
-              <Line type="monotone" dataKey="estimated_minutes_watched" name="視聴時間(分)" stroke="#f59e0b" strokeWidth={2} dot={chartGranularity !== "daily"} />
+              <Line type="monotone" dataKey="estimated_minutes_watched" name="YouTube 視聴時間(分)" stroke="#FF4444" strokeWidth={2} dot={chartGranularity !== "daily"} />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -382,8 +382,8 @@ function YouTubeVideoTable({ youtubeVideos, youtubeDaily, channelDaily }: {
               <YAxis tick={{ fontSize: 9, fill: "#6b7280" }} allowDecimals={false} />
               <Tooltip contentStyle={{ backgroundColor: "#1f2937", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 11 }} labelStyle={{ color: "#9ca3af" }} />
               <Legend wrapperStyle={{ fontSize: 10 }} />
-              <Bar dataKey="count" name="通常動画" fill="#ef4444" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="shorts" name="ショート" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="count" name="YouTube 通常動画" fill="#FF0000" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="shorts" name="YouTube ショート" fill="#FF6666" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>

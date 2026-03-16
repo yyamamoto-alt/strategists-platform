@@ -178,7 +178,7 @@ function AdsOverview({ adsCampaigns }: { adsCampaigns: AdsCampaignDaily[] }) {
                 labelStyle={{ color: "#9ca3af" }}
                 formatter={(value) => [`¥${Math.round(Number(value)).toLocaleString()}`, "広告費"]}
               />
-              <Line type="monotone" dataKey="cost" stroke="#f59e0b" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="cost" name="Google Ads 費用" stroke="#FBBC04" strokeWidth={2} dot={false} />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -196,8 +196,8 @@ function AdsOverview({ adsCampaigns }: { adsCampaigns: AdsCampaignDaily[] }) {
                 labelStyle={{ color: "#9ca3af" }}
               />
               <Legend wrapperStyle={{ fontSize: 11 }} />
-              <Line yAxisId="right" type="monotone" dataKey="clicks" name="クリック" stroke="#3b82f6" strokeWidth={2} dot={false} />
-              <Line yAxisId="left" type="monotone" dataKey="cv_application" name="申し込み" stroke="#10b981" strokeWidth={2} dot={false} />
+              <Line yAxisId="right" type="monotone" dataKey="clicks" name="Google Ads クリック" stroke="#4285F4" strokeWidth={2} dot={false} />
+              <Line yAxisId="left" type="monotone" dataKey="cv_application" name="Google Ads 申込" stroke="#34A853" strokeWidth={2} dot={false} />
             </LineChart>
           </ResponsiveContainer>
         </div>
