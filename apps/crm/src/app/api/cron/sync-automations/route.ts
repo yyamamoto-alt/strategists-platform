@@ -2,6 +2,7 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { fetchSheetData } from "@/lib/google-sheets";
 import { sendSlackMessage, sendSlackDM } from "@/lib/slack";
+import crypto from "crypto";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -162,6 +163,17 @@ export async function GET(request: Request) {
 
   for (const automation of automations) {
     try {
+      // ★ 同時実行防止: 処理直前にDBからlast_synced_rowを再取得
+      // （別リクエストが既に更新している場合、最新値を使う）
+      const { data: freshAuto } = await db
+        .from("automations")
+        .select("last_synced_row")
+        .eq("id", automation.id)
+        .single();
+      if (freshAuto) {
+        automation.last_synced_row = freshAuto.last_synced_row;
+      }
+
       // ★ 初回実行（last_synced_row = 0）の場合、既存データをスキップして
       //   現在の行数を記録するだけにする（過去データの一斉送信を防止）
       if (automation.last_synced_row === 0 || automation.last_synced_row === null) {
@@ -286,11 +298,43 @@ export async function GET(request: Request) {
       let notificationsSent = 0;
       let notificationsFailed = 0;
       let newRowsCount = 0;
+      let rowsSkippedDup = 0;
       const extraTargets: ExtraTarget[] = automation.extra_targets || [];
       const botUsername: string | undefined = automation.bot_username || undefined;
 
+      // 重複排除: 過去に送信済みの行ハッシュを取得
+      const { data: recentLogs } = await db
+        .from("automation_logs")
+        .select("details")
+        .eq("automation_id", automation.id)
+        .eq("status", "success")
+        .order("id", { ascending: false })
+        .limit(10);
+      const sentHashes = new Set<string>();
+      for (const log of (recentLogs || [])) {
+        const hashes = (log.details as Record<string, unknown>)?.sent_hashes;
+        if (Array.isArray(hashes)) {
+          for (const h of hashes) sentHashes.add(h as string);
+        }
+      }
+      const newSentHashes: string[] = [];
+
       for (const row of dataRows) {
         if (row.every((cell: string) => !cell || cell.trim() === "")) continue;
+
+        // 行データのハッシュで重複チェック（タイムスタンプ列を除外）
+        const rowForHash: Record<string, string> = {};
+        headers.forEach((h: string, i: number) => {
+          if (i < row.length && row[i] && h !== "タイムスタンプ") rowForHash[h] = row[i];
+        });
+        const rowHash = crypto.createHash("md5").update(JSON.stringify(rowForHash)).digest("hex");
+        if (sentHashes.has(rowHash)) {
+          rowsSkippedDup++;
+          continue;
+        }
+        sentHashes.add(rowHash);
+        newSentHashes.push(rowHash);
+
         newRowsCount++;
 
         // 行データをkey-valueに変換
@@ -329,22 +373,33 @@ export async function GET(request: Request) {
         }
       }
 
-      // last_synced_row更新
+      // last_synced_row更新 — 楽観ロック: 処理開始時の値と一致する場合のみ更新
+      // （同時実行で別リクエストが先に更新していた場合、上書きしない）
       const totalRow = automation.last_synced_row + dataRows.length;
 
-      const { error: updateError } = await db
+      const { data: updateResult, error: updateError } = await db
         .from("automations")
         .update({
           last_synced_row: totalRow,
           last_triggered_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })
-        .eq("id", automation.id);
+        .eq("id", automation.id)
+        .eq("last_synced_row", automation.last_synced_row) // 楽観ロック
+        .select("id");
 
       if (updateError) {
         console.error(
           `[sync-automations] ${automation.name}: last_synced_row更新失敗:`,
           updateError
+        );
+      } else if (!updateResult || updateResult.length === 0) {
+        console.warn(
+          `[sync-automations] ${automation.name}: last_synced_row競合検出 (expected=${automation.last_synced_row}, target=${totalRow}). 別プロセスが先に更新済み。スキップ。`
+        );
+      } else {
+        console.log(
+          `[sync-automations] ${automation.name}: last_synced_row ${automation.last_synced_row} → ${totalRow}`
         );
       }
 
@@ -353,7 +408,7 @@ export async function GET(request: Request) {
         status: "success",
         new_rows_count: newRowsCount,
         notifications_sent: notificationsSent,
-        details: { headers, sample_row: dataRows[0] },
+        details: { headers, sample_row: dataRows[0], sent_hashes: newSentHashes, skipped_duplicates: rowsSkippedDup },
       });
 
       if (logError) {
