@@ -2,8 +2,7 @@ import "server-only";
 
 import { createServiceClient } from "@/lib/supabase/server";
 import { computeAttributionForCustomer } from "@/lib/compute-attribution-for-customer";
-import { notifyEnrollmentFormReceived, notifySubsidyEnrollment, notifyKarteSubmission, notifyYouTubeReferral, notifyMentoringEvaluation } from "@/lib/slack";
-import { createProgressSheet, calculateAge } from "@/lib/google-sheets";
+import { notifyEnrollmentFormReceived, notifySubsidyEnrollment, notifyMentoringEvaluation } from "@/lib/slack";
 import crypto from "crypto";
 
 /** MD5ハッシュ（DB側のmd5()と同等） */
@@ -281,86 +280,9 @@ async function syncFormFieldsToRelatedTables(
       await db.from("customers").update(custUpdate).eq("id", customerId);
     }
 
-    // --- カルテ同期時: プログレスシート作成 + Slack通知 + YouTube通知 ---
-    // ★ 初回レコードのみ実行（再処理時はスキップ — スパム防止）
-    if (isNewRecord) {
-      // プログレスシート作成: 既にcontractsにシートURLがある場合はスキップ
-      let progressSheetUrl: string | null = null;
-
-      // 既存シートチェック
-      const { data: existingContract } = await db
-        .from("contracts")
-        .select("progress_sheet_url")
-        .eq("customer_id", customerId)
-        .not("progress_sheet_url", "is", null)
-        .limit(1);
-      const hasExistingSheet = existingContract && existingContract.length > 0;
-
-      if (!hasExistingSheet && rawData["お名前"] && rawData["メールアドレス"]) {
-        const result = await createProgressSheet({
-          name: rawData["お名前"],
-          email: rawData["メールアドレス"],
-          nameKana: rawData["フリガナ"],
-          attribute: rawData["属性"],
-          birthDate: rawData["生年月日"],
-          careerHistory: rawData["経歴詳細（学歴＋職歴）"],
-          caseStatus: rawData["ケース面接対策の状況"],
-          targetCompanies: rawData["志望企業"],
-          transferIntent: rawData["転職意向"],
-          university: custUpdate.university || undefined,
-          prefecture: rawData["居住地（都道府県）"],
-          gender: rawData["性別"],
-          utmSource: rawData["弊塾を最初に知った場所"],
-          enrollmentReason: rawData["弊塾を選んだ決め手"],
-          interviewTiming: rawData["面接予定時期"],
-          desiredStartDate: rawData["転職先への入社希望日"],
-          currentAgent: rawData["利用中のエージェント"],
-          planName: rawData["申込プラン"],
-          agentUsage: rawData["エージェント利用"],
-        });
-
-        if (result) {
-          progressSheetUrl = result.url;
-          // contracts テーブルに progress_sheet_url を書き込み
-          await upsertRelated(db, "contracts", customerId, {
-            progress_sheet_url: result.url,
-          });
-        }
-      }
-
-      // Slack通知: #biz-dev（名前/年齢/経歴/志望/プログレスシートURL）
-      const birthDate = rawData["生年月日"];
-      const age = birthDate ? calculateAge(birthDate) : null;
-
-      notifyKarteSubmission({
-        name: rawData["お名前"] || "不明",
-        attribute: rawData["属性"],
-        age,
-        xAccount: rawData["Xアカウント"],
-        careerHistory: rawData["経歴詳細（学歴＋職歴）"],
-        targetCompanies: rawData["志望企業"],
-        caseStatus: rawData["ケース面接対策の状況"],
-        interviewLevel: rawData["ケース面接のレベル"],
-        transferIntent: rawData["転職意向"],
-        desiredStartDate: rawData["転職先への入社希望日"],
-        utmSource: rawData["弊塾を最初に知った場所"],
-        progressSheetUrl: progressSheetUrl || undefined,
-        customerId,
-      }).catch(() => {}); // エラーで同期を止めない
-
-      // YouTube経由の場合、#youtubeにも通知
-      const utmSource = rawData["弊塾を最初に知った場所"] || "";
-      const enrollmentReason = rawData["弊塾を選んだ決め手"] || "";
-      if (utmSource.toLowerCase().includes("youtube") || enrollmentReason.toLowerCase().includes("youtube")) {
-        notifyYouTubeReferral({
-          name: rawData["お名前"] || "不明",
-          attribute: rawData["属性"],
-          careerHistory: rawData["経歴詳細（学歴＋職歴）"],
-          prefecture: rawData["居住地（都道府県）"],
-          customerId,
-        }).catch(() => {});
-      }
-    } // end isNewRecord guard
+    // --- カルテ同期時: データ更新のみ ---
+    // ★ Slack通知・ProgressSheet作成はWebhook（/api/webhooks/google-forms）が担当。
+    //   Sync経路では二重通知を防ぐため、データ更新のみ行う。
   }
 
   // --- 営業報告 → sales_pipeline ---
