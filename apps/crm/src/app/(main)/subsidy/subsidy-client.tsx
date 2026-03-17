@@ -1294,9 +1294,10 @@ export function SubsidyClient({ customers, firstPaidMap, completionData, documen
         const d = normalizeDate(c.pipeline?.sales_date);
         return d > SUBSIDY_START && d <= weekEnd;
       }).length;
-      // 講座受講開始人数 = 成約かつ支払い済み
+      // 講座受講開始人数 = 成約かつ補助金対象
       const courseStarted = collectionTargets.filter((c) => {
         if (!isCourseStarted(c)) return false;
+        if (!c.contract?.subsidy_eligible) return false;
         const d = normalizeDate(firstPaidMap[c.id]) || normalizeDate(c.contract?.payment_date) || normalizeDate(c.pipeline?.sales_date);
         return d > SUBSIDY_START && d <= weekEnd;
       }).length;
@@ -1308,6 +1309,7 @@ export function SubsidyClient({ customers, firstPaidMap, completionData, documen
     return months.map((month) => {
       const courseStarted = collectionTargets.filter((c) => {
         if (!isCourseStarted(c)) return false;
+        if (!c.contract?.subsidy_eligible) return false;
         const d = normalizeDate(firstPaidMap[c.id]) || normalizeDate(c.contract?.payment_date) || normalizeDate(c.pipeline?.sales_date);
         return d.startsWith(month);
       }).length;
@@ -1338,6 +1340,7 @@ export function SubsidyClient({ customers, firstPaidMap, completionData, documen
     // courseStarted
     return collectionTargets.filter((c) => {
       if (!isCourseStarted(c)) return false;
+      if (!c.contract?.subsidy_eligible) return false;
       const d = normalizeDate(firstPaidMap[c.id]) || normalizeDate(c.contract?.payment_date) || normalizeDate(c.pipeline?.sales_date);
       return d > SUBSIDY_START && d <= weekEnd;
     });

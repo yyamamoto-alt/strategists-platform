@@ -27,6 +27,7 @@ import {
   calcScheduleProgress,
   isAgentCustomer,
   isAgentConfirmed,
+  isShinsotsu,
   getSubsidyAmount,
   getSchoolRevenue,
 } from "@/lib/calc-fields";
@@ -420,17 +421,30 @@ export function CustomersClient() {
       { key: "subsidy_eligible", label: "補助金", width: 55, align: "center" as const, category: "agent",
         render: (c) => {
           const eligible = subsidyOverrides[c.id] ?? c.contract?.subsidy_eligible;
-          return (
-            <button
-              onClick={(e) => { e.stopPropagation(); handleSubsidyToggle(c.id, !!eligible); }}
-              className={`text-[10px] cursor-pointer hover:opacity-80 ${eligible ? "text-purple-400" : "text-gray-500"}`}
-              title="クリックで切替"
-            >
-              {eligible ? "対象" : "非対象"}
-            </button>
-          );
+          const stage = stageOverrides[c.id] || c.pipeline?.stage;
+          const isKisotsuSeiyaku = !isShinsotsu(c.attribute) && stage === "成約";
+          if (eligible) {
+            return <span className="text-purple-400 text-xs">対象</span>;
+          }
+          if (eligible === false && isKisotsuSeiyaku) {
+            return <span className="text-gray-500 text-xs">非対象</span>;
+          }
+          // 既卒・成約で補助金未設定 → 「非対象」を設定できるボタンを表示
+          if (isKisotsuSeiyaku) {
+            return (
+              <button
+                onClick={(e) => { e.stopPropagation(); handleSubsidyToggle(c.id, false); }}
+                className="text-[10px] text-gray-600 cursor-pointer hover:text-gray-400"
+                title="非対象に設定"
+              >設定</button>
+            );
+          }
+          return <span className="text-gray-700 text-xs">-</span>;
         },
-        filterValue: (c) => (subsidyOverrides[c.id] ?? c.contract?.subsidy_eligible) ? "対象" : "非対象" },
+        filterValue: (c) => {
+          const eligible = subsidyOverrides[c.id] ?? c.contract?.subsidy_eligible;
+          return eligible ? "対象" : eligible === false ? "非対象" : "";
+        } },
 
       // ─── 経歴 ───
       { key: "career_history", label: "経歴", width: 500,
