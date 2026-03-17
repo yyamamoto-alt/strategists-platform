@@ -2,8 +2,19 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import type { Database } from "@strategy-school/shared-db";
+import { rateLimit } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
+  // レート制限: 5回/分（ブルートフォース対策）
+  const ip = request.headers.get("x-forwarded-for") || "unknown";
+  const { success } = rateLimit(`login:${ip}`, 5, 60000);
+  if (!success) {
+    return NextResponse.json(
+      { error: "リクエスト回数の上限に達しました" },
+      { status: 429 }
+    );
+  }
+
   const { email, password } = await request.json();
 
   if (!email || !password) {

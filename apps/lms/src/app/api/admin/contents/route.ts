@@ -60,7 +60,8 @@ export async function POST(request: Request) {
     .single();
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("contents POST error:", error);
+    return NextResponse.json({ error: "教材の作成に失敗しました" }, { status: 500 });
   }
 
   // プランアクセス設定

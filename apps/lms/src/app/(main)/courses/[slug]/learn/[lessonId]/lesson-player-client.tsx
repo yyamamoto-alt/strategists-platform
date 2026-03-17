@@ -189,7 +189,11 @@ export function LessonPlayerClient({ slug, lessonId, allLessons, progressMap, cu
         </div>
         <div className="p-6 max-w-4xl mx-auto" ref={contentRef}>
           <h1 className="text-2xl font-bold text-white mb-6 pb-3 border-b-2 border-[#DC2626]/30">{lesson.title}</h1>
-          {lesson.video_url && lesson.markdown_content && lesson.lesson_type === "動画" ? (
+          {(lesson as any).video_urls?.length > 0 ? (
+            <div className="mb-6">
+              <MultiVideoPlayer videos={(lesson as any).video_urls} copyProtected={lesson.copy_protected} />
+            </div>
+          ) : lesson.video_url && lesson.markdown_content && lesson.lesson_type === "動画" ? (
             <div className="mb-6">
               <MultiVideoPlayer mainVideoUrl={lesson.video_url} htmlContent={lesson.markdown_content} copyProtected={lesson.copy_protected} />
             </div>

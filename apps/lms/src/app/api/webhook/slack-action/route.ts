@@ -3,6 +3,7 @@ import { sendInviteEmail } from "@/lib/email";
 import { mapPlanToCourseIds, sendMentorAssignmentDM, fetchMentors } from "@/lib/slack";
 import { NextResponse } from "next/server";
 import crypto from "crypto";
+import { rateLimit } from "@/lib/rate-limit";
 
 /**
  * POST /api/webhook/slack-action
@@ -12,6 +13,16 @@ import crypto from "crypto";
  * - Interactivity & Shortcuts → Request URL: https://strategists-lms.vercel.app/api/webhook/slack-action
  */
 export async function POST(request: Request) {
+  // レート制限: 30回/分
+  const ip = request.headers.get("x-forwarded-for") || "unknown";
+  const { success } = rateLimit(`slack-action:${ip}`, 30, 60000);
+  if (!success) {
+    return NextResponse.json(
+      { error: "リクエスト回数の上限に達しました" },
+      { status: 429 }
+    );
+  }
+
   // Slackはapplication/x-www-form-urlencodedでpayloadを送る
   // 署名検証のため生のボディを先に取得
   const rawBodyText = await request.text();

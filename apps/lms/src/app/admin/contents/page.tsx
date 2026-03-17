@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { Pencil, Trash2, Plus, Check, X, Shield } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 interface Plan {
   id: string;
@@ -35,6 +36,7 @@ export default function ContentsAdminPage() {
   const [newCategory, setNewCategory] = useState("教科書");
   const [newTarget, setNewTarget] = useState("既卒");
   const [filter, setFilter] = useState<string>("all");
+  const { addToast } = useToast();
 
   const fetchData = useCallback(async () => {
     const [contentsRes, plansRes] = await Promise.all([
@@ -70,7 +72,10 @@ export default function ContentsAdminPage() {
   const handleDelete = async (id: string, title: string) => {
     if (!confirm(`「${title}」を削除しますか？`)) return;
     const res = await fetch(`/api/admin/contents/${id}`, { method: "DELETE" });
-    if (res.ok) setContents((prev) => prev.filter((c) => c.id !== id));
+    if (res.ok) {
+      setContents((prev) => prev.filter((c) => c.id !== id));
+      addToast("削除しました", "success");
+    }
   };
 
   const startEditPlans = (content: Content) => {

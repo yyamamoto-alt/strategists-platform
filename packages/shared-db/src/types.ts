@@ -295,6 +295,13 @@ export interface Module {
   lessons?: Lesson[];
 }
 
+export interface LessonVideo {
+  title: string;
+  url: string;
+  duration_minutes?: number;
+  description?: string;
+}
+
 export interface Lesson {
   id: string;
   course_id: string;
@@ -306,6 +313,7 @@ export interface Lesson {
   lesson_type: "動画" | "テキスト" | "ケース演習" | "模擬面接" | "課題";
   content_url: string | null;
   video_url?: string | null;
+  video_urls?: LessonVideo[];
   markdown_content?: string | null;
   copy_protected?: boolean;
   content_format?: "markdown" | "html";

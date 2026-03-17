@@ -93,6 +93,44 @@ function NavSection({ title, items, role }: { title: string; items: NavItem[]; r
   );
 }
 
+export function MobileSidebar({
+  isOpen,
+  onClose,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+}) {
+  const pathname = usePathname();
+
+  // パス変更時に自動で閉じる
+  useEffect(() => {
+    onClose();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
+
+  return (
+    <>
+      {/* オーバーレイ */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          onClick={onClose}
+          aria-hidden="true"
+        />
+      )}
+      {/* スライドインサイドバー */}
+      <div
+        className={cn(
+          "fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:hidden",
+          isOpen ? "translate-x-0" : "-translate-x-full"
+        )}
+      >
+        <Sidebar />
+      </div>
+    </>
+  );
+}
+
 export function Sidebar() {
   const { user, role, displayName, avatarUrl, setAvatarUrl, subsidyEligible, signOut } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);

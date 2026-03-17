@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { sendSlackMessage, sendInviteApprovalRequest, mapPlanToCourseIds } from "@/lib/slack";
 import type { PaymentInfo, LearningInfo } from "@/lib/slack";
 import { NextResponse } from "next/server";
+import { rateLimit } from "@/lib/rate-limit";
 
 /**
  * Google Forms 入塾申請 Webhook
@@ -29,6 +30,16 @@ import { NextResponse } from "next/server";
  * ```
  */
 export async function POST(request: Request) {
+  // レート制限: 20回/分
+  const ip = request.headers.get("x-forwarded-for") || "unknown";
+  const { success } = rateLimit(`enrollment:${ip}`, 20, 60000);
+  if (!success) {
+    return NextResponse.json(
+      { error: "リクエスト回数の上限に達しました" },
+      { status: 429 }
+    );
+  }
+
   const body = await request.json();
   const { name, email, phone, motivation, experience, plan_name, webhook_secret } = body;
 

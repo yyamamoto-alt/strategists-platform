@@ -4,6 +4,13 @@ import { useState, useMemo } from "react";
 import { VideoPlayer } from "./video-player";
 import { ChevronLeft, ChevronRight, Play, CheckCircle } from "lucide-react";
 
+interface LessonVideo {
+  title: string;
+  url: string;
+  duration_minutes?: number;
+  description?: string;
+}
+
 interface VideoSection {
   title: string;
   description: string;
@@ -11,8 +18,9 @@ interface VideoSection {
 }
 
 interface Props {
-  mainVideoUrl: string;
-  htmlContent: string;
+  videos?: LessonVideo[];
+  mainVideoUrl?: string;
+  htmlContent?: string;
   copyProtected?: boolean;
 }
 
@@ -93,19 +101,35 @@ function parseVideoSections(mainVideoUrl: string, html: string): VideoSection[] 
   return sections;
 }
 
-export function MultiVideoPlayer({ mainVideoUrl, htmlContent, copyProtected }: Props) {
-  const sections = useMemo(
-    () => parseVideoSections(mainVideoUrl, htmlContent),
-    [mainVideoUrl, htmlContent]
-  );
+export function MultiVideoPlayer({ videos, mainVideoUrl, htmlContent, copyProtected }: Props) {
+  const sections = useMemo(() => {
+    // 構造化データがあればそちらを優先
+    if (videos && videos.length > 0) {
+      return videos.map((v) => ({
+        title: v.title,
+        description: v.description || "",
+        videoUrl: v.url,
+      }));
+    }
+    // レガシー: HTMLパース
+    if (mainVideoUrl && htmlContent) {
+      return parseVideoSections(mainVideoUrl, htmlContent);
+    }
+    // フォールバック: 単一動画
+    if (mainVideoUrl) {
+      return [{ title: "動画", description: "", videoUrl: mainVideoUrl }];
+    }
+    return [];
+  }, [videos, mainVideoUrl, htmlContent]);
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [watchedSet, setWatchedSet] = useState<Set<number>>(() => new Set());
 
   // If only 1 video, just render the simple player
-  if (sections.length <= 1) {
-    return <VideoPlayer src={mainVideoUrl} protected={copyProtected} />;
+  if (sections.length <= 1 && sections[0]?.videoUrl) {
+    return <VideoPlayer src={sections[0].videoUrl} protected={copyProtected} />;
   }
+  if (sections.length === 0) return null;
 
   const current = sections[currentIndex];
   const hasPrev = currentIndex > 0;

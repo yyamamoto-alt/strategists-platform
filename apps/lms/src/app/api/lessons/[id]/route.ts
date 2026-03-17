@@ -52,7 +52,7 @@ export async function PATCH(
   }
 
   const allowedFields = [
-    "title", "description", "lesson_type", "video_url",
+    "title", "description", "lesson_type", "video_url", "video_urls",
     "markdown_content", "content_format", "duration_minutes", "sort_order",
     "is_active", "copy_protected", "thumbnail_url",
   ];
@@ -69,6 +69,18 @@ export async function PATCH(
   // duration_minutes のバリデーション
   if ("duration_minutes" in updates && updates.duration_minutes !== null) {
     updates.duration_minutes = Math.max(0, Number(updates.duration_minutes) || 0);
+  }
+
+  // video_urls のバリデーション
+  if ("video_urls" in updates) {
+    if (!Array.isArray(updates.video_urls)) {
+      return NextResponse.json({ error: "video_urlsは配列である必要があります" }, { status: 400 });
+    }
+    for (const v of updates.video_urls) {
+      if (!v.title || !v.url) {
+        return NextResponse.json({ error: "各動画にはtitleとurlが必要です" }, { status: 400 });
+      }
+    }
   }
 
   const supabase = createAdminClient();

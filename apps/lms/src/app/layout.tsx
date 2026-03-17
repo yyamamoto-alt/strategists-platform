@@ -6,6 +6,7 @@ import { getLmsSession } from "@/lib/supabase/server";
 import { NavigationProgress } from "@/components/layout/navigation-progress";
 import { SWRProvider } from "@/components/swr-provider";
 import { DisplaySettingsProvider } from "@/lib/display-settings";
+import { ToastProvider } from "@/components/ui/toast";
 
 export const metadata: Metadata = {
   title: "Strategists LMS | 学習管理",
@@ -50,12 +51,14 @@ export default async function RootLayout({
       <body>
         <AuthProvider initialUser={initialUser} initialRole={initialRole} initialDisplayName={initialDisplayName} initialAvatarUrl={initialAvatarUrl} initialCustomerId={initialCustomerId}>
           <DisplaySettingsProvider>
-            <SWRProvider>
-              <Suspense fallback={null}>
-                <NavigationProgress />
-              </Suspense>
-              {children}
-            </SWRProvider>
+            <ToastProvider>
+              <SWRProvider>
+                <Suspense fallback={null}>
+                  <NavigationProgress />
+                </Suspense>
+                {children}
+              </SWRProvider>
+            </ToastProvider>
           </DisplaySettingsProvider>
         </AuthProvider>
       </body>
