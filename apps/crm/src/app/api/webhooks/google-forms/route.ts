@@ -109,7 +109,11 @@ export async function POST(request: Request) {
       if (rawData["志望企業"]) custUpdate.target_companies = rawData["志望企業"];
       if (rawData["転職意向"]) custUpdate.transfer_intent = rawData["転職意向"];
       if (rawData["ケース面接対策の状況"]) custUpdate.initial_level = rawData["ケース面接対策の状況"];
-      if (rawData["弊塾を最初に知った場所"]) custUpdate.utm_source = rawData["弊塾を最初に知った場所"];
+      // 「弊塾を最初に知った場所」→ sales_pipeline.initial_channel に同期（後述）
+      // ※ utm_source は LP経由のUTMパラメータ専用。カルテの日本語値は入れない
+      if (rawData["弊塾への面談申し込みのきっかけ、決め手 "] || rawData["弊塾への面談申し込みのきっかけ、決め手"]) {
+        custUpdate.application_reason_karte = rawData["弊塾への面談申し込みのきっかけ、決め手 "] || rawData["弊塾への面談申し込みのきっかけ、決め手"];
+      }
       if (rawData["居住地（都道府県）"]) custUpdate.prefecture = rawData["居住地（都道府県）"];
       if (rawData["生年月日"]) custUpdate.birth_date = rawData["生年月日"];
       if (rawData["性別"]) custUpdate.gender = rawData["性別"];
@@ -138,7 +142,7 @@ export async function POST(request: Request) {
         data_origin: "webhook",
       };
       if (rawData["属性"]) customerInsert.attribute = normalizeAttribute(rawData["属性"]);
-      if (rawData["弊塾を最初に知った場所"]) customerInsert.utm_source = rawData["弊塾を最初に知った場所"];
+      // utm_source はLP由来のUTMパラメータ専用。カルテの日本語値は入れない
 
       const { data: newCustomer, error: createError } = await db
         .from("customers")
@@ -195,6 +199,13 @@ export async function POST(request: Request) {
       raw_data_hash: rawHash,
       notes: `${formName}からWebhook同期`,
     });
+
+    // カルテの「弊塾を最初に知った場所」→ sales_pipeline.initial_channel に同期
+    if (rawData["弊塾を最初に知った場所"]) {
+      await db.from("sales_pipeline")
+        .update({ initial_channel: rawData["弊塾を最初に知った場所"], updated_at: new Date().toISOString() })
+        .eq("customer_id", customerId);
+    }
 
     // 帰属チャネル計算
     computeAttributionForCustomer(customerId).catch(() => {});
