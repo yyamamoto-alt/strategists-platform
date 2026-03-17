@@ -6,8 +6,8 @@ import type { Database } from "@strategy-school/shared-db";
 // CRM専用: service role key でデータ取得（RLSバイパス）
 // このモジュールは server-only のため、クライアントバンドルには含まれない
 export function createServiceClient() {
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const url = process.env.SUPABASE_URL?.trim();
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
 
   if (!url || !key) {
     throw new Error(
