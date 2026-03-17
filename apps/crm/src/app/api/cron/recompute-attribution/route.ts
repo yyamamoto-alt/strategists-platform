@@ -44,25 +44,21 @@ export async function GET(request: Request) {
       const firstTouch = rd["弊塾を最初に知った場所"];
       const reason = rd["弊塾への面談申し込みのきっかけ、決め手 "] || rd["弊塾への面談申し込みのきっかけ、決め手"];
 
-      // initial_channel が空の場合のみ反映
+      // カルテの「弊塾を最初に知った場所」→ sales_pipeline.initial_channel に常に反映
       if (firstTouch) {
-        const { data: existing } = await db
+        await db
           .from("sales_pipeline")
-          .select("initial_channel")
-          .eq("customer_id", row.customer_id)
-          .single();
-
-        if (existing && (!existing.initial_channel || existing.initial_channel === "")) {
-          await db
-            .from("sales_pipeline")
-            .update({ initial_channel: firstTouch })
-            .eq("customer_id", row.customer_id);
-          karteSynced++;
-        }
+          .update({ initial_channel: firstTouch })
+          .eq("customer_id", row.customer_id);
+        karteSynced++;
       }
 
-      // application_reason が空の場合のみ反映
+      // カルテの「決め手」→ customers.application_reason_karte に常に反映
+      // application_reason が空の場合は application_reason にも反映
       if (reason) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const custUpdateObj: Record<string, any> = { application_reason_karte: reason };
+
         const { data: cust } = await db
           .from("customers")
           .select("application_reason")
@@ -70,48 +66,42 @@ export async function GET(request: Request) {
           .single();
 
         if (cust && (!cust.application_reason || cust.application_reason === "")) {
-          await db
-            .from("customers")
-            .update({ application_reason: reason })
-            .eq("id", row.customer_id);
-          karteSynced++;
+          custUpdateObj.application_reason = reason;
         }
+
+        await db
+          .from("customers")
+          .update(custUpdateObj)
+          .eq("id", row.customer_id);
+        karteSynced++;
       }
     }
   }
 
-  // ─── Step 1: 「不明」の帰属を持つ顧客を取得 ───
+  // ─── Step 1: 全顧客の帰属を再計算 ───
+  // 「不明」だけでなく、カルテ同期後のデータ反映のために全顧客を対象にする
+  const { data: allCustomers } = await db
+    .from("customers")
+    .select("id")
+    .order("created_at", { ascending: false });
+
   const { data: unknownAttr } = await db
     .from("customer_channel_attribution")
     .select("customer_id")
     .eq("marketing_channel", "不明");
 
-  // ─── Step 2: 帰属テーブルにまだない顧客を取得 ───
-  const { data: allAttr } = await db
-    .from("customer_channel_attribution")
-    .select("customer_id");
-  const attrSet = new Set((allAttr || []).map((r: { customer_id: string }) => r.customer_id));
-
-  const { data: recentCustomers } = await db
-    .from("customers")
-    .select("id")
-    .order("created_at", { ascending: false })
-    .limit(300);
-
-  const missing = (recentCustomers || []).filter((c: { id: string }) => !attrSet.has(c.id));
   const unknownIds = (unknownAttr || []).map((r: { customer_id: string }) => r.customer_id);
 
-  const toProcess = new Set([
-    ...missing.map((c: { id: string }) => c.id),
-    ...unknownIds,
-  ]);
+  const toProcess = new Set(
+    (allCustomers || []).map((c: { id: string }) => c.id)
+  );
 
   let processed = 0;
   let errors = 0;
 
   for (const id of toProcess) {
     try {
-      await computeAttributionForCustomer(id);
+      await computeAttributionForCustomer(id as string);
       processed++;
     } catch {
       errors++;
@@ -124,7 +114,6 @@ export async function GET(request: Request) {
     processed,
     errors,
     unknown_before: unknownIds.length,
-    missing_before: missing.length,
     karte_synced: karteSynced,
     timestamp: new Date().toISOString(),
   });

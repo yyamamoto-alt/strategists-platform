@@ -462,7 +462,7 @@ export function SpreadsheetTable<T>({
         )}
       </div>
       <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 overflow-hidden">
-        <div ref={scrollContainerRef} className="overflow-auto max-h-[calc(100vh-180px)]">
+        <div ref={scrollContainerRef} className="overflow-auto max-h-[calc(100vh-180px)] overscroll-x-contain">
           <div className="flex" style={{ minWidth: "max-content" }}>
             {/* ═══ 固定列ペイン ═══ */}
             {hasFrozen && (
@@ -540,7 +540,7 @@ export function SpreadsheetTable<T>({
             {/* ═══ 可変列ペイン ═══ */}
             <div className="flex-shrink-0">
               <table className="border-collapse" style={{ tableLayout: "fixed" }}>
-                <thead className="bg-surface-elevated border-b border-white/10 sticky top-0 z-20">
+                <thead className="bg-surface-elevated border-b border-white/10 sticky top-0 z-10">
                   <tr>
                     {scrollCols.map((col) => renderTh(col, false))}
                   </tr>

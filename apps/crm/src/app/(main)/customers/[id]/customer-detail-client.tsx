@@ -669,8 +669,7 @@ function buildPipelineFieldGroups(c: CustomerWithRelations): { label: string; fi
       { key: "sales_content", label: "営業内容", source: "manual", type: "textarea", table: "pipeline", getValue: () => c.pipeline?.sales_content || "-" },
       { key: "sales_strategy", label: "営業戦略", source: "manual", type: "textarea", table: "pipeline", getValue: () => c.pipeline?.sales_strategy || "-" },
     ]},
-    { label: "マーケティング", fields: [
-      { key: "initial_channel", label: "初回認知経路", source: "sync", getValue: () => c.pipeline?.initial_channel || "-" },
+    { label: "報酬・広告", fields: [
       { key: "sales_route", label: "経路(営業)", source: "sync", getValue: () => c.pipeline?.sales_route || c.pipeline?.route_by_sales || "-" },
       { key: "first_reward_category", label: "一次報酬分類", source: "sync", getValue: () => c.pipeline?.first_reward_category || "-" },
       { key: "performance_reward_category", label: "成果報酬分類", source: "sync", getValue: () => c.pipeline?.performance_reward_category || "-" },
@@ -874,8 +873,143 @@ function GroupedSection({
 }
 
 // ================================================================
+// マーケティング情報セクション（独立ボックス）
+// ================================================================
+
+function getConfidenceStyle(confidence: string) {
+  switch (confidence) {
+    case "high": return "text-green-400 bg-green-400/10 border-green-500/30";
+    case "medium": return "text-yellow-400 bg-yellow-400/10 border-yellow-500/30";
+    default: return "text-gray-400 bg-gray-400/10 border-gray-500/30";
+  }
+}
+
+function getConfidenceLabel(confidence: string) {
+  switch (confidence) {
+    case "high": return "高";
+    case "medium": return "中";
+    default: return "低";
+  }
+}
+
+function getAttributionSourceLabel(source: string) {
+  switch (source) {
+    case "utm_source": return "UTM";
+    case "utm_source+initial_channel": return "UTM+認知一致";
+    case "initial_channel": return "初回認知";
+    case "application_reason": return "申込の決め手";
+    case "sales_route": return "営業ルート";
+    case "utm_source_raw": return "UTM(未マッチ)";
+    case "initial_channel_raw": return "認知(未マッチ)";
+    case "fallback": return "フォールバック";
+    default: return source;
+  }
+}
+
+function MarketingInfoSection({
+  customer,
+  attribution,
+}: {
+  customer: CustomerWithRelations;
+  attribution: ChannelAttributionData | null;
+}) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const c = customer as any;
+  const p = customer.pipeline || {} as Record<string, unknown>;
+
+  return (
+    <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-4">
+      <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">マーケティング</h2>
+
+      {/* 帰属チャネル */}
+      <div className="bg-surface-elevated rounded-lg p-3 mb-3">
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-[10px] font-semibold text-brand uppercase tracking-wider">帰属チャネル</p>
+          {attribution && (
+            <span className={`inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium rounded border ${getConfidenceStyle(attribution.confidence)}`}>
+              信頼度: {getConfidenceLabel(attribution.confidence)}
+            </span>
+          )}
+        </div>
+        <p className="text-lg font-bold text-white">
+          {attribution?.marketing_channel || "未計算"}
+        </p>
+        {attribution && (
+          <p className="text-[10px] text-gray-500 mt-1">
+            根拠: {getAttributionSourceLabel(attribution.attribution_source)}
+            {attribution.is_multi_touch && " (マルチタッチ)"}
+          </p>
+        )}
+      </div>
+
+      {/* 3つの情報源 */}
+      <div className="space-y-2">
+        <p className="text-[11px] font-medium text-gray-500 border-b border-white/[0.06] pb-1">情報源</p>
+
+        <div className="grid grid-cols-1 gap-2">
+          {/* 弊塾を最初に知った場所 */}
+          <div className="bg-surface-elevated rounded px-3 py-2">
+            <p className="text-[10px] text-gray-500 font-medium flex items-center gap-0.5">
+              弊塾を最初に知った場所
+              <SourceBadge source="sync" />
+            </p>
+            <p className="text-sm text-gray-200 mt-0.5">
+              {(p as Record<string, unknown>).initial_channel as string || "-"}
+            </p>
+          </div>
+
+          {/* 面談申し込みのきっかけ・決め手 */}
+          <div className="bg-surface-elevated rounded px-3 py-2">
+            <p className="text-[10px] text-gray-500 font-medium flex items-center gap-0.5">
+              申込のきっかけ・決め手
+              <SourceBadge source="sync" />
+            </p>
+            <p className="text-sm text-gray-200 mt-0.5">
+              {c.application_reason_karte || c.application_reason || "-"}
+            </p>
+            {c.application_reason_karte && c.application_reason && c.application_reason_karte !== c.application_reason && (
+              <p className="text-[10px] text-gray-500 mt-0.5">LP申込: {c.application_reason}</p>
+            )}
+          </div>
+
+          {/* UTM情報 */}
+          <div className="bg-surface-elevated rounded px-3 py-2">
+            <p className="text-[10px] text-gray-500 font-medium flex items-center gap-0.5">
+              UTM / 流入元情報
+              <SourceBadge source="sync" />
+            </p>
+            <div className="mt-0.5 space-y-0.5">
+              {c.utm_source ? (
+                <>
+                  <p className="text-sm text-gray-200">source: {c.utm_source}</p>
+                  {c.utm_medium && <p className="text-[11px] text-gray-400">medium: {c.utm_medium}</p>}
+                  {c.utm_campaign && <p className="text-[11px] text-gray-400">campaign: {c.utm_campaign}</p>}
+                  {c.utm_id && <p className="text-[11px] text-gray-400">id: {c.utm_id}</p>}
+                </>
+              ) : (
+                <p className="text-sm text-gray-400">-</p>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ================================================================
 // メインコンポーネント
 // ================================================================
+
+export interface ChannelAttributionData {
+  marketing_channel: string;
+  attribution_source: string;
+  confidence: string;
+  touch_first: string | null;
+  touch_decision: string | null;
+  touch_last: string | null;
+  is_multi_touch: boolean;
+}
 
 interface CustomerDetailClientProps {
   customer: CustomerWithRelations;
@@ -884,6 +1018,8 @@ interface CustomerDetailClientProps {
   applicationHistory: ApplicationHistoryRecord[];
   orders: Order[];
   mentors: MentorAssignment[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  attribution: ChannelAttributionData | Record<string, any> | null;
 }
 
 export function CustomerDetailClient({
@@ -893,6 +1029,7 @@ export function CustomerDetailClient({
   applicationHistory,
   orders,
   mentors,
+  attribution,
 }: CustomerDetailClientProps) {
   const [customer, setCustomer] = useState(initialCustomer);
   const [isEditing, setIsEditing] = useState(false);
@@ -1161,6 +1298,8 @@ export function CustomerDetailClient({
 
         {/* 右カラム */}
         <div className="space-y-3">
+          <MarketingInfoSection customer={customer} attribution={attribution} />
+
           <GroupedSection title="営業・商談" groups={pipelineGroups} customer={customer} isEditing={isEditing} editValues={editValues} onEditChange={handleEditChange} cols={4} />
 
           <GroupedSection title="学習状況" groups={learningGroups} customer={customer} isEditing={isEditing} editValues={editValues} onEditChange={handleEditChange} cols={4}>

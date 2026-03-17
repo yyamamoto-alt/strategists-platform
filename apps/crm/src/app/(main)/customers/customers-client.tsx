@@ -222,6 +222,8 @@ export function CustomersClient() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [creating, setCreating] = useState(false);
   const [stageOverrides, setStageOverrides] = useState<Record<string, string>>({});
+  const [subsidyOverrides, setSubsidyOverrides] = useState<Record<string, boolean>>({});
+  const [agentExcludeOverrides, setAgentExcludeOverrides] = useState<Record<string, string>>({});
 
   const [totalCount, setTotalCount] = useState(0);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -277,6 +279,46 @@ export function CustomersClient() {
     } catch {
       setStageOverrides((prev) => { const next = { ...prev }; delete next[customerId]; return next; });
       alert("ステージ更新に失敗しました");
+    }
+  }, []);
+
+  // 補助金対象トグル（対象 ⇔ 非対象）
+  const handleSubsidyToggle = useCallback(async (customerId: string, currentEligible: boolean) => {
+    const newVal = !currentEligible;
+    setSubsidyOverrides((prev) => ({ ...prev, [customerId]: newVal }));
+    try {
+      const res = await fetch(`/api/customers/${customerId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contract: { subsidy_eligible: newVal } }),
+      });
+      if (!res.ok) {
+        setSubsidyOverrides((prev) => { const next = { ...prev }; delete next[customerId]; return next; });
+        alert("補助金ステータス更新に失敗しました");
+      }
+    } catch {
+      setSubsidyOverrides((prev) => { const next = { ...prev }; delete next[customerId]; return next; });
+      alert("補助金ステータス更新に失敗しました");
+    }
+  }, []);
+
+  // エージェント利用トグル（利用 ⇔ 非対象）
+  const handleAgentToggle = useCallback(async (customerId: string, currentCategory: string | null | undefined) => {
+    const newVal = currentCategory === "非対象" ? "" : "非対象";
+    setAgentExcludeOverrides((prev) => ({ ...prev, [customerId]: newVal }));
+    try {
+      const res = await fetch(`/api/customers/${customerId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contract: { referral_category: newVal || null } }),
+      });
+      if (!res.ok) {
+        setAgentExcludeOverrides((prev) => { const next = { ...prev }; delete next[customerId]; return next; });
+        alert("エージェント利用ステータス更新に失敗しました");
+      }
+    } catch {
+      setAgentExcludeOverrides((prev) => { const next = { ...prev }; delete next[customerId]; return next; });
+      alert("エージェント利用ステータス更新に失敗しました");
     }
   }, []);
 
@@ -365,7 +407,7 @@ export function CustomersClient() {
         filterValue: (c) => c.attribute?.includes("既卒") ? "既卒" : "新卒" },
 
       // ─── 検討状況（属性の右） ───
-      { key: "stage", label: "検討状況", width: 100, stickyLeft: 254, category: "sales",
+      { key: "stage", label: "検討状況", width: 100, stickyLeft: 254, category: "base",
         render: (c) => {
           const stage = stageOverrides[c.id] || c.pipeline?.stage;
           return stage ? (
@@ -375,28 +417,70 @@ export function CustomersClient() {
         filterValue: (c) => stageOverrides[c.id] || c.pipeline?.stage || "" },
 
       // ─── 補助金対象（検討状況の右） ───
-      { key: "subsidy_eligible", label: "補助金", width: 50, align: "center" as const, category: "agent",
-        render: (c) => c.contract?.subsidy_eligible ? <span className="text-purple-400 text-xs">対象</span> : "-",
-        filterValue: (c) => c.contract?.subsidy_eligible ? "対象" : "" },
+      { key: "subsidy_eligible", label: "補助金", width: 55, align: "center" as const, category: "agent",
+        render: (c) => {
+          const eligible = subsidyOverrides[c.id] ?? c.contract?.subsidy_eligible;
+          return (
+            <button
+              onClick={(e) => { e.stopPropagation(); handleSubsidyToggle(c.id, !!eligible); }}
+              className={`text-[10px] cursor-pointer hover:opacity-80 ${eligible ? "text-purple-400" : "text-gray-500"}`}
+              title="クリックで切替"
+            >
+              {eligible ? "対象" : "非対象"}
+            </button>
+          );
+        },
+        filterValue: (c) => (subsidyOverrides[c.id] ?? c.contract?.subsidy_eligible) ? "対象" : "非対象" },
 
       // ─── 経歴 ───
       { key: "career_history", label: "経歴", width: 500,
         render: (c) => <Truncated value={c.career_history} width={500} /> },
 
       // ─── 人材紹介利用 ───
-      { key: "is_agent_customer", label: "エージェント利用", width: 24, align: "center" as const,
-        render: (c) => isAgentCustomer(c)
-          ? <span className="text-purple-400 text-sm">&#9745;</span>
-          : <span className="text-gray-600 text-sm">&#9744;</span>,
-        sortValue: (c) => isAgentCustomer(c) ? 1 : 0 },
+      { key: "is_agent_customer", label: "エージェント利用", width: 50, align: "center" as const,
+        render: (c) => {
+          const catOverride = agentExcludeOverrides[c.id];
+          const cat = catOverride !== undefined ? catOverride : c.contract?.referral_category;
+          const excluded = cat === "非対象";
+          if (excluded) {
+            return (
+              <button
+                onClick={(e) => { e.stopPropagation(); handleAgentToggle(c.id, "非対象"); }}
+                className="text-[10px] text-gray-500 cursor-pointer hover:opacity-80"
+                title="クリックで解除"
+              >非対象</button>
+            );
+          }
+          const isAgent = cat === "フル利用" || cat === "一部利用";
+          return (
+            <span className="flex items-center gap-0.5">
+              <span className={isAgent ? "text-purple-400 text-sm" : "text-gray-600 text-sm"}>
+                {isAgent ? "\u2611" : "\u2610"}
+              </span>
+              <button
+                onClick={(e) => { e.stopPropagation(); handleAgentToggle(c.id, cat); }}
+                className="text-[9px] text-gray-600 cursor-pointer hover:text-gray-400"
+                title="非対象に設定"
+              >✕</button>
+            </span>
+          );
+        },
+        sortValue: (c) => {
+          const cat = agentExcludeOverrides[c.id] !== undefined ? agentExcludeOverrides[c.id] : c.contract?.referral_category;
+          return cat === "非対象" ? -1 : (cat === "フル利用" || cat === "一部利用") ? 1 : 0;
+        } },
 
       // ═══ 売上（計算式表示） ═══
       { key: "confirmed_amount", label: "確定売上", width: 90, align: "right" as const, category: "sales",
         render: (c) => {
-          const amt = getSchoolRevenue(c) + getSubsidyAmount(c);
+          const subsidyOk = subsidyOverrides[c.id] ?? c.contract?.subsidy_eligible;
+          const amt = getSchoolRevenue(c) + (subsidyOk ? getSubsidyAmount(c) : 0);
           return amt > 0 ? <span className="text-xs">{formatCurrency(amt)}</span> : "-";
         },
-        sortValue: (c) => getSchoolRevenue(c) + getSubsidyAmount(c) },
+        sortValue: (c) => {
+          const subsidyOk = subsidyOverrides[c.id] ?? c.contract?.subsidy_eligible;
+          return getSchoolRevenue(c) + (subsidyOk ? getSubsidyAmount(c) : 0);
+        } },
 
       { key: "rev_plus", label: "+", width: 16, align: "center" as const, category: "sales",
         render: () => <span className="text-gray-500 text-[10px]">+</span> },
@@ -415,13 +499,15 @@ export function CustomersClient() {
         render: (c) => {
           const school = getSchoolRevenue(c);
           const agent = isAgentCustomer(c) ? calcExpectedReferralFee(c) : 0;
-          const subsidy = getSubsidyAmount(c);
+          const subsidyOk = subsidyOverrides[c.id] ?? c.contract?.subsidy_eligible;
+          const subsidy = subsidyOk ? getSubsidyAmount(c) : 0;
           const total = school + agent + subsidy;
           return total > 0 ? <span className="font-semibold text-brand text-xs">{formatCurrency(total)}</span> : "-";
         }, sortValue: (c) => {
           const school = getSchoolRevenue(c);
           const agent = isAgentCustomer(c) ? calcExpectedReferralFee(c) : 0;
-          return school + agent + getSubsidyAmount(c);
+          const subsidyOk = subsidyOverrides[c.id] ?? c.contract?.subsidy_eligible;
+          return school + agent + (subsidyOk ? getSubsidyAmount(c) : 0);
         } },
 
       // ─── 帰属チャネル（概要に表示） ───
@@ -654,7 +740,7 @@ export function CustomersClient() {
           : "-" },
       { key: "agent_memo", label: "メモ", width: 160,        render: (c) => c.agent?.agent_memo || "-" },
     ],
-    [attributionMap, stageOverrides, handleStageUpdate]
+    [attributionMap, stageOverrides, handleStageUpdate, subsidyOverrides, handleSubsidyToggle, agentExcludeOverrides, handleAgentToggle]
   );
 
   // タブに応じたカラムフィルタリング
