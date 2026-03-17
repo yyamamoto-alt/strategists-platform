@@ -208,6 +208,7 @@ export interface AgentRecord {
   expected_referral_fee: number | null;
   agent_staff: string | null;
   placement_confirmed: string | null;
+  ai_offer_probability: number | null; // AI分析による内定可能性（0-100%）。Agent Deskから自動連携
   customer?: Customer;
 }
 
