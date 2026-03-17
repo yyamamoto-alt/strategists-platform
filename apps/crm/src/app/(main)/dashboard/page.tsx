@@ -8,6 +8,7 @@ import { AdsSection } from "./sections/ads-section";
 import { MetaAdsSection } from "./sections/meta-ads-section";
 import { ReceivableSection } from "./sections/receivable-section";
 import { ChannelSection } from "./sections/channel-section";
+import { SalesRateSection } from "./sections/sales-rate-section";
 import { InsightsSection } from "./sections/insights-section";
 import {
   HeaderSkeleton,
@@ -39,6 +40,11 @@ export default async function DashboardPage() {
       <div className="px-6">
         <Suspense fallback={<ChannelSkeleton />}>
           <ChannelSection />
+        </Suspense>
+      </div>
+      <div className="px-6">
+        <Suspense fallback={<div className="bg-surface-card rounded-xl border border-white/10 p-4 h-[400px] animate-pulse" />}>
+          <SalesRateSection />
         </Suspense>
       </div>
       <Suspense fallback={<InsightsSkeleton />}>

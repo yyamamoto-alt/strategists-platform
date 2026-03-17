@@ -1246,6 +1246,110 @@ export function computeChannelMonthlyRaw(
 }
 
 // ================================================================
+// 営業マン別 成約率（3ヶ月移動平均）
+// ================================================================
+
+/** 分母除外ステージ */
+const EXCLUDED_STAGES_FOR_CLOSING_RATE = new Set([
+  "NoShow", "日程未確", "未実施", "非実施対象", "実施不可", "追加指導",
+]);
+
+export interface SalesPersonMonthlyRate {
+  month: string;          // "2025/04"
+  salesPerson: string;
+  rollingRate: number;    // 0-1 (3ヶ月移動平均成約率)
+  rollingDenom: number;   // 移動平均の分母合計
+  rollingNumer: number;   // 移動平均の分子合計
+}
+
+/**
+ * 営業マン別の月次3ヶ月移動平均成約率を計算
+ * 分母: 面談実施済み（NoShow,日程未確,未実施,非実施対象,実施不可,追加指導を除外）
+ * 分子: 成約のみ
+ * @param minTotal 表示対象の最低件数
+ * @param months 表示月数
+ */
+export function computeSalesPersonClosingRates(
+  customers: CustomerWithRelations[],
+  minTotal: number = 10,
+  months: number = 12,
+): SalesPersonMonthlyRate[] {
+  // 営業マン × 月 → { denom, numer }
+  const raw = new Map<string, Map<string, { denom: number; numer: number }>>();
+  // 営業マン別の総件数（表示フィルタ用）
+  const totalByPerson = new Map<string, number>();
+
+  for (const c of customers) {
+    const sp = c.pipeline?.sales_person;
+    if (!sp) continue;
+    const stage = c.pipeline?.stage;
+    if (!stage) continue;
+    if (EXCLUDED_STAGES_FOR_CLOSING_RATE.has(stage)) continue;
+
+    const date = c.application_date;
+    if (!date) continue;
+    const month = date.slice(0, 7).replace("-", "/");
+
+    if (!raw.has(sp)) raw.set(sp, new Map());
+    const personMap = raw.get(sp)!;
+    if (!personMap.has(month)) personMap.set(month, { denom: 0, numer: 0 });
+    const m = personMap.get(month)!;
+
+    m.denom++;
+    if (stage === "成約") m.numer++;
+
+    totalByPerson.set(sp, (totalByPerson.get(sp) || 0) + 1);
+  }
+
+  // 対象月リスト（過去N+2ヶ月分を生成、移動平均の計算用）
+  const now = new Date();
+  const allMonths: string[] = [];
+  for (let i = months + 2; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    allMonths.push(`${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, "0")}`);
+  }
+
+  // 表示月（直近N ヶ月）
+  const displayMonths = allMonths.slice(allMonths.length - months);
+
+  const result: SalesPersonMonthlyRate[] = [];
+
+  for (const [sp, personMap] of raw.entries()) {
+    // 表示フィルタ: 最低件数
+    if ((totalByPerson.get(sp) || 0) < minTotal) continue;
+
+    for (let mi = 0; mi < displayMonths.length; mi++) {
+      const currentMonth = displayMonths[mi];
+      // 3ヶ月移動平均: currentMonth + 前2ヶ月
+      const currentIdx = allMonths.indexOf(currentMonth);
+      let rollingDenom = 0;
+      let rollingNumer = 0;
+
+      for (let j = 0; j < 3; j++) {
+        const m = allMonths[currentIdx - j];
+        if (m) {
+          const data = personMap.get(m);
+          if (data) {
+            rollingDenom += data.denom;
+            rollingNumer += data.numer;
+          }
+        }
+      }
+
+      result.push({
+        month: currentMonth,
+        salesPerson: sp,
+        rollingRate: rollingDenom > 0 ? rollingNumer / rollingDenom : 0,
+        rollingDenom,
+        rollingNumer,
+      });
+    }
+  }
+
+  return result;
+}
+
+// ================================================================
 // ダッシュボード直接集計（既存）
 // ================================================================
 
