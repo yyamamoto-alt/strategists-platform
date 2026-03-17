@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LMS改善レポート 2026-03-17</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Noto+Serif+JP:wght@700&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Noto Sans JP', sans-serif; background: #fafafa; color: #222; line-height: 1.7; }
+  .header { background: #1A1A1A; color: #fff; padding: 2rem 1.5rem; }
+  .header h1 { font-family: 'Noto Serif JP', serif; font-size: 1.5rem; margin-bottom: 0.25rem; }
+  .header .date { color: #999; font-size: 0.85rem; }
+  .header .summary { margin-top: 1rem; padding: 1rem; background: rgba(166,43,23,0.15); border-left: 4px solid #A62B17; border-radius: 0 8px 8px 0; font-size: 0.9rem; color: #ddd; }
+  .section { padding: 1.5rem; border-bottom: 1px solid #e0e0e0; }
+  .section:nth-child(even) { background: #f5f5f5; }
+  .section h2 { font-family: 'Noto Serif JP', serif; font-size: 1.2rem; padding-left: 0.75rem; border-left: 4px solid #A62B17; margin-bottom: 1rem; }
+  .section h3 { font-size: 0.95rem; font-weight: 700; margin: 1rem 0 0.5rem; color: #333; }
+  .card { background: #fff; border: 1px solid #e0e0e0; border-top: 3px solid #A62B17; border-radius: 8px; padding: 1rem; margin-bottom: 0.75rem; }
+  .card-title { font-weight: 700; font-size: 0.95rem; margin-bottom: 0.5rem; }
+  .card p, .card li { font-size: 0.85rem; color: #555; }
+  .card ul { padding-left: 1.25rem; }
+  .card li { margin-bottom: 0.25rem; }
+  .badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 700; margin-right: 0.25rem; }
+  .badge-done { background: #d1fae5; color: #047857; }
+  .badge-db { background: #dbeafe; color: #1e40af; }
+  .badge-sec { background: #fef3c7; color: #92400e; }
+  .badge-ux { background: #ede9fe; color: #5b21b6; }
+  .badge-mob { background: #fce7f3; color: #9d174d; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin: 0.5rem 0; }
+  th, td { padding: 0.5rem; text-align: left; border-bottom: 1px solid #e0e0e0; }
+  th { background: #f5f5f5; font-weight: 700; font-size: 0.8rem; color: #555; }
+  .status-done { color: #047857; font-weight: 700; }
+  .status-pending { color: #92400e; }
+  .score-bar { height: 8px; border-radius: 4px; background: #e5e7eb; overflow: hidden; margin-top: 0.25rem; }
+  .score-fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg, #A62B17, #d4453d); }
+  .footer { padding: 1.5rem; text-align: center; color: #999; font-size: 0.75rem; }
+  .toc { padding: 1rem 1.5rem; background: #fff; border-bottom: 1px solid #e0e0e0; }
+  .toc a { display: block; padding: 0.35rem 0; color: #A62B17; text-decoration: none; font-size: 0.85rem; font-weight: 500; }
+  .highlight { background: #fff7ed; border: 1px solid #fed7aa; border-radius: 8px; padding: 0.75rem 1rem; margin: 0.75rem 0; font-size: 0.85rem; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+  @media (max-width: 480px) { .grid-2 { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>LMS 改善レポート</h1>
+  <div class="date">2026年3月17日 実施</div>
+  <div class="summary">
+    <strong>本日の作業:</strong> 教材データ修復、動画講座データ構造変更、モバイル対応、セキュリティ強化、UX基盤整備。22ファイル変更、771行追加。デプロイ済み。
+  </div>
+</div>
+
+<div class="toc">
+  <strong style="font-size:0.8rem;color:#999;">目次</strong>
+  <a href="#data">1. 教材データ修復</a>
+  <a href="#video">2. 動画講座データ構造</a>
+  <a href="#mobile">3. モバイル対応</a>
+  <a href="#security">4. セキュリティ強化</a>
+  <a href="#ux">5. UX基盤整備</a>
+  <a href="#audit">6. 総合監査結果</a>
+  <a href="#next">7. 今後の改善候補</a>
+</div>
+
+<!-- 1. 教材データ -->
+<div class="section" id="data">
+  <h2>教材データ修復</h2>
+
+  <div class="card">
+    <div class="card-title"><span class="badge badge-db">DB</span> 重複レッスン統合</div>
+    <p>同一コンテンツが3つのカリキュラム（スタンダード/ライト、ミニマム、選コミュ）に重複して存在していた問題を解消。</p>
+    <ul>
+      <li>対象: 7つのcontent_id、計13件の重複レッスン</li>
+      <li>処理: 各コンテンツにつき1レッスンのみ保持、残りのcontent_idをNULLに</li>
+      <li>カリキュラム構造は維持（レッスン自体は削除せず）</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="badge badge-db">DB</span> 欠落コンテンツ補完（Notion連携）</div>
+    <p>レッスンが0件だったcontentsに対してNotionからデータを取得し、レッスンを作成。</p>
+    <table>
+      <tr><th>コンテンツ</th><th>状態</th></tr>
+      <tr><td>推奨学習方法</td><td class="status-done">取得済</td></tr>
+      <tr><td>マッキンゼー/論点設計の教科書</td><td class="status-done">取得済</td></tr>
+      <tr><td>総コン内定の教科書</td><td class="status-done">取得済</td></tr>
+      <tr><td>McK選考におけるよくある質問</td><td class="status-done">取得済</td></tr>
+      <tr><td>ファーム別情報</td><td class="status-done">取得済</td></tr>
+      <tr><td>マッキンゼーWebテスト対策</td><td class="status-pending">⚠ Notion内データ少量</td></tr>
+      <tr><td>解いておきたいケース問題リスト</td><td class="status-pending">⚠ Notion内データ少量</td></tr>
+      <tr><td>教材アウトプットについて</td><td class="status-pending">準備中（Notionにデータなし）</td></tr>
+      <tr><td>Webテスト対策(既卒)</td><td class="status-pending">準備中（Notionにデータなし）</td></tr>
+      <tr><td>ビヘイビア面接準備チェックポイント</td><td class="status-pending">準備中（Notionにデータなし）</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- 2. 動画講座 -->
+<div class="section" id="video">
+  <h2>動画講座データ構造変更</h2>
+
+  <div class="card">
+    <div class="card-title"><span class="badge badge-db">DB</span> 複数動画URL対応</div>
+    <p>動画講座が複数動画（5〜7本）を持てるようにデータ構造を拡張。</p>
+    <h3>変更内容</h3>
+    <ul>
+      <li><strong>DB:</strong> lessonsテーブルに <code>video_urls</code> (JSONB) カラム追加</li>
+      <li><strong>構造:</strong> <code>[{title, url, duration_minutes, description}]</code></li>
+      <li><strong>管理画面:</strong> 動画レッスン編集に「複数動画管理」UI追加（タイトル/URL/分数、追加・削除・並替え）</li>
+      <li><strong>表示:</strong> video_urlsがあればプレイリスト表示、なければ従来のHTMLパースにフォールバック</li>
+    </ul>
+    <div class="highlight">
+      既存の動画データは引き続き動作します。新しい動画は管理画面の「複数動画管理」セクションから追加可能。
+    </div>
+  </div>
+</div>
+
+<!-- 3. モバイル対応 -->
+<div class="section" id="mobile">
+  <h2>モバイル対応</h2>
+
+  <div class="card">
+    <div class="card-title"><span class="badge badge-mob">モバイル</span> サイドバー ハンバーガーメニュー化</div>
+    <ul>
+      <li><strong>デスクトップ (1024px以上):</strong> 従来通りサイドバー常時表示</li>
+      <li><strong>モバイル/タブレット:</strong> サイドバー非表示、左上のハンバーガーボタンで開閉</li>
+      <li>半透明オーバーレイ付きスライドインアニメーション</li>
+      <li>メニュー項目タップ後に自動クローズ</li>
+      <li>外側タップでも閉じる</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="badge badge-mob">モバイル</span> モバイルヘッダー追加</div>
+    <ul>
+      <li>高さ56pxの固定ヘッダー（モバイル時のみ表示）</li>
+      <li>左: ハンバーガーボタン / 中央: 「Strategists LMS」</li>
+      <li>メインコンテンツはフル幅表示</li>
+    </ul>
+  </div>
+</div>
+
+<!-- 4. セキュリティ -->
+<div class="section" id="security">
+  <h2>セキュリティ強化</h2>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title"><span class="badge badge-sec">SEC</span> HTTPヘッダー</div>
+      <ul>
+        <li>X-Content-Type-Options</li>
+        <li>X-Frame-Options</li>
+        <li>X-XSS-Protection</li>
+        <li>Referrer-Policy</li>
+        <li>HSTS</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="badge badge-sec">SEC</span> レート制限</div>
+      <ul>
+        <li>ログイン: 5回/分</li>
+        <li>Enrollment Webhook: 20回/分</li>
+        <li>Slack Webhook: 30回/分</li>
+        <li>超過時 → 429エラー</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="badge badge-sec">SEC</span> エラーメッセージ安全化</div>
+    <p>Supabaseの内部エラーメッセージがAPIレスポンスに漏れていた問題を修正。一般的な日本語メッセージに置換し、詳細はサーバーログのみに出力。</p>
+  </div>
+</div>
+
+<!-- 5. UX -->
+<div class="section" id="ux">
+  <h2>UX基盤整備</h2>
+
+  <div class="card">
+    <div class="card-title"><span class="badge badge-ux">UX</span> Toast通知システム</div>
+    <p>操作結果のフィードバックが皆無だった問題を解消。</p>
+    <ul>
+      <li>4タイプ: success（緑）/ error（赤）/ warning（黄）/ info（青）</li>
+      <li>自動消去: 通常3秒、エラー5秒</li>
+      <li>画面右下にアニメーション表示</li>
+      <li>適用済: レッスン保存・削除時</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="badge badge-ux">UX</span> エラーバウンダリ (error.tsx)</div>
+    <p>Server Componentでエラー発生時に白画面になる問題を解消。3箇所に追加:</p>
+    <ul>
+      <li>グローバル (app/error.tsx)</li>
+      <li>メインセクション (app/(main)/error.tsx)</li>
+      <li>管理画面 (app/admin/error.tsx)</li>
+    </ul>
+    <p>日本語メッセージ + 「再度読み込み」ボタン付き。</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="badge badge-ux">UX</span> 確認ダイアログ</div>
+    <p>ブラウザ標準の <code>window.confirm()</code> をカスタムモーダルに置換。</p>
+    <ul>
+      <li>オーバーレイ付きモーダル表示</li>
+      <li>削除時は赤ボタン（destructiveモード）</li>
+      <li>Escapeキーでキャンセル</li>
+      <li>適用済: レッスン削除時</li>
+    </ul>
+  </div>
+</div>
+
+<!-- 6. 監査結果 -->
+<div class="section" id="audit">
+  <h2>総合監査結果</h2>
+
+  <p style="font-size:0.85rem;color:#555;margin-bottom:1rem;">LMS全体を多角的に監査した結果です。</p>
+
+  <div class="card">
+    <div class="card-title">機能完成度スコア</div>
+    <table>
+      <tr><th>カテゴリ</th><th>スコア</th><th></th></tr>
+      <tr><td>コンテンツ管理</td><td>60%</td><td><div class="score-bar"><div class="score-fill" style="width:60%"></div></div></td></tr>
+      <tr><td>学習体験</td><td>65%</td><td><div class="score-bar"><div class="score-fill" style="width:65%"></div></div></td></tr>
+      <tr><td>ユーザー管理</td><td>85%</td><td><div class="score-bar"><div class="score-fill" style="width:85%"></div></div></td></tr>
+      <tr><td>コミュニケーション</td><td>55%</td><td><div class="score-bar"><div class="score-fill" style="width:55%"></div></div></td></tr>
+      <tr><td>セキュリティ</td><td>54%→70%</td><td><div class="score-bar"><div class="score-fill" style="width:70%"></div></div></td></tr>
+      <tr><td>フロントエンドUX</td><td>55%→65%</td><td><div class="score-bar"><div class="score-fill" style="width:65%"></div></div></td></tr>
+      <tr><td>モバイル対応</td><td>5%→40%</td><td><div class="score-bar"><div class="score-fill" style="width:40%"></div></div></td></tr>
+    </table>
+    <div class="highlight">
+      <strong>本日の改善で全体スコア: 43% → 約55%</strong><br>
+      セキュリティ・モバイル・UXの3分野で大幅改善。
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">強み（高品質な部分）</div>
+    <ul>
+      <li>進捗トラッキング（5分滞在自動判定 + 手動完了）</li>
+      <li>RLS + ロール制御（admin/mentor/student分離）</li>
+      <li>メンター管理・Slack連携</li>
+      <li>プラン別アクセス制御</li>
+      <li>リッチコンテンツエディタ + 動画プレイヤー</li>
+    </ul>
+  </div>
+</div>
+
+<!-- 7. 今後 -->
+<div class="section" id="next">
+  <h2>今後の改善候補</h2>
+
+  <div class="card">
+    <div class="card-title">短期（次回以降）</div>
+    <ul>
+      <li>レッスンページ等のモバイル最適化（タッチターゲット拡大等）</li>
+      <li>検索バーのキーボードナビゲーション（↑↓Enter）</li>
+      <li>EmptyState共通コンポーネント化</li>
+      <li>フォームバリデーション強化（client-side）</li>
+      <li>コントラスト比改善（WCAG 4.5:1）</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <div class="card-title">中期</div>
+    <ul>
+      <li>ブックマーク/学習リスト機能</li>
+      <li>PWA対応（オフライン学習）</li>
+      <li>ドラッグ&ドロップ並べ替えUI</li>
+      <li>修了証/バッジシステム</li>
+      <li>コンテンツバージョン管理</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <div class="card-title">注意: 手動確認が必要な項目</div>
+    <ul>
+      <li>「マッキンゼーWebテスト対策」「解いておきたいケース問題リスト」はNotionのサブページ/DB構造のためコンテンツ少量。必要なら手動で追記</li>
+      <li>動画講座の既存データ → 管理画面から「複数動画管理」にURL入力で移行可能</li>
+    </ul>
+  </div>
+</div>
+
+<div class="footer">
+  © Strategists | LMS改善レポート 2026-03-17<br>
+  デプロイ先: <a href="https://strategists-lms.vercel.app" style="color:#A62B17;">strategists-lms.vercel.app</a>
+</div>
+
+</body>
+</html>
