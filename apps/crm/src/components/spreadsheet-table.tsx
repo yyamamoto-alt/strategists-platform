@@ -210,11 +210,12 @@ export function SpreadsheetTable<T>({
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>(
     () => {
       const saved = loadColumnWidths(storageKey);
-      if (saved) return saved;
+      // 保存済み幅にないカラムはデフォルト幅をマージ
       const defaults: Record<string, number> = {};
       for (const col of columns) {
         defaults[col.key] = col.width || 120;
       }
+      if (saved) return { ...defaults, ...saved };
       return defaults;
     }
   );
