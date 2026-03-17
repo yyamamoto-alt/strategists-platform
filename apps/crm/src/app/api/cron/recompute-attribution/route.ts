@@ -4,12 +4,15 @@ import { isSystemAutomationEnabled } from "@/lib/slack";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 /**
  * GET /api/cron/recompute-attribution
  * 1. カルテの情報を顧客DB/パイプラインに反映
- * 2. 帰属が「不明」の顧客 + 直近作成の顧客を再計算
+ * 2. 全顧客の帰属チャネルを再計算
+ *
+ * ?mode=full  → 全顧客を対象（デフォルト）
+ * ?mode=unknown → 不明+未計算のみ
  */
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
@@ -21,6 +24,9 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: true, skipped: true, reason: "disabled" });
   }
 
+  const url = new URL(request.url);
+  const mode = url.searchParams.get("mode") || "full";
+
   const supabase = createServiceClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as any;
@@ -28,7 +34,6 @@ export async function GET(request: Request) {
   // ─── Step 0: カルテの情報を顧客DBに反映 ───
   let karteSynced = 0;
 
-  // カルテの「弊塾を最初に知った場所」→ sales_pipeline.initial_channel
   const { data: karteFirstTouch } = await db
     .from("application_history")
     .select("customer_id, raw_data")
@@ -54,7 +59,6 @@ export async function GET(request: Request) {
       }
 
       // カルテの「決め手」→ customers.application_reason_karte に常に反映
-      // application_reason が空の場合は application_reason にも反映
       if (reason) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const custUpdateObj: Record<string, any> = { application_reason_karte: reason };
@@ -78,13 +82,7 @@ export async function GET(request: Request) {
     }
   }
 
-  // ─── Step 1: 全顧客の帰属を再計算 ───
-  // 「不明」だけでなく、カルテ同期後のデータ反映のために全顧客を対象にする
-  const { data: allCustomers } = await db
-    .from("customers")
-    .select("id")
-    .order("created_at", { ascending: false });
-
+  // ─── Step 1: 帰属チャネルを再計算 ───
   const { data: unknownAttr } = await db
     .from("customer_channel_attribution")
     .select("customer_id")
@@ -92,25 +90,51 @@ export async function GET(request: Request) {
 
   const unknownIds = (unknownAttr || []).map((r: { customer_id: string }) => r.customer_id);
 
-  const toProcess = new Set(
-    (allCustomers || []).map((c: { id: string }) => c.id)
-  );
+  let toProcessIds: string[];
+
+  if (mode === "full") {
+    const { data: allCustomers } = await db
+      .from("customers")
+      .select("id")
+      .order("created_at", { ascending: false });
+    toProcessIds = (allCustomers || []).map((c: { id: string }) => c.id);
+  } else {
+    // unknown + missing
+    const { data: allAttr } = await db
+      .from("customer_channel_attribution")
+      .select("customer_id");
+    const attrSet = new Set((allAttr || []).map((r: { customer_id: string }) => r.customer_id));
+
+    const { data: recentCustomers } = await db
+      .from("customers")
+      .select("id")
+      .order("created_at", { ascending: false })
+      .limit(300);
+
+    const missing = (recentCustomers || []).filter((c: { id: string }) => !attrSet.has(c.id));
+    toProcessIds = [...new Set([...missing.map((c: { id: string }) => c.id), ...unknownIds])];
+  }
 
   let processed = 0;
   let errors = 0;
 
-  for (const id of toProcess) {
-    try {
-      await computeAttributionForCustomer(id as string);
-      processed++;
-    } catch {
-      errors++;
+  // バッチ並行処理（10件ずつ）
+  const BATCH_SIZE = 10;
+  for (let i = 0; i < toProcessIds.length; i += BATCH_SIZE) {
+    const batch = toProcessIds.slice(i, i + BATCH_SIZE);
+    const results = await Promise.allSettled(
+      batch.map((id) => computeAttributionForCustomer(id))
+    );
+    for (const r of results) {
+      if (r.status === "fulfilled") processed++;
+      else errors++;
     }
   }
 
   return NextResponse.json({
     ok: true,
-    total: toProcess.size,
+    mode,
+    total: toProcessIds.length,
     processed,
     errors,
     unknown_before: unknownIds.length,
