@@ -73,7 +73,10 @@ export async function POST(request: Request) {
     const db = supabase as any;
 
     // 重複チェック（同じデータが二重送信された場合の防御）
-    const rawHash = md5(stableStringify(rawData));
+    // タイムスタンプはApps Script側で毎回生成されるため、ハッシュ計算から除外
+    // （トリガー重複発火時にタイムスタンプだけ変わり、重複検出が効かない問題の修正）
+    const { "タイムスタンプ": _ts, ...dataForHash } = rawData;
+    const rawHash = md5(stableStringify(dataForHash));
     const { data: existingRecord } = await db
       .from("application_history")
       .select("id")

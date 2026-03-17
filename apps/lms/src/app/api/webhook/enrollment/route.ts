@@ -74,6 +74,25 @@ export async function POST(request: Request) {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
+  // 重複チェック: 同一メール × 同一プランが直近10分以内に送信されていればスキップ
+  const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+  const { data: recentDuplicate } = await supabase
+    .from("enrollment_applications")
+    .select("id")
+    .eq("email", email)
+    .gte("created_at", tenMinutesAgo)
+    .limit(1);
+
+  if (recentDuplicate && recentDuplicate.length > 0) {
+    console.log(`[enrollment] Duplicate skipped: ${email} (recent submission exists)`);
+    return NextResponse.json({
+      success: true,
+      action: "skipped",
+      reason: "duplicate",
+      message: "同じ申請が既に送信されています",
+    });
+  }
+
   // enrollment_applications テーブルに挿入
   const { data, error } = await supabase
     .from("enrollment_applications")
