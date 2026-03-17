@@ -330,26 +330,38 @@ export async function POST(request: Request) {
       }
 
       // 招待メール送信（メンター情報付き）
+      // ⚠️ invite_email_enabled が false の場合、メール送信をスキップ（ベータ期間中）
       const lmsUrl = process.env.NEXT_PUBLIC_APP_URL || "https://strategists-lms.vercel.app";
       const inviteUrl = `${lmsUrl}/invite/${token}`;
 
       let emailSent = false;
-      try {
-        await sendInviteEmail({
-          to: application.email,
-          displayName: application.name,
-          role: "student",
-          inviteUrl,
-          appName: "LMS",
-          mentorName: selectedMentor || undefined,
-          mentorLineUrl,
-          mentorBookingUrl,
-          mentorProfileText,
-          subsidyEligible,
-        });
-        emailSent = true;
-      } catch (e) {
-        console.error("Email send error:", e);
+      const { data: emailSetting } = await supabase
+        .from("app_settings")
+        .select("value")
+        .eq("key", "invite_email_enabled")
+        .single();
+      const emailEnabled = emailSetting?.value === "true" || emailSetting?.value === true;
+
+      if (emailEnabled) {
+        try {
+          await sendInviteEmail({
+            to: application.email,
+            displayName: application.name,
+            role: "student",
+            inviteUrl,
+            appName: "LMS",
+            mentorName: selectedMentor || undefined,
+            mentorLineUrl,
+            mentorBookingUrl,
+            mentorProfileText,
+            subsidyEligible,
+          });
+          emailSent = true;
+        } catch (e) {
+          console.error("Email send error:", e);
+        }
+      } else {
+        console.log(`[approve_invite] Email skipped (invite_email_enabled=false) for ${application.email}`);
       }
 
       // メンターにDM送信
@@ -382,7 +394,9 @@ export async function POST(request: Request) {
         })
         .eq("id", applicationId);
 
-      const emailStatus = emailSent ? "メール送信済み" : "メール送信失敗（URLは生成済み）";
+      const emailStatus = emailEnabled
+        ? (emailSent ? "メール送信済み" : "メール送信失敗（URLは生成済み）")
+        : "メール送信スキップ（ベータ期間中）";
       const mentorStatus = selectedMentor
         ? (mentorDmSent ? `メンター: ${selectedMentor} (DM送信済み)` : `メンター: ${selectedMentor} (DM送信失敗)`)
         : "メンター: 未選択";

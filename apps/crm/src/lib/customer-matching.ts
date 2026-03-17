@@ -404,30 +404,32 @@ async function syncFormFieldsToRelatedTables(
       await upsertRelated(db, "learning_records", customerId, learningUpdate);
     }
 
-    // Slack通知: プラン・エージェント利用の確認リクエスト（#sales_営業管理 + 担当者メンション）
-    const { data: custPipeline } = await db.from("sales_pipeline").select("sales_person").eq("customer_id", customerId).single();
-    const { data: custData } = await db.from("customers").select("name").eq("id", customerId).single();
-    notifyEnrollmentFormReceived({
-      customerName: custData?.name || rawData["お名前"] || "不明",
-      customerId,
-      planName: rawData["申込プラン"] || null,
-      agentUsage: rawData["エージェント利用"] || null,
-      subsidyEligible: rawData["申込プラン"]?.includes("補助金") ?? false,
-      salesPerson: custPipeline?.sales_person || null,
-    }).catch(() => {}); // エラーで同期を止めない
-
-    // 補助金適用顧客の場合、荒井さんへSlack通知（書類確認TODO）
-    if (rawData["申込プラン"]?.includes("補助金")) {
-      const identityDoc = rawData["本人確認書類の写し"] || null;
-      const bankDoc = rawData["振込先口座を確認できる書類の写し"] || null;
-      notifySubsidyEnrollment({
+    // Slack通知: プラン・エージェント利用の確認リクエスト — 初回のみ（重複時はスキップ）
+    if (isNewRecord) {
+      const { data: custPipeline } = await db.from("sales_pipeline").select("sales_person").eq("customer_id", customerId).single();
+      const { data: custData } = await db.from("customers").select("name").eq("id", customerId).single();
+      notifyEnrollmentFormReceived({
         customerName: custData?.name || rawData["お名前"] || "不明",
         customerId,
-        hasIdentityDoc: !!identityDoc,
-        hasBankDoc: !!bankDoc,
-        identityDocUrl: identityDoc,
-        bankDocUrl: bankDoc,
+        planName: rawData["申込プラン"] || null,
+        agentUsage: rawData["エージェント利用"] || null,
+        subsidyEligible: rawData["申込プラン"]?.includes("補助金") ?? false,
+        salesPerson: custPipeline?.sales_person || null,
       }).catch(() => {}); // エラーで同期を止めない
+
+      // 補助金適用顧客の場合、荒井さんへSlack通知（書類確認TODO）
+      if (rawData["申込プラン"]?.includes("補助金")) {
+        const identityDoc = rawData["本人確認書類の写し"] || null;
+        const bankDoc = rawData["振込先口座を確認できる書類の写し"] || null;
+        notifySubsidyEnrollment({
+          customerName: custData?.name || rawData["お名前"] || "不明",
+          customerId,
+          hasIdentityDoc: !!identityDoc,
+          hasBankDoc: !!bankDoc,
+          identityDocUrl: identityDoc,
+          bankDocUrl: bankDoc,
+        }).catch(() => {}); // エラーで同期を止めない
+      }
     }
   }
 

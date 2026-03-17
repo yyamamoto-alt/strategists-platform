@@ -200,15 +200,8 @@ export async function GET(request: Request) {
           customerName = cust?.name || "不明";
         } catch { /* ignore */ }
 
-        // Slack通知: プランとエージェント利用の確認リクエスト
-        await notifyEnrollmentFormReceived({
-          customerName,
-          customerId,
-          planName: planFromForm,
-          agentUsage: agentFromForm,
-          subsidyEligible,
-          salesPerson,
-        });
+        // Slack通知: バックフィルでは送信しない（リアルタイムwebhookで既に送信済み）
+        // ※ backfillは過去レコードの再処理なので、毎回Slack通知すると重複スパムになる
 
         stats.入塾フォーム++;
       } catch { stats.errors++; }
