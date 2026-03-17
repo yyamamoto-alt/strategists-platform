@@ -195,20 +195,20 @@ export function HeatmapTab() {
           </div>
           <div ref={containerRef} className="relative" style={{
             width: device === "sp" ? 390 : "100%",
-            height: device === "sp" ? 2400 : 4000,
+            height: device === "sp" ? 12000 : 10000,
             margin: device === "sp" ? "0 auto" : undefined,
-            overflow: "hidden",
           }}>
             <iframe
               src={`https://akagiconsulting.com${page}`}
               title="LP Preview"
-              className="w-full h-full border-0"
+              className="border-0"
               style={{
+                width: device === "sp" ? 390 : "100%",
+                height: device === "sp" ? 12000 : 10000,
                 pointerEvents: "none",
                 transformOrigin: "top left",
-                transform: device === "sp" ? "scale(1)" : "none",
               }}
-              sandbox="allow-same-origin"
+              sandbox="allow-same-origin allow-scripts"
             />
             <canvas ref={canvasRef} className="absolute inset-0" style={{ pointerEvents: "none" }} />
             {clicks.length === 0 && (
