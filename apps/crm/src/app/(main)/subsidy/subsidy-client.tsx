@@ -86,8 +86,15 @@ function formatDateJP(d: string | null | undefined): string {
   return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`;
 }
 
+/** テスト顧客判定: 名前に「テスト」を含む */
+function isTestCustomer(c: CustomerWithRelations): boolean {
+  const name = c.name || "";
+  return name.includes("テスト");
+}
+
 /** 補助金対象判定（対象者リスト用）: contracts.subsidy_eligible=true かつ 成約済み */
 function isSubsidyTarget(c: CustomerWithRelations): boolean {
+  if (isTestCustomer(c)) return false;
   if (!c.contract?.subsidy_eligible) return false;
   if (c.pipeline?.stage !== "成約") return false;
   return true;
@@ -96,6 +103,7 @@ function isSubsidyTarget(c: CustomerWithRelations): boolean {
 /** 補助金推移用の集客対象判定（元の日付ベース定義）:
  *  既卒で、申し込み日が2/10以降 OR 営業日が2/10以降（未実施/日程未確/NoShow除く） */
 function isSubsidyCollectionTarget(c: CustomerWithRelations): boolean {
+  if (isTestCustomer(c)) return false;
   if (isShinsotsu(c.attribute)) return false;
   const appDate = normalizeDate(c.application_date);
   const salesDate = normalizeDate(c.pipeline?.sales_date);

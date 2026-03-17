@@ -5,8 +5,15 @@ import { fetchSubsidyCompletionData, fetchSubsidyDocuments, fetchSubsidyChecks }
 import { SubsidyClient } from "./subsidy-client";
 import type { CustomerWithRelations } from "@strategy-school/shared-db";
 
+/** テスト顧客判定: 名前に「テスト」を含む */
+function isTestCustomer(c: CustomerWithRelations): boolean {
+  const name = c.name || "";
+  return name.includes("テスト");
+}
+
 /** 補助金対象判定: contracts.subsidy_eligible=true かつ 成約済み */
 function isSubsidyTarget(c: CustomerWithRelations): boolean {
+  if (isTestCustomer(c)) return false;
   if (!c.contract?.subsidy_eligible) return false;
   if (c.pipeline?.stage !== "成約") return false;
   return true;
