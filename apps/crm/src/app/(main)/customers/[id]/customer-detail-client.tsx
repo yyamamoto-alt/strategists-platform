@@ -991,6 +991,16 @@ function MarketingInfoSection({
               )}
             </div>
           </div>
+          {/* 営業ルート */}
+          <div className="bg-surface-elevated rounded px-3 py-2">
+            <p className="text-[10px] text-gray-500 font-medium flex items-center gap-0.5">
+              営業ルート（営業報告）
+              <SourceBadge source="sync" />
+            </p>
+            <p className="text-sm text-gray-200 mt-0.5">
+              {(p as Record<string, unknown>).sales_route as string || "-"}
+            </p>
+          </div>
         </div>
       </div>
     </div>

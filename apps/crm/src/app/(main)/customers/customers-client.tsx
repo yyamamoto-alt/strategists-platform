@@ -81,16 +81,15 @@ const VIEW_COLUMNS: Record<ViewTab, string[] | null> = {
     "application_date", "name", "attribute", "stage",
     // 営業日程（検討状況のすぐ右）
     "meeting_scheduled", "additional_coaching_date", "response_deadline",
-    // 帰属チャネル
-    "marketing_channel",
+    // マーケ帰属
+    "marketing_channel", "initial_channel_base", "application_reason_base", "utm_source_base", "sales_route_base",
     "subsidy_eligible",
     "career_history", "is_agent_customer",
     // 売上（見込含む = 確定 + 人材見込）
     "rev_total", "rev_eq", "confirmed_amount", "rev_plus", "rev_agent",
     // プラン名
     "plan_name",
-    // マーケ: 経路営業のみ
-    "sales_route",
+    // （sales_routeは上のマーケ帰属に統合）
     // 営業: 角度, 営業担当
     "probability", "sales_person",
     // 人材紹介
@@ -524,12 +523,24 @@ export function CustomersClient() {
           return school + agent + (subsidyOk ? getSubsidyAmount(c) : 0);
         } },
 
-      // ─── 帰属チャネル（概要に表示） ───
-      { key: "marketing_channel", label: "帰属チャネル", width: 110, category: "base",
+      // ─── マーケ帰属（概要に表示） ───
+      { key: "marketing_channel", label: "帰属チャネル", width: 120, category: "base",
         render: (c) => {
           const attr = attributionMap[c.id];
           return attr ? <span className={`inline-block px-2 py-px rounded-full text-[10px] leading-none font-medium whitespace-nowrap ${getChannelColor(attr.marketing_channel)}`}>{attr.marketing_channel}</span> : <span className="text-gray-600 text-xs">-</span>;
         }, sortValue: (c) => attributionMap[c.id]?.marketing_channel || "" },
+      { key: "initial_channel_base", label: "初回認知", width: 100, category: "base",
+        render: (c) => <span className="text-xs text-gray-300">{c.pipeline?.initial_channel || "-"}</span>,
+        sortValue: (c) => c.pipeline?.initial_channel || "" },
+      { key: "application_reason_base", label: "決め手", width: 120, category: "base",
+        render: (c) => <span className="text-xs text-gray-300 truncate block">{(c as unknown as Record<string, unknown>).application_reason_karte as string || c.application_reason || "-"}</span>,
+        sortValue: (c) => c.application_reason || "" },
+      { key: "utm_source_base", label: "utm", width: 80, category: "base",
+        render: (c) => <span className="text-xs text-gray-400">{c.utm_source || "-"}</span>,
+        sortValue: (c) => c.utm_source || "" },
+      { key: "sales_route_base", label: "営業ルート", width: 90, category: "base",
+        render: (c) => <span className="text-xs text-gray-400 truncate block">{c.pipeline?.sales_route || "-"}</span>,
+        sortValue: (c) => c.pipeline?.sales_route || "" },
 
       // ═══ マーケティング（タブ内） ═══
       { key: "initial_channel", label: "初回認知経路", width: 110, category: "marketing",
