@@ -87,7 +87,7 @@ const MAIN_CHANNELS = new Set([
 ]);
 
 // ピュア/複合の判定から除外するチャネル（配信手段であって認知チャネルではない）
-const DELIVERY_CHANNELS = new Set(["Lステップ", "PR TIMES"]);
+const DELIVERY_CHANNELS = new Set(["Lステップ"]);
 
 function isMainChannel(ch: string | null): boolean {
   return ch != null && MAIN_CHANNELS.has(ch);
