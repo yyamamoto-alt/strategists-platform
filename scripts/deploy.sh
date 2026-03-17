@@ -26,7 +26,7 @@ deploy_app() {
     { "path": "/api/cron/daily-report", "schedule": "0 0 * * *" },
     { "path": "/api/cron/stage-transitions", "schedule": "0 0 * * *" },
     { "path": "/api/cron/sync-spreadsheets", "schedule": "*/5 * * * *" },
-    { "path": "/api/cron/sync-automations", "schedule": "*/5 * * * *" },
+    { "path": "/api/cron/sync-automations", "schedule": "*/20 * * * *" },
     { "path": "/api/cron/sync-analytics", "schedule": "0 15 * * *" },
     { "path": "/api/cron/sync-youtube", "schedule": "30 15 * * *" },
     { "path": "/api/cron/youtube-video-report", "schedule": "0 1 * * *" },
