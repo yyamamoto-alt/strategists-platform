@@ -203,7 +203,8 @@ export function computeAttribution(
     //   - 広告ベースの場合、SEOは同系扱い（検索→広告クリックは自然な動線）
     //   - 広告ベースの場合、初回認知=不明/なし も無視
     const adBase = AD_CHANNELS.has(base_channel);
-    const otherChannels = [initialChannel, reasonChannel, utmChannel, salesChannel]
+    // sales_routeは営業メモなのでピュア/複合判定に含めない
+    const otherChannels = [initialChannel, reasonChannel, utmChannel]
       .filter((ch): ch is string => {
         if (ch == null || ch === base_channel) return false;
         if (DELIVERY_CHANNELS.has(ch)) return false;
