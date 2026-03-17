@@ -1,4 +1,5 @@
 import { createServiceClient } from "@/lib/supabase/server";
+import { normalizeAttribute } from "@/lib/customer-matching";
 import { NextResponse } from "next/server";
 import { notifyEnrollmentFormReceived } from "@/lib/slack";
 
@@ -52,7 +53,7 @@ export async function GET(request: Request) {
         const upd: Record<string, any> = {};
         if (rd["お名前"]) upd.name = rd["お名前"];
         if (rd["フリガナ"]) upd.name_kana = rd["フリガナ"].replace(/\s+/g, "");
-        if (rd["属性"]) upd.attribute = rd["属性"];
+        if (rd["属性"]) upd.attribute = normalizeAttribute(rd["属性"]);
         if (rd["志望企業"]) upd.target_companies = rd["志望企業"];
         if (rd["転職意向"]) upd.transfer_intent = rd["転職意向"];
         if (rd["ケース面接対策の状況"]) upd.initial_level = rd["ケース面接対策の状況"];

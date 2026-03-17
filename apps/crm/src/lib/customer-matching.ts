@@ -5,6 +5,12 @@ import { computeAttributionForCustomer } from "@/lib/compute-attribution-for-cus
 import { notifyEnrollmentFormReceived, notifySubsidyEnrollment, notifyMentoringEvaluation } from "@/lib/slack";
 import crypto from "crypto";
 
+/** 属性の表記揺れを正規化（「中途」→「既卒」） */
+export function normalizeAttribute(attr: string): string {
+  if (attr === "中途") return "既卒";
+  return attr;
+}
+
 /** MD5ハッシュ（DB側のmd5()と同等） */
 async function md5Hash(text: string): Promise<string> {
   return crypto.createHash("md5").update(text).digest("hex");
@@ -242,7 +248,7 @@ async function syncFormFieldsToRelatedTables(
     const custUpdate: Record<string, any> = {};
     if (rawData["お名前"]) custUpdate.name = rawData["お名前"];
     if (rawData["フリガナ"]) custUpdate.name_kana = rawData["フリガナ"].replace(/\s+/g, "");
-    if (rawData["属性"]) custUpdate.attribute = rawData["属性"];
+    if (rawData["属性"]) custUpdate.attribute = normalizeAttribute(rawData["属性"]);
     if (rawData["志望企業"]) custUpdate.target_companies = rawData["志望企業"];
     if (rawData["転職意向"]) custUpdate.transfer_intent = rawData["転職意向"];
     if (rawData["ケース面接対策の状況"]) custUpdate.initial_level = rawData["ケース面接対策の状況"];
@@ -628,7 +634,7 @@ export async function upsertFromSpreadsheet(
       application_date: appDate,
       data_origin: "auto_sync",
     };
-    if (fields.attribute) customerInsert.attribute = fields.attribute;
+    if (fields.attribute) customerInsert.attribute = normalizeAttribute(fields.attribute);
     if (fields.university) customerInsert.university = fields.university;
     if (fields.utm_source) customerInsert.utm_source = fields.utm_source;
     if (fields.utm_medium) customerInsert.utm_medium = fields.utm_medium;

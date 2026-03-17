@@ -1,5 +1,5 @@
 import { createServiceClient } from "@/lib/supabase/server";
-import { matchCustomer } from "@/lib/customer-matching";
+import { matchCustomer, normalizeAttribute } from "@/lib/customer-matching";
 import { computeAttributionForCustomer } from "@/lib/compute-attribution-for-customer";
 import {
   notifyKarteSubmission,
@@ -105,7 +105,7 @@ export async function POST(request: Request) {
       const custUpdate: Record<string, string> = {};
       if (name) custUpdate.name = name;
       if (rawData["フリガナ"]) custUpdate.name_kana = rawData["フリガナ"].replace(/\s+/g, "");
-      if (rawData["属性"]) custUpdate.attribute = rawData["属性"];
+      if (rawData["属性"]) custUpdate.attribute = normalizeAttribute(rawData["属性"]);
       if (rawData["志望企業"]) custUpdate.target_companies = rawData["志望企業"];
       if (rawData["転職意向"]) custUpdate.transfer_intent = rawData["転職意向"];
       if (rawData["ケース面接対策の状況"]) custUpdate.initial_level = rawData["ケース面接対策の状況"];
@@ -137,7 +137,7 @@ export async function POST(request: Request) {
         application_date: new Date().toISOString(),
         data_origin: "webhook",
       };
-      if (rawData["属性"]) customerInsert.attribute = rawData["属性"];
+      if (rawData["属性"]) customerInsert.attribute = normalizeAttribute(rawData["属性"]);
       if (rawData["弊塾を最初に知った場所"]) customerInsert.utm_source = rawData["弊塾を最初に知った場所"];
 
       const { data: newCustomer, error: createError } = await db
