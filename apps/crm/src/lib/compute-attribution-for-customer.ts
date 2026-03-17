@@ -53,6 +53,8 @@ export async function computeAttributionForCustomer(customerId: string): Promise
     {
       customer_id: customerId,
       marketing_channel: result.marketing_channel,
+      base_channel: result.base_channel,
+      is_pure: result.is_pure,
       attribution_source: result.attribution_source,
       confidence: result.confidence,
       touch_first: result.touch_first,

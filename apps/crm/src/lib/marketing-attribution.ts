@@ -1,5 +1,6 @@
 /**
  * マーケティングチャネル帰属ロジック
+ * ファーストタッチモデル + ピュア/複合区別
  * client + server safe (Supabaseクライアント不使用)
  */
 
@@ -27,12 +28,14 @@ export interface MarketingChannel {
 }
 
 export interface AttributionResult {
-  marketing_channel: string;
+  marketing_channel: string;       // 最終帰属 ("ピュアFB広告", "複合X", "予測SEO" 等)
+  base_channel: string;            // ベースチャネル ("FB広告", "X", "SEO" 等)
+  is_pure: boolean;                // ピュア=true, 複合=false
   attribution_source: string;
   confidence: "high" | "medium" | "low";
-  touch_first: string | null;
-  touch_decision: string | null;
-  touch_last: string | null;
+  touch_first: string | null;      // 初回認知チャネル
+  touch_decision: string | null;   // 決め手チャネル
+  touch_last: string | null;       // 最終申込チャネル (utm)
   is_multi_touch: boolean;
   raw_data: Record<string, string | null>;
 }
@@ -47,6 +50,8 @@ function normalizeValue(
   rules: MappingRule[]
 ): string | null {
   if (!sourceValue || sourceValue.trim() === "") return null;
+  // 「不明」は情報なしとして扱う
+  if (sourceValue.trim() === "不明") return null;
 
   const fieldRules = rules
     .filter((r) => r.source_field === sourceField)
@@ -73,17 +78,20 @@ function normalizeValue(
 }
 
 // ================================================================
-// 広告チャネル判定
+// ピュア/複合判定
 // ================================================================
 
-const AD_CHANNELS = new Set(["FB広告", "Google広告", "X広告"]);
+// ピュア/複合 prefix を付与する6大チャネル
+const MAIN_CHANNELS = new Set([
+  "FB広告", "Google広告", "X", "YouTube", "SEO", "自社メディア",
+]);
 
-function isAdChannel(channelName: string | null): boolean {
-  return channelName != null && AD_CHANNELS.has(channelName);
+function isMainChannel(ch: string | null): boolean {
+  return ch != null && MAIN_CHANNELS.has(ch);
 }
 
 // ================================================================
-// メイン帰属ロジック
+// メイン帰属ロジック（ファーストタッチモデル）
 // ================================================================
 
 export interface CustomerRawData {
@@ -109,81 +117,91 @@ export function computeAttribution(
   };
 
   // 各ソースフィールドを正規化
-  const utmChannel = normalizeValue("utm_source", customer.utm_source, rules);
   const initialChannel = normalizeValue("initial_channel", customer.initial_channel, rules);
   const reasonChannel = normalizeValue("application_reason", customer.application_reason, rules);
+  const utmChannel = normalizeValue("utm_source", customer.utm_source, rules);
   const salesChannel = normalizeValue("sales_route", customer.sales_route, rules);
 
   // タッチポイント
-  const touch_last = utmChannel;
   const touch_first = initialChannel;
   const touch_decision = reasonChannel;
+  const touch_last = utmChannel;
 
-  // 有効なソース数をカウント
-  const sources = [utmChannel, initialChannel, reasonChannel, salesChannel].filter(Boolean);
-  const is_multi_touch = sources.length >= 2;
+  // 有効なソース数をカウント（ユニークチャネル）
+  const uniqueChannels = new Set(
+    [initialChannel, reasonChannel, utmChannel, salesChannel].filter(Boolean)
+  );
+  const is_multi_touch = uniqueChannels.size >= 2;
 
-  // 優先度ルールで帰属決定
-  let marketing_channel: string;
+  // ─── ファーストタッチ優先で帰属決定 ───
+  let base_channel: string;
   let attribution_source: string;
   let confidence: "high" | "medium" | "low";
 
-  // 1. UTMが広告チャネル → 最優先
-  if (isAdChannel(utmChannel)) {
-    marketing_channel = utmChannel!;
-    attribution_source = "utm_source";
-    confidence = "high";
-  }
-  // 2. UTM + initial_channel 一致
-  else if (utmChannel && initialChannel && utmChannel === initialChannel) {
-    marketing_channel = utmChannel;
-    attribution_source = "utm_source+initial_channel";
-    confidence = "high";
-  }
-  // 3. UTMあり
-  else if (utmChannel) {
-    marketing_channel = utmChannel;
-    attribution_source = "utm_source";
-    confidence = "medium";
-  }
-  // 4. initial_channelあり
-  else if (initialChannel) {
-    marketing_channel = initialChannel;
+  // 1. initial_channel (初回認知) → 最優先（ファーストタッチ）
+  if (initialChannel) {
+    base_channel = initialChannel;
     attribution_source = "initial_channel";
+    // utm と一致すれば高信頼度
+    confidence = utmChannel === initialChannel ? "high" : "medium";
+  }
+  // 2. application_reason (決め手) → 2番目
+  else if (reasonChannel) {
+    base_channel = reasonChannel;
+    attribution_source = "application_reason";
     confidence = "medium";
   }
-  // 5. application_reasonあり
-  else if (reasonChannel) {
-    marketing_channel = reasonChannel;
-    attribution_source = "application_reason";
-    confidence = "low";
+  // 3. utm_source → 3番目
+  else if (utmChannel) {
+    base_channel = utmChannel;
+    attribution_source = "utm_source";
+    confidence = "medium";
   }
-  // 6. sales_routeあり
+  // 4. sales_route → 4番目
   else if (salesChannel) {
-    marketing_channel = salesChannel;
+    base_channel = salesChannel;
     attribution_source = "sales_route";
     confidence = "low";
   }
-  // 7. 全てなし → 不明
+  // 5. raw値フォールバック
+  else if (customer.initial_channel && customer.initial_channel.trim() !== "" && customer.initial_channel.trim() !== "不明") {
+    base_channel = customer.initial_channel.trim();
+    attribution_source = "initial_channel_raw";
+    confidence = "low";
+  }
+  else if (customer.utm_source && customer.utm_source.trim() !== "" && customer.utm_source.trim() !== "不明") {
+    base_channel = customer.utm_source.trim();
+    attribution_source = "utm_source_raw";
+    confidence = "low";
+  }
+  // 6. 全情報なし → 予測SEO
   else {
-    // utm_source が未マッチだがテキストとして存在する場合、そのまま使用
-    if (customer.utm_source && customer.utm_source.trim() !== "") {
-      marketing_channel = customer.utm_source.trim();
-      attribution_source = "utm_source_raw";
-      confidence = "low";
-    } else if (customer.initial_channel && customer.initial_channel.trim() !== "") {
-      marketing_channel = customer.initial_channel.trim();
-      attribution_source = "initial_channel_raw";
-      confidence = "low";
-    } else {
-      marketing_channel = "不明";
-      attribution_source = "fallback";
-      confidence = "low";
-    }
+    base_channel = "予測SEO";
+    attribution_source = "predicted";
+    confidence = "low";
+  }
+
+  // ─── ピュア/複合判定 ───
+  // 6大チャネルの場合のみ prefix を付与
+  let is_pure = true;
+  let marketing_channel: string;
+
+  if (isMainChannel(base_channel)) {
+    // 他のタッチポイントに異なるチャネルがあれば「複合」
+    const otherChannels = [initialChannel, reasonChannel, utmChannel, salesChannel]
+      .filter((ch): ch is string => ch != null && ch !== base_channel);
+
+    is_pure = otherChannels.length === 0;
+    marketing_channel = `${is_pure ? "ピュア" : "複合"}${base_channel}`;
+  } else {
+    // note, 口コミ・紹介, インフルエンサー, 予測SEO 等 → prefix なし
+    marketing_channel = base_channel;
   }
 
   return {
     marketing_channel,
+    base_channel,
+    is_pure,
     attribution_source,
     confidence,
     touch_first,
