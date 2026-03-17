@@ -24,7 +24,7 @@ export async function computeAttributionForCustomer(customerId: string): Promise
   // 顧客データを取得
   const { data: customer } = await db
     .from("customers")
-    .select("id, utm_source, utm_medium, utm_campaign, application_reason")
+    .select("id, utm_source, utm_medium, utm_campaign, application_reason, application_reason_karte")
     .eq("id", customerId)
     .single();
 
@@ -42,7 +42,9 @@ export async function computeAttributionForCustomer(customerId: string): Promise
     utm_medium: customer.utm_medium,
     utm_campaign: customer.utm_campaign,
     initial_channel: pipeline?.initial_channel || null,
-    application_reason: customer.application_reason,
+    application_reason: customer.application_reason && customer.application_reason !== "不明"
+      ? customer.application_reason
+      : customer.application_reason_karte || customer.application_reason,
     sales_route: pipeline?.sales_route || null,
   };
 
