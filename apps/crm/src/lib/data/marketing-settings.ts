@@ -105,6 +105,25 @@ export const fetchChannelAttributions = unstable_cache(
 );
 
 // ================================================================
+// 単一顧客の帰属結果取得
+// ================================================================
+
+export async function fetchCustomerAttribution(customerId: string): Promise<ChannelAttribution | null> {
+  const supabase = createServiceClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db = supabase as any;
+
+  const { data, error } = await db
+    .from("customer_channel_attribution")
+    .select("*")
+    .eq("customer_id", customerId)
+    .single();
+
+  if (error || !data) return null;
+  return data as ChannelAttribution;
+}
+
+// ================================================================
 // 帰属統計
 // ================================================================
 

@@ -33,7 +33,7 @@ export default async function CustomerDetailPage({ params }: Props) {
       applicationHistory={applicationHistory}
       orders={orders}
       mentors={mentors}
-      attribution={attribution as import("./customer-detail-client").ChannelAttributionData | null}
+      attribution={attribution as unknown as import("./customer-detail-client").ChannelAttributionData | null}
     />
   );
 }

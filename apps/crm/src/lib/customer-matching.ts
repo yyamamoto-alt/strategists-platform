@@ -246,7 +246,11 @@ async function syncFormFieldsToRelatedTables(
     if (rawData["志望企業"]) custUpdate.target_companies = rawData["志望企業"];
     if (rawData["転職意向"]) custUpdate.transfer_intent = rawData["転職意向"];
     if (rawData["ケース面接対策の状況"]) custUpdate.initial_level = rawData["ケース面接対策の状況"];
-    if (rawData["弊塾を最初に知った場所"]) custUpdate.utm_source = rawData["弊塾を最初に知った場所"];
+    // 「弊塾を最初に知った場所」→ sales_pipeline.initial_channel に同期（後述）
+    // ※ utm_source は LP経由のUTMパラメータ専用。カルテの日本語値は入れない
+    if (rawData["弊塾への面談申し込みのきっかけ、決め手 "] || rawData["弊塾への面談申し込みのきっかけ、決め手"]) {
+      custUpdate.application_reason_karte = rawData["弊塾への面談申し込みのきっかけ、決め手 "] || rawData["弊塾への面談申し込みのきっかけ、決め手"];
+    }
     if (rawData["居住地（都道府県）"]) custUpdate.prefecture = rawData["居住地（都道府県）"];
     if (rawData["生年月日"]) custUpdate.birth_date = normalizeDateStr(rawData["生年月日"]);
     if (rawData["性別"]) custUpdate.gender = rawData["性別"];
@@ -278,6 +282,16 @@ async function syncFormFieldsToRelatedTables(
     if (Object.keys(custUpdate).length > 0) {
       custUpdate.updated_at = new Date().toISOString();
       await db.from("customers").update(custUpdate).eq("id", customerId);
+    }
+
+    // --- カルテ → sales_pipeline.initial_channel 同期 ---
+    if (rawData["弊塾を最初に知った場所"]) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const pipeUpdate: Record<string, any> = {
+        initial_channel: rawData["弊塾を最初に知った場所"],
+        updated_at: new Date().toISOString(),
+      };
+      await db.from("sales_pipeline").update(pipeUpdate).eq("customer_id", customerId);
     }
 
     // --- カルテ同期時: データ更新のみ ---

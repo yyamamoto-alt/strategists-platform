@@ -1298,7 +1298,7 @@ export function CustomerDetailClient({
 
         {/* 右カラム */}
         <div className="space-y-3">
-          <MarketingInfoSection customer={customer} attribution={attribution} />
+          <MarketingInfoSection customer={customer} attribution={attribution as ChannelAttributionData | null} />
 
           <GroupedSection title="営業・商談" groups={pipelineGroups} customer={customer} isEditing={isEditing} editValues={editValues} onEditChange={handleEditChange} cols={4} />
 
