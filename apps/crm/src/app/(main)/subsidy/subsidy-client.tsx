@@ -812,60 +812,48 @@ function CustomerDetailModal({
         <div className="px-6 py-4 border-t border-white/10">
           <h4 className="text-sm font-bold text-white mb-3">書類発行</h4>
           <div className="grid grid-cols-3 gap-3">
-            <button
-              onClick={() => onOpenDoc("invoice")}
-              className="p-4 rounded-lg border-2 border-dashed border-white/20 hover:border-brand/50 hover:bg-brand/5 transition-all text-left group cursor-pointer"
-            >
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-base">📄</span>
-                <p className="text-xs font-bold text-white group-hover:text-brand transition-colors">請求書/明細書</p>
-              </div>
-              <p className="text-[10px] text-gray-500">入塾時に発行</p>
-              {documents?.invoiceSentAt ? (
-                <p className="text-[10px] text-green-400 mt-2">📧 送付済み: {normalizeDate(documents.invoiceSentAt)}</p>
-              ) : documents?.invoiceIssuedAt ? (
-                <p className="text-[10px] text-amber-400 mt-2">⚠ 発行済み（未送付）</p>
-              ) : (
-                <p className="text-[10px] text-brand/60 mt-2 group-hover:text-brand">クリックして送付 →</p>
-              )}
-            </button>
-            <button
-              onClick={() => onOpenDoc("receipt")}
-              className="p-4 rounded-lg border-2 border-dashed border-white/20 hover:border-brand/50 hover:bg-brand/5 transition-all text-left group cursor-pointer"
-            >
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-base">🧾</span>
-                <p className="text-xs font-bold text-white group-hover:text-brand transition-colors">領収書</p>
-              </div>
-              <p className="text-[10px] text-gray-500">書類目視確認後に発行</p>
-              {documents?.receiptSentAt ? (
-                <p className="text-[10px] text-green-400 mt-2">📧 送付済み: {normalizeDate(documents.receiptSentAt)}</p>
-              ) : documents?.receiptIssuedAt ? (
-                <p className="text-[10px] text-amber-400 mt-2">⚠ 発行済み（未送付）</p>
-              ) : (
-                <p className="text-[10px] text-brand/60 mt-2 group-hover:text-brand">クリックして送付 →</p>
-              )}
-            </button>
-            <button
-              onClick={() => onOpenDoc("certificate")}
-              className="p-4 rounded-lg border-2 border-dashed border-white/20 hover:border-brand/50 hover:bg-brand/5 transition-all text-left group cursor-pointer"
-            >
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-base">🎓</span>
-                <p className="text-xs font-bold text-white group-hover:text-brand transition-colors">修了証明書</p>
-              </div>
-              <p className="text-[10px] text-gray-500">修了条件達成後に発行</p>
-              {documents?.certificateSentAt ? (
-                <p className="text-[10px] text-green-400 mt-2">
-                  📧 送付済み: {normalizeDate(documents.certificateSentAt)}
-                  {documents.certificateNumber && ` (No.${documents.certificateNumber})`}
-                </p>
-              ) : documents?.certificateIssuedAt ? (
-                <p className="text-[10px] text-amber-400 mt-2">⚠ 発行済み（未送付）</p>
-              ) : (
-                <p className="text-[10px] text-brand/60 mt-2 group-hover:text-brand">クリックして送付 →</p>
-              )}
-            </button>
+            {([
+              { type: "invoice" as const, icon: "\ud83d\udcc4", label: "請求書/明細書", desc: "入塾時に発行",
+                sent: documents?.invoiceSentAt, issued: documents?.invoiceIssuedAt, extra: null },
+              { type: "receipt" as const, icon: "\ud83e\uddfe", label: "領収書", desc: "書類目視確認後に発行",
+                sent: documents?.receiptSentAt, issued: documents?.receiptIssuedAt, extra: null },
+              { type: "certificate" as const, icon: "\ud83c\udf93", label: "修了証明書", desc: "修了条件達成後に発行",
+                sent: documents?.certificateSentAt, issued: documents?.certificateIssuedAt,
+                extra: documents?.certificateNumber ? `No.${documents.certificateNumber}` : null },
+            ]).map((doc) => {
+              const isSent = !!doc.sent;
+              const isIssued = !!doc.issued;
+              return (
+                <button
+                  key={doc.type}
+                  onClick={() => onOpenDoc(doc.type)}
+                  className={`p-4 rounded-lg border-2 transition-all text-left group cursor-pointer ${
+                    isSent
+                      ? "border-green-500/40 bg-green-900/20 hover:border-green-400/60"
+                      : isIssued
+                        ? "border-amber-500/40 bg-amber-900/15 hover:border-amber-400/60"
+                        : "border-dashed border-white/20 hover:border-brand/50 hover:bg-brand/5"
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-base">{doc.icon}</span>
+                    <p className={`text-xs font-bold transition-colors ${
+                      isSent ? "text-green-300" : isIssued ? "text-amber-300" : "text-white group-hover:text-brand"
+                    }`}>{doc.label}</p>
+                  </div>
+                  <p className="text-[10px] text-gray-500">{doc.desc}</p>
+                  {isSent ? (
+                    <p className="text-[10px] text-green-400 mt-2">
+                      送付済み: {normalizeDate(doc.sent!)}{doc.extra ? ` (${doc.extra})` : ""}
+                    </p>
+                  ) : isIssued ? (
+                    <p className="text-[10px] text-amber-400 mt-2">発行済み（未送付）</p>
+                  ) : (
+                    <p className="text-[10px] text-brand/60 mt-2 group-hover:text-brand">クリックして送付 →</p>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
