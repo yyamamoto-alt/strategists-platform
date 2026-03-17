@@ -136,31 +136,38 @@ export function computeAttribution(
   );
   const is_multi_touch = uniqueChannels.size >= 2;
 
-  // ─── ファーストタッチ優先で帰属決定 ───
+  // ─── 帰属決定: 広告最優先 → ファーストタッチ ───
   let base_channel: string;
   let attribution_source: string;
   let confidence: "high" | "medium" | "low";
 
-  // 1. initial_channel (初回認知) → 最優先（ファーストタッチ）
-  if (initialChannel) {
+  const AD_CHANNELS = new Set(["FB広告", "Google広告", "X広告"]);
+
+  // 1. utm が広告チャネル → 最優先（広告費ROI追跡）
+  if (utmChannel && AD_CHANNELS.has(utmChannel)) {
+    base_channel = utmChannel;
+    attribution_source = "utm_source";
+    confidence = "high";
+  }
+  // 2. initial_channel (初回認知) → ファーストタッチ
+  else if (initialChannel) {
     base_channel = initialChannel;
     attribution_source = "initial_channel";
-    // utm と一致すれば高信頼度
     confidence = utmChannel === initialChannel ? "high" : "medium";
   }
-  // 2. application_reason (決め手) → 2番目
+  // 3. application_reason (決め手) → 3番目
   else if (reasonChannel) {
     base_channel = reasonChannel;
     attribution_source = "application_reason";
     confidence = "medium";
   }
-  // 3. utm_source → 3番目
+  // 4. utm_source（非広告）→ 4番目
   else if (utmChannel) {
     base_channel = utmChannel;
     attribution_source = "utm_source";
     confidence = "medium";
   }
-  // 4. sales_route → 4番目
+  // 5. sales_route → 5番目
   else if (salesChannel) {
     base_channel = salesChannel;
     attribution_source = "sales_route";
@@ -191,9 +198,19 @@ export function computeAttribution(
 
   if (isMainChannel(base_channel)) {
     // 他のタッチポイントに異なるチャネルがあれば「複合」
-    // ただし配信手段（Lステップ等）は除外
+    // ただし以下は除外:
+    //   - 配信手段（Lステップ等）
+    //   - 広告ベースの場合、SEOは同系扱い（検索→広告クリックは自然な動線）
+    //   - 広告ベースの場合、初回認知=不明/なし も無視
+    const adBase = AD_CHANNELS.has(base_channel);
     const otherChannels = [initialChannel, reasonChannel, utmChannel, salesChannel]
-      .filter((ch): ch is string => ch != null && ch !== base_channel && !DELIVERY_CHANNELS.has(ch));
+      .filter((ch): ch is string => {
+        if (ch == null || ch === base_channel) return false;
+        if (DELIVERY_CHANNELS.has(ch)) return false;
+        // 広告ベース時: SEOは同系（検索経由の広告クリック）
+        if (adBase && ch === "SEO") return false;
+        return true;
+      });
 
     is_pure = otherChannels.length === 0;
     marketing_channel = `${is_pure ? "ピュア" : "複合"}${base_channel}`;
