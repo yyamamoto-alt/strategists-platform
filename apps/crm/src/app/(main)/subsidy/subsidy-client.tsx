@@ -309,15 +309,17 @@ function ReceiptPreview({ customer, paymentDate }: { customer: CustomerWithRelat
   );
 }
 
-function CertificatePreview({ customer, certNumber, startDate, endDate }: {
+function CertificatePreview({ customer, certNumber, startDate, endDate, issueDate }: {
   customer: CustomerWithRelations;
   certNumber: string;
   startDate: string;
   endDate: string;
+  issueDate: string;
 }) {
   return (
     <div className="bg-white text-black p-8 rounded-lg max-w-[600px] mx-auto text-sm leading-relaxed" id="doc-preview">
       <p className="text-right text-xs text-gray-500 mb-4">通し番号：{certNumber}</p>
+      <p className="text-right text-xs text-gray-600 mb-2">{issueDate}</p>
       <h2 className="text-center text-xl font-bold mb-8">修了証明書</h2>
       <p className="mb-2 text-xs text-gray-600">{"（住所は手動で入力してください）"}</p>
       <p className="mb-6 text-lg">{customer.name} 殿</p>
@@ -352,9 +354,15 @@ function DocumentModal({
   if (!state.open || !customer) return null;
 
   const defaultPaymentDate = firstPaidMap[customer.id] || customer.contract?.payment_date || "";
+  const today = new Date().toISOString().slice(0, 10);
+  // 修了証明書: 受講開始日 = 回次1の初回指導日、発行日 = 今日
+  const defaultStartDate = state.type === "certificate"
+    ? normalizeDate(completion?.firstCoachingDate) || defaultPaymentDate
+    : defaultPaymentDate;
   const [paymentDate, setPaymentDate] = useState(defaultPaymentDate);
-  const [startDate, setStartDate] = useState(defaultPaymentDate);
+  const [startDate, setStartDate] = useState(defaultStartDate);
   const [endDate, setEndDate] = useState("");
+  const [issueDate, setIssueDate] = useState(today);
   const [certNumber, setCertNumber] = useState("00001");
   const [sendStep, setSendStep] = useState<"idle" | "confirm" | "sending" | "done">("idle");
 
@@ -479,7 +487,16 @@ function DocumentModal({
           {state.type === "certificate" && (
             <>
               <div>
-                <label className="text-xs text-gray-400 block mb-1">受講開始日</label>
+                <label className="text-xs text-gray-400 block mb-1">発行日</label>
+                <input
+                  type="date"
+                  value={issueDate}
+                  onChange={(e) => setIssueDate(e.target.value)}
+                  className="w-48 px-3 py-1.5 bg-white/5 border border-white/10 rounded text-sm text-white"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 block mb-1">受講開始日（回次1の初回指導日）</label>
                 <input
                   type="date"
                   value={startDate}
@@ -512,6 +529,7 @@ function DocumentModal({
                 certNumber={certNumber}
                 startDate={formatDateJP(startDate) || startDate}
                 endDate={formatDateJP(endDate) || endDate}
+                issueDate={formatDateJP(issueDate) || issueDate}
               />
             )}
           </div>
@@ -821,33 +839,28 @@ function CustomerDetailModal({
                 sent: documents?.certificateSentAt, issued: documents?.certificateIssuedAt,
                 extra: documents?.certificateNumber ? `No.${documents.certificateNumber}` : null },
             ]).map((doc) => {
-              const isSent = !!doc.sent;
-              const isIssued = !!doc.issued;
+              const isDone = !!doc.sent || !!doc.issued;
               return (
                 <button
                   key={doc.type}
                   onClick={() => onOpenDoc(doc.type)}
                   className={`p-4 rounded-lg border-2 transition-all text-left group cursor-pointer ${
-                    isSent
+                    isDone
                       ? "border-green-500/40 bg-green-900/20 hover:border-green-400/60"
-                      : isIssued
-                        ? "border-amber-500/40 bg-amber-900/15 hover:border-amber-400/60"
-                        : "border-dashed border-white/20 hover:border-brand/50 hover:bg-brand/5"
+                      : "border-dashed border-white/20 hover:border-brand/50 hover:bg-brand/5"
                   }`}
                 >
                   <div className="flex items-center gap-2 mb-1">
                     <span className="text-base">{doc.icon}</span>
                     <p className={`text-xs font-bold transition-colors ${
-                      isSent ? "text-green-300" : isIssued ? "text-amber-300" : "text-white group-hover:text-brand"
+                      isDone ? "text-green-300" : "text-white group-hover:text-brand"
                     }`}>{doc.label}</p>
                   </div>
                   <p className="text-[10px] text-gray-500">{doc.desc}</p>
-                  {isSent ? (
+                  {isDone ? (
                     <p className="text-[10px] text-green-400 mt-2">
-                      送付済み: {normalizeDate(doc.sent!)}{doc.extra ? ` (${doc.extra})` : ""}
+                      送付済み: {normalizeDate(doc.sent || doc.issued!)}{doc.extra ? ` (${doc.extra})` : ""}
                     </p>
-                  ) : isIssued ? (
-                    <p className="text-[10px] text-amber-400 mt-2">発行済み（未送付）</p>
                   ) : (
                     <p className="text-[10px] text-brand/60 mt-2 group-hover:text-brand">クリックして送付 →</p>
                   )}

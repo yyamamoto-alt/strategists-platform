@@ -4,7 +4,7 @@ import { Resend } from "resend";
 import { generateInvoicePdf, generateReceiptPdf, generateCertificatePdf } from "@/lib/pdf/generate-subsidy-pdf";
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
-const FROM_ADDRESS = process.env.EMAIL_FROM || "Strategists <noreply@akagiconsulting.com>";
+const FROM_ADDRESS = process.env.EMAIL_FROM || "ケース面接対策塾Strategists <noreply@akagiconsulting.com>";
 const CC_ADDRESS = "support@akagiconsulting.com";
 
 export async function POST(request: Request) {
