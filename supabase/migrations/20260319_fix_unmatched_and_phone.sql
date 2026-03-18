@@ -26,7 +26,35 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_unmatched_raw_data_hash
   ON unmatched_records(raw_data_hash) WHERE raw_data_hash IS NOT NULL;
 
 -- 5. 既存の電話番号を正規化（ハイフン・スペース・括弧を除去）
+-- PostgreSQLではE''構文で全角スペースを指定
 UPDATE customers
-SET phone = regexp_replace(phone, '[-\s()（）+\u3000]', '', 'g')
+SET phone = regexp_replace(phone, E'[-\\s()（）+\u3000]', '', 'g')
 WHERE phone IS NOT NULL
-  AND phone ~ '[-\s()（）+]';
+  AND phone ~ E'[-\\s()（）+\u3000]';
+
+-- 6. contracts, learning_records, agent_records に customer_id UNIQUE 制約を追加
+-- processFormRecord() の upsert (ON CONFLICT customer_id) に必要
+-- 実データ上ほぼ1:1だが、learning_recordsに1件だけ重複あり → 古い方を削除
+
+-- learning_records の重複を解消（古い方を削除）
+DELETE FROM learning_records a
+USING learning_records b
+WHERE a.customer_id = b.customer_id
+  AND a.id <> b.id
+  AND a.updated_at < b.updated_at;
+
+-- UNIQUE制約追加
+DO $$ BEGIN
+  ALTER TABLE contracts ADD CONSTRAINT contracts_customer_id_unique UNIQUE (customer_id);
+EXCEPTION WHEN duplicate_table THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  ALTER TABLE learning_records ADD CONSTRAINT learning_records_customer_id_unique UNIQUE (customer_id);
+EXCEPTION WHEN duplicate_table THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  ALTER TABLE agent_records ADD CONSTRAINT agent_records_customer_id_unique UNIQUE (customer_id);
+EXCEPTION WHEN duplicate_table THEN NULL;
+END $$;
