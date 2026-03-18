@@ -36,12 +36,12 @@ WHERE phone IS NOT NULL
 -- processFormRecord() の upsert (ON CONFLICT customer_id) に必要
 -- 実データ上ほぼ1:1だが、learning_recordsに1件だけ重複あり → 古い方を削除
 
--- learning_records の重複を解消（古い方を削除）
+-- learning_records の重複を解消（古い方=created_atが早い方を削除）
 DELETE FROM learning_records a
 USING learning_records b
 WHERE a.customer_id = b.customer_id
   AND a.id <> b.id
-  AND a.updated_at < b.updated_at;
+  AND a.created_at < b.created_at;
 
 -- UNIQUE制約追加
 DO $$ BEGIN
