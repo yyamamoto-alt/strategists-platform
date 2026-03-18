@@ -11,9 +11,11 @@ export interface SubsidyCompletionData {
   hasExactFourRecord: boolean; // OR condition: 回次="4" exists
   caseConditionMet: boolean;
   caseConditionViaOr: boolean; // met via OR condition (warning)
-  // Condition 3: ビヘイビア面接指導1回以上 OR 追加指導1回以上
+  // Condition 3: ビヘイビア OR 追加指導 OR アセスメント OR エージェント面談（いずれか1回以上）
   behaviorSessionCount: number;
   additionalCoachingCount: number;
+  assessmentCount: number;
+  agentInterviewCount: number;
   behaviorConditionMet: boolean;
   // Condition 4: 総合評価が不可レベル以外を1回以上
   hasPassingEvaluation: boolean;
@@ -48,7 +50,7 @@ export async function fetchSubsidyCompletionData(
     .from("application_history")
     .select("id, customer_id, source, raw_data, applied_at")
     .in("customer_id", customerIds)
-    .in("source", ["メンター指導報告", "入塾フォーム", "教材アウトプット"])
+    .in("source", ["メンター指導報告", "入塾フォーム", "教材アウトプット", "エージェント面談報告フォーム"])
     .order("applied_at", { ascending: true });
 
   const result: Record<string, SubsidyCompletionData> = {};
@@ -65,6 +67,8 @@ export async function fetchSubsidyCompletionData(
       caseConditionViaOr: false,
       behaviorSessionCount: 0,
       additionalCoachingCount: 0,
+      assessmentCount: 0,
+      agentInterviewCount: 0,
       behaviorConditionMet: false,
       hasPassingEvaluation: false,
       evaluations: [],
@@ -92,11 +96,13 @@ export async function fetchSubsidyCompletionData(
         result[cid].behaviorSessionCount++;
       } else if (typeof kaiji === "string" && kaiji === "追加指導") {
         result[cid].additionalCoachingCount++;
+      } else if (typeof kaiji === "string" && kaiji.includes("アセスメント")) {
+        // アセスメント（条件3の独立カウント）
+        result[cid].assessmentCount++;
       } else {
-        // Numeric case sessions + アセスメント
-        const isAssessment = typeof kaiji === "string" && kaiji.includes("アセスメント");
+        // Numeric case sessions
         const num = parseInt(String(kaiji), 10);
-        if (isAssessment || (!isNaN(num) && num > 0)) {
+        if (!isNaN(num) && num > 0) {
           result[cid].caseSessionCount++;
           if (num === 4) {
             result[cid].hasExactFourRecord = true;
@@ -127,6 +133,9 @@ export async function fetchSubsidyCompletionData(
       result[cid].hasOutputForm = true;
       result[cid].outputFormDate = rd["タイムスタンプ"] || h.applied_at || null;
     }
+    if (h.source === "エージェント面談報告フォーム") {
+      result[cid].agentInterviewCount++;
+    }
   }
 
   // 追加指導: パイプラインのステージ/追加指導日も確認
@@ -156,8 +165,8 @@ export async function fetchSubsidyCompletionData(
       d.caseConditionMet = true;
       d.caseConditionViaOr = true; // warn about potential data issue
     }
-    // Condition 3: behavior OR additional coaching
-    d.behaviorConditionMet = d.behaviorSessionCount >= 1 || d.additionalCoachingCount >= 1;
+    // Condition 3: behavior OR additional coaching OR assessment OR agent interview
+    d.behaviorConditionMet = d.behaviorSessionCount >= 1 || d.additionalCoachingCount >= 1 || d.assessmentCount >= 1 || d.agentInterviewCount >= 1;
   }
 
   return result;

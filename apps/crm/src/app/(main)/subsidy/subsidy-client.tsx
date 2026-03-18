@@ -21,6 +21,8 @@ interface SubsidyCompletionData {
   caseConditionViaOr: boolean;
   behaviorSessionCount: number;
   additionalCoachingCount: number;
+  assessmentCount: number;
+  agentInterviewCount: number;
   behaviorConditionMet: boolean;
   hasPassingEvaluation: boolean;
   evaluations: string[];
@@ -684,7 +686,7 @@ function CustomerDetailModal({
               <p className="text-[10px] text-gray-500 mt-1">マンツーマン指導4時間以上</p>
             </div>
 
-            {/* Condition 3: ビヘイビア OR 追加指導 */}
+            {/* Condition 3: ビヘイビア OR 追加指導 OR エージェント面談 */}
             <div className={`p-3 rounded-lg border ${d?.behaviorConditionMet ? "border-green-500/30 bg-green-900/10" : "border-red-500/30 bg-red-900/10"}`}>
               <div className="flex items-center gap-2">
                 <span className="text-xs text-gray-300">Behavior面接</span>
@@ -708,7 +710,29 @@ function CustomerDetailModal({
                 />
                 <span className="text-[10px] text-gray-500">{d?.additionalCoachingCount || 0}回</span>
               </div>
-              <p className="text-[10px] text-gray-500 mt-1">どちらか1回以上で条件達成</p>
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-xs text-gray-300">アセスメント</span>
+                <span
+                  className={`w-4 h-4 rounded-full border-2 ${
+                    (d?.assessmentCount || 0) >= 1
+                      ? "bg-green-500 border-green-400"
+                      : "bg-transparent border-gray-600"
+                  }`}
+                />
+                <span className="text-[10px] text-gray-500">{d?.assessmentCount || 0}回</span>
+              </div>
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-xs text-gray-300">Agent面談</span>
+                <span
+                  className={`w-4 h-4 rounded-full border-2 ${
+                    (d?.agentInterviewCount || 0) >= 1
+                      ? "bg-green-500 border-green-400"
+                      : "bg-transparent border-gray-600"
+                  }`}
+                />
+                <span className="text-[10px] text-gray-500">{d?.agentInterviewCount || 0}回</span>
+              </div>
+              <p className="text-[10px] text-gray-500 mt-1">いずれか1回以上で条件達成</p>
             </div>
 
             {/* Condition 4: 総合評価 */}
@@ -1097,6 +1121,54 @@ function buildColumns(
                   : "bg-gray-700/50 border-gray-600"
               }`}
             />
+          </div>
+        );
+      },
+    },
+    {
+      key: "assessment",
+      label: "アセスメント",
+      width: 60,
+      sortValue: (c) => completionData[c.id]?.assessmentCount || 0,
+      render: (c) => {
+        const d = completionData[c.id];
+        const count = d?.assessmentCount || 0;
+        return (
+          <div className="flex items-center gap-0.5" title={`アセスメント ${count}/2回`}>
+            {[1, 2].map((n) => (
+              <span
+                key={n}
+                className={`w-3.5 h-3.5 rounded-full border ${
+                  n <= count
+                    ? "bg-green-500 border-green-400"
+                    : "bg-gray-700/50 border-gray-600"
+                }`}
+              />
+            ))}
+          </div>
+        );
+      },
+    },
+    {
+      key: "agent_interview",
+      label: "Agent面談",
+      width: 60,
+      sortValue: (c) => completionData[c.id]?.agentInterviewCount || 0,
+      render: (c) => {
+        const d = completionData[c.id];
+        const count = d?.agentInterviewCount || 0;
+        return (
+          <div className="flex items-center gap-0.5" title={`エージェント面談 ${count}/2回`}>
+            {[1, 2].map((n) => (
+              <span
+                key={n}
+                className={`w-3.5 h-3.5 rounded-full border ${
+                  n <= count
+                    ? "bg-green-500 border-green-400"
+                    : "bg-gray-700/50 border-gray-600"
+                }`}
+              />
+            ))}
           </div>
         );
       },
