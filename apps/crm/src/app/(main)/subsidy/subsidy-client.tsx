@@ -1563,31 +1563,6 @@ export function SubsidyClient({ customers, firstPaidMap, completionData, documen
   const [docModal, setDocModal] = useState<DocModalState>({ open: false, type: "invoice", customer: null, completion: null });
   const [checksData, setChecksData] = useState(initialChecksData);
   const [drill, setDrill] = useState<DrillState | null>(null);
-  const [assigningNumbers, setAssigningNumbers] = useState(false);
-
-  const handleAssignNumbers = useCallback(async () => {
-    setAssigningNumbers(true);
-    try {
-      const res = await fetch("/api/subsidy/assign-numbers", { method: "POST" });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.success) {
-          window.location.reload();
-          return;
-        }
-        alert(`付番処理でエラーが発生しました: ${data.error || "不明なエラー"}`);
-      } else {
-        const text = await res.text().catch(() => "");
-        alert(`付番APIエラー (${res.status}): ${text || res.statusText}`);
-      }
-    } catch (e) {
-      console.error("Assign numbers failed:", e);
-      alert("付番処理に失敗しました。ネットワークを確認してください。");
-    } finally {
-      setAssigningNumbers(false);
-    }
-  }, []);
-
   const weekEnds = useMemo(() => generateWeekEnds(), []);
   const months = useMemo(() => generateMonths(), []);
 
@@ -1846,31 +1821,11 @@ export function SubsidyClient({ customers, firstPaidMap, completionData, documen
         {/* Customer List */}
         {activeTab === "list" && (
           <>
-            {/* 付番コントロール */}
-            {(() => {
-              const unassigned = subsidyCustomers.filter((c) => !c.contract?.subsidy_number).length;
-              return (
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm text-gray-400">
-                      対象者 <span className="text-white font-bold">{subsidyCustomers.length}</span>名
-                      {unassigned > 0 && (
-                        <span className="text-amber-400 ml-2">（未付番: {unassigned}名）</span>
-                      )}
-                    </span>
-                  </div>
-                  {unassigned > 0 && (
-                    <button
-                      onClick={handleAssignNumbers}
-                      disabled={assigningNumbers}
-                      className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-500 disabled:opacity-50 transition-colors font-medium"
-                    >
-                      {assigningNumbers ? "付番中..." : `未付番 ${unassigned}名にID付与`}
-                    </button>
-                  )}
-                </div>
-              );
-            })()}
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-gray-400">
+                対象者 <span className="text-white font-bold">{subsidyCustomers.length}</span>名
+              </span>
+            </div>
             <SpreadsheetTable
               columns={columns}
               data={subsidyCustomers}
