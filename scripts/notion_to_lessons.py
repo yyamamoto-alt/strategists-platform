@@ -9,9 +9,11 @@ import json
 import re
 import time
 
-NOTION_TOKEN = "REDACTED"
-SUPABASE_URL = "https://plrmqgcigzjuiovsbggf.supabase.co/rest/v1/"
-SUPABASE_KEY = "REDACTED"
+import os
+
+NOTION_TOKEN = os.environ.get("NOTION_TOKEN", "")
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://plrmqgcigzjuiovsbggf.supabase.co") + "/rest/v1/"
+SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
 
 NOTION_HEADERS = {
     "Authorization": f"Bearer {NOTION_TOKEN}",
