@@ -1,7 +1,7 @@
 import { createServiceClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { fetchSheetData } from "@/lib/google-sheets";
-import { sendSlackMessage, sendSlackDM } from "@/lib/slack";
+import { sendSlackMessage, sendSlackDM, isSystemAutomationEnabled, logNotification } from "@/lib/slack";
 import crypto from "crypto";
 
 export const dynamic = "force-dynamic";
@@ -127,6 +127,10 @@ export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (!(await isSystemAutomationEnabled("sync-spreadsheets"))) {
+    return NextResponse.json({ ok: true, skipped: true, reason: "disabled" });
   }
 
   const supabase = createServiceClient();
@@ -358,10 +362,15 @@ export async function GET(request: Request) {
             notificationsSent++;
           } else {
             notificationsFailed++;
-            console.error(
-              `[sync-automations] ${automation.name}: メイン通知送信失敗 (channel=${automation.slack_channel_id})`
-            );
           }
+          // ★ notification_logsに記録（成功/失敗問わず）
+          await logNotification({
+            type: `sync_${automation.name}`,
+            channel: automation.slack_channel_id,
+            message: message.slice(0, 500),
+            status: sent ? "success" : "failed",
+            metadata: { automation_id: automation.id, row_hash: rowHash },
+          }).catch(() => {});
         }
 
         // ② Extra targets（複数チャンネル・DM・条件分岐）

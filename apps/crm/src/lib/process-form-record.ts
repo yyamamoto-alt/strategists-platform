@@ -282,7 +282,7 @@ async function processKarte(db: any, customerId: string, rawData: Record<string,
         careerHistory: rawData["経歴詳細（学歴＋職歴）"],
         prefecture: rawData["居住地（都道府県）"],
         customerId,
-      }).catch(() => {});
+      }).catch((e) => console.error("[processFormRecord] Slack notification failed:", e));
     }
   }
 }
@@ -404,7 +404,7 @@ async function processEnrollmentForm(db: any, customerId: string, rawData: Recor
       agentUsage: rawData["エージェント利用"] || null,
       subsidyEligible: rawData["申込プラン"]?.includes("補助金") ?? false,
       salesPerson: custPipeline?.sales_person || null,
-    }).catch(() => {});
+    }).catch((e) => console.error("[processFormRecord] Slack notification failed:", e));
 
     // 補助金適用顧客の場合、荒井さんへSlack通知
     if (rawData["申込プラン"]?.includes("補助金")) {
@@ -417,7 +417,7 @@ async function processEnrollmentForm(db: any, customerId: string, rawData: Recor
         hasBankDoc: !!bankDoc,
         identityDocUrl: identityDoc,
         bankDocUrl: bankDoc,
-      }).catch(() => {});
+      }).catch((e) => console.error("[processFormRecord] Slack notification failed:", e));
     }
   }
 }
@@ -482,7 +482,7 @@ async function processAssignmentSubmission(db: any, customerId: string, rawData:
         studentName: custData?.name || rawData["お名前"] || "不明",
         rating: rawData["前回メンタリングの満足度"],
         operationsNote: rawData["運営への連絡・依頼事項"] || rawData["運営への要望・連絡事項"] || "",
-      }).catch(() => {});
+      }).catch((e) => console.error("[processFormRecord] Slack notification failed:", e));
     }
   }
 }
