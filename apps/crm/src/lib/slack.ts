@@ -643,3 +643,20 @@ export async function isSystemAutomationEnabled(automationId: string): Promise<b
   // 明示的に "false" でない限りON
   return value !== "false";
 }
+
+/**
+ * システム自動化の設定値を取得（app_settingsオーバーライド → デフォルト値）
+ * key format: sys_automation_<automationId>.config.<paramKey>
+ */
+export async function getAutomationConfig(automationId: string, paramKey: string, defaultValue: string): Promise<string>;
+export async function getAutomationConfig(automationId: string, paramKey: string, defaultValue: number): Promise<number>;
+export async function getAutomationConfig(automationId: string, paramKey: string, defaultValue: string | number): Promise<string | number> {
+  const settingKey = `sys_automation_${automationId}.config.${paramKey}`;
+  const value = await getSetting(settingKey);
+  if (!value) return defaultValue;
+  if (typeof defaultValue === "number") {
+    const num = Number(value);
+    return isNaN(num) ? defaultValue : num;
+  }
+  return value;
+}

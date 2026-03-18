@@ -26,6 +26,18 @@ export function AutomationsClient({
   const [systemStates, setSystemStates] = useState<Record<string, boolean>>({});
   const [systemStatesLoading, setSystemStatesLoading] = useState(false);
 
+  // システム自動化 設定オーバーライド
+  const [systemConfigs, setSystemConfigs] = useState<Record<string, Record<string, string | number>>>({});
+
+  // チャンネル名マッピング (ID → name)
+  const [channelNames, setChannelNames] = useState<Record<string, string>>({});
+
+  // 手動実行中のautomation ID
+  const [runningId, setRunningId] = useState<string | null>(null);
+
+  // システム自動化のnotification logs (type=system)
+  const [systemLogs, setSystemLogs] = useState<Record<string, NotificationLog[]>>({});
+
   // 通知ログ
   const [notificationLogs, setNotificationLogs] = useState<NotificationLog[]>([]);
   const [notifLogsLoading, setNotifLogsLoading] = useState(false);
@@ -47,14 +59,52 @@ export function AutomationsClient({
     }
   }, [initialAutomations.length]);
 
-  // システム自動化の状態を取得
+  // システム自動化の状態 + 設定オーバーライドを取得
   useEffect(() => {
     setSystemStatesLoading(true);
     fetch("/api/system-automations")
       .then(r => r.json())
-      .then(data => setSystemStates(data))
+      .then(data => {
+        // 新しいAPI形式: { states: {...}, configs: {...} }
+        if (data.states) {
+          setSystemStates(data.states);
+          setSystemConfigs(data.configs || {});
+        } else {
+          // 旧API形式（互換）
+          setSystemStates(data);
+        }
+      })
       .catch(() => {})
       .finally(() => setSystemStatesLoading(false));
+  }, []);
+
+  // Slackチャンネル一覧取得（チャンネル名解決用）
+  const loadChannels = useCallback(async () => {
+    if (channels.length > 0) return;
+    setLoadingChannels(true);
+    try {
+      const res = await fetch("/api/slack-channels");
+      if (res.ok) {
+        const data = await res.json();
+        setChannels(data);
+        // チャンネル名マッピング構築
+        const names: Record<string, string> = {};
+        for (const ch of data) {
+          names[ch.id] = ch.name;
+        }
+        setChannelNames(names);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setLoadingChannels(false);
+    }
+  }, [channels.length]);
+
+  // 初回ロード時にチャンネル一覧を取得（チャンネル名表示用）
+  useEffect(() => {
+    loadChannels();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // システム自動化トグル
@@ -72,21 +122,39 @@ export function AutomationsClient({
     } catch {}
   }, [systemStates]);
 
-  const loadChannels = useCallback(async () => {
-    if (channels.length > 0) return;
-    setLoadingChannels(true);
-    try {
-      const res = await fetch("/api/slack-channels");
-      if (res.ok) {
-        const data = await res.json();
-        setChannels(data);
-      }
-    } catch {
-      // ignore
-    } finally {
-      setLoadingChannels(false);
+  // 設定オーバーライド保存
+  const saveSystemConfig = useCallback(async (automationId: string, overrides: Record<string, string | number>) => {
+    const res = await fetch("/api/system-automations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ automationId, overrides }),
+    });
+    if (res.ok) {
+      setSystemConfigs(prev => ({ ...prev, [automationId]: { ...prev[automationId], ...overrides } }));
     }
-  }, [channels.length]);
+  }, []);
+
+  // 手動実行
+  const runManually = useCallback(async (automationId: string) => {
+    setRunningId(automationId);
+    try {
+      const res = await fetch("/api/system-automations/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ automationId }),
+      });
+      const result = await res.json();
+      if (result.status === "success") {
+        alert(`実行完了: ${automationId}`);
+      } else {
+        alert(`実行失敗: ${result.error || result.result?.error || "不明なエラー"}`);
+      }
+    } catch (err) {
+      alert(`実行エラー: ${err instanceof Error ? err.message : "不明"}`);
+    } finally {
+      setRunningId(null);
+    }
+  }, []);
 
   const toggleActive = useCallback(async (id: string, currentActive: boolean) => {
     try {
@@ -275,6 +343,13 @@ export function AutomationsClient({
                 automation={sa}
                 isEnabled={systemStates[sa.id] !== false}
                 onToggle={() => toggleSystemAutomation(sa.id)}
+                configOverrides={systemConfigs[sa.id] || {}}
+                channelNames={channelNames}
+                slackChannels={channels}
+                onSaveConfig={saveSystemConfig}
+                logs={systemLogs[sa.id] || []}
+                onRunManually={runManually}
+                runningManually={runningId === sa.id}
               />
             ))}
 

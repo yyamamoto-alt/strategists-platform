@@ -6,6 +6,7 @@ import {
   findSlackUserId,
   logNotification,
   isSystemAutomationEnabled,
+  getAutomationConfig,
 } from "@/lib/slack";
 import { logStageChangeBatch } from "@/lib/stage-audit";
 import { NextResponse } from "next/server";
@@ -15,8 +16,8 @@ export const maxDuration = 60;
 
 /** CC送信先（固定）: 大橋、佐伯、山本 */
 const CC_USER_IDS = ["U08QUA37ZUJ", "U09F6EN8JCU", "U03TF7YESK1"];
-/** 営業リマインドチャンネル */
-const REMINDER_CHANNEL = "C094YLMKR4K";
+/** 営業リマインドチャンネル（デフォルト） */
+const DEFAULT_REMINDER_CHANNEL = "C094YLMKR4K";
 
 /**
  * GET /api/cron/sales-reminder
@@ -40,13 +41,17 @@ export async function GET(request: Request) {
   const now = new Date();
   const today = now.toISOString().slice(0, 10);
 
-  // 5日前・14日前の日付
+  // 設定オーバーライド読み込み
+  const REMINDER_CHANNEL = await getAutomationConfig("sys-sales-reminder", "reminder_channel", DEFAULT_REMINDER_CHANNEL);
+  const escalationDays = await getAutomationConfig("sys-sales-reminder", "escalation_days", 5);
+  const autoLostDays = await getAutomationConfig("sys-sales-reminder", "auto_lost_days", 14);
+
   const fiveDaysAgo = new Date(now);
-  fiveDaysAgo.setDate(fiveDaysAgo.getDate() - 5);
+  fiveDaysAgo.setDate(fiveDaysAgo.getDate() - escalationDays);
   const fiveDaysAgoStr = fiveDaysAgo.toISOString().slice(0, 10);
 
   const fourteenDaysAgo = new Date(now);
-  fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
+  fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - autoLostDays);
   const fourteenDaysAgoStr = fourteenDaysAgo.toISOString().slice(0, 10);
 
   const mapping = await getStaffSlackMapping();

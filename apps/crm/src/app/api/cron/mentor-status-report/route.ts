@@ -1,5 +1,5 @@
 import { createServiceClient } from "@/lib/supabase/server";
-import { sendSlackMessage, isSystemAutomationEnabled } from "@/lib/slack";
+import { sendSlackMessage, isSystemAutomationEnabled, getAutomationConfig } from "@/lib/slack";
 import { fetchSheetData } from "@/lib/google-sheets";
 import { NextResponse } from "next/server";
 
@@ -152,7 +152,9 @@ export async function GET(request: Request) {
   // ------------------------------------------------------------------
   let sheetData = new Map<string, { utilization: string; rating: string; capacity: string; additionalRequest: string }>();
   try {
-    const rows = await fetchSheetData("1Kv2Sctxl_ZYRcaPSd9HjoYo2J6bu85OR1lPiDpo4HcY", "メンター管理");
+    const mentorSpreadsheetId = await getAutomationConfig("sys-mentor-status-report", "spreadsheet_id", "1Kv2Sctxl_ZYRcaPSd9HjoYo2J6bu85OR1lPiDpo4HcY");
+    const mentorSheetName = await getAutomationConfig("sys-mentor-status-report", "sheet_name", "メンター管理");
+    const rows = await fetchSheetData(mentorSpreadsheetId, mentorSheetName);
     if (rows.length >= 2) {
       const headers = rows[0];
       const nameIdx = headers.findIndex((h: string) => h.includes("メンター") || h.includes("名前"));

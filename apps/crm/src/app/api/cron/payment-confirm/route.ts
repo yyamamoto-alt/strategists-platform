@@ -5,18 +5,19 @@ import {
   getStaffSlackMapping,
   logNotification,
   isSystemAutomationEnabled,
+  getAutomationConfig,
 } from "@/lib/slack";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-/** 経営reportチャンネル */
-const REPORT_CHANNEL = "C0951QVAJ5N";
+/** 経営reportチャンネル（デフォルト） */
+const DEFAULT_REPORT_CHANNEL = "C0951QVAJ5N";
 
-/** 組織・コスト管理スプレッドシート */
-const SPREADSHEET_ID = "1Kv2Sctxl_ZYRcaPSd9HjoYo2J6bu85OR1lPiDpo4HcY";
-const SHEET_NAME = "支払い参照用";
+/** 組織・コスト管理スプレッドシート（デフォルト） */
+const DEFAULT_SPREADSHEET_ID = "1Kv2Sctxl_ZYRcaPSd9HjoYo2J6bu85OR1lPiDpo4HcY";
+const DEFAULT_SHEET_NAME = "支払い参照用";
 
 /** 報酬カテゴリ（シートのカラム名と一致させる） */
 const PAYMENT_CATEGORIES = [
@@ -230,6 +231,11 @@ export async function GET(request: Request) {
   if (!(await isSystemAutomationEnabled("payment-confirm"))) {
     return NextResponse.json({ ok: true, skipped: true, reason: "disabled" });
   }
+
+  // 設定オーバーライド
+  const REPORT_CHANNEL = await getAutomationConfig("sys-payment-confirm", "report_channel", DEFAULT_REPORT_CHANNEL);
+  const SPREADSHEET_ID = await getAutomationConfig("sys-payment-confirm", "spreadsheet_id", DEFAULT_SPREADSHEET_ID);
+  const SHEET_NAME = await getAutomationConfig("sys-payment-confirm", "sheet_name", DEFAULT_SHEET_NAME);
 
   const now = new Date();
   const today = now.toISOString().slice(0, 10);

@@ -1,13 +1,13 @@
 import { fetchSheetData } from "@/lib/google-sheets";
-import { sendSlackMessage, isSystemAutomationEnabled } from "@/lib/slack";
+import { sendSlackMessage, isSystemAutomationEnabled, getAutomationConfig } from "@/lib/slack";
 import { createServiceClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-const SPREADSHEET_ID = "1bxvZ0fZNgSKV9fSW6vvhEcLcILCduAA1gYD4irX2SDI";
-const SHEET_NAME = "report用";
+const DEFAULT_SPREADSHEET_ID = "1bxvZ0fZNgSKV9fSW6vvhEcLcILCduAA1gYD4irX2SDI";
+const DEFAULT_SHEET_NAME = "report用";
 const DEFAULT_CHANNEL = "C0951QVAJ5N";
 
 // ================================================================
@@ -186,6 +186,10 @@ export async function GET(request: Request) {
   if (!channel) {
     return NextResponse.json({ ok: true, skipped: true, reason: "notify_disabled" });
   }
+
+  // 設定オーバーライド
+  const SPREADSHEET_ID = await getAutomationConfig("sys-work-status-report", "spreadsheet_id", DEFAULT_SPREADSHEET_ID);
+  const SHEET_NAME = await getAutomationConfig("sys-work-status-report", "sheet_name", DEFAULT_SHEET_NAME);
 
   // ------------------------------------------------------------------
   // 1. Fetch spreadsheet data (skip header row)

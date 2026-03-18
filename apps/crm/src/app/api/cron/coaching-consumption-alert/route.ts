@@ -1,5 +1,5 @@
 import { createServiceClient } from "@/lib/supabase/server";
-import { sendSlackMessage, isSystemAutomationEnabled } from "@/lib/slack";
+import { sendSlackMessage, isSystemAutomationEnabled, getAutomationConfig } from "@/lib/slack";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -8,8 +8,8 @@ export const maxDuration = 60;
 /** デフォルトチャンネル（edu-report） */
 const DEFAULT_CHANNEL = "C094DA9A9B4";
 
-/** 差分の閾値（パーセンテージポイント） */
-const THRESHOLD = 25;
+/** 差分の閾値デフォルト（パーセンテージポイント） */
+const DEFAULT_THRESHOLD = 25;
 
 /** app_settings から通知設定を取得 */
 async function getNotifyConfig(
@@ -112,6 +112,9 @@ export async function GET(request: Request) {
       reason: "notification disabled",
     });
   }
+
+  // 設定オーバーライド
+  const THRESHOLD = await getAutomationConfig("sys-coaching-consumption-alert", "threshold_percent", DEFAULT_THRESHOLD);
 
   // ================================================================
   // 1. アクティブな受講生データを取得
