@@ -372,6 +372,9 @@ function buildBasicFields(c: CustomerWithRelations): FieldDef[] {
       "26卒", "26卒(学部卒)", "26卒(院卒)", "27卒", "27卒(学部卒)", "27卒(院卒)",
       "28卒", "28卒(学部卒)", "28卒(院卒)", "不明",
     ], table: "customer", getValue: () => c.attribute },
+    { key: "referral_category", label: "人材紹介区分", source: "manual", type: "select", options: [
+      "フル利用", "一部利用", "スクールのみ", "自社", "該当", "なし",
+    ], table: "contract", getValue: () => c.contract?.referral_category || "-" },
     { key: "application_date", label: "申込日", source: "manual", type: "date", table: "customer", getValue: () => c.application_date || "-" },
     { key: "utm_source", label: "流入元", source: "sync", getValue: () => `${c.utm_source || "-"} / ${c.utm_medium || "-"}` },
     { key: "university", label: "大学", source: "manual", table: "customer", getValue: () => c.university || "-" },
@@ -757,17 +760,19 @@ function buildLearningFields(c: CustomerWithRelations, appHistory?: ApplicationH
   return buildLearningFieldGroups(c, appHistory).flatMap(g => g.fields);
 }
 
+function shouldShowAgentSection(c: CustomerWithRelations): boolean {
+  const cat = c.contract?.referral_category;
+  return !!(c.agent || cat === "フル利用" || cat === "一部利用");
+}
+
 function buildAgentFields(c: CustomerWithRelations): FieldDef[] {
-  if (!c.agent) return [];
-  const a = c.agent;
+  if (!shouldShowAgentSection(c)) return [];
+  const a = c.agent || {} as NonNullable<CustomerWithRelations["agent"]>;
   const fee = calcExpectedReferralFee(c);
   const rankRate = getOfferRankRate(a.offer_rank);
   const margin = (a.margin && a.margin > 0) ? a.margin : 0.75;
   const feeRate = a.referral_fee_rate ?? 0.3;
   return [
-    { key: "referral_category", label: "人材紹介区分", source: "manual", type: "select", options: [
-      "フル利用", "一部利用", "スクールのみ", "自社", "該当", "なし",
-    ], table: "contract", getValue: () => c.contract?.referral_category || "-" },
     { key: "offer_rank", label: "内定ランク", source: "manual", type: "select", options: ["S", "A", "B", "C", "D"], table: "agent", getValue: () => {
       const rank = a.offer_rank;
       if (!rank) return "-";
