@@ -1,5 +1,5 @@
 import { createServiceClient } from "@/lib/supabase/server";
-import { matchCustomer, normalizeAttribute } from "@/lib/customer-matching";
+import { matchCustomer, normalizeAttribute, normalizePhone } from "@/lib/customer-matching";
 import { processFormRecord } from "@/lib/process-form-record";
 import { NextResponse } from "next/server";
 import crypto from "crypto";
@@ -82,7 +82,7 @@ export async function POST(request: Request) {
     // 顧客マッチング
     const email = (rawData["メールアドレス"] || "").trim().toLowerCase() || null;
     const name = rawData["お名前"] || null;
-    const phone = rawData["電話番号"] || null;
+    const phone = rawData["電話番号"] ? normalizePhone(rawData["電話番号"]) : null;
     const match = await matchCustomer(email, phone, null, name);
     let customerId: string;
     let isNew = false;

@@ -71,8 +71,8 @@ function namesMatch(a: string | null, b: string | null): boolean {
   return false;
 }
 
-/** 電話番号正規化 */
-function normalizePhone(phone: string): string {
+/** 電話番号正規化（ハイフン・スペース・括弧を除去） */
+export function normalizePhone(phone: string): string {
   return phone.replace(/[-\s\u3000()（）+]/g, "");
 }
 
@@ -252,7 +252,7 @@ export async function upsertFromSpreadsheet(
   const db = supabase as any;
 
   const email = fields.email || null;
-  const phone = fields.phone || null;
+  const phone = fields.phone ? normalizePhone(fields.phone) : null;
   const name = fields.name || null;
 
   const match = await matchCustomer(email, phone, null, name);

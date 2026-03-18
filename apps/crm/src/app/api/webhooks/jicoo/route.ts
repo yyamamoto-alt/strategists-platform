@@ -1,5 +1,5 @@
 import { createServiceClient } from "@/lib/supabase/server";
-import { matchCustomer } from "@/lib/customer-matching";
+import { matchCustomer, normalizePhone } from "@/lib/customer-matching";
 import { notifyJicooBooking, notifyAssessmentBooking, notifyBehaviorBooking } from "@/lib/slack";
 import { computeAttributionForCustomer } from "@/lib/compute-attribution-for-customer";
 import { NextResponse } from "next/server";
@@ -183,7 +183,7 @@ export async function POST(request: Request) {
   const contact = obj.contact as { email?: string; name?: string; phone?: string } | undefined;
   const email = contact?.email?.trim().toLowerCase() || null;
   const name = contact?.name || null;
-  const phone = (contact?.phone || null) as string | null;
+  const phone = contact?.phone ? normalizePhone(contact.phone as string) : null;
   const startedAt = obj.startedAt as string | null;
   const status = obj.status as string;
 
