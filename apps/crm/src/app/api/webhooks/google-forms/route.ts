@@ -1,11 +1,6 @@
 import { createServiceClient } from "@/lib/supabase/server";
 import { matchCustomer, normalizeAttribute } from "@/lib/customer-matching";
-import { computeAttributionForCustomer } from "@/lib/compute-attribution-for-customer";
-import {
-  notifyKarteSubmission,
-  notifyYouTubeReferral,
-} from "@/lib/slack";
-import { createProgressSheet, calculateAge } from "@/lib/google-sheets";
+import { processFormRecord } from "@/lib/process-form-record";
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 
@@ -29,20 +24,15 @@ function stableStringify(obj: unknown): string {
 /**
  * Google Forms → Apps Script → このWebhook
  *
- * Zapier「カルテ記入→顧客登録→ProgressSheet作成→Slack通知」の完全移植。
- * ポーリング（sync-spreadsheets）ではなく、フォーム送信時に即座に1回だけ実行。
- *
- * リクエストボディ:
- * {
- *   "secret": "WEBHOOK_SECRET",
- *   "formName": "カルテ",
- *   "data": { "お名前": "...", "メールアドレス": "...", ... }
- * }
+ * 責務:
+ * 1. 認証・バリデーション
+ * 2. 重複チェック（raw_data_hash）
+ * 3. 顧客マッチング → 顧客作成 or 更新 → customer_emails登録
+ * 4. application_history に INSERT
+ * 5. processFormRecord() で関連テーブル更新・通知・帰属チャネル計算
  */
 
-/** 新規顧客作成を許可するformName一覧。
- *  これ以外のフォーム（営業報告、課題提出、面接終了後報告等）は
- *  既存顧客の更新・履歴追加のみ行い、マッチしない場合はunmatched_recordsに保存する。 */
+/** 新規顧客作成を許可するformName一覧 */
 const ALLOW_CREATE_FORMS = new Set([
   "カルテ",
   "LP申込(メインLP)",
@@ -55,7 +45,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { secret, formName, data } = body;
 
-    // 認証: CRON_SECRETを共用
+    // 認証
     if (secret !== process.env.CRON_SECRET) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -72,9 +62,7 @@ export async function POST(request: Request) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = supabase as any;
 
-    // 重複チェック（同じデータが二重送信された場合の防御）
-    // タイムスタンプはApps Script側で毎回生成されるため、ハッシュ計算から除外
-    // （トリガー重複発火時にタイムスタンプだけ変わり、重複検出が効かない問題の修正）
+    // 重複チェック（タイムスタンプ除外してハッシュ計算）
     const { "タイムスタンプ": _ts, ...dataForHash } = rawData;
     const rawHash = md5(stableStringify(dataForHash));
     const { data: existingRecord } = await db
@@ -91,41 +79,16 @@ export async function POST(request: Request) {
       });
     }
 
-    // メールアドレスと名前を取得
+    // 顧客マッチング
     const email = (rawData["メールアドレス"] || "").trim().toLowerCase() || null;
     const name = rawData["お名前"] || null;
     const phone = rawData["電話番号"] || null;
-
-    // 顧客マッチング
     const match = await matchCustomer(email, phone, null, name);
     let customerId: string;
     let isNew = false;
 
     if (match) {
       customerId = match.customer_id;
-
-      // 既存顧客を更新
-      const custUpdate: Record<string, string> = {};
-      if (name) custUpdate.name = name;
-      if (rawData["フリガナ"]) custUpdate.name_kana = rawData["フリガナ"].replace(/\s+/g, "");
-      if (rawData["属性"]) custUpdate.attribute = normalizeAttribute(rawData["属性"]);
-      if (rawData["志望企業"]) custUpdate.target_companies = rawData["志望企業"];
-      if (rawData["転職意向"]) custUpdate.transfer_intent = rawData["転職意向"];
-      if (rawData["ケース面接対策の状況"]) custUpdate.initial_level = rawData["ケース面接対策の状況"];
-      // 「弊塾を最初に知った場所」→ sales_pipeline.initial_channel に同期（後述）
-      // ※ utm_source は LP経由のUTMパラメータ専用。カルテの日本語値は入れない
-      if (rawData["弊塾への面談申し込みのきっかけ、決め手 "] || rawData["弊塾への面談申し込みのきっかけ、決め手"]) {
-        custUpdate.application_reason_karte = rawData["弊塾への面談申し込みのきっかけ、決め手 "] || rawData["弊塾への面談申し込みのきっかけ、決め手"];
-      }
-      if (rawData["居住地（都道府県）"]) custUpdate.prefecture = rawData["居住地（都道府県）"];
-      if (rawData["生年月日"]) custUpdate.birth_date = rawData["生年月日"];
-      if (rawData["性別"]) custUpdate.gender = rawData["性別"];
-      if (rawData["利用中のエージェント"]) custUpdate.current_agent = rawData["利用中のエージェント"];
-      custUpdate.updated_at = new Date().toISOString();
-
-      if (Object.keys(custUpdate).length > 1) {
-        await db.from("customers").update(custUpdate).eq("id", customerId);
-      }
 
       // メールアドレスを customer_emails に追加
       if (email) {
@@ -145,7 +108,6 @@ export async function POST(request: Request) {
         data_origin: "webhook",
       };
       if (rawData["属性"]) customerInsert.attribute = normalizeAttribute(rawData["属性"]);
-      // utm_source はLP由来のUTMパラメータ専用。カルテの日本語値は入れない
 
       const { data: newCustomer, error: createError } = await db
         .from("customers")
@@ -194,130 +156,35 @@ export async function POST(request: Request) {
       });
     }
 
-    // application_history に履歴追加（DBトリガーがraw_data_hashを自動計算、ユニーク制約で重複防止）
-    const { error: historyErr } = await db.from("application_history").insert({
+    // application_history に INSERT（DBトリガーがraw_data_hashを自動計算）
+    const { data: historyRecord, error: historyErr } = await db.from("application_history").insert({
       customer_id: customerId,
       source: formName,
       raw_data: rawData,
       raw_data_hash: rawHash,
       notes: `${formName}からWebhook同期`,
-    });
+    }).select("id").single();
+
     if (historyErr && historyErr.code === "23505") {
       // ユニーク制約違反 = 重複データ → スキップ
       console.log(`[webhook/google-forms] Duplicate entry skipped for ${formName} (customer: ${customerId})`);
+      return NextResponse.json({
+        success: true,
+        action: "skipped",
+        reason: "duplicate (unique constraint)",
+        customer_id: customerId,
+      });
     }
 
-    // カルテの「弊塾を最初に知った場所」→ sales_pipeline.initial_channel に同期
-    if (rawData["弊塾を最初に知った場所"]) {
-      await db.from("sales_pipeline")
-        .update({ initial_channel: rawData["弊塾を最初に知った場所"], updated_at: new Date().toISOString() })
-        .eq("customer_id", customerId);
-    }
-
-    // 帰属チャネル計算
-    computeAttributionForCustomer(customerId).catch(() => {});
-
-    // === カルテ固有の処理 ===
-    let progressSheetUrl: string | null = null;
-
-    if (formName === "カルテ") {
-      // 1. ProgressSheet作成（新規顧客のみ。既存顧客は既にシートがあるので作成しない）
-      const shouldCreateSheet = isNew;
-      // 既存顧客でもcontractsにprogress_sheet_urlがない場合は作成する
-      let existingSheetUrl: string | null = null;
-      if (!isNew) {
-        const { data: existingContract } = await db
-          .from("contracts")
-          .select("progress_sheet_url")
-          .eq("customer_id", customerId)
-          .not("progress_sheet_url", "is", null)
-          .limit(1);
-        if (existingContract && existingContract.length > 0) {
-          existingSheetUrl = existingContract[0].progress_sheet_url;
-        }
-      }
-
-      if ((shouldCreateSheet || !existingSheetUrl) && rawData["お名前"] && rawData["メールアドレス"]) {
-        const result = await createProgressSheet({
-          name: rawData["お名前"],
-          email: rawData["メールアドレス"],
-          nameKana: rawData["フリガナ"],
-          attribute: rawData["属性"],
-          birthDate: rawData["生年月日"],
-          careerHistory: rawData["経歴詳細（学歴＋職歴）"],
-          caseStatus: rawData["ケース面接対策の状況"],
-          targetCompanies: rawData["志望企業"],
-          transferIntent: rawData["転職意向"],
-          prefecture: rawData["居住地（都道府県）"],
-          gender: rawData["性別"],
-          utmSource: rawData["弊塾を最初に知った場所"],
-          enrollmentReason: rawData["弊塾を選んだ決め手"],
-          interviewTiming: rawData["面接予定時期"],
-          desiredStartDate: rawData["転職先への入社希望日"],
-          currentAgent: rawData["利用中のエージェント"],
-          planName: rawData["申込プラン"],
-          agentUsage: rawData["エージェント利用"],
-        });
-
-        if (result) {
-          progressSheetUrl = result.url;
-          // contracts テーブルに保存（upsert）
-          const { data: updated } = await db
-            .from("contracts")
-            .update({ progress_sheet_url: result.url, updated_at: new Date().toISOString() })
-            .eq("customer_id", customerId)
-            .select("customer_id");
-          if (!updated || updated.length === 0) {
-            await db.from("contracts").insert({
-              customer_id: customerId,
-              progress_sheet_url: result.url,
-            });
-          }
-        }
-      } else {
-        // シート作成不要の場合（既にある）、既存URLを使用
-        progressSheetUrl = existingSheetUrl;
-      }
-
-      // 2. Slack通知（#biz-dev / #sales_新規申込）
-      const birthDate = rawData["生年月日"];
-      const age = birthDate ? calculateAge(birthDate) : null;
-
-      notifyKarteSubmission({
-        name: rawData["お名前"] || "不明",
-        attribute: rawData["属性"],
-        age,
-        xAccount: rawData["Xアカウント"],
-        careerHistory: rawData["経歴詳細（学歴＋職歴）"],
-        targetCompanies: rawData["志望企業"],
-        caseStatus: rawData["ケース面接対策の状況"],
-        interviewLevel: rawData["ケース面接のレベル"],
-        transferIntent: rawData["転職意向"],
-        desiredStartDate: rawData["転職先への入社希望日"],
-        utmSource: rawData["弊塾を最初に知った場所"],
-        progressSheetUrl: progressSheetUrl || undefined,
-        customerId,
-      }).catch((e) => console.error("[webhook] Slack notification failed:", e));
-
-      // 3. YouTube経由の場合、#youtubeにも通知
-      const utmSource = rawData["弊塾を最初に知った場所"] || "";
-      const enrollmentReason = rawData["弊塾を選んだ決め手"] || "";
-      if (utmSource.toLowerCase().includes("youtube") || enrollmentReason.toLowerCase().includes("youtube")) {
-        notifyYouTubeReferral({
-          name: rawData["お名前"] || "不明",
-          attribute: rawData["属性"],
-          careerHistory: rawData["経歴詳細（学歴＋職歴）"],
-          prefecture: rawData["居住地（都道府県）"],
-          customerId,
-        }).catch(() => {});
-      }
+    // processFormRecord() で関連テーブル更新・Slack通知・ProgressSheet・帰属チャネル計算
+    if (historyRecord) {
+      await processFormRecord(historyRecord.id);
     }
 
     return NextResponse.json({
       success: true,
       action: isNew ? "created" : "updated",
       customer_id: customerId,
-      progress_sheet_url: progressSheetUrl,
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Unknown error";
