@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LMS 教材データ修復レポート</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Noto+Serif+JP:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Noto Sans JP', sans-serif;
+      background: #fff;
+      color: #000;
+      line-height: 1.8;
+      font-size: 15px;
+      -webkit-text-size-adjust: 100%;
+    }
+
+    .container {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 20px 16px 40px;
+    }
+
+    /* ── Title Section ── */
+    .title-section {
+      text-align: center;
+      padding: 32px 0 24px;
+      border-bottom: 2px solid #A62B17;
+      margin-bottom: 32px;
+    }
+
+    .title-section h1 {
+      font-family: 'Noto Serif JP', serif;
+      font-size: 24px;
+      font-weight: 700;
+      color: #000;
+      margin-bottom: 8px;
+    }
+
+    .title-date {
+      font-size: 14px;
+      color: #555;
+      margin-bottom: 16px;
+    }
+
+    .title-summary {
+      font-size: 14px;
+      color: #555;
+      text-align: left;
+      background: #f5f5f5;
+      border-radius: 8px;
+      padding: 16px;
+      line-height: 1.7;
+    }
+
+    /* ── Section Headers ── */
+    h2 {
+      font-family: 'Noto Serif JP', serif;
+      font-size: 20px;
+      font-weight: 700;
+      color: #000;
+      border-left: 4px solid #A62B17;
+      padding-left: 12px;
+      margin: 40px 0 16px;
+    }
+
+    h3 {
+      font-family: 'Noto Serif JP', serif;
+      font-size: 17px;
+      font-weight: 600;
+      color: #000;
+      border-left: 4px solid #A62B17;
+      padding-left: 10px;
+      margin: 28px 0 12px;
+    }
+
+    /* ── Paragraphs ── */
+    p {
+      margin-bottom: 12px;
+      color: #000;
+    }
+
+    .sub-text {
+      color: #555;
+      font-size: 14px;
+    }
+
+    /* ── Lists ── */
+    ul, ol {
+      padding-left: 20px;
+      margin-bottom: 16px;
+    }
+
+    li {
+      margin-bottom: 6px;
+    }
+
+    /* ── Tables ── */
+    .table-wrap {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      margin: 16px 0 24px;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+      min-width: 400px;
+    }
+
+    thead th {
+      background: #A62B17;
+      color: #fff;
+      font-weight: 700;
+      padding: 10px 12px;
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    tbody td {
+      padding: 10px 12px;
+      border-bottom: 1px solid #e0e0e0;
+      vertical-align: top;
+    }
+
+    tbody tr:nth-child(even) {
+      background: #f5f5f5;
+    }
+
+    tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    .code {
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 12px;
+      color: #555;
+      word-break: break-all;
+    }
+
+    /* ── Highlight Box ── */
+    .cause-box {
+      background: #f5f5f5;
+      border-left: 4px solid #A62B17;
+      padding: 16px;
+      border-radius: 0 8px 8px 0;
+      margin: 16px 0 24px;
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    .cause-box strong {
+      color: #A62B17;
+    }
+
+    /* ── Stats Cards ── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin: 20px 0 28px;
+    }
+
+    .stat-card {
+      background: #f5f5f5;
+      border-radius: 8px;
+      padding: 16px;
+      text-align: center;
+    }
+
+    .stat-card.full-width {
+      grid-column: 1 / -1;
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: #555;
+      margin-bottom: 4px;
+    }
+
+    .stat-value {
+      font-family: 'Noto Serif JP', serif;
+      font-size: 28px;
+      font-weight: 700;
+      color: #A62B17;
+    }
+
+    .stat-value.green {
+      color: #2e7d32;
+    }
+
+    .stat-unit {
+      font-size: 14px;
+      font-weight: 400;
+    }
+
+    /* ── Before/After Comparison ── */
+    .comparison {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin: 20px 0 28px;
+    }
+
+    .comparison-col {
+      border-radius: 8px;
+      padding: 16px;
+    }
+
+    .comparison-col.before {
+      background: #fdf0ee;
+      border: 1px solid #e0b0a8;
+    }
+
+    .comparison-col.after {
+      background: #edf7ee;
+      border: 1px solid #a8d5a8;
+    }
+
+    .comparison-col h4 {
+      font-family: 'Noto Serif JP', serif;
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 10px;
+      text-align: center;
+    }
+
+    .comparison-col.before h4 {
+      color: #A62B17;
+    }
+
+    .comparison-col.after h4 {
+      color: #2e7d32;
+    }
+
+    .comparison-col ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .comparison-col li {
+      font-size: 13px;
+      padding: 4px 0;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .comparison-col li span:last-child {
+      font-weight: 700;
+    }
+
+    /* ── Note Box ── */
+    .note-box {
+      background: #fffbf0;
+      border: 1px solid #e0d4b0;
+      border-radius: 8px;
+      padding: 16px;
+      margin: 16px 0 24px;
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    .note-box .note-title {
+      font-weight: 700;
+      color: #A62B17;
+      margin-bottom: 8px;
+    }
+
+    .note-box ul {
+      margin-bottom: 0;
+    }
+
+    /* ── Warning Badge ── */
+    .badge-warn {
+      display: inline-block;
+      background: #fff3e0;
+      color: #e65100;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 4px;
+      vertical-align: middle;
+    }
+
+    /* ── Workflow Steps ── */
+    .step-list {
+      list-style: none;
+      padding: 0;
+      margin: 16px 0 24px;
+    }
+
+    .step-list li {
+      position: relative;
+      padding: 12px 12px 12px 44px;
+      margin-bottom: 8px;
+      background: #f5f5f5;
+      border-radius: 8px;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .step-list li::before {
+      content: attr(data-step);
+      position: absolute;
+      left: 12px;
+      top: 12px;
+      width: 24px;
+      height: 24px;
+      background: #A62B17;
+      color: #fff;
+      border-radius: 50%;
+      font-size: 12px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* ── Footer ── */
+    footer {
+      text-align: center;
+      padding: 24px 0 8px;
+      border-top: 1px solid #e0e0e0;
+      margin-top: 40px;
+      font-size: 12px;
+      color: #555;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 480px) {
+      .title-section h1 {
+        font-size: 20px;
+      }
+
+      h2 {
+        font-size: 18px;
+      }
+
+      h3 {
+        font-size: 16px;
+      }
+
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .comparison {
+        grid-template-columns: 1fr;
+      }
+
+      .stat-value {
+        font-size: 24px;
+      }
+
+      table {
+        font-size: 13px;
+      }
+
+      thead th, tbody td {
+        padding: 8px 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <!-- ━━ Title Section ━━ -->
+    <div class="title-section">
+      <h1>LMS 教材データ修復レポート</h1>
+      <div class="title-date">2026年3月17日</div>
+    </div>
+    <div class="title-summary">
+      教材管理画面（<code>/admin/contents</code>）にて確認されたデータ品質の問題について調査を行い、重複レッスンの統合およびNotionからのコンテンツ補完を実施しました。本レポートはその調査結果と修復作業の全記録です。
+    </div>
+
+    <!-- ━━ Section 1: 問題の発見 ━━ -->
+    <h2>1. 問題の発見</h2>
+
+    <p>LMS管理画面で教材コンテンツを点検したところ、以下の2種類のデータ品質問題が確認されました。</p>
+
+    <h3>1-1. 重複レッスン問題</h3>
+
+    <p>管理画面（<code>/admin/contents</code>）において、一部の教材コンテンツに対して複数のレッスンが表示される異常が確認されました。詳細な調査の結果、同一のコンテンツが3つの新卒カリキュラム（スタンダード/ライト、ミニマム、選コミュ）に重複して登録されていたことが判明しました。</p>
+    <p>コンテンツの実体はすべて完全に同一であり、MD5ハッシュの照合により内容の一致を確認済みです。</p>
+
+    <p style="font-weight: 700; margin-top: 20px;">重複コンテンツの内訳</p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>コンテンツ名</th>
+            <th>重複数</th>
+            <th>content_id</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>7.フェルミ推定I</td>
+            <td>3個</td>
+            <td class="code">344d4829...</td>
+          </tr>
+          <tr>
+            <td>8.売上向上I（店舗）</td>
+            <td>3個</td>
+            <td class="code">f88c36d7...</td>
+          </tr>
+          <tr>
+            <td>9.売上向上II（消費財）</td>
+            <td>3個</td>
+            <td class="code">765cb33c...</td>
+          </tr>
+          <tr>
+            <td>10.売上向上III（サービス）</td>
+            <td>3個</td>
+            <td class="code">7190be1c...</td>
+          </tr>
+          <tr>
+            <td>11.綱羅構造</td>
+            <td>3個</td>
+            <td class="code">11b74962...</td>
+          </tr>
+          <tr>
+            <td>12.公共系I</td>
+            <td>3個</td>
+            <td class="code">5032d175...</td>
+          </tr>
+          <tr>
+            <td>1.戦コン就活ロードマップ</td>
+            <td>2個</td>
+            <td class="code">3f3de227...</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="cause-box">
+      <strong>原因:</strong> Notionからのデータ移行スクリプト（<code>seed-curriculum-from-notion.ts</code>）において、3つのカリキュラムそれぞれにレッスンを作成する際、同一の<code>content_id</code>を共有する設計になっていました。その結果、教材管理画面（contents）側から見ると、1つのコンテンツに対して複数のレッスンがぶら下がる状態となっていました。
+    </div>
+
+    <h3>1-2. レッスン0件問題</h3>
+
+    <p>全45件のコンテンツのうち、10件のコンテンツにレッスンが1つも紐づいていないことが判明しました。これらはNotionからの移行時にデータが取得できなかった、あるいはNotion側に元データが存在しなかったことが原因です。</p>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">全コンテンツ数</div>
+        <div class="stat-value">45<span class="stat-unit">件</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">レッスン0件</div>
+        <div class="stat-value">10<span class="stat-unit">件</span></div>
+      </div>
+    </div>
+
+    <p style="font-weight: 700;">レッスン0件コンテンツの内訳</p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>コンテンツ名</th>
+            <th>カテゴリ</th>
+            <th>Notionデータ</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>推奨学習方法</td>
+            <td>ガイド</td>
+            <td>あり（1,373文字）</td>
+          </tr>
+          <tr>
+            <td>マッキンゼー/論点設計の教科書</td>
+            <td>教科書</td>
+            <td>あり（1,788文字）</td>
+          </tr>
+          <tr>
+            <td>総コン内定の教科書</td>
+            <td>教科書</td>
+            <td>あり（16,733文字）</td>
+          </tr>
+          <tr>
+            <td>McK選考におけるよくある質問</td>
+            <td>補助教材</td>
+            <td>あり（6,660文字）</td>
+          </tr>
+          <tr>
+            <td>ファーム別情報</td>
+            <td>補助教材</td>
+            <td>あり（3,816文字）</td>
+          </tr>
+          <tr>
+            <td>マッキンゼーWebテスト対策</td>
+            <td>補助教材</td>
+            <td><span class="badge-warn">少量</span> サブページ構造</td>
+          </tr>
+          <tr>
+            <td>解いておきたいケース問題リスト</td>
+            <td>補助教材</td>
+            <td><span class="badge-warn">少量</span> child_database構造</td>
+          </tr>
+          <tr>
+            <td>教材アウトプットについて</td>
+            <td>ガイド</td>
+            <td>なし</td>
+          </tr>
+          <tr>
+            <td>Webテスト対策(既卒)</td>
+            <td>補助教材</td>
+            <td>なし</td>
+          </tr>
+          <tr>
+            <td>ビヘイビア面接準備チェックポイント</td>
+            <td>補助教材</td>
+            <td>なし</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ━━ Section 2: 修復作業 ━━ -->
+    <h2>2. 修復作業</h2>
+
+    <p>上記2つの問題に対し、以下の修復作業を実施しました。</p>
+
+    <h3>2-1. 重複レッスンの統合</h3>
+
+    <p>重複レッスンの整理にあたっては、データの安全性を最優先とし、レッスンの物理削除は行わない方針としました。具体的な手順は以下のとおりです。</p>
+
+    <ul class="step-list">
+      <li data-step="1">各<code>content_id</code>に対して、スタンダード/ライトカリキュラム（<code>course_id: b9cb1bab...</code>）のレッスンを正とし、そのまま保持</li>
+      <li data-step="2">残り13件の重複レッスンについて、<code>content_id</code>をNULLに更新し、コンテンツとの紐づけを解除</li>
+      <li data-step="3">レッスンレコード自体は削除せず、カリキュラム構造（各コースのレッスン順序等）を維持</li>
+      <li data-step="4">修復後、全contentsのレッスン数が1以下に正規化されたことを確認</li>
+    </ul>
+
+    <h3>2-2. Notionコンテンツの補完</h3>
+
+    <p>レッスン0件のコンテンツについて、Notion APIを使用したデータ補完を実施しました。</p>
+
+    <ul class="step-list">
+      <li data-step="1">Notion API（Internal Integration Token）を使用し、対象7件のページブロックを再帰的に取得</li>
+      <li data-step="2">取得したブロック（paragraph, heading, list, image, video, table等）をHTML形式に変換</li>
+      <li data-step="3"><code>lessons</code>テーブルに新規レッスンを作成（<code>content_format: "html"</code>, <code>copy_protected: true</code>）</li>
+      <li data-step="4">Notionにデータが存在しなかった3件については「コンテンツ準備中」テキストで空レッスンを作成</li>
+    </ul>
+
+    <!-- ━━ Section 3: 修復後の状態 ━━ -->
+    <h2>3. 修復後の状態</h2>
+
+    <p>修復作業の結果、全45件のコンテンツが正常な状態となりました。修復前後の比較は以下のとおりです。</p>
+
+    <div class="comparison">
+      <div class="comparison-col before">
+        <h4>修復前</h4>
+        <ul>
+          <li><span>重複レッスンあり</span><span>7件</span></li>
+          <li><span>レッスン0件</span><span>10件</span></li>
+          <li><span>正常</span><span>28件</span></li>
+        </ul>
+      </div>
+      <div class="comparison-col after">
+        <h4>修復後</h4>
+        <ul>
+          <li><span>重複レッスンあり</span><span>0件</span></li>
+          <li><span>レッスン0件</span><span>0件</span></li>
+          <li><span>正常</span><span>45件</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card full-width">
+        <div class="stat-label">修復完了率</div>
+        <div class="stat-value green">100<span class="stat-unit">%</span></div>
+      </div>
+    </div>
+
+    <!-- ━━ Section 4: 残課題 ━━ -->
+    <h2>4. 残課題・注意事項</h2>
+
+    <p>修復作業は完了しましたが、以下の点について今後の対応が必要です。</p>
+
+    <div class="note-box">
+      <div class="note-title">対応が必要な項目</div>
+      <ul>
+        <li><strong>コンテンツ少量の2件</strong> &mdash;「マッキンゼーWebテスト対策」と「解いておきたいケース問題リスト」は、Notion側でサブページ/child_database構造のためコンテンツが少量です。必要に応じて管理画面から手動で追記してください。</li>
+        <li><strong>空レッスンの3件</strong> &mdash;「教材アウトプットについて」「Webテスト対策(既卒)」「ビヘイビア面接準備チェックポイント」はNotionにデータが存在しなかったため、空レッスン（コンテンツ準備中）として作成しています。コンテンツの追加が必要です。</li>
+        <li><strong>NULLレッスンの扱い</strong> &mdash; <code>content_id</code>をNULLに更新した13レッスンは、カリキュラムの表示には影響しませんが、将来的にcontentsとcoursesの関連を整理する際には考慮が必要です。</li>
+      </ul>
+    </div>
+
+    <!-- ━━ Footer ━━ -->
+    <footer>
+      &copy; Strategists | 教材データ修復レポート 2026-03-17
+    </footer>
+
+  </div>
+</body>
+</html>

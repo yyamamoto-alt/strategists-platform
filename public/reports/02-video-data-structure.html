@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>動画講座 複数動画URL対応レポート</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Noto+Serif+JP:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Noto Sans JP', sans-serif;
+      background: #fff;
+      color: #000;
+      line-height: 1.8;
+      font-size: 15px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .container {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 24px 16px 48px;
+    }
+
+    /* ===== ヘッダー / タイトル ===== */
+    .report-header {
+      border-bottom: 3px solid #A62B17;
+      padding-bottom: 20px;
+      margin-bottom: 32px;
+    }
+
+    .report-header h1 {
+      font-family: 'Noto Serif JP', serif;
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: #000;
+      line-height: 1.4;
+      margin-bottom: 8px;
+    }
+
+    .report-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      font-size: 0.85rem;
+      color: #555;
+    }
+
+    .report-meta span {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* ===== サマリボックス ===== */
+    .summary-box {
+      background: #f5f5f5;
+      border-left: 4px solid #A62B17;
+      padding: 16px 18px;
+      margin-bottom: 36px;
+      border-radius: 0 6px 6px 0;
+    }
+
+    .summary-box .label {
+      font-family: 'Noto Serif JP', serif;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #A62B17;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 6px;
+    }
+
+    .summary-box p {
+      font-size: 0.95rem;
+      color: #333;
+      line-height: 1.7;
+    }
+
+    /* ===== セクション見出し ===== */
+    h2 {
+      font-family: 'Noto Serif JP', serif;
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: #000;
+      border-left: 4px solid #A62B17;
+      padding-left: 14px;
+      margin: 40px 0 18px;
+      line-height: 1.4;
+    }
+
+    h3 {
+      font-family: 'Noto Serif JP', serif;
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #000;
+      border-left: 4px solid #A62B17;
+      padding-left: 12px;
+      margin: 28px 0 12px;
+      line-height: 1.4;
+    }
+
+    h4 {
+      font-family: 'Noto Sans JP', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #333;
+      margin: 20px 0 8px;
+    }
+
+    /* ===== 本文 ===== */
+    p {
+      margin-bottom: 14px;
+      color: #333;
+    }
+
+    ul, ol {
+      margin: 0 0 16px 20px;
+      color: #333;
+    }
+
+    li {
+      margin-bottom: 6px;
+    }
+
+    strong {
+      color: #000;
+    }
+
+    /* ===== テーブル ===== */
+    .table-wrap {
+      overflow-x: auto;
+      margin: 16px 0 24px;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+      min-width: 480px;
+    }
+
+    thead th {
+      background: #A62B17;
+      color: #fff;
+      font-weight: 700;
+      text-align: left;
+      padding: 10px 12px;
+      white-space: nowrap;
+    }
+
+    tbody td {
+      padding: 10px 12px;
+      border-bottom: 1px solid #e0e0e0;
+      vertical-align: top;
+    }
+
+    tbody tr:nth-child(even) {
+      background: #f5f5f5;
+    }
+
+    /* ===== コードブロック ===== */
+    pre {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      border-radius: 6px;
+      padding: 16px 18px;
+      overflow-x: auto;
+      font-size: 0.82rem;
+      line-height: 1.6;
+      margin: 12px 0 20px;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    pre code {
+      font-family: 'SFMono-Regular', 'Consolas', 'Liberation Mono', 'Menlo', monospace;
+      white-space: pre;
+    }
+
+    /* シンタックスハイライト風 */
+    .kw { color: #569cd6; }         /* キーワード */
+    .type { color: #4ec9b0; }       /* 型 */
+    .str { color: #ce9178; }        /* 文字列 */
+    .cm { color: #6a9955; }         /* コメント */
+    .fn { color: #dcdcaa; }         /* 関数名 */
+    .num { color: #b5cea8; }        /* 数値 */
+    .op { color: #d4d4d4; }         /* 演算子 */
+    .punct { color: #d4d4d4; }      /* 括弧等 */
+
+    /* インラインコード */
+    code:not(pre code) {
+      background: #f5f5f5;
+      border: 1px solid #e0e0e0;
+      border-radius: 3px;
+      padding: 2px 6px;
+      font-size: 0.85em;
+      font-family: 'SFMono-Regular', 'Consolas', 'Liberation Mono', 'Menlo', monospace;
+      color: #A62B17;
+    }
+
+    /* ===== 選択肢カード ===== */
+    .option-card {
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      padding: 16px 18px;
+      margin: 12px 0;
+      background: #fff;
+    }
+
+    .option-card.adopted {
+      border-color: #A62B17;
+      border-width: 2px;
+      background: #fdf6f5;
+    }
+
+    .option-card .option-title {
+      font-weight: 700;
+      font-size: 0.95rem;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .badge {
+      display: inline-block;
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 4px;
+      white-space: nowrap;
+    }
+
+    .badge-adopted {
+      background: #A62B17;
+      color: #fff;
+    }
+
+    .badge-rejected {
+      background: #e0e0e0;
+      color: #555;
+    }
+
+    .option-card .merit,
+    .option-card .demerit {
+      font-size: 0.88rem;
+      margin: 4px 0 4px 16px;
+    }
+
+    .option-card .merit::before { content: "+ "; color: #2e7d32; font-weight: 700; }
+    .option-card .demerit::before { content: "- "; color: #c62828; font-weight: 700; }
+
+    /* ===== 手順リスト ===== */
+    .steps {
+      counter-reset: step;
+      list-style: none;
+      margin-left: 0;
+      padding-left: 0;
+    }
+
+    .steps li {
+      counter-increment: step;
+      position: relative;
+      padding-left: 36px;
+      margin-bottom: 12px;
+    }
+
+    .steps li::before {
+      content: counter(step);
+      position: absolute;
+      left: 0;
+      top: 2px;
+      width: 24px;
+      height: 24px;
+      background: #A62B17;
+      color: #fff;
+      font-size: 0.75rem;
+      font-weight: 700;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* ===== 注意ボックス ===== */
+    .note-box {
+      background: #f5f5f5;
+      border: 1px solid #e0e0e0;
+      border-radius: 6px;
+      padding: 14px 16px;
+      margin: 16px 0;
+      font-size: 0.9rem;
+    }
+
+    .note-box .note-title {
+      font-weight: 700;
+      color: #A62B17;
+      margin-bottom: 6px;
+      font-size: 0.85rem;
+    }
+
+    /* ===== セクション区切り ===== */
+    .section-divider {
+      border: none;
+      border-top: 1px solid #e0e0e0;
+      margin: 36px 0;
+    }
+
+    /* ===== フッター ===== */
+    .report-footer {
+      margin-top: 48px;
+      padding-top: 20px;
+      border-top: 2px solid #A62B17;
+      text-align: center;
+      font-size: 0.8rem;
+      color: #555;
+      line-height: 1.6;
+    }
+
+    /* ===== レスポンシブ ===== */
+    @media (min-width: 600px) {
+      .container {
+        padding: 40px 32px 64px;
+      }
+
+      .report-header h1 {
+        font-size: 1.8rem;
+      }
+
+      h2 {
+        font-size: 1.4rem;
+      }
+
+      body {
+        font-size: 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <!-- ===== ヘッダー ===== -->
+    <header class="report-header">
+      <h1>動画講座 複数動画URL対応レポート</h1>
+      <div class="report-meta">
+        <span>2026年3月17日</span>
+        <span>Strategists LMS</span>
+      </div>
+    </header>
+
+    <!-- ===== サマリ ===== -->
+    <div class="summary-box">
+      <div class="label">Summary</div>
+      <p>
+        動画講座が「1レッスン = 1動画URL」だった制約を解消し、1レッスンに対して複数の動画を構造化データとして管理できるようにしました。
+        従来の HTML 内 iframe ベタ打ち + 正規表現パースという脆い実装を廃止し、JSONB カラムによるシンプルかつ拡張性のある設計に移行しています。
+        既存データとの完全な後方互換性を維持しており、段階的な移行が可能です。
+      </p>
+    </div>
+
+    <!-- ===== セクション1: 変更の背景 ===== -->
+    <h2>1. 変更の背景</h2>
+
+    <h3>従来の問題</h3>
+
+    <p>
+      Strategists LMS では、ケース面接対策・フェルミ推定対策などの動画講座を提供しています。
+      これらの講座は1レッスンあたり 5〜7 本の動画で構成されていますが、従来のデータ構造では以下の問題がありました。
+    </p>
+
+    <ul>
+      <li><code>lessons</code> テーブルの <code>video_url</code> フィールドが <strong>1つだけ</strong> であり、複数動画を直接管理できなかった</li>
+      <li>複数動画は <code>markdown_content</code>（実態は HTML）内に YouTube の <code>&lt;iframe&gt;</code> をベタ打ちして埋め込んでいた</li>
+      <li>フロントエンドの <code>MultiVideoPlayer</code> コンポーネントが HTML を <strong>正規表現でパース</strong>して動画セクションを抽出する設計になっていた</li>
+      <li>管理者が HTML コンテンツを編集すると、正規表現パースが壊れるリスクが常に存在していた</li>
+    </ul>
+
+    <p>
+      つまり、「データ構造」と「表示ロジック」の両方に問題があり、管理者にとっても開発者にとっても不安定な状態でした。
+      特に、HTMLの記述ルールを管理者が把握していないと動画が正しく表示されないという運用リスクは、LMSの信頼性を損なう原因になり得ます。
+    </p>
+
+    <hr class="section-divider">
+
+    <!-- ===== セクション2: 設計判断 ===== -->
+    <h2>2. 設計判断</h2>
+
+    <p>
+      複数動画の管理方法について、以下の3つの選択肢を検討しました。
+      それぞれのトレードオフを評価した結果、<strong>Option A（JSONBカラム追加）</strong>を採用しています。
+    </p>
+
+    <!-- Option A -->
+    <div class="option-card adopted">
+      <div class="option-title">
+        Option A: JSONBカラム追加
+        <span class="badge badge-adopted">採用</span>
+      </div>
+      <p style="font-size:0.9rem; margin-bottom:8px;">
+        <code>lessons</code> テーブルに <code>video_urls</code> JSONB カラムを追加し、
+        <code>[{title, url, duration_minutes, description}, ...]</code> の配列構造で動画情報を格納する。
+      </p>
+      <div class="merit">シンプルな実装。JOIN不要で1クエリで完結</div>
+      <div class="merit">並び順が配列インデックスで自然に表現できる</div>
+      <div class="merit">マイグレーションが1カラム追加のみで低リスク</div>
+      <div class="demerit">RDB正規化の観点からは外れる</div>
+      <div style="font-size:0.85rem; color:#555; margin-top:8px; margin-left:16px;">
+        ただし、1レッスンあたり 5〜7 要素という規模では正規化のメリット（検索・集計）がほぼ不要であり、JSONBで十分。
+      </div>
+    </div>
+
+    <!-- Option B -->
+    <div class="option-card">
+      <div class="option-title">
+        Option B: 別テーブル（lesson_videos）
+        <span class="badge badge-rejected">不採用</span>
+      </div>
+      <p style="font-size:0.9rem; margin-bottom:8px;">
+        <code>lesson_videos</code> テーブルを新設し、<code>lesson_id</code> で外部キー参照する正規化設計。
+      </p>
+      <div class="merit">RDB正規化の正攻法</div>
+      <div class="demerit">5〜7本の動画に対してリレーション管理のオーバーヘッドが大きい</div>
+      <div class="demerit">並べ替えに <code>sort_order</code> カラムの管理が別途必要</div>
+      <div class="demerit">表示時にJOINが必要になりクエリが複雑化</div>
+    </div>
+
+    <!-- Option C -->
+    <div class="option-card">
+      <div class="option-title">
+        Option C: 既存フィールド活用（現状維持）
+        <span class="badge badge-rejected">不採用</span>
+      </div>
+      <p style="font-size:0.9rem; margin-bottom:8px;">
+        <code>markdown_content</code> 内の HTML + 正規表現パースをそのまま使い続ける。
+      </p>
+      <div class="merit">変更不要</div>
+      <div class="demerit">HTMLパースの脆さを解消できない（根本問題が残る）</div>
+      <div class="demerit">管理者のHTML編集ミスで動画表示が壊れるリスクが残る</div>
+    </div>
+
+    <hr class="section-divider">
+
+    <!-- ===== セクション3: 実装内容 ===== -->
+    <h2>3. 実装内容</h2>
+
+    <h3>3-1. DBマイグレーション</h3>
+
+    <p>
+      <code>lessons</code> テーブルに <code>video_urls</code> カラムを追加するシンプルなマイグレーションです。
+      デフォルト値として空配列 <code>[]</code> を設定しているため、既存レコードへの影響はありません。
+    </p>
+
+    <pre><code><span class="cm">-- supabase/migrations/20260316_lesson_video_urls.sql</span>
+
+<span class="kw">ALTER TABLE</span> lessons
+  <span class="kw">ADD COLUMN IF NOT EXISTS</span> video_urls <span class="type">JSONB</span> <span class="kw">DEFAULT</span> <span class="str">'[]'</span>::<span class="type">jsonb</span>;</code></pre>
+
+    <div class="note-box">
+      <div class="note-title">実行状況</div>
+      マイグレーションは Supabase Management API 経由で実行済みです。本番環境に反映されています。
+    </div>
+
+    <h3>3-2. 型定義</h3>
+
+    <p>
+      <code>packages/shared-db/src/types.ts</code> に <code>LessonVideo</code> インターフェースを追加し、
+      既存の <code>Lesson</code> 型に <code>video_urls</code> フィールドを追加しました。
+    </p>
+
+    <pre><code><span class="cm">// packages/shared-db/src/types.ts</span>
+
+<span class="kw">export interface</span> <span class="type">LessonVideo</span> {
+  title: <span class="type">string</span>;              <span class="cm">// "動画1: フェルミ推定の基礎"</span>
+  url: <span class="type">string</span>;                <span class="cm">// YouTube/Google Drive URL</span>
+  duration_minutes?: <span class="type">number</span>;  <span class="cm">// 個別動画の長さ（分）</span>
+  description?: <span class="type">string</span>;       <span class="cm">// 動画の説明文</span>
+}
+
+<span class="kw">export interface</span> <span class="type">Lesson</span> {
+  <span class="cm">// ...既存フィールド</span>
+  video_urls?: <span class="type">LessonVideo</span>[];  <span class="cm">// 追加</span>
+}</code></pre>
+
+    <p>
+      <code>title</code> と <code>url</code> が必須、<code>duration_minutes</code> と <code>description</code> はオプショナルとしています。
+      これにより、最小限の入力で動画を登録でき、詳細な情報は後から追加できる柔軟な設計になっています。
+    </p>
+
+    <h3>3-3. API更新</h3>
+
+    <p>
+      <code>apps/lms/src/app/api/lessons/[id]/route.ts</code> の PATCH ハンドラを更新しました。
+    </p>
+
+    <pre><code><span class="cm">// apps/lms/src/app/api/lessons/[id]/route.ts</span>
+
+<span class="cm">// allowedFields に video_urls を追加</span>
+<span class="kw">const</span> allowedFields = [
+  <span class="str">'title'</span>, <span class="str">'content'</span>, <span class="str">'video_url'</span>,
+  <span class="str">'markdown_content'</span>, <span class="str">'sort_order'</span>,
+  <span class="str">'video_urls'</span>,  <span class="cm">// 新規追加</span>
+];
+
+<span class="cm">// バリデーション</span>
+<span class="kw">if</span> (body.video_urls !== <span class="kw">undefined</span>) {
+  <span class="kw">if</span> (!<span class="type">Array</span>.<span class="fn">isArray</span>(body.video_urls)) {
+    <span class="kw">return</span> <span class="fn">NextResponse</span>.<span class="fn">json</span>(
+      { error: <span class="str">'video_urls must be an array'</span> },
+      { status: <span class="num">400</span> }
+    );
+  }
+  <span class="kw">for</span> (<span class="kw">const</span> v <span class="kw">of</span> body.video_urls) {
+    <span class="kw">if</span> (!v.title || !v.url) {
+      <span class="kw">return</span> <span class="fn">NextResponse</span>.<span class="fn">json</span>(
+        { error: <span class="str">'Each video must have title and url'</span> },
+        { status: <span class="num">400</span> }
+      );
+    }
+  }
+}</code></pre>
+
+    <h3>3-4. 管理画面 UI</h3>
+
+    <p>
+      <code>apps/lms/src/app/admin/contents/[id]/page.tsx</code> に「複数動画管理」セクションを追加しました。
+      動画レッスンの編集時に以下の操作が可能です。
+    </p>
+
+    <ul>
+      <li><strong>タイトル / URL / 所要時間（分）</strong>を行ごとに入力</li>
+      <li><strong>「動画を追加」ボタン</strong>で新しい行を追加</li>
+      <li><strong>↑↓ボタン</strong>で動画の並べ替え</li>
+      <li><strong>×ボタン</strong>で動画の削除</li>
+    </ul>
+
+    <p>
+      既存の単一 <code>video_url</code> 入力フィールドもフォールバック用として残しています。
+      これにより、単一動画のみのレッスンでは従来通りの簡単な入力が可能です。
+    </p>
+
+    <h3>3-5. 表示コンポーネント</h3>
+
+    <p>
+      <code>components/content/multi-video-player.tsx</code> に新しい Props <code>videos?: LessonVideo[]</code> を追加しました。
+      表示ロジックは以下の優先順位で動作します。
+    </p>
+
+    <ol>
+      <li><code>videos</code> 配列が渡された場合 → 構造化データをそのまま使用（パース不要）</li>
+      <li><code>videos</code> がない場合 → 従来の <code>parseVideoSections(mainVideoUrl, htmlContent)</code> にフォールバック</li>
+      <li>単一動画のみの場合 → シンプルな <code>VideoPlayer</code> にフォールバック</li>
+    </ol>
+
+    <h3>3-6. 受講者向け表示</h3>
+
+    <p>
+      <code>lesson-player-client.tsx</code> では、レッスンデータに <code>video_urls</code> が存在する場合はそちらを優先して
+      <code>MultiVideoPlayer</code> の <code>videos</code> props に渡します。
+    </p>
+
+    <pre><code><span class="cm">// lesson-player-client.tsx（概要）</span>
+
+{lesson.video_urls && lesson.video_urls.length > <span class="num">0</span> ? (
+  <span class="cm">// 構造化データを優先</span>
+  &lt;<span class="type">MultiVideoPlayer</span>
+    <span class="fn">videos</span>={lesson.video_urls}
+  /&gt;
+) : (
+  <span class="cm">// 従来パターンにフォールバック</span>
+  &lt;<span class="type">MultiVideoPlayer</span>
+    <span class="fn">mainVideoUrl</span>={lesson.video_url}
+    <span class="fn">htmlContent</span>={lesson.markdown_content}
+  /&gt;
+)}</code></pre>
+
+    <p>
+      これにより、<strong>完全な後方互換性</strong>を維持しています。
+      既存の動画レッスンは一切変更なしで従来通り動作し、<code>video_urls</code> に構造化データを登録したレッスンから順に新しい表示ロジックに切り替わります。
+    </p>
+
+    <hr class="section-divider">
+
+    <!-- ===== セクション4: 使い方ガイド ===== -->
+    <h2>4. 使い方ガイド</h2>
+
+    <h3>管理者が動画講座を登録する手順</h3>
+
+    <ol class="steps">
+      <li>管理画面にログインし、サイドバーから <strong>「教材管理」</strong> を開く</li>
+      <li>対象のコンテンツ（例: ケース面接対策講座）を選択する</li>
+      <li>動画レッスンを開く（種類が「動画」のもの）</li>
+      <li><strong>「複数動画管理」</strong>セクションで<strong>「動画を追加」</strong>ボタンをクリック</li>
+      <li>タイトルを入力（例: 「第1講 フェルミ推定の基礎」）</li>
+      <li>URLを入力（YouTube または Google Drive の共有URL）</li>
+      <li>所要時間（分）を任意で入力</li>
+      <li>動画の数だけ手順 4〜7 を繰り返す</li>
+      <li>並び順を ↑↓ ボタンで調整し、<strong>「保存」</strong>をクリック</li>
+    </ol>
+
+    <h3>既存データの移行について</h3>
+
+    <div class="note-box">
+      <div class="note-title">移行は任意・段階的に実施可能</div>
+      <p style="margin-bottom:8px;">
+        既存の動画レッスンはフォールバックロジックにより<strong>引き続き正常に動作</strong>します。
+        移行を急ぐ必要はありません。
+      </p>
+      <p style="margin-bottom:0;">
+        移行する場合は、管理画面で既存の HTML コンテンツ内から動画 URL をコピーし、「複数動画管理」セクションに登録してください。
+        構造化データが登録されると、そちらが優先して使用されます。
+      </p>
+    </div>
+
+    <hr class="section-divider">
+
+    <!-- ===== セクション5: 変更ファイル一覧 ===== -->
+    <h2>5. 変更ファイル一覧</h2>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>ファイル</th>
+            <th>変更内容</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>supabase/migrations/20260316_lesson_video_urls.sql</code></td>
+            <td>新規: DBマイグレーション（video_urls JSONBカラム追加）</td>
+          </tr>
+          <tr>
+            <td><code>packages/shared-db/src/types.ts</code></td>
+            <td>LessonVideo 型追加、Lesson 型に video_urls フィールド追加</td>
+          </tr>
+          <tr>
+            <td><code>apps/lms/src/app/api/lessons/[id]/route.ts</code></td>
+            <td>allowedFields に video_urls 追加、配列バリデーション追加</td>
+          </tr>
+          <tr>
+            <td><code>apps/lms/src/app/admin/contents/[id]/page.tsx</code></td>
+            <td>複数動画管理 UI 追加（追加・削除・並べ替え）</td>
+          </tr>
+          <tr>
+            <td><code>apps/lms/src/components/content/multi-video-player.tsx</code></td>
+            <td>videos prop 対応、構造化データ優先のフォールバックロジック</td>
+          </tr>
+          <tr>
+            <td><code>apps/lms/src/app/(main)/courses/[slug]/learn/[lessonId]/lesson-player-client.tsx</code></td>
+            <td>video_urls 優先表示ロジック追加</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ===== フッター ===== -->
+    <footer class="report-footer">
+      &copy; Strategists | 動画講座データ構造変更レポート 2026-03-17
+    </footer>
+
+  </div>
+</body>
+</html>
