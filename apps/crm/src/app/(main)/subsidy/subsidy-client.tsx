@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useEffect } from "react";
 import Link from "next/link";
 import type { CustomerWithRelations } from "@strategy-school/shared-db";
 import { isShinsotsu } from "@/lib/calc-fields";
@@ -373,7 +373,9 @@ function DocumentModal({
   const [startDate, setStartDate] = useState(defaultStartDate);
   const [endDate, setEndDate] = useState("");
   const [issueDate, setIssueDate] = useState(today);
-  const [certNumber, setCertNumber] = useState("00001");
+  const [certNumber, setCertNumber] = useState(
+    customer.contract?.subsidy_number ? String(customer.contract.subsidy_number) : "00001"
+  );
   const [sendStep, setSendStep] = useState<"idle" | "confirm" | "sending" | "done">("idle");
 
   const customerEmail = customer.email || "";
@@ -599,6 +601,236 @@ function DocumentModal({
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ================================================================
+// Training Record Panel (受講記録)
+// ================================================================
+
+interface TrainingRecordData {
+  customer: { id: string; name: string; attribute: string; planName: string; enrollmentDate: string | null };
+  careerConsultations: { number: number; date: string; counselor: string; type: string; rawData: Record<string, string> }[];
+  caseCoachings: { number: number; date: string; mentor: string; evaluation: string | null; topic: string; goodPoints: string; improvements: string; rawData: Record<string, string> }[];
+  materialSubmission: { submitted: boolean; date: string | null };
+  completionConditions: {
+    caseCoachingMet: boolean; caseCoachingCount: number;
+    careerConsultationMet: boolean; careerConsultationCount: number;
+    materialMet: boolean; evaluationMet: boolean; bestEvaluation: string | null;
+    allMet: boolean; completionDate: string | null;
+  };
+}
+
+function TrainingRecordPanel({ customerId }: { customerId: string }) {
+  const [data, setData] = useState<TrainingRecordData | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+
+  const fetchData = useCallback(async () => {
+    if (data) { setExpanded((v) => !v); return; }
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/subsidy/training-record?customerId=${customerId}`);
+      if (res.ok) {
+        const json = await res.json();
+        setData(json);
+        setExpanded(true);
+      }
+    } catch (e) {
+      console.error("Failed to fetch training record:", e);
+    } finally {
+      setLoading(false);
+    }
+  }, [customerId, data]);
+
+  const handlePrint = useCallback(() => {
+    const el = document.getElementById("training-record-content");
+    if (!el) return;
+    const win = window.open("", "_blank");
+    if (!win) return;
+    win.document.write(`
+      <html><head><title>受講記録 - ${data?.customer.name}</title>
+      <style>
+        body { font-family: 'Hiragino Kaku Gothic Pro', 'Yu Gothic', sans-serif; padding: 30px; color: #222; }
+        h1 { font-size: 18px; text-align: center; border-bottom: 2px solid #333; padding-bottom: 8px; }
+        h2 { font-size: 14px; margin-top: 24px; border-left: 4px solid #A62B17; padding-left: 8px; }
+        .condition { display: flex; align-items: center; gap: 6px; margin: 4px 0; font-size: 12px; }
+        .check { width: 14px; height: 14px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 9px; font-weight: bold; color: white; }
+        .check-ok { background: #16a34a; }
+        .check-ng { background: #dc2626; }
+        .session { border: 1px solid #e0e0e0; border-radius: 8px; padding: 12px; margin: 8px 0; font-size: 12px; }
+        .session-header { display: flex; gap: 16px; margin-bottom: 6px; }
+        .session-label { color: #666; font-size: 11px; }
+        .eval-badge { display: inline-block; padding: 1px 6px; border-radius: 4px; font-size: 10px; }
+        .eval-pass { background: #dcfce7; color: #166534; }
+        .eval-fail { background: #fee2e2; color: #991b1b; }
+        @media print { body { padding: 20px; } }
+      </style></head>
+      <body>${el.innerHTML}</body></html>
+    `);
+    win.document.close();
+    win.focus();
+    setTimeout(() => win.print(), 500);
+  }, [data]);
+
+  return (
+    <div className="border-t border-white/10">
+      <button
+        onClick={fetchData}
+        disabled={loading}
+        className="w-full px-6 py-3 flex items-center justify-between text-left hover:bg-white/5 transition-colors"
+      >
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-bold text-white">受講記録</span>
+          {loading && <span className="w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />}
+        </div>
+        <span className={`text-gray-400 transition-transform ${expanded ? "rotate-180" : ""}`}>▼</span>
+      </button>
+
+      {expanded && data && (
+        <div className="px-6 pb-4">
+          <div className="flex justify-end mb-3">
+            <button
+              onClick={handlePrint}
+              className="px-3 py-1.5 text-xs bg-brand/20 text-brand border border-brand/30 rounded-lg hover:bg-brand/30 transition-colors"
+            >
+              PDF出力 / 印刷
+            </button>
+          </div>
+
+          <div id="training-record-content">
+            {/* 修了条件チェック */}
+            <div className="mb-4 p-4 rounded-lg border border-white/10 bg-surface-elevated">
+              <h3 className="text-xs font-bold text-white mb-3">修了条件チェック</h3>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className={`w-4 h-4 rounded-full text-[10px] font-bold flex items-center justify-center ${data.completionConditions.caseCoachingMet ? "bg-green-600 text-white" : "bg-red-600 text-white"}`}>
+                    {data.completionConditions.caseCoachingMet ? "✓" : "✗"}
+                  </span>
+                  <span className={`text-xs ${data.completionConditions.caseCoachingMet ? "text-green-400" : "text-red-400"}`}>
+                    ケース指導 4回以上（実績: {data.completionConditions.caseCoachingCount}回）
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={`w-4 h-4 rounded-full text-[10px] font-bold flex items-center justify-center ${data.completionConditions.careerConsultationMet ? "bg-green-600 text-white" : "bg-red-600 text-white"}`}>
+                    {data.completionConditions.careerConsultationMet ? "✓" : "✗"}
+                  </span>
+                  <span className={`text-xs ${data.completionConditions.careerConsultationMet ? "text-green-400" : "text-red-400"}`}>
+                    キャリア相談 2回以上（実績: {data.completionConditions.careerConsultationCount}回）
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={`w-4 h-4 rounded-full text-[10px] font-bold flex items-center justify-center ${data.completionConditions.materialMet ? "bg-green-600 text-white" : "bg-red-600 text-white"}`}>
+                    {data.completionConditions.materialMet ? "✓" : "✗"}
+                  </span>
+                  <span className={`text-xs ${data.completionConditions.materialMet ? "text-green-400" : "text-red-400"}`}>
+                    教材閲覧完了{data.materialSubmission.date ? `（提出日: ${data.materialSubmission.date}）` : ""}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={`w-4 h-4 rounded-full text-[10px] font-bold flex items-center justify-center ${data.completionConditions.evaluationMet ? "bg-green-600 text-white" : "bg-red-600 text-white"}`}>
+                    {data.completionConditions.evaluationMet ? "✓" : "✗"}
+                  </span>
+                  <span className={`text-xs ${data.completionConditions.evaluationMet ? "text-green-400" : "text-red-400"}`}>
+                    ケース指導評価が内定獲得圏内レベル以上{data.completionConditions.bestEvaluation ? `（${data.completionConditions.bestEvaluation}）` : ""}
+                  </span>
+                </div>
+              </div>
+              {data.completionConditions.allMet && data.completionConditions.completionDate && (
+                <div className="mt-3 pt-3 border-t border-white/10">
+                  <p className="text-xs text-green-400 font-semibold">修了日: {data.completionConditions.completionDate}</p>
+                </div>
+              )}
+            </div>
+
+            {/* キャリア相談記録 */}
+            <div className="mb-4">
+              <h3 className="text-xs font-bold text-white mb-2">キャリア相談記録（{data.careerConsultations.length}/2回）</h3>
+              <div className="space-y-2">
+                {data.careerConsultations.map((cc) => (
+                  <div key={cc.number} className="p-3 rounded-lg border border-white/10 bg-surface-elevated">
+                    <div className="flex items-center gap-3 mb-2">
+                      <span className="text-xs font-bold text-white">第{cc.number}回</span>
+                      <span className="text-[10px] text-gray-400">{cc.date}</span>
+                      <span className="text-[10px] text-gray-400">担当: {cc.counselor || "—"}</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-900/40 text-blue-300">{cc.type}</span>
+                    </div>
+                    <div className="text-xs text-gray-300 leading-relaxed">
+                      {cc.type === "初回キャリア面談" ? (
+                        <div>
+                          <p>これまでのキャリアの棚卸し・伝え方の整理を実施。</p>
+                          <p>今後のキャリアゴールの確認・志望動機の整理を行った。</p>
+                          <p>コンサルタントとしてのスキル・適性確認、強みやアピールポイントの整理を実施。</p>
+                          <p>リスキリング講座受講の検討を行い、入塾を決定。</p>
+                          {cc.rawData["結果"] && <p className="mt-1 text-gray-400">結果: {cc.rawData["結果"]}</p>}
+                        </div>
+                      ) : (
+                        <div>
+                          <p>受講進捗の確認を実施。</p>
+                          <p>これまでのキャリアの棚卸し・伝え方の整理、今後のキャリアゴールの確認・志望動機の整理を行った。</p>
+                          <p>コンサルタントとしてのスキル・適性確認、強みやアピールポイントの整理を実施。</p>
+                          {cc.rawData["面談内の実施内容"] && <p className="mt-1 text-gray-400">実施内容: {cc.rawData["面談内の実施内容"]}</p>}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* ケース面接指導記録 */}
+            <div className="mb-4">
+              <h3 className="text-xs font-bold text-white mb-2">ケース面接指導記録（{data.caseCoachings.length}/4回）</h3>
+              <div className="space-y-2">
+                {data.caseCoachings.map((cc) => (
+                  <div key={cc.number} className="p-3 rounded-lg border border-white/10 bg-surface-elevated">
+                    <div className="flex items-center gap-3 mb-2">
+                      <span className="text-xs font-bold text-white">第{cc.number}回</span>
+                      <span className="text-[10px] text-gray-400">{cc.date}</span>
+                      <span className="text-[10px] text-gray-400">担当: {cc.mentor}</span>
+                      {cc.evaluation && (
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded ${
+                          cc.evaluation.includes("不可") ? "bg-red-900/40 text-red-300" : "bg-green-900/40 text-green-300"
+                        }`}>
+                          {cc.evaluation}
+                        </span>
+                      )}
+                    </div>
+                    {cc.topic && (
+                      <p className="text-xs text-gray-300 mb-1">
+                        <span className="text-gray-500">題材:</span> {cc.topic}
+                      </p>
+                    )}
+                    {cc.goodPoints && (
+                      <p className="text-xs text-gray-300 mb-1">
+                        <span className="text-gray-500">よかった点:</span> {cc.goodPoints}
+                      </p>
+                    )}
+                    {cc.improvements && (
+                      <p className="text-xs text-gray-300">
+                        <span className="text-gray-500">課題・改善点:</span> {cc.improvements}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* 教材学習記録 */}
+            <div className="mb-2">
+              <h3 className="text-xs font-bold text-white mb-2">教材学習記録</h3>
+              <div className="p-3 rounded-lg border border-white/10 bg-surface-elevated">
+                <p className="text-xs text-gray-300">
+                  {data.materialSubmission.submitted
+                    ? `提出済み（提出日: ${data.materialSubmission.date || "—"}）`
+                    : "未提出"}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -858,6 +1090,9 @@ function CustomerDetailModal({
           </div>
         </div>
 
+        {/* Training Record */}
+        <TrainingRecordPanel customerId={customer.id} />
+
         {/* Document actions */}
         <div className="px-6 py-4 border-t border-white/10">
           <h4 className="text-sm font-bold text-white mb-3">書類発行</h4>
@@ -920,10 +1155,25 @@ function buildColumns(
 ): SpreadsheetColumn<CustomerWithRelations>[] {
   return [
     {
+      key: "subsidy_id",
+      label: "ID",
+      width: 70,
+      stickyLeft: 0,
+      sortValue: (c) => c.contract?.subsidy_number || 999999,
+      render: (c) => {
+        const num = c.contract?.subsidy_number;
+        return num ? (
+          <span className="text-xs font-mono text-blue-300">{num}</span>
+        ) : (
+          <span className="text-xs text-gray-600">-</span>
+        );
+      },
+    },
+    {
       key: "name",
       label: "名前",
       width: 140,
-      stickyLeft: 0,
+      stickyLeft: 70,
       sortValue: (c) => c.name || "",
       render: (c) => (
         <div className="flex items-center gap-1">
@@ -1313,6 +1563,21 @@ export function SubsidyClient({ customers, firstPaidMap, completionData, documen
   const [docModal, setDocModal] = useState<DocModalState>({ open: false, type: "invoice", customer: null, completion: null });
   const [checksData, setChecksData] = useState(initialChecksData);
   const [drill, setDrill] = useState<DrillState | null>(null);
+  const [assigningNumbers, setAssigningNumbers] = useState(false);
+
+  const handleAssignNumbers = useCallback(async () => {
+    setAssigningNumbers(true);
+    try {
+      const res = await fetch("/api/subsidy/assign-numbers", { method: "POST" });
+      if (res.ok) {
+        // ページをリロードして最新データを反映
+        window.location.reload();
+      }
+    } catch (e) {
+      console.error("Assign numbers failed:", e);
+      setAssigningNumbers(false);
+    }
+  }, []);
 
   const weekEnds = useMemo(() => generateWeekEnds(), []);
   const months = useMemo(() => generateMonths(), []);
@@ -1571,13 +1836,40 @@ export function SubsidyClient({ customers, firstPaidMap, completionData, documen
 
         {/* Customer List */}
         {activeTab === "list" && (
-          <SpreadsheetTable
-            columns={columns}
-            data={subsidyCustomers}
-            getRowKey={(c) => c.id}
-            storageKey="subsidy-list-v2"
-            pageSize={100}
-          />
+          <>
+            {/* 付番コントロール */}
+            {(() => {
+              const unassigned = subsidyCustomers.filter((c) => !c.contract?.subsidy_number).length;
+              return (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm text-gray-400">
+                      対象者 <span className="text-white font-bold">{subsidyCustomers.length}</span>名
+                      {unassigned > 0 && (
+                        <span className="text-amber-400 ml-2">（未付番: {unassigned}名）</span>
+                      )}
+                    </span>
+                  </div>
+                  {unassigned > 0 && (
+                    <button
+                      onClick={handleAssignNumbers}
+                      disabled={assigningNumbers}
+                      className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-500 disabled:opacity-50 transition-colors font-medium"
+                    >
+                      {assigningNumbers ? "付番中..." : `未付番 ${unassigned}名にID付与`}
+                    </button>
+                  )}
+                </div>
+              );
+            })()}
+            <SpreadsheetTable
+              columns={columns}
+              data={subsidyCustomers}
+              getRowKey={(c) => c.id}
+              storageKey="subsidy-list-v3"
+              pageSize={100}
+            />
+          </>
         )}
       </div>
 

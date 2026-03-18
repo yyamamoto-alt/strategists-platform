@@ -22,12 +22,24 @@ export async function POST(request: Request) {
   let certificateNumber: string | null = null;
 
   if (docType === "certificate") {
-    const { count } = await db
-      .from("subsidy_documents")
-      .select("id", { count: "exact", head: true })
-      .eq("doc_type", "certificate");
-    const num = (count || 0) + 1;
-    certificateNumber = String(num).padStart(5, "0");
+    // subsidy_numberがあればそれを使用（kintone識別IDと同一）
+    const { data: contract } = await db
+      .from("contracts")
+      .select("subsidy_number")
+      .eq("customer_id", customerId)
+      .single();
+
+    if (contract?.subsidy_number) {
+      certificateNumber = String(contract.subsidy_number);
+    } else {
+      // フォールバック: 旧方式（自動連番）
+      const { count } = await db
+        .from("subsidy_documents")
+        .select("id", { count: "exact", head: true })
+        .eq("doc_type", "certificate");
+      const num = (count || 0) + 1;
+      certificateNumber = String(num).padStart(5, "0");
+    }
   }
 
   // Insert document record

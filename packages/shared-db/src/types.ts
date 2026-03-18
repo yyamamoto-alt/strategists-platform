@@ -181,6 +181,7 @@ export interface Contract {
   subsidy_eligible: boolean;
   subsidy_period_eligible: boolean;
   subsidy_amount: number | null;
+  subsidy_number: number | null;
   progress_sheet_url: string | null;
   // --- migration 004 追加フィールド ---
   referral_category?: string | null;
