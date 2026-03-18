@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useCallback, useEffect } from "react";
+import { useMemo, useState, useCallback } from "react";
 import Link from "next/link";
 import type { CustomerWithRelations } from "@strategy-school/shared-db";
 import { isShinsotsu } from "@/lib/calc-fields";
