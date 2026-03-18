@@ -1,8 +1,7 @@
 import "server-only";
 
 import { createServiceClient } from "@/lib/supabase/server";
-import { computeAttributionForCustomer } from "@/lib/compute-attribution-for-customer";
-import { notifyEnrollmentFormReceived, notifySubsidyEnrollment, notifyMentoringEvaluation } from "@/lib/slack";
+import { processFormRecord } from "@/lib/process-form-record";
 import crypto from "crypto";
 
 /** 属性の表記揺れを正規化（「中途」→「既卒」） */
@@ -206,289 +205,7 @@ export async function matchCustomer(
   return null;
 }
 
-/** 日付文字列を正規化 "2026/03/06" → "2026-03-06" */
-function normalizeDateStr(d: string): string {
-  return d.replace(/\//g, "-").trim();
-}
 
-/** 関連テーブルにupsert（レコードがなければinsert） */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function upsertRelated(db: any, table: string, customerId: string, data: Record<string, unknown>): Promise<void> {
-  if (Object.keys(data).length === 0) return;
-  data.updated_at = new Date().toISOString();
-
-  // まずupdateを試み、影響行がなければinsert
-  const { data: updated } = await db
-    .from(table)
-    .update(data)
-    .eq("customer_id", customerId)
-    .select("customer_id");
-
-  if (!updated || updated.length === 0) {
-    await db.from(table).insert({ customer_id: customerId, ...data });
-  }
-}
-
-/**
- * フォームデータを関連テーブル（customers / sales_pipeline / contracts / learning_records / agent_records）に書き込む
- */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function syncFormFieldsToRelatedTables(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  db: any,
-  customerId: string,
-  sourceName: string,
-  rawData: Record<string, string>,
-  isNewRecord = false,
-): Promise<void> {
-
-  // --- カルテ → customers テーブル ---
-  if (sourceName === "カルテ") {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const custUpdate: Record<string, any> = {};
-    if (rawData["お名前"]) custUpdate.name = rawData["お名前"];
-    if (rawData["フリガナ"]) custUpdate.name_kana = rawData["フリガナ"].replace(/\s+/g, "");
-    if (rawData["属性"]) custUpdate.attribute = normalizeAttribute(rawData["属性"]);
-    if (rawData["志望企業"]) custUpdate.target_companies = rawData["志望企業"];
-    if (rawData["転職意向"]) custUpdate.transfer_intent = rawData["転職意向"];
-    if (rawData["ケース面接対策の状況"]) custUpdate.initial_level = rawData["ケース面接対策の状況"];
-    // 「弊塾を最初に知った場所」→ sales_pipeline.initial_channel に同期（後述）
-    // ※ utm_source は LP経由のUTMパラメータ専用。カルテの日本語値は入れない
-    if (rawData["弊塾への面談申し込みのきっかけ、決め手 "] || rawData["弊塾への面談申し込みのきっかけ、決め手"]) {
-      custUpdate.application_reason_karte = rawData["弊塾への面談申し込みのきっかけ、決め手 "] || rawData["弊塾への面談申し込みのきっかけ、決め手"];
-    }
-    if (rawData["居住地（都道府県）"]) custUpdate.prefecture = rawData["居住地（都道府県）"];
-    if (rawData["生年月日"]) custUpdate.birth_date = normalizeDateStr(rawData["生年月日"]);
-    if (rawData["性別"]) custUpdate.gender = rawData["性別"];
-    if (rawData["面接予定時期"]) custUpdate.target_firm_type = rawData["面接予定時期"];
-    if (rawData["利用中のエージェント"]) custUpdate.current_agent = rawData["利用中のエージェント"];
-    if (rawData["転職先への入社希望日"]) custUpdate.desired_start_date = normalizeDateStr(rawData["転職先への入社希望日"]);
-
-    // 経歴詳細 → career_history（既に値がない場合のみ上書き）
-    if (rawData["経歴詳細（学歴＋職歴）"]) {
-      const { data: existing } = await db.from("customers").select("career_history").eq("id", customerId).single();
-      if (!existing?.career_history) {
-        custUpdate.career_history = rawData["経歴詳細（学歴＋職歴）"];
-      }
-    }
-
-    // 学歴から大学名を抽出（未設定の場合）
-    if (rawData["経歴詳細（学歴＋職歴）"]) {
-      const { data: existing } = await db.from("customers").select("university").eq("id", customerId).single();
-      if (!existing?.university) {
-        const uniMatch = rawData["経歴詳細（学歴＋職歴）"].match(/(?:大学院?|大学校)[^\n]*/);
-        if (uniMatch) {
-          // "東京理科大学大学院　理工学研究科" → "東京理科大学大学院"
-          const uniName = rawData["経歴詳細（学歴＋職歴）"].match(/([^\s　]+大学(?:院|校)?)/);
-          if (uniName) custUpdate.university = uniName[1];
-        }
-      }
-    }
-
-    if (Object.keys(custUpdate).length > 0) {
-      custUpdate.updated_at = new Date().toISOString();
-      await db.from("customers").update(custUpdate).eq("id", customerId);
-    }
-
-    // --- カルテ → sales_pipeline.initial_channel 同期 ---
-    if (rawData["弊塾を最初に知った場所"]) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const pipeUpdate: Record<string, any> = {
-        initial_channel: rawData["弊塾を最初に知った場所"],
-        updated_at: new Date().toISOString(),
-      };
-      await db.from("sales_pipeline").update(pipeUpdate).eq("customer_id", customerId);
-    }
-
-    // --- カルテ同期時: データ更新のみ ---
-    // ★ Slack通知・ProgressSheet作成はWebhook（/api/webhooks/google-forms）が担当。
-    //   Sync経路では二重通知を防ぐため、データ更新のみ行う。
-  }
-
-  // --- 営業報告 → sales_pipeline ---
-  if (sourceName === "営業報告") {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const pipelineUpdate: Record<string, any> = {};
-    if (rawData["営業担当者名"]) pipelineUpdate.sales_person = rawData["営業担当者名"];
-    if (rawData["入会確度"]) {
-      const prob = parseInt(rawData["入会確度"].replace(/[^0-9]/g, ""), 10);
-      if (!isNaN(prob)) pipelineUpdate.probability = prob / 100; // 100% → 1.0
-    }
-    if (rawData["購入希望/検討しているプラン"]) pipelineUpdate.additional_plan = rawData["購入希望/検討しているプラン"];
-    if (rawData["ヒアリングメモ"]) pipelineUpdate.additional_notes = rawData["ヒアリングメモ"];
-    if (rawData["結果"]) pipelineUpdate.meeting_result = rawData["結果"];
-    if (rawData["フィードバック内容(簡単にでok)"]) pipelineUpdate.sales_content = rawData["フィードバック内容(簡単にでok)"];
-    if (rawData["ネックになりそうな要素（複数選択可）"]) pipelineUpdate.marketing_memo = rawData["ネックになりそうな要素（複数選択可）"];
-    if (rawData["実施日"]) pipelineUpdate.sales_date = normalizeDateStr(rawData["実施日"]);
-    // 「次回実施日 or 検討結果連絡日」を結果に応じて振り分け
-    if (rawData["次回実施日 or 検討結果連絡日"]) {
-      const nextDate = normalizeDateStr(rawData["次回実施日 or 検討結果連絡日"]);
-      const result = rawData["結果"] || "";
-      if (result.includes("追加指導") || result === "枠確保") {
-        pipelineUpdate.additional_coaching_date = nextDate;
-      } else {
-        pipelineUpdate.response_deadline = nextDate;
-      }
-    }
-    if (rawData["営業内容・手応え"]) pipelineUpdate.sales_content = rawData["営業内容・手応え"];
-    if (rawData["比較サービス"]) pipelineUpdate.comparison_services = rawData["比較サービス"];
-
-    // 「結果」フィールドの値をstageに反映
-    if (rawData["結果"]) {
-      pipelineUpdate.stage = rawData["結果"];
-    }
-
-    if (Object.keys(pipelineUpdate).length > 0) {
-      await upsertRelated(db, "sales_pipeline", customerId, pipelineUpdate);
-    }
-  }
-
-  // --- メンター指導報告 → learning_records ---
-  if (sourceName === "メンター指導報告") {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const learningUpdate: Record<string, any> = {};
-    if (rawData["メンター名"]) learningUpdate.mentor_name = rawData["メンター名"];
-    if (rawData["回次（合計指導回数）"]) {
-      const sessions = parseInt(rawData["回次（合計指導回数）"], 10);
-      if (!isNaN(sessions)) learningUpdate.completed_sessions = sessions;
-    }
-    if (rawData["指導日"]) learningUpdate.last_coaching_date = normalizeDateStr(rawData["指導日"]);
-
-    if (Object.keys(learningUpdate).length > 0) {
-      await upsertRelated(db, "learning_records", customerId, learningUpdate);
-    }
-  }
-
-  // --- 入塾フォーム → sales_pipeline (stage) + contracts + learning_records ---
-  if (sourceName === "入塾フォーム") {
-    // パイプラインstageを「成約」に進める
-    await upsertRelated(db, "sales_pipeline", customerId, { stage: "成約" });
-
-    // contracts テーブルにプラン情報を書き込み
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const contractUpdate: Record<string, any> = {};
-    if (rawData["申込プラン"]) {
-      contractUpdate.plan_name = rawData["申込プラン"];
-      // 補助金適用プラン判定
-      if (rawData["申込プラン"].includes("補助金")) {
-        contractUpdate.subsidy_eligible = true;
-      }
-    }
-    if (rawData["エージェント利用"]) {
-      const agentVal = rawData["エージェント利用"];
-      if (agentVal.includes("フル")) contractUpdate.referral_category = "フル利用";
-      else if (agentVal.includes("一部")) contractUpdate.referral_category = "一部利用";
-    }
-
-    if (Object.keys(contractUpdate).length > 0) {
-      await upsertRelated(db, "contracts", customerId, contractUpdate);
-    }
-
-    // learning_records
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const learningUpdate: Record<string, any> = {};
-    if (rawData["申込プラン"]) learningUpdate.progress_text = rawData["申込プラン"];
-    if (rawData["Strategistsへの入会理由、（他社と比較した方）Strategistsを選んだ理由"]) {
-      learningUpdate.enrollment_reason = rawData["Strategistsへの入会理由、（他社と比較した方）Strategistsを選んだ理由"];
-    }
-    if (rawData["（任意）指導にあたっての要望、重点的にFBして欲しい点や、成長したいと考えているポイントなど"]) {
-      learningUpdate.coaching_requests = rawData["（任意）指導にあたっての要望、重点的にFBして欲しい点や、成長したいと考えているポイントなど"];
-    }
-    // 希望年収・現在の年収
-    if (rawData["希望年収"]) {
-      const salary = parseInt(rawData["希望年収"], 10);
-      if (!isNaN(salary)) learningUpdate.desired_salary = salary;
-    }
-
-    if (Object.keys(learningUpdate).length > 0) {
-      await upsertRelated(db, "learning_records", customerId, learningUpdate);
-    }
-
-    // Slack通知: プラン・エージェント利用の確認リクエスト — 初回のみ（重複時はスキップ）
-    if (isNewRecord) {
-      const { data: custPipeline } = await db.from("sales_pipeline").select("sales_person").eq("customer_id", customerId).single();
-      const { data: custData } = await db.from("customers").select("name").eq("id", customerId).single();
-      notifyEnrollmentFormReceived({
-        customerName: custData?.name || rawData["お名前"] || "不明",
-        customerId,
-        planName: rawData["申込プラン"] || null,
-        agentUsage: rawData["エージェント利用"] || null,
-        subsidyEligible: rawData["申込プラン"]?.includes("補助金") ?? false,
-        salesPerson: custPipeline?.sales_person || null,
-      }).catch(() => {}); // エラーで同期を止めない
-
-      // 補助金適用顧客の場合、荒井さんへSlack通知（書類確認TODO）
-      if (rawData["申込プラン"]?.includes("補助金")) {
-        const identityDoc = rawData["本人確認書類の写し"] || null;
-        const bankDoc = rawData["振込先口座を確認できる書類の写し"] || null;
-        notifySubsidyEnrollment({
-          customerName: custData?.name || rawData["お名前"] || "不明",
-          customerId,
-          hasIdentityDoc: !!identityDoc,
-          hasBankDoc: !!bankDoc,
-          identityDocUrl: identityDoc,
-          bankDocUrl: bankDoc,
-        }).catch(() => {}); // エラーで同期を止めない
-      }
-    }
-  }
-
-  // --- 指導終了報告 → learning_records ---
-  if (sourceName === "指導終了報告") {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const learningUpdate: Record<string, any> = {};
-    if (rawData["担当メンター名"]) learningUpdate.mentor_name = rawData["担当メンター名"];
-    if (rawData["指導期間を通じたレベルアップ幅"]) learningUpdate.level_up_range = rawData["指導期間を通じたレベルアップ幅"];
-    if (rawData["追加指導のご提案"]) learningUpdate.additional_coaching_proposal = rawData["追加指導のご提案"];
-    if (rawData["戦コンへの内定確度"]) learningUpdate.offer_probability_at_end = rawData["戦コンへの内定確度"];
-    if (rawData["受験予定企業"]) learningUpdate.target_companies_at_end = rawData["受験予定企業"];
-    if (rawData["【既卒のみ】面接予定時期"]) learningUpdate.interview_timing_at_end = rawData["【既卒のみ】面接予定時期"];
-
-    if (Object.keys(learningUpdate).length > 0) {
-      await upsertRelated(db, "learning_records", customerId, learningUpdate);
-    }
-  }
-
-  // --- エージェント面談報告 → agent_records ---
-  if (sourceName === "エージェント面談報告フォーム") {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const agentUpdate: Record<string, any> = {};
-    if (rawData["担当CA"]) agentUpdate.agent_staff = rawData["担当CA"];
-    if (rawData["現時点での転職(入社)予定日"]) {
-      const dateStr = normalizeDateStr(rawData["現時点での転職(入社)予定日"]);
-      try {
-        const parsed = new Date(dateStr);
-        if (!isNaN(parsed.getTime())) agentUpdate.placement_date = parsed.toISOString();
-      } catch {
-        // skip
-      }
-    }
-
-    if (Object.keys(agentUpdate).length > 0) {
-      await upsertRelated(db, "agent_records", customerId, agentUpdate);
-    }
-  }
-
-  // --- 課題提出 → learning_records (満足度) + Slack通知 ---
-  if (sourceName === "課題提出") {
-    if (rawData["前回メンタリングの満足度"]) {
-      await upsertRelated(db, "learning_records", customerId, {
-        mentoring_satisfaction: rawData["前回メンタリングの満足度"],
-      });
-
-      // Slack通知: #指導管理（Zapier「メンター評価レポート」移管）— 初回のみ
-      if (isNewRecord) {
-        const { data: custData } = await db.from("customers").select("name").eq("id", customerId).single();
-        notifyMentoringEvaluation({
-          mentorName: rawData["担当メンター"] || rawData["メンター名"] || "不明",
-          studentName: custData?.name || rawData["お名前"] || "不明",
-          rating: rawData["前回メンタリングの満足度"],
-          operationsNote: rawData["運営への連絡・依頼事項"] || rawData["運営への要望・連絡事項"] || "",
-        }).catch(() => {});
-      }
-    }
-  }
-}
 
 /**
  * カラムマッピングに基づいてスプレッドシート行からCRMフィールドを抽出
@@ -570,39 +287,27 @@ export async function upsertFromSpreadsheet(
     }
 
     // application_history に履歴追加（重複チェック付き）
-    // raw_data_hash（MD5）で高速に重複判定 + DBユニーク制約で二重防御
     const rawText = stableStringify(rawData);
     const rawDataHash = await md5Hash(rawText);
-    const { data: existingByHash } = await db
-      .from("application_history")
-      .select("id")
-      .eq("customer_id", match.customer_id)
-      .eq("source", sourceName)
-      .eq("raw_data_hash", rawDataHash)
-      .limit(1);
-    const isDuplicate = existingByHash && existingByHash.length > 0;
 
-    // ソース別: 関連テーブルにフィールドを書き込み（isNewRecord: 重複でなければ初回）
-    await syncFormFieldsToRelatedTables(db, match.customer_id, sourceName, rawData, !isDuplicate);
+    const { data: historyRecord, error: insertErr } = await db.from("application_history").insert({
+      customer_id: match.customer_id,
+      source: sourceName,
+      raw_data: rawData,
+      raw_data_hash: rawDataHash,
+      notes: `${sourceName}から同期 (${match.match_type}マッチ)`,
+    }).select("id").single();
 
-    if (!isDuplicate) {
-      const { error: insertErr } = await db.from("application_history").insert({
-        customer_id: match.customer_id,
-        source: sourceName,
-        raw_data: rawData,
-        raw_data_hash: await md5Hash(rawText),
-        notes: `${sourceName}から同期 (${match.match_type}マッチ)`,
-      });
-      // DB UNIQUE制約違反は握りつぶす（二重防御）
-      if (insertErr && insertErr.code === "23505") {
-        // duplicate → skip silently
-      } else if (insertErr) {
-        console.error("application_history insert error:", insertErr);
-      }
+    if (insertErr && insertErr.code === "23505") {
+      // ユニーク制約違反 = 重複 → スキップ
+    } else if (insertErr) {
+      console.error("application_history insert error:", insertErr);
     }
 
-    // 帰属チャネルをリアルタイム計算（エラーは無視）
-    computeAttributionForCustomer(match.customer_id).catch(() => {});
+    // processFormRecord() で関連テーブル更新・通知・帰属チャネル計算
+    if (historyRecord) {
+      await processFormRecord(historyRecord.id);
+    }
 
     return { action: "updated", customer_id: match.customer_id, match_type: match.match_type };
   }
@@ -680,16 +385,18 @@ export async function upsertFromSpreadsheet(
     });
 
     // application_history に履歴追加（新規作成なので重複なし）
-    await db.from("application_history").insert({
+    const { data: newHistory } = await db.from("application_history").insert({
       customer_id: newCustomer.id,
       source: sourceName,
       raw_data: rawData,
       raw_data_hash: await md5Hash(stableStringify(rawData)),
       notes: `${sourceName}から自動作成`,
-    });
+    }).select("id").single();
 
-    // 帰属チャネルをリアルタイム計算（エラーは無視）
-    computeAttributionForCustomer(newCustomer.id).catch(() => {});
+    // processFormRecord() で関連テーブル更新・通知・帰属チャネル計算
+    if (newHistory) {
+      await processFormRecord(newHistory.id);
+    }
 
     return { action: "created", customer_id: newCustomer.id };
   }
