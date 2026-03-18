@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>アフィリエイトメディア掲載施策 - Input資料</title>
+<style>
+  :root {
+    --red: #A62B17;
+    --dark: #1A1A1A;
+    --gray: #555;
+    --light: #F5F5F5;
+    --border: #E0E0E0;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Noto Sans JP', 'Hiragino Sans', sans-serif;
+    color: #222;
+    line-height: 1.7;
+    background: #fff;
+  }
+
+  /* Header */
+  .header {
+    background: var(--dark);
+    color: #fff;
+    padding: 60px 40px 40px;
+  }
+  .header h1 {
+    font-family: 'Noto Serif JP', serif;
+    font-size: 36px;
+    margin-bottom: 12px;
+  }
+  .header .subtitle {
+    font-size: 16px;
+    color: #aaa;
+  }
+  .header .meta {
+    margin-top: 20px;
+    font-size: 14px;
+    color: #888;
+  }
+
+  /* Container */
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 40px 24px;
+  }
+
+  /* Section */
+  .section {
+    margin-bottom: 48px;
+  }
+  .section h2 {
+    font-family: 'Noto Serif JP', serif;
+    font-size: 28px;
+    padding-left: 16px;
+    border-left: 4px solid var(--red);
+    margin-bottom: 24px;
+    color: #000;
+  }
+  .section h3 {
+    font-size: 20px;
+    margin-bottom: 12px;
+    color: #000;
+  }
+  .section p, .section li {
+    font-size: 16px;
+    color: #333;
+    margin-bottom: 8px;
+  }
+  .section ul {
+    padding-left: 20px;
+  }
+
+  /* Card */
+  .card {
+    background: var(--light);
+    border-radius: 8px;
+    padding: 24px;
+    margin-bottom: 16px;
+    border-top: 3px solid var(--red);
+  }
+  .card h4 {
+    font-size: 18px;
+    margin-bottom: 8px;
+    color: #000;
+  }
+  .card p {
+    font-size: 15px;
+    color: var(--gray);
+  }
+
+  /* Email Template */
+  .email-box {
+    background: #fafafa;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px;
+    font-family: monospace;
+    font-size: 14px;
+    line-height: 1.8;
+    white-space: pre-wrap;
+    color: #333;
+    margin-bottom: 16px;
+  }
+  .email-box .highlight {
+    background: #fff3cd;
+    padding: 2px 4px;
+    border-radius: 3px;
+  }
+
+  /* Table */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 24px;
+    font-size: 14px;
+  }
+  th {
+    background: var(--dark);
+    color: #fff;
+    padding: 10px 12px;
+    text-align: left;
+    font-weight: 600;
+  }
+  td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  tr:nth-child(even) { background: var(--light); }
+  td a {
+    color: var(--red);
+    text-decoration: none;
+    font-weight: 500;
+  }
+  td a:hover { text-decoration: underline; }
+
+  /* Priority badge */
+  .badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #fff;
+  }
+  .badge-s { background: var(--red); }
+  .badge-a { background: #D4740A; }
+  .badge-b { background: #666; }
+
+  /* CTA */
+  .cta-box {
+    background: var(--light);
+    border: 2px solid var(--red);
+    border-radius: 8px;
+    padding: 24px;
+    text-align: center;
+    margin: 32px 0;
+  }
+  .cta-box h3 {
+    color: var(--red);
+    margin-bottom: 8px;
+  }
+
+  /* Keyword table */
+  .kw-table td:first-child {
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  /* Copy button */
+  .copy-btn {
+    display: inline-block;
+    background: var(--red);
+    color: #fff;
+    border: none;
+    padding: 8px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    margin-top: 8px;
+  }
+  .copy-btn:hover { opacity: 0.85; }
+
+  /* Footer */
+  .footer {
+    background: var(--dark);
+    color: #888;
+    padding: 24px 40px;
+    font-size: 13px;
+    text-align: center;
+  }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .header { padding: 40px 20px 30px; }
+    .header h1 { font-size: 26px; }
+    .container { padding: 24px 16px; }
+    table { font-size: 13px; }
+    td, th { padding: 8px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <h1>アフィリエイトメディア掲載施策</h1>
+  <div class="subtitle">Strategists - 中野さん向け Input資料</div>
+  <div class="meta">作成日: 2026-03-19 / 株式会社トップティア</div>
+</div>
+
+<div class="container">
+
+<!-- 1. 全体像 -->
+<div class="section">
+  <h2>1. 施策の全体像</h2>
+
+  <div class="card">
+    <h4>目的</h4>
+    <p>コンサル転職系のアフィリエイトメディア（比較・ランキング記事）にStrategistsを「転職エージェント」として掲載してもらい、面談申込を獲得する。</p>
+  </div>
+
+  <div class="card">
+    <h4>戦略のポイント</h4>
+    <ul>
+      <li><strong>「転職エージェント」として掲載</strong> - スクールではなくエージェントとして接近する。理由：エージェント比較記事はPV・記事数が圧倒的に多く、アフィリエイト収益モデルが確立されている</li>
+      <li><strong>差別化ポイント</strong> - 「業界唯一のケース面接対策プログラム付き転職エージェント」</li>
+      <li><strong>補助金の活用</strong> - 経産省補助金により従来30〜50万円のカリキュラムを70%割引で提供。エージェント利用者は実質無料</li>
+      <li><strong>高単価CPA</strong> - 面談実施1件あたり8〜10万円（相場の5〜10倍）で掲載を確実に勝ち取る</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h4>掲載条件</h4>
+    <table>
+      <tr><td style="width:160px; font-weight:600;">成果地点</td><td>面談実施</td></tr>
+      <tr><td style="font-weight:600;">報酬単価</td><td><strong>80,000〜100,000円</strong>（直接取引・掲載位置に応じて応相談）</td></tr>
+      <tr><td style="font-weight:600;">承認率保証</td><td>80%</td></tr>
+      <tr><td style="font-weight:600;">取引形態</td><td>直接取引（ASP不経由）</td></tr>
+      <tr><td style="font-weight:600;">被リンク</td><td>可</td></tr>
+      <tr><td style="font-weight:600;">人材免許</td><td>13-ユ-318665</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- 2. メール文面 -->
+<div class="section">
+  <h2>2. 送付メール文面</h2>
+  <p style="margin-bottom:12px; color: var(--gray);">以下をコピーして各メディアの問い合わせフォームまたはメールに送信してください。<br>「○○様」の部分はメディア名に適宜変更。</p>
+
+  <div class="email-box">件名：【面談実施1件8〜10万円・直接取引】コンサル転職エージェント掲載のご相談
+
+○○様（ご担当者様）
+
+はじめまして。戦略コンサル転職に特化したエージェント「Strategists」を運営しております、
+株式会社トップティアの山本と申します。
+
+貴サイトのコンサル転職エージェント比較記事への掲載をご相談したく、ご連絡いたしました。
+
+■ 当社の特徴（読者への差別化価値）
+・業界唯一の「ケース面接対策プログラム付き」転職エージェント
+・経産省補助金採択により、従来30〜50万円の対策カリキュラムを70%割引で提供
+・エージェント利用者は対策プログラムを実質無料で受講可能
+・戦略ファーム内定実績多数
+
+■ 掲載条件
+・成果地点：面談実施
+・報酬単価：80,000〜100,000円（直接取引・掲載位置に応じて応相談）
+・承認率保証：80%
+
+ご関心をお持ちいただけましたら、15分程度のお打ち合わせをさせていただければ幸いです。
+▶ ご予約はこちら：https://www.jicoo.com/t/JRw9yc5VuKmw/e/Hb7BhXohUzQM
+
+何卒よろしくお願いいたします。
+
+山本雄大
+株式会社トップティア 代表取締役
+有料職業紹介事業許可番号：13-ユ-318665</div>
+
+  <button class="copy-btn" onclick="copyEmail()">メール文面をコピー</button>
+</div>
+
+<!-- 3. コンタクトすべきメディア10選 -->
+<div class="section">
+  <h2>3. コンタクトすべきメディア10選</h2>
+  <p style="margin-bottom:16px; color: var(--gray);">キーワード調査（24キーワード）の検索結果から、出現頻度・掲載交渉のしやすさ・読者の質を総合して選定。</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>メディア名</th>
+        <th>上位表示KW数</th>
+        <th>連絡先</th>
+        <th>備考</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>1</td>
+        <td><strong>OUTSIDEMAGAZINE</strong><br><span style="color:#888; font-size:12px;">株式会社No-Limit</span></td>
+        <td>6+</td>
+        <td><a href="https://outside.no-limit.careers/admenu/" target="_blank">広告掲載ページ</a></td>
+        <td>最多KWで1位独占。コンサル転職系で圧倒的SEO支配力。広告掲載専用ページあり</td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td><strong>コンサルフリーマガジン</strong><br><span style="color:#888; font-size:12px;">株式会社SowLab</span></td>
+        <td>5+</td>
+        <td><a href="https://sow-lab.com/contact-media/" target="_blank">メディア向け問い合わせ</a></td>
+        <td>27選記事が複数KWで上位。コンサル業界特化メディア。SowLabにメディア向け専用フォームあり</td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td><strong>コンサルGO</strong><br><span style="color:#888; font-size:12px;">フリーコンサル株式会社</span></td>
+        <td>3+</td>
+        <td><a href="https://freeconsul.co.jp/cs/client-form/" target="_blank">掲載申請フォーム</a></td>
+        <td>掲載申請フォームが完備されており最もスムーズに交渉開始できる</td>
+      </tr>
+      <tr>
+        <td>4</td>
+        <td><strong>アルクジョブチェンジ</strong><br><span style="color:#888; font-size:12px;">株式会社アルク</span></td>
+        <td>4+</td>
+        <td><a href="https://www.alc.co.jp/inquiry/" target="_blank">お問い合わせ</a></td>
+        <td>語学教育大手のドメインパワー。複数KWで安定上位</td>
+      </tr>
+      <tr>
+        <td>5</td>
+        <td><strong>タレントスクエア</strong><br><span style="color:#888; font-size:12px;">タレントスクエア株式会社</span></td>
+        <td>3+</td>
+        <td><a href="https://talentsquare.co.jp/contact/" target="_blank">お問い合わせ</a></td>
+        <td>ハイクラス転職特化。BCG記事等で上位。比較的新しく交渉しやすい可能性</td>
+      </tr>
+      <tr>
+        <td>6</td>
+        <td><strong>コエテコキャリア</strong><br><span style="color:#888; font-size:12px;">GMOメディア株式会社</span></td>
+        <td>3+</td>
+        <td><a href="https://coeteco.jp/info_provision" target="_blank">情報提供フォーム</a></td>
+        <td>「戦略コンサル転職エージェント5選」記事あり。厳選型で読者の質が高い</td>
+      </tr>
+      <tr>
+        <td>7</td>
+        <td><strong>Strategy Career</strong><br><span style="color:#888; font-size:12px;">株式会社Penguin</span></td>
+        <td>4+</td>
+        <td><a href="https://mbb-tenshoku.com/contact/" target="_blank">お問い合わせ</a></td>
+        <td>MBB/戦略コンサル特化で最強。唯一の「ケース面接対策比較記事」を保有。読者の質が最高</td>
+      </tr>
+      <tr>
+        <td>8</td>
+        <td><strong>株式会社R&G</strong><br><span style="color:#888; font-size:12px;">株式会社R&G</span></td>
+        <td>3+</td>
+        <td><a href="https://r-andg.jp/blog/contact_b.php" target="_blank">ブログ問い合わせ</a></td>
+        <td>「コンサル 中途 エージェント」で2位。22選記事</td>
+      </tr>
+      <tr>
+        <td>9</td>
+        <td><strong>株式会社エミリス</strong><br><span style="color:#888; font-size:12px;">株式会社エミリス</span></td>
+        <td>4+</td>
+        <td><a href="https://emiris.net/" target="_blank">公式サイト</a></td>
+        <td>複数KWで安定出現。問い合わせはサイト下部またはwhois情報から</td>
+      </tr>
+      <tr>
+        <td>10</td>
+        <td><strong>転職アンテナ (moto)</strong><br><span style="color:#888; font-size:12px;">moto株式会社</span></td>
+        <td>2+</td>
+        <td><a href="https://tenshoku-antenna.com/contact/" target="_blank">お問い合わせ</a></td>
+        <td>moto氏のブランド力。ランキングKWで上位。SNS波及効果もあり</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- 4. アクションプラン -->
+<div class="section">
+  <h2>4. アクションプラン</h2>
+
+  <div class="card">
+    <h4>Phase 1: 即座にやること（今週中）</h4>
+    <ul>
+      <li>上記10メディアの問い合わせフォームからメール文面を送信</li>
+      <li>フォームが整備されている3メディアから優先着手:
+        <ol style="margin-top:4px;">
+          <li><strong>コンサルGO</strong> - 掲載申請フォームあり</li>
+          <li><strong>OUTSIDEMAGAZINE</strong> - 広告掲載ページあり</li>
+          <li><strong>コエテコキャリア</strong> - 情報提供フォームあり</li>
+        </ol>
+      </li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h4>Phase 2: 返信が来たら（1〜2週間）</h4>
+    <ul>
+      <li>Jicooで打ち合わせを実施</li>
+      <li>掲載位置・単価の交渉（8万円スタート、上位掲載なら10万円も可）</li>
+      <li>LP側のコンバージョンタグ設置（必要に応じて）</li>
+      <li>掲載原稿・バナー素材の提供</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h4>Phase 3: 並行検討（余力があれば）</h4>
+    <ul>
+      <li>A8.net 再契約（名残で掲載中のメディアが消える前に）</li>
+      <li>AffiB等の他ASPへの新規登録</li>
+      <li>掲載効果のモニタリング体制構築</li>
+    </ul>
+  </div>
+</div>
+
+<!-- 5. キーワード調査結果 -->
+<div class="section">
+  <h2>5. キーワード調査結果（詳細）</h2>
+  <p style="margin-bottom:16px; color: var(--gray);">2026年3月19日時点のGoogle検索結果。24キーワードを調査し、上位10件のメディアを特定。</p>
+
+  <h3>5-1. 転職エージェント系（アフィリエイト記事が多い = 掲載チャンス大）</h3>
+  <table class="kw-table">
+    <thead>
+      <tr>
+        <th>優先度</th>
+        <th>キーワード</th>
+        <th>アフィ記事率</th>
+        <th>上位メディア（1-3位）</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="badge badge-s">S</span></td>
+        <td>コンサル 転職エージェント おすすめ</td>
+        <td>10/10</td>
+        <td>OUTSIDE → コンサルフリー → OUTSIDE(IT)</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-s">S</span></td>
+        <td>コンサル転職 エージェント ランキング</td>
+        <td>10/10</td>
+        <td>コンサルフリー → OUTSIDE → キャリア協会</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-a">A</span></td>
+        <td>コンサル 中途 エージェント</td>
+        <td>9/10</td>
+        <td>OUTSIDE → R&G → すべらない転職</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-a">A</span></td>
+        <td>外資コンサル 転職 エージェント</td>
+        <td>10/10</td>
+        <td>OUTSIDE → (ムービン) → コトラ</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-a">A</span></td>
+        <td>戦略コンサル 転職 エージェント</td>
+        <td>8/10</td>
+        <td>(ムービン) → PRESIDENT → (コンコード)</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-a">A</span></td>
+        <td>ITコンサル 転職 エージェント</td>
+        <td>10/10</td>
+        <td>OUTSIDE → コンサルフリー → (ムービン)</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-b">B</span></td>
+        <td>コンサル転職 未経験 エージェント</td>
+        <td>10/10</td>
+        <td>OUTSIDE → エミリス → (MyVision)</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-b">B</span></td>
+        <td>ポストコンサル 転職 エージェント</td>
+        <td>5/10</td>
+        <td>(コンコード) → OUTSIDE → (三井物産HR)</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-b">B</span></td>
+        <td>MBB 転職 エージェント</td>
+        <td>3/10</td>
+        <td>(MyVision) → (AXIS) → (ムービン)</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-b">B</span></td>
+        <td>BCG 転職 エージェント</td>
+        <td>3/10</td>
+        <td>Strategy Career → (コンコード) → (ムービン)</td>
+      </tr>
+    </tbody>
+  </table>
+  <p style="font-size:13px; color:#888; margin-bottom:24px;">※ ( ) は公式サイト / 自社メディア。それ以外はアフィリエイト比較記事。</p>
+
+  <h3>5-2. ケース面接・対策系（ノウハウ記事が中心 = 自社SEOで攻める領域）</h3>
+  <table class="kw-table">
+    <thead>
+      <tr>
+        <th>キーワード</th>
+        <th>アフィ記事率</th>
+        <th>Strategists順位</th>
+        <th>所感</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>ケース面接 対策</td>
+        <td>0/10</td>
+        <td>9位（ブログ）</td>
+        <td>ノウハウ記事ばかり。アフィ掲載の余地なし</td>
+      </tr>
+      <tr>
+        <td>ケース面接 対策 スクール</td>
+        <td>0/10</td>
+        <td>圏外</td>
+        <td>比較記事が存在しない</td>
+      </tr>
+      <tr>
+        <td>ケース面接 対策 講座</td>
+        <td>0/10</td>
+        <td>9位（TOP）</td>
+        <td>ココナラ、Udemy等が出現</td>
+      </tr>
+      <tr>
+        <td><strong>ケース面接 塾</strong></td>
+        <td>1/10</td>
+        <td><strong>1位</strong></td>
+        <td>Strategistsが1位。Strategy Careerの比較記事が3位</td>
+      </tr>
+      <tr>
+        <td>コンサル 面接 練習 サービス</td>
+        <td>2/10</td>
+        <td><strong>1位</strong></td>
+        <td>Strategistsが1位</td>
+      </tr>
+      <tr>
+        <td>ケース面接 練習</td>
+        <td>0/10</td>
+        <td>圏外</td>
+        <td>CaseMatch（AI）が1位</td>
+      </tr>
+      <tr>
+        <td>ケース面接 コーチング</td>
+        <td>0/10</td>
+        <td>圏外</td>
+        <td>ノウハウ記事のみ</td>
+      </tr>
+      <tr>
+        <td>コンサル転職 対策 スクール</td>
+        <td>0/10</td>
+        <td>圏外</td>
+        <td>エージェント自社メディアが独占</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="cta-box">
+    <h3>結論</h3>
+    <p>「転職エージェント比較記事」への掲載が本命。<br>ケース面接系は自社SEO（既に1位のKWあり）で引き続き攻める。</p>
+  </div>
+</div>
+
+<!-- 6. メディア別 掲載される記事 -->
+<div class="section">
+  <h2>6. メディア別 - 掲載を狙う記事</h2>
+  <p style="margin-bottom:16px; color: var(--gray);">各メディアで特にStrategistsを掲載してほしい記事のURL。打ち合わせ時に「この記事に載せたい」と具体的に伝えること。</p>
+
+  <div class="card">
+    <h4>1. OUTSIDEMAGAZINE</h4>
+    <ul>
+      <li><a href="https://outside.no-limit.careers/consultant_agent/" target="_blank">コンサル業界に強い転職エージェントおすすめ比較ランキング</a> - メインターゲット</li>
+      <li><a href="https://outside.no-limit.careers/it-consultant-job-change-agent/" target="_blank">ITコンサルに強い転職エージェントおすすめ15社比較</a></li>
+      <li><a href="https://outside.no-limit.careers/post-consulting-tenshokuagent/" target="_blank">ポストコンサルに強いおすすめの転職エージェント10選</a></li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h4>2. コンサルフリーマガジン</h4>
+    <ul>
+      <li><a href="https://consulfree.com/blog/consul-tenshoku-agent/" target="_blank">コンサル業界に強い転職エージェント27選比較ランキング</a> - メインターゲット</li>
+      <li><a href="https://consulfree.com/blog/consultant-interview/" target="_blank">コンサル面接対策完全保存版</a> - ケース対策の文脈で紹介</li>
+      <li><a href="https://consulfree.com/blog/foreign-agent/" target="_blank">外資系に強い転職エージェント15選</a></li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h4>3. コンサルGO</h4>
+    <ul>
+      <li><a href="https://freeconsul.co.jp/cs/consultant-tenshoku/" target="_blank">コンサル業界におすすめ転職エージェント23社を徹底比較</a></li>
+      <li><a href="https://freeconsul.co.jp/cs/foreign_job_change_agents/" target="_blank">外資系に強い転職エージェント23選</a></li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h4>4. アルクジョブチェンジ</h4>
+    <ul>
+      <li><a href="https://www.alc.co.jp/job-change/consulting-agent/" target="_blank">コンサル転職エージェントのおすすめ比較ランキング</a></li>
+      <li><a href="https://www.alc.co.jp/job-change/foreign-company-jobchange/" target="_blank">外資系企業の転職に強い転職エージェントランキング</a></li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h4>5. タレントスクエア</h4>
+    <ul>
+      <li><a href="https://talentsquare.co.jp/career/tenshoku-agent-ranking-consulting/" target="_blank">コンサル転職におすすめの転職エージェント24選</a></li>
+      <li><a href="https://talentsquare.co.jp/career/tenshoku-agent-ranking-strategy-consulting/" target="_blank">戦略コンサル転職におすすめの転職エージェント12選</a></li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h4>6. コエテコキャリア</h4>
+    <ul>
+      <li><a href="https://coeteco.jp/articles/14573" target="_blank">戦略コンサル転職におすすめエージェント5選</a> - 枠が少ないが読者の質が最高</li>
+      <li><a href="https://coeteco.jp/articles/13406" target="_blank">外資系に強い転職エージェントおすすめ19選</a></li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h4>7. Strategy Career (mbb-tenshoku.com)</h4>
+    <ul>
+      <li><a href="https://mbb-tenshoku.com/agent-recommend/" target="_blank">未経験から戦略コンサルに行くなら登録すべき転職エージェント</a> - 「戦略コンサル 転職 エージェント」で6位</li>
+      <li><a href="https://mbb-tenshoku.com/case-training-service/" target="_blank">有料のケース面接対策講座・サービスおすすめ比較</a> - 唯一のケース対策比較記事</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h4>8. 株式会社R&G</h4>
+    <ul>
+      <li><a href="https://r-andg.jp/blog/1635" target="_blank">コンサルティング業界に強い転職エージェントおすすめ22選</a> - 「コンサル 中途」で2位</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h4>9. 株式会社エミリス</h4>
+    <ul>
+      <li><a href="https://emiris.net/column/2220" target="_blank">コンサル業界向けおすすめ転職エージェント13選</a></li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h4>10. 転職アンテナ (moto)</h4>
+    <ul>
+      <li><a href="https://tenshoku-antenna.com/tenshoku-agent-consulting-osusume" target="_blank">コンサル業界に強い転職エージェント19選</a></li>
+    </ul>
+  </div>
+</div>
+
+<!-- 7. 背景情報 -->
+<div class="section">
+  <h2>7. 背景情報・注意点</h2>
+
+  <div class="card">
+    <h4>CPA 8〜10万円の根拠</h4>
+    <ul>
+      <li>補助金込みLTV: 約40万円 / 粗利: 約30万円</li>
+      <li>面談→成約率を考慮しても、面談CPA10万円で十分ペイする</li>
+      <li>転職エージェント系の面談CPA相場は1〜1.5万円。8〜10万円は相場の5〜10倍で、メディア側にとって破格</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h4>競合の状況</h4>
+    <ul>
+      <li><strong>MyVision</strong> - ほぼ全メディアで1位掲載。LPCVR10%（自称）。コンサル転職エージェントの王者</li>
+      <li><strong>AXIS</strong> - 自社メディア「すべらない転職」を運営。SEOも強い</li>
+      <li><strong>ムービン</strong> - 30年の歴史。自社コンテンツSEOが非常に強い</li>
+      <li>→ Strategistsの差別化は「ケース面接対策付き」で唯一無二のポジション</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h4>A8.net について</h4>
+    <ul>
+      <li>2ヶ月前に解約済み。名残で掲載中のメディアがまだある可能性</li>
+      <li>消える前に再契約を検討すべき（Phase 3で対応）</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h4>ステマ規制（2023年10月施行）への対応</h4>
+    <ul>
+      <li>メディア側の記事に「PR」「広告」等の表記が必須</li>
+      <li>規制違反の責任は広告主（Strategists側）にもある</li>
+      <li>掲載開始時にメディアへガイドライン共有を推奨</li>
+    </ul>
+  </div>
+</div>
+
+</div>
+
+<!-- Footer -->
+<div class="footer">
+  &copy; 2026 株式会社トップティア - Internal Document
+</div>
+
+<script>
+function copyEmail() {
+  const text = `件名：【面談実施1件8〜10万円・直接取引】コンサル転職エージェント掲載のご相談
+
+○○様（ご担当者様）
+
+はじめまして。戦略コンサル転職に特化したエージェント「Strategists」を運営しております、
+株式会社トップティアの山本と申します。
+
+貴サイトのコンサル転職エージェント比較記事への掲載をご相談したく、ご連絡いたしました。
+
+■ 当社の特徴（読者への差別化価値）
+・業界唯一の「ケース面接対策プログラム付き」転職エージェント
+・経産省補助金採択により、従来30〜50万円の対策カリキュラムを70%割引で提供
+・エージェント利用者は対策プログラムを実質無料で受講可能
+・戦略ファーム内定実績多数
+
+■ 掲載条件
+・成果地点：面談実施
+・報酬単価：80,000〜100,000円（直接取引・掲載位置に応じて応相談）
+・承認率保証：80%
+
+ご関心をお持ちいただけましたら、15分程度のお打ち合わせをさせていただければ幸いです。
+▶ ご予約はこちら：https://www.jicoo.com/t/JRw9yc5VuKmw/e/Hb7BhXohUzQM
+
+何卒よろしくお願いいたします。
+
+山本雄大
+株式会社トップティア 代表取締役
+有料職業紹介事業許可番号：13-ユ-318665`;
+
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.querySelector('.copy-btn');
+    btn.textContent = 'コピーしました!';
+    setTimeout(() => { btn.textContent = 'メール文面をコピー'; }, 2000);
+  });
+}
+</script>
+
+</body>
+</html>
