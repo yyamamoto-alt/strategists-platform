@@ -137,6 +137,7 @@ export async function GET(request: Request) {
   const { data: allAutomations, error: fetchError } = await db
     .from("automations")
     .select("id,name,spreadsheet_id,sheet_name,slack_channel_id,message_template,bot_username,extra_targets,is_active,last_synced_row,known_headers,created_at,updated_at")
+    .eq("is_active", true)
     .limit(200);
 
   if (fetchError) {
@@ -147,8 +148,7 @@ export async function GET(request: Request) {
     });
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const automations = (allAutomations || []).filter((a: any) => a.is_active === true);
+  const automations = allAutomations || [];
 
   if (automations.length === 0) {
     return NextResponse.json({
