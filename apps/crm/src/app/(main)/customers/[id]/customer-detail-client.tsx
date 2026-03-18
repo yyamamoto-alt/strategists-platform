@@ -782,9 +782,8 @@ function buildAgentFields(c: CustomerWithRelations): FieldDef[] {
     { key: "offer_salary", label: "想定年収", source: "manual", type: "number", table: "agent", getValue: () => a.offer_salary ? formatCurrency(a.offer_salary) : "-" },
     { key: "referral_fee_rate", label: "紹介料率", source: "manual", type: "number", table: "agent", getValue: () => `${Math.round(feeRate * 100)}%` },
     { key: "margin", label: "マージン", source: "manual", type: "number", table: "agent", getValue: () => `${Math.round(margin * 100)}%` },
-    { key: "expected_fee", label: "報酬期待値", source: "calc", getValue: () => fee > 0 ? formatCurrency(fee) : "-" },
+    { key: "expected_fee", label: "人材紹介報酬見込", source: "calc", getValue: () => fee > 0 ? formatCurrency(fee) : "-" },
     { key: "offer_company", label: "内定先企業", source: "manual", table: "agent", getValue: () => a.offer_company || "-" },
-    { key: "job_search_status", label: "就職活動状況", source: "manual", table: "agent", getValue: () => a.job_search_status || "-" },
     { key: "placement_confirmed", label: "確定状況", source: "manual", type: "select", options: ["確定", "未確定"], table: "agent", getValue: () => a.placement_confirmed || "未確定" },
     { key: "placement_date", label: "入社日", source: "manual", type: "date", table: "agent", getValue: () => formatDate(a.placement_date ?? null) },
   ];
@@ -1169,7 +1168,7 @@ export function CustomerDetailClient({
     // agent fields
     if (customer.agent) {
       const a = customer.agent as unknown as Record<string, unknown>;
-      for (const key of ["job_search_status", "offer_company", "offer_salary", "offer_rank", "referral_fee_rate", "placement_confirmed", "placement_date", "margin"]) {
+      for (const key of ["offer_company", "offer_salary", "offer_rank", "referral_fee_rate", "placement_confirmed", "placement_date", "margin"]) {
         vals[`agent.${key}`] = dateKeys.has(key) ? toDateValue(a[key]) : (a[key] != null ? String(a[key]) : "");
       }
     }
