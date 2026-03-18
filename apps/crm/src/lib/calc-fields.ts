@@ -47,15 +47,14 @@ export function calcExpectedReferralFee(c: CustomerWithRelations): number {
     return a.expected_referral_fee;
   }
 
-  // 未確定: 計算で算出
-  const salary = a.offer_salary || 0;
+  // 未確定: 計算で算出（想定年収デフォルト800万）
+  const salary = a.offer_salary || 8000000;
   // AI分析の確度（0-100%）があればそちらを優先、なければ手動ランクから取得
   const rankRate = (a.ai_offer_probability != null && a.ai_offer_probability > 0)
     ? a.ai_offer_probability / 100
     : getOfferRankRate(a.offer_rank);
   const feeRate = a.referral_fee_rate ?? 0.3;
-  // DB の margin は integer型で 0.75 → 0 に切り捨てられている。0 は不正値なので 0.75 をデフォルト使用
-  const margin = (a.margin && a.margin > 0) ? a.margin : 0.75;
+  const margin = (a.margin && a.margin > 0) ? a.margin : 0.7;
   return salary * rankRate * feeRate * margin;
 }
 

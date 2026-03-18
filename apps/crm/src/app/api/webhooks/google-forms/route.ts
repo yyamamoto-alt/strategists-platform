@@ -194,14 +194,18 @@ export async function POST(request: Request) {
       });
     }
 
-    // application_history に履歴追加
-    await db.from("application_history").insert({
+    // application_history に履歴追加（DBトリガーがraw_data_hashを自動計算、ユニーク制約で重複防止）
+    const { error: historyErr } = await db.from("application_history").insert({
       customer_id: customerId,
       source: formName,
       raw_data: rawData,
       raw_data_hash: rawHash,
       notes: `${formName}からWebhook同期`,
     });
+    if (historyErr && historyErr.code === "23505") {
+      // ユニーク制約違反 = 重複データ → スキップ
+      console.log(`[webhook/google-forms] Duplicate entry skipped for ${formName} (customer: ${customerId})`);
+    }
 
     // カルテの「弊塾を最初に知った場所」→ sales_pipeline.initial_channel に同期
     if (rawData["弊塾を最初に知った場所"]) {

@@ -1570,11 +1570,20 @@ export function SubsidyClient({ customers, firstPaidMap, completionData, documen
     try {
       const res = await fetch("/api/subsidy/assign-numbers", { method: "POST" });
       if (res.ok) {
-        // ページをリロードして最新データを反映
-        window.location.reload();
+        const data = await res.json();
+        if (data.success) {
+          window.location.reload();
+          return;
+        }
+        alert(`付番処理でエラーが発生しました: ${data.error || "不明なエラー"}`);
+      } else {
+        const text = await res.text().catch(() => "");
+        alert(`付番APIエラー (${res.status}): ${text || res.statusText}`);
       }
     } catch (e) {
       console.error("Assign numbers failed:", e);
+      alert("付番処理に失敗しました。ネットワークを確認してください。");
+    } finally {
       setAssigningNumbers(false);
     }
   }, []);

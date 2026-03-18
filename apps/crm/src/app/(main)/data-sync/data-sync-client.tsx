@@ -82,8 +82,9 @@ const CRM_FIELDS = [
 
 function getUnmappedHeaders(conn: SpreadsheetConnection): string[] {
   const knownHeaders = conn.known_headers || [];
-  if (knownHeaders.length === 0) return [];
-  const mappedSheetCols = new Set(Object.values(conn.column_mapping || {}));
+  const mapping = conn.column_mapping || {};
+  if (knownHeaders.length === 0 || Object.keys(mapping).length === 0) return [];
+  const mappedSheetCols = new Set(Object.values(mapping));
   return knownHeaders.filter((h) => h && !mappedSheetCols.has(h));
 }
 

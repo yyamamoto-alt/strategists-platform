@@ -14,7 +14,7 @@ export async function POST() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as any;
 
-  // 補助金対象の成約者を取得（テスト除外）
+  // 補助金対象の成約者を取得
   const { data: contracts, error } = await db
     .from("contracts")
     .select(`
@@ -25,19 +25,22 @@ export async function POST() {
       payment_date,
       customer:customers!inner(id, name, application_date, pipeline:sales_pipeline(sales_date, stage))
     `)
-    .eq("subsidy_eligible", true)
-    .not("customer.name", "like", "%テスト%");
+    .eq("subsidy_eligible", true);
 
   if (error) {
     console.error("Failed to fetch contracts:", error);
-    return NextResponse.json({ error: "データ取得に失敗しました" }, { status: 500 });
+    return NextResponse.json({ error: `データ取得に失敗しました: ${error.message}` }, { status: 500 });
   }
 
-  // 成約者のみフィルタ
+  // 成約者のみフィルタ（テスト顧客除外）
   const eligible = (contracts || []).filter((c: Record<string, unknown>) => {
-    const pipeline = (c.customer as Record<string, unknown>)?.pipeline;
+    const customer = c.customer as Record<string, unknown> | null;
+    if (!customer) return false;
+    const name = (customer.name as string) || "";
+    if (name.includes("テスト")) return false;
+    const pipeline = customer.pipeline;
     if (Array.isArray(pipeline) && pipeline.length > 0) {
-      return pipeline[0].stage === "成約";
+      return (pipeline[0] as Record<string, unknown>).stage === "成約";
     }
     return false;
   });

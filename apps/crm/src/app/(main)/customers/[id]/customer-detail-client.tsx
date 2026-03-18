@@ -573,7 +573,9 @@ function RevenueSection({ customer, orders }: { customer: CustomerWithRelations;
   const confirmedTotal = schoolConfirmed + subsidy + agentConfirmed;
 
   const isAgent = isAgentCustomer(customer);
-  const agentProjected = isAgent ? calcAgentProjectedRevenue(customer) : 0;
+  const agentProjected = calcAgentProjectedRevenue(customer);
+  // 人材紹介報酬見込（利用有無に関わらず計算値を表示用に取得）
+  const agentFeeDisplay = calcExpectedReferralFee(customer);
   // ordersベースの確定売上 + 人材見込を使った成約者見込LTV
   const projectedTotal = confirmedTotal + agentProjected;
 
@@ -595,7 +597,7 @@ function RevenueSection({ customer, orders }: { customer: CustomerWithRelations;
         </h2>
       </div>
       <div className="p-5">
-        <div className={`grid grid-cols-1 ${isAgent ? "md:grid-cols-3" : "md:grid-cols-1 max-w-md"} gap-5`}>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           {/* 確定売上 */}
           <div className="bg-surface-elevated rounded-lg p-3 border-t-2 border-t-green-500">
             <p className="text-[10px] font-semibold text-green-400 uppercase tracking-wider mb-1">確定売上</p>
@@ -606,27 +608,23 @@ function RevenueSection({ customer, orders }: { customer: CustomerWithRelations;
             <Row label="合計" value={formatCurrency(confirmedTotal)} bold />
           </div>
 
-          {/* 見込売上 — 人材紹介利用者のみ表示 */}
-          {isAgent && (
-            <div className="bg-surface-elevated rounded-lg p-3 border-t-2 border-t-amber-500">
-              <p className="text-[10px] font-semibold text-amber-400 uppercase tracking-wider mb-1">見込売上</p>
-              <Row label="確定売上" value={formatCurrency(confirmedTotal)} sub />
-              {agentProjected > 0 && <Row label="人材（見込）" value={formatCurrency(agentProjected)} sub />}
-              <Divider />
-              <Row label="成約者見込LTV" value={projectedTotal > 0 ? formatCurrency(projectedTotal) : "-"} bold />
-            </div>
-          )}
+          {/* 見込売上 — 全顧客表示 */}
+          <div className="bg-surface-elevated rounded-lg p-3 border-t-2 border-t-amber-500">
+            <p className="text-[10px] font-semibold text-amber-400 uppercase tracking-wider mb-1">見込売上</p>
+            <Row label="確定売上" value={formatCurrency(confirmedTotal)} sub />
+            {agentFeeDisplay > 0 && <Row label="人材紹介（見込）" value={formatCurrency(agentFeeDisplay)} sub />}
+            <Divider />
+            <Row label="成約者見込LTV" value={projectedTotal > 0 ? formatCurrency(projectedTotal) : formatCurrency(confirmedTotal)} bold />
+          </div>
 
-          {/* 期待値 — 人材紹介利用者のみ表示 */}
-          {isAgent && (
-            <div className="bg-surface-elevated rounded-lg p-3 border-t-2 border-t-blue-500">
-              <p className="text-[10px] font-semibold text-blue-400 uppercase tracking-wider mb-1">期待値</p>
-              <Row label="成約見込率" value={formatPercent(calcClosingProbability(customer))} sub />
-              <Row label="見込売上" value={projectedTotal > 0 ? formatCurrency(projectedTotal) : "-"} sub />
-              <Divider />
-              <Row label="見込LTV" value={projectedTotal > 0 ? formatCurrency(projectedTotal) : formatCurrency(calcExpectedLTV(customer))} bold />
-            </div>
-          )}
+          {/* 期待値 — 全顧客表示 */}
+          <div className="bg-surface-elevated rounded-lg p-3 border-t-2 border-t-blue-500">
+            <p className="text-[10px] font-semibold text-blue-400 uppercase tracking-wider mb-1">期待値</p>
+            <Row label="成約見込率" value={formatPercent(calcClosingProbability(customer))} sub />
+            <Row label="見込売上" value={projectedTotal > 0 ? formatCurrency(projectedTotal) : formatCurrency(confirmedTotal)} sub />
+            <Divider />
+            <Row label="見込LTV" value={projectedTotal > 0 ? formatCurrency(projectedTotal) : formatCurrency(calcExpectedLTV(customer))} bold />
+          </div>
         </div>
       </div>
     </div>
@@ -770,7 +768,7 @@ function buildAgentFields(c: CustomerWithRelations): FieldDef[] {
   const a = c.agent || {} as NonNullable<CustomerWithRelations["agent"]>;
   const fee = calcExpectedReferralFee(c);
   const rankRate = getOfferRankRate(a.offer_rank);
-  const margin = (a.margin && a.margin > 0) ? a.margin : 0.75;
+  const margin = (a.margin && a.margin > 0) ? a.margin : 0.7;
   const feeRate = a.referral_fee_rate ?? 0.3;
   return [
     { key: "offer_rank", label: "内定ランク", source: "manual", type: "select", options: ["S", "A", "B", "C", "D"], table: "agent", getValue: () => {
@@ -779,7 +777,11 @@ function buildAgentFields(c: CustomerWithRelations): FieldDef[] {
       const meta = OFFER_RANK_META[rank];
       return meta ? `${rank}（${meta.label} / ${Math.round(rankRate * 100)}%）` : rank;
     }},
-    { key: "offer_salary", label: "想定年収", source: "manual", type: "number", table: "agent", getValue: () => a.offer_salary ? formatCurrency(a.offer_salary) : "-" },
+    { key: "ai_offer_probability", label: "内定可能性（AI）", source: a.ai_offer_probability != null ? "sync" as DataSource : "manual" as DataSource, type: "number", table: "agent", getValue: () => {
+      if (a.ai_offer_probability != null && a.ai_offer_probability > 0) return `${a.ai_offer_probability}%`;
+      return "-";
+    }},
+    { key: "offer_salary", label: "想定年収", source: "manual", type: "number", table: "agent", getValue: () => a.offer_salary ? formatCurrency(a.offer_salary) : `${formatCurrency(8000000)}（デフォルト）` },
     { key: "referral_fee_rate", label: "紹介料率", source: "manual", type: "number", table: "agent", getValue: () => `${Math.round(feeRate * 100)}%` },
     { key: "margin", label: "マージン", source: "manual", type: "number", table: "agent", getValue: () => `${Math.round(margin * 100)}%` },
     { key: "expected_fee", label: "人材紹介報酬見込", source: "calc", getValue: () => fee > 0 ? formatCurrency(fee) : "-" },
@@ -1168,7 +1170,7 @@ export function CustomerDetailClient({
     // agent fields
     if (customer.agent) {
       const a = customer.agent as unknown as Record<string, unknown>;
-      for (const key of ["offer_company", "offer_salary", "offer_rank", "referral_fee_rate", "placement_confirmed", "placement_date", "margin"]) {
+      for (const key of ["offer_company", "offer_salary", "offer_rank", "referral_fee_rate", "placement_confirmed", "placement_date", "margin", "ai_offer_probability"]) {
         vals[`agent.${key}`] = dateKeys.has(key) ? toDateValue(a[key]) : (a[key] != null ? String(a[key]) : "");
       }
     }
@@ -1208,7 +1210,7 @@ export function CustomerDetailClient({
         if (!payload[table]) payload[table] = {};
 
         // 型変換
-        const numFields = ["confirmed_amount", "first_amount", "discount", "probability", "total_sessions", "completed_sessions", "offer_salary", "referral_fee_rate", "margin", "subsidy_amount", "projected_amount", "contract_months", "weekly_sessions", "extension_days", "graduation_year"];
+        const numFields = ["confirmed_amount", "first_amount", "discount", "probability", "total_sessions", "completed_sessions", "offer_salary", "referral_fee_rate", "margin", "subsidy_amount", "projected_amount", "contract_months", "weekly_sessions", "extension_days", "graduation_year", "ai_offer_probability"];
         if (numFields.includes(key)) {
           payload[table][key] = val ? Number(val) : null;
         } else if (key === "subsidy_eligible") {

@@ -181,7 +181,7 @@ def normalize_name(name):
 
 def compute_hash(row_dict):
     raw = json.dumps(row_dict, ensure_ascii=False, sort_keys=True)
-    return hashlib.sha256(raw.encode()).hexdigest()
+    return hashlib.md5(raw.encode()).hexdigest()
 
 
 def parse_lp_date(date_str):
