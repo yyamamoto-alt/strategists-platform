@@ -157,10 +157,13 @@ export async function fetchSubsidyCompletionData(
   for (const cid of customerIds) {
     const d = result[cid];
     // Condition 2: case sessions
-    if (d.caseSessionCount >= 4) {
+    // アセスメント+追加指導の両方実施でケース1回分としてカウント（ボタン表示には影響しない）
+    const bonusCase = (d.assessmentCount >= 1 && d.additionalCoachingCount >= 1) ? 1 : 0;
+    const effectiveCaseCount = d.caseSessionCount + bonusCase;
+    if (effectiveCaseCount >= 4) {
       d.caseConditionMet = true;
       d.caseConditionViaOr = false;
-    } else if (d.hasExactFourRecord && d.caseSessionCount < 4) {
+    } else if (d.hasExactFourRecord && effectiveCaseCount < 4) {
       // OR condition: has a record with 回次="4" but total count < 4
       d.caseConditionMet = true;
       d.caseConditionViaOr = true; // warn about potential data issue
