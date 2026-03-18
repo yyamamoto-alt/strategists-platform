@@ -177,7 +177,6 @@ export interface Contract {
   sales_amount: number | null;
   billing_status: BillingStatus;
   payment_date: string | null;
-  payment_form_url: string | null;
   subsidy_eligible: boolean;
   subsidy_period_eligible: boolean;
   subsidy_amount: number | null;

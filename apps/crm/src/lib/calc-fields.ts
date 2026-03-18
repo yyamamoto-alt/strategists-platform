@@ -84,7 +84,7 @@ export function isAgentConfirmed(c: CustomerWithRelations): boolean {
 /** 補助金額算出（Excel Col EJ: リスキャリ補助金） */
 export function getSubsidyAmount(c: CustomerWithRelations): number {
   if (c.contract?.subsidy_eligible) {
-    return c.contract?.subsidy_amount || 203636;
+    return c.contract?.subsidy_amount || 0;
   }
   return 0;
 }

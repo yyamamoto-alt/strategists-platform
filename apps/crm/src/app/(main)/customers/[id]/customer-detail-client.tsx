@@ -25,6 +25,8 @@ import {
   isAgentCustomer,
   getSubsidyAmount,
   getSchoolRevenue,
+  getOfferRankRate,
+  OFFER_RANK_META,
 } from "@/lib/calc-fields";
 import { useRouter } from "next/navigation";
 import type { CustomerWithRelations, Activity, Order } from "@strategy-school/shared-db";
@@ -87,24 +89,29 @@ function SingleFormSection({ title, record }: { title: string; record: Applicati
   if (entries.length === 0) return null;
 
   return (
-    <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-4">
-      <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-1">
-        {title}
-        <span className="text-xs text-gray-500 ml-2 font-normal">{formatDate(record.applied_at)}</span>
-        <SourceBadge source="sync" />
-      </h2>
-      <table className="w-full mt-3">
-        <tbody>
-          {entries.map(([k, v]) => (
-            <tr key={k} className="border-b border-white/5 last:border-0">
-              <td className="text-[10px] text-gray-500 py-1.5 pr-3 align-top whitespace-nowrap w-1/4">{k}</td>
-              <td className="text-xs text-gray-300 py-1.5 break-words">
-                {String(v).length > 300 ? String(v).substring(0, 300) + "…" : String(v)}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 overflow-hidden transition-shadow duration-200 hover:shadow-[0_2px_8px_rgba(0,0,0,0.5)]">
+      <div className="flex items-center justify-between px-5 py-3 border-b border-white/[0.06]">
+        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+          <span className="w-[3px] h-3.5 bg-brand rounded-sm" />
+          {title}
+          <span className="text-xs text-gray-500 font-normal">{formatDate(record.applied_at)}</span>
+          <SourceBadge source="sync" />
+        </h2>
+      </div>
+      <div className="p-5">
+        <table className="w-full">
+          <tbody>
+            {entries.map(([k, v]) => (
+              <tr key={k} className="border-b border-white/5 last:border-0">
+                <td className="text-[10px] text-gray-500 py-1.5 pr-3 align-top whitespace-nowrap w-1/4">{k}</td>
+                <td className="text-xs text-gray-300 py-1.5 break-words">
+                  {String(v).length > 300 ? String(v).substring(0, 300) + "…" : String(v)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -169,69 +176,73 @@ function RepeatingFormSection({ records }: { records: ApplicationHistoryRecord[]
   if (sources.length === 0) return null;
 
   return (
-    <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 border-l-2 border-l-gray-600 p-4">
-      <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-1">
-        フォームデータ
-        <span className="text-xs text-gray-500 ml-2 font-normal">{records.length}件</span>
-        <SourceBadge source="sync" />
-      </h2>
-
-      <div className="flex flex-wrap gap-1 mb-4 mt-3">
-        {sources.map((src) => (
-          <button
-            key={src}
-            onClick={() => { setActiveSource(src); setExpandedIds(new Set()); }}
-            className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
-              currentSource === src
-                ? "bg-brand text-white"
-                : "bg-surface-elevated text-gray-400 hover:text-gray-300"
-            }`}
-          >
-            {src.replace(/^LP申込\(/, "LP(")}{" "}
-            <span className="opacity-60">{grouped[src].length}</span>
-          </button>
-        ))}
+    <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 overflow-hidden transition-shadow duration-200 hover:shadow-[0_2px_8px_rgba(0,0,0,0.5)]">
+      <div className="flex items-center justify-between px-5 py-3 border-b border-white/[0.06]">
+        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+          <span className="w-[3px] h-3.5 bg-brand rounded-sm" />
+          フォームデータ
+          <span className="text-xs text-gray-500 font-normal">{records.length}件</span>
+          <SourceBadge source="sync" />
+        </h2>
       </div>
+      <div className="p-5">
+        <div className="flex flex-wrap gap-1.5 mb-4">
+          {sources.map((src) => (
+            <button
+              key={src}
+              onClick={() => { setActiveSource(src); setExpandedIds(new Set()); }}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-150 ${
+                currentSource === src
+                  ? "bg-brand text-white"
+                  : "bg-surface-elevated text-gray-400 hover:text-gray-300 hover:bg-white/[0.06]"
+              }`}
+            >
+              {src.replace(/^LP申込\(/, "LP(")}{" "}
+              <span className="opacity-60">{grouped[src].length}</span>
+            </button>
+          ))}
+        </div>
 
-      <div className="space-y-2 max-h-[600px] overflow-y-auto">
-        {currentRecords.map((r) => {
-          const rd = (r.raw_data || {}) as Record<string, string>;
-          const isExpanded = expandedIds.has(r.id);
-          const entries = Object.entries(rd).filter(([, v]) => v);
-          // プレビュー: 最初の2フィールドだけ表示
-          const preview = entries.slice(0, 2).map(([k, v]) => `${k}: ${String(v).substring(0, 40)}`).join(" / ");
+        <div className="space-y-2 max-h-[600px] overflow-y-auto">
+          {currentRecords.map((r) => {
+            const rd = (r.raw_data || {}) as Record<string, string>;
+            const isExpanded = expandedIds.has(r.id);
+            const entries = Object.entries(rd).filter(([, v]) => v);
+            // プレビュー: 最初の2フィールドだけ表示
+            const preview = entries.slice(0, 2).map(([k, v]) => `${k}: ${String(v).substring(0, 40)}`).join(" / ");
 
-          return (
-            <div key={r.id} className="border border-white/5 rounded-lg bg-surface-elevated">
-              <button
-                onClick={() => toggleExpand(r.id)}
-                className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-white/[0.03] transition-colors"
-              >
-                <span className="text-gray-500 text-xs w-4">{isExpanded ? "▾" : "▸"}</span>
-                <span className="text-xs text-gray-400">{formatDate(getFormDisplayDate(r) || r.applied_at)}</span>
-                {!isExpanded && (
-                  <span className="text-[10px] text-gray-500 truncate">{preview}</span>
+            return (
+              <div key={r.id} className="border border-white/5 rounded-lg bg-surface-elevated hover:border-white/10 transition-colors duration-150">
+                <button
+                  onClick={() => toggleExpand(r.id)}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-white/[0.04] transition-colors duration-150"
+                >
+                  <span className="text-gray-500 text-xs w-4">{isExpanded ? "▾" : "▸"}</span>
+                  <span className="text-xs text-gray-400">{formatDate(getFormDisplayDate(r) || r.applied_at)}</span>
+                  {!isExpanded && (
+                    <span className="text-[10px] text-gray-500 truncate">{preview}</span>
+                  )}
+                </button>
+                {isExpanded && (
+                  <div className="px-3 pb-3 animate-in fade-in duration-200">
+                    <table className="w-full">
+                      <tbody>
+                        {entries.map(([k, v]) => (
+                          <tr key={k} className="border-b border-white/5 last:border-0">
+                            <td className="text-[10px] text-gray-500 py-1 pr-3 align-top whitespace-nowrap w-1/4">{k}</td>
+                            <td className="text-xs text-gray-300 py-1 break-words">
+                              {String(v).length > 200 ? String(v).substring(0, 200) + "…" : String(v)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 )}
-              </button>
-              {isExpanded && (
-                <div className="px-3 pb-3">
-                  <table className="w-full">
-                    <tbody>
-                      {entries.map(([k, v]) => (
-                        <tr key={k} className="border-b border-white/5 last:border-0">
-                          <td className="text-[10px] text-gray-500 py-1 pr-3 align-top whitespace-nowrap w-1/4">{k}</td>
-                          <td className="text-xs text-gray-300 py-1 break-words">
-                            {String(v).length > 200 ? String(v).substring(0, 200) + "…" : String(v)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          );
-        })}
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
@@ -333,6 +344,10 @@ function InlineField({
         <a href={displayValue} target="_blank" rel="noopener noreferrer" className="text-sm text-brand hover:underline mt-0.5 truncate block" title={displayValue}>
           {displayValue.length > 40 ? displayValue.slice(0, 40) + "..." : displayValue}
         </a>
+      ) : displayValue === "-" ? (
+        <p className="text-sm text-gray-600 italic mt-0.5 truncate" title={displayValue}>
+          {displayValue}
+        </p>
       ) : (
         <p className="text-sm text-white mt-0.5 truncate" title={displayValue}>
           {displayValue}
@@ -398,26 +413,14 @@ function buildContractFields(c: CustomerWithRelations, firstPaidDate?: string | 
   if (!c.contract) return [];
   return [
     { key: "plan_name", label: "プラン", source: "manual", table: "contract", getValue: () => c.contract?.plan_name || "-" },
-    { key: "changed_plan", label: "変更プラン", source: "manual", table: "contract", getValue: () => c.contract?.changed_plan || "-" },
     { key: "confirmed_amount", label: "確定売上", source: "sync", table: "contract", getValue: () => paidTotal != null && paidTotal > 0 ? formatCurrency(paidTotal) : "-" },
-    { key: "first_amount", label: "一次金額", source: "manual", type: "number", table: "contract", getValue: () => c.contract?.first_amount ? formatCurrency(c.contract.first_amount) : "-" },
-    { key: "discount", label: "割引", source: "manual", type: "number", table: "contract", getValue: () => c.contract?.discount ? formatCurrency(c.contract.discount) : "なし" },
-    { key: "billing_status", label: "請求状況", source: "manual", type: "select", options: ["未請求", "請求済", "入金済", "返金済"], table: "contract", getValue: () => c.contract?.billing_status || "-" },
     { key: "payment_date", label: "入金日", source: "manual", type: "date", table: "contract", getValue: () => formatDate(firstPaidDate || c.contract?.payment_date || null) },
     { key: "subsidy_eligible", label: "補助金対象", source: "manual", type: "select", options: ["true", "false"], table: "contract", getValue: () => c.contract?.subsidy_eligible ? "対象" : "非対象" },
+    { key: "subsidy_amount", label: "補助金額", source: "manual", type: "number", table: "contract", getValue: () => c.contract?.subsidy_amount ? formatCurrency(c.contract.subsidy_amount) : "-" },
     { key: "enrollment_status", label: "受講状況", source: "manual", type: "select", options: [
       "受講中", "受講終了", "受講終了(未定)", "受講終了(将来)", "受講終了(不明)", "卒業(内定)", "卒業(落ち)", "単発(対象外)", "離脱",
     ], table: "contract", getValue: () => c.contract?.enrollment_status || "-" },
-    { key: "referral_category", label: "人材紹介区分", source: "manual", type: "select", options: [
-      "フル利用", "一部利用", "スクールのみ", "自社", "該当", "なし",
-    ], table: "contract", getValue: () => c.contract?.referral_category || "-" },
     { key: "progress_sheet_url", label: "Progress Sheet", source: "manual", table: "contract", getValue: () => c.contract?.progress_sheet_url || "-" },
-    { key: "second_amount", label: "二次金額", source: "manual", type: "number", table: "contract", getValue: () => c.contract?.second_amount ? formatCurrency(c.contract.second_amount) : "-" },
-    { key: "contract_amount", label: "契約金額", source: "manual", type: "number", table: "contract", getValue: () => c.contract?.contract_amount ? formatCurrency(c.contract.contract_amount) : "-" },
-    { key: "sales_amount", label: "売上金額", source: "manual", type: "number", table: "contract", getValue: () => c.contract?.sales_amount ? formatCurrency(c.contract.sales_amount) : "-" },
-    { key: "subsidy_amount", label: "補助金額", source: "manual", type: "number", table: "contract", getValue: () => c.contract?.subsidy_amount ? formatCurrency(c.contract.subsidy_amount) : "-" },
-    { key: "payment_form_url", label: "支払いフォームURL", source: "manual", table: "contract", getValue: () => c.contract?.payment_form_url || "-" },
-    { key: "invoice_info", label: "請求書情報", source: "manual", table: "contract", getValue: () => c.contract?.invoice_info || "-" },
   ];
 }
 
@@ -471,9 +474,9 @@ function OrdersSection({ orders }: { orders: Order[] }) {
   const paymentErrors = orders.filter((o) => o.status === "cancelled" && o.memo?.includes("payment_error"));
 
   return (
-    <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-4">
+    <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 overflow-hidden transition-shadow duration-200 hover:shadow-[0_2px_8px_rgba(0,0,0,0.5)]">
       {paymentErrors.length > 0 && (
-        <div className="mb-3 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+        <div className="mx-5 mt-5 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
           <div className="flex items-center gap-2 text-red-400 text-sm font-semibold mb-1">
             <span>⚠</span>
             <span>決済エラー {paymentErrors.length}件</span>
@@ -488,10 +491,11 @@ function OrdersSection({ orders }: { orders: Order[] }) {
           })}
         </div>
       )}
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">
+      <div className="flex items-center justify-between px-5 py-3 border-b border-white/[0.06]">
+        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+          <span className="w-[3px] h-3.5 bg-brand rounded-sm" />
           支払い履歴
-          <span className="text-xs text-gray-500 ml-2 font-normal normal-case">{orders.length}件</span>
+          <span className="text-xs text-gray-500 font-normal normal-case">{orders.length}件</span>
         </h2>
         <div className="flex items-center gap-3">
           {totalScheduled > 0 && (
@@ -504,7 +508,7 @@ function OrdersSection({ orders }: { orders: Order[] }) {
           </span>
         </div>
       </div>
-      <div className="overflow-x-auto">
+      <div className="p-5 overflow-x-auto">
         <table className="w-full text-xs">
           <thead>
             <tr className="border-b border-white/10 text-gray-500">
@@ -530,19 +534,20 @@ function OrdersSection({ orders }: { orders: Order[] }) {
                   : o.payment_method || "-";
 
               return (
-                <tr key={o.id} className="border-b border-white/[0.06] hover:bg-white/[0.03]">
+                <tr key={o.id} className="border-b border-white/[0.06] hover:bg-white/[0.04] transition-colors duration-150">
                   <td className="py-1.5 pr-3 text-gray-400">{formatDate(o.paid_at)}</td>
                   <td className="py-1.5 pr-3 text-gray-300">{ORDER_TYPE_LABELS[o.order_type] || o.order_type}</td>
                   <td className="py-1.5 pr-3 text-gray-300 max-w-[200px] truncate" title={o.product_name || ""}>
                     {o.product_name || "-"}
                   </td>
-                  <td className="py-1.5 pr-3 text-right font-medium text-white">
+                  <td className="py-1.5 pr-3 text-right font-medium text-white font-[tabular-nums]">
                     {formatCurrency(o.amount)}
                   </td>
                   <td className="py-1.5 pr-3 text-gray-400">{paymentLabel}</td>
                   <td className="py-1.5 pr-3 text-gray-400">{installmentLabel}</td>
                   <td className="py-1.5">
-                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${statusMeta.cls}`}>
+                    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${statusMeta.cls}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${statusMeta.cls.includes("green") ? "bg-green-400" : statusMeta.cls.includes("blue") ? "bg-blue-400" : statusMeta.cls.includes("amber") ? "bg-amber-400" : statusMeta.cls.includes("red") ? "bg-red-400" : "bg-gray-400"}`} />
                       {statusMeta.label}
                     </span>
                   </td>
@@ -572,47 +577,54 @@ function RevenueSection({ customer, orders }: { customer: CustomerWithRelations;
   const Row = ({ label, value, bold, sub }: { label: string; value: string; bold?: boolean; sub?: boolean }) => (
     <div className={`flex items-center justify-between py-1 ${sub ? "pl-4" : ""}`}>
       <span className={`text-xs ${sub ? "text-gray-500" : "text-gray-400"}`}>{label}</span>
-      <span className={`text-sm ${bold ? "font-bold text-white" : "text-gray-300"}`}>{value}</span>
+      <span className={`text-sm font-[tabular-nums] ${bold ? "font-bold text-white" : "text-gray-300"}`}>{value}</span>
     </div>
   );
 
   const Divider = () => <div className="border-t border-white/[0.06] my-1" />;
 
   return (
-    <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-4">
-      <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">売上サマリー</h2>
-      <div className={`grid grid-cols-1 ${isAgent ? "md:grid-cols-3" : "md:grid-cols-1 max-w-md"} gap-4`}>
-        {/* 確定売上 */}
-        <div className="bg-surface-elevated rounded-lg p-3">
-          <p className="text-[10px] font-semibold text-green-400 uppercase tracking-wider mb-1">確定売上</p>
-          <Row label="スクール" value={formatCurrency(schoolConfirmed)} sub />
-          {subsidy > 0 && <Row label="補助金" value={formatCurrency(subsidy)} sub />}
-          {agentConfirmed > 0 && <Row label="人材（確定）" value={formatCurrency(agentConfirmed)} sub />}
-          <Divider />
-          <Row label="合計" value={formatCurrency(confirmedTotal)} bold />
+    <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 overflow-hidden transition-shadow duration-200 hover:shadow-[0_2px_8px_rgba(0,0,0,0.5)]">
+      <div className="flex items-center justify-between px-5 py-3 border-b border-white/[0.06]">
+        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+          <span className="w-[3px] h-3.5 bg-brand rounded-sm" />
+          売上サマリー
+        </h2>
+      </div>
+      <div className="p-5">
+        <div className={`grid grid-cols-1 ${isAgent ? "md:grid-cols-3" : "md:grid-cols-1 max-w-md"} gap-5`}>
+          {/* 確定売上 */}
+          <div className="bg-surface-elevated rounded-lg p-3 border-t-2 border-t-green-500">
+            <p className="text-[10px] font-semibold text-green-400 uppercase tracking-wider mb-1">確定売上</p>
+            <Row label="スクール" value={formatCurrency(schoolConfirmed)} sub />
+            {subsidy > 0 && <Row label="補助金" value={formatCurrency(subsidy)} sub />}
+            {agentConfirmed > 0 && <Row label="人材（確定）" value={formatCurrency(agentConfirmed)} sub />}
+            <Divider />
+            <Row label="合計" value={formatCurrency(confirmedTotal)} bold />
+          </div>
+
+          {/* 見込売上 — 人材紹介利用者のみ表示 */}
+          {isAgent && (
+            <div className="bg-surface-elevated rounded-lg p-3 border-t-2 border-t-amber-500">
+              <p className="text-[10px] font-semibold text-amber-400 uppercase tracking-wider mb-1">見込売上</p>
+              <Row label="確定売上" value={formatCurrency(confirmedTotal)} sub />
+              {agentProjected > 0 && <Row label="人材（見込）" value={formatCurrency(agentProjected)} sub />}
+              <Divider />
+              <Row label="成約者見込LTV" value={projectedTotal > 0 ? formatCurrency(projectedTotal) : "-"} bold />
+            </div>
+          )}
+
+          {/* 期待値 — 人材紹介利用者のみ表示 */}
+          {isAgent && (
+            <div className="bg-surface-elevated rounded-lg p-3 border-t-2 border-t-blue-500">
+              <p className="text-[10px] font-semibold text-blue-400 uppercase tracking-wider mb-1">期待値</p>
+              <Row label="成約見込率" value={formatPercent(calcClosingProbability(customer))} sub />
+              <Row label="見込売上" value={projectedTotal > 0 ? formatCurrency(projectedTotal) : "-"} sub />
+              <Divider />
+              <Row label="見込LTV" value={projectedTotal > 0 ? formatCurrency(projectedTotal) : formatCurrency(calcExpectedLTV(customer))} bold />
+            </div>
+          )}
         </div>
-
-        {/* 見込売上 — 人材紹介利用者のみ表示 */}
-        {isAgent && (
-          <div className="bg-surface-elevated rounded-lg p-3">
-            <p className="text-[10px] font-semibold text-amber-400 uppercase tracking-wider mb-1">見込売上</p>
-            <Row label="確定売上" value={formatCurrency(confirmedTotal)} sub />
-            {agentProjected > 0 && <Row label="人材（見込）" value={formatCurrency(agentProjected)} sub />}
-            <Divider />
-            <Row label="成約者見込LTV" value={projectedTotal > 0 ? formatCurrency(projectedTotal) : "-"} bold />
-          </div>
-        )}
-
-        {/* 期待値 — 人材紹介利用者のみ表示 */}
-        {isAgent && (
-          <div className="bg-surface-elevated rounded-lg p-3">
-            <p className="text-[10px] font-semibold text-blue-400 uppercase tracking-wider mb-1">期待値</p>
-            <Row label="成約見込率" value={formatPercent(calcClosingProbability(customer))} sub />
-            <Row label="見込売上" value={projectedTotal > 0 ? formatCurrency(projectedTotal) : "-"} sub />
-            <Divider />
-            <Row label="見込LTV" value={projectedTotal > 0 ? formatCurrency(projectedTotal) : formatCurrency(calcExpectedLTV(customer))} bold />
-          </div>
-        )}
       </div>
     </div>
   );
@@ -745,7 +757,33 @@ function buildLearningFields(c: CustomerWithRelations, appHistory?: ApplicationH
   return buildLearningFieldGroups(c, appHistory).flatMap(g => g.fields);
 }
 
-// エージェントセクションは専用ページ(/agents)に移動済み
+function buildAgentFields(c: CustomerWithRelations): FieldDef[] {
+  if (!c.agent) return [];
+  const a = c.agent;
+  const fee = calcExpectedReferralFee(c);
+  const rankRate = getOfferRankRate(a.offer_rank);
+  const margin = (a.margin && a.margin > 0) ? a.margin : 0.75;
+  const feeRate = a.referral_fee_rate ?? 0.3;
+  return [
+    { key: "referral_category", label: "人材紹介区分", source: "manual", type: "select", options: [
+      "フル利用", "一部利用", "スクールのみ", "自社", "該当", "なし",
+    ], table: "contract", getValue: () => c.contract?.referral_category || "-" },
+    { key: "offer_rank", label: "内定ランク", source: "manual", type: "select", options: ["S", "A", "B", "C", "D"], table: "agent", getValue: () => {
+      const rank = a.offer_rank;
+      if (!rank) return "-";
+      const meta = OFFER_RANK_META[rank];
+      return meta ? `${rank}（${meta.label} / ${Math.round(rankRate * 100)}%）` : rank;
+    }},
+    { key: "offer_salary", label: "想定年収", source: "manual", type: "number", table: "agent", getValue: () => a.offer_salary ? formatCurrency(a.offer_salary) : "-" },
+    { key: "referral_fee_rate", label: "紹介料率", source: "manual", type: "number", table: "agent", getValue: () => `${Math.round(feeRate * 100)}%` },
+    { key: "margin", label: "マージン", source: "manual", type: "number", table: "agent", getValue: () => `${Math.round(margin * 100)}%` },
+    { key: "expected_fee", label: "報酬期待値", source: "calc", getValue: () => fee > 0 ? formatCurrency(fee) : "-" },
+    { key: "offer_company", label: "内定先企業", source: "manual", table: "agent", getValue: () => a.offer_company || "-" },
+    { key: "job_search_status", label: "就職活動状況", source: "manual", table: "agent", getValue: () => a.job_search_status || "-" },
+    { key: "placement_confirmed", label: "確定状況", source: "manual", type: "select", options: ["確定", "未確定"], table: "agent", getValue: () => a.placement_confirmed || "未確定" },
+    { key: "placement_date", label: "入社日", source: "manual", type: "date", table: "agent", getValue: () => formatDate(a.placement_date ?? null) },
+  ];
+}
 
 // ================================================================
 // セクションコンポーネント
@@ -826,10 +864,17 @@ function Section({
   if (fields.length === 0 && !children) return null;
 
   return (
-    <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-4">
-      <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">{title}</h2>
-      <FieldGrid fields={fields} customer={customer} isEditing={isEditing} editValues={editValues} onEditChange={onEditChange} cols={cols} />
-      {children}
+    <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 overflow-hidden transition-shadow duration-200 hover:shadow-[0_2px_8px_rgba(0,0,0,0.5)]">
+      <div className="flex items-center justify-between px-5 py-3 border-b border-white/[0.06]">
+        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+          <span className="w-[3px] h-3.5 bg-brand rounded-sm" />
+          {title}
+        </h2>
+      </div>
+      <div className="p-5">
+        <FieldGrid fields={fields} customer={customer} isEditing={isEditing} editValues={editValues} onEditChange={onEditChange} cols={cols} />
+        {children}
+      </div>
     </div>
   );
 }
@@ -857,17 +902,27 @@ function GroupedSection({
   if (groups.length === 0 && !children) return null;
 
   return (
-    <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-4">
-      <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">{title}</h2>
-      <div className="space-y-4">
-        {groups.map((g) => (
-          <div key={g.label}>
-            <p className="text-[11px] font-medium text-gray-500 border-b border-white/[0.06] pb-1 mb-2">{g.label}</p>
-            <FieldGrid fields={g.fields} customer={customer} isEditing={isEditing} editValues={editValues} onEditChange={onEditChange} cols={cols} />
-          </div>
-        ))}
+    <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 overflow-hidden transition-shadow duration-200 hover:shadow-[0_2px_8px_rgba(0,0,0,0.5)]">
+      <div className="flex items-center justify-between px-5 py-3 border-b border-white/[0.06]">
+        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+          <span className="w-[3px] h-3.5 bg-brand rounded-sm" />
+          {title}
+        </h2>
       </div>
-      {children}
+      <div className="p-5">
+        <div className="space-y-5">
+          {groups.map((g) => (
+            <div key={g.label}>
+              <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider border-b border-white/[0.06] pb-1.5 mb-3 flex items-center gap-1.5">
+                <span className="w-1 h-1 rounded-full bg-gray-600" />
+                {g.label}
+              </p>
+              <FieldGrid fields={g.fields} customer={customer} isEditing={isEditing} editValues={editValues} onEditChange={onEditChange} cols={cols} />
+            </div>
+          ))}
+        </div>
+        {children}
+      </div>
     </div>
   );
 }
@@ -918,88 +973,97 @@ function MarketingInfoSection({
   const p = customer.pipeline || {} as Record<string, unknown>;
 
   return (
-    <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-4">
-      <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">マーケティング</h2>
-
-      {/* 帰属チャネル */}
-      <div className="bg-surface-elevated rounded-lg p-3 mb-3">
-        <div className="flex items-center justify-between mb-2">
-          <p className="text-[10px] font-semibold text-brand uppercase tracking-wider">帰属チャネル</p>
-          {attribution && (
-            <span className={`inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium rounded border ${getConfidenceStyle(attribution.confidence)}`}>
-              信頼度: {getConfidenceLabel(attribution.confidence)}
-            </span>
-          )}
-        </div>
-        <p className="text-lg font-bold text-white">
-          {attribution?.marketing_channel || "未計算"}
-        </p>
-        {attribution && (
-          <p className="text-[10px] text-gray-500 mt-1">
-            根拠: {getAttributionSourceLabel(attribution.attribution_source)}
-            {attribution.is_multi_touch && " (マルチタッチ)"}
-          </p>
-        )}
+    <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 overflow-hidden transition-shadow duration-200 hover:shadow-[0_2px_8px_rgba(0,0,0,0.5)]">
+      <div className="flex items-center justify-between px-5 py-3 border-b border-white/[0.06]">
+        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+          <span className="w-[3px] h-3.5 bg-brand rounded-sm" />
+          マーケティング
+        </h2>
       </div>
-
-      {/* 3つの情報源 */}
-      <div className="space-y-2">
-        <p className="text-[11px] font-medium text-gray-500 border-b border-white/[0.06] pb-1">情報源</p>
-
-        <div className="grid grid-cols-1 gap-2">
-          {/* 弊塾を最初に知った場所 */}
-          <div className="bg-surface-elevated rounded px-3 py-2">
-            <p className="text-[10px] text-gray-500 font-medium flex items-center gap-0.5">
-              弊塾を最初に知った場所
-              <SourceBadge source="sync" />
-            </p>
-            <p className="text-sm text-gray-200 mt-0.5">
-              {(p as Record<string, unknown>).initial_channel as string || "-"}
-            </p>
-          </div>
-
-          {/* 面談申し込みのきっかけ・決め手 */}
-          <div className="bg-surface-elevated rounded px-3 py-2">
-            <p className="text-[10px] text-gray-500 font-medium flex items-center gap-0.5">
-              申込のきっかけ・決め手
-              <SourceBadge source="sync" />
-            </p>
-            <p className="text-sm text-gray-200 mt-0.5">
-              {c.application_reason_karte || c.application_reason || "-"}
-            </p>
-            {c.application_reason_karte && c.application_reason && c.application_reason_karte !== c.application_reason && (
-              <p className="text-[10px] text-gray-500 mt-0.5">LP申込: {c.application_reason}</p>
+      <div className="p-5">
+        {/* 帰属チャネル */}
+        <div className="bg-surface-elevated rounded-lg p-4 mb-4">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[10px] font-semibold text-brand uppercase tracking-wider">帰属チャネル</p>
+            {attribution && (
+              <span className={`inline-flex items-center px-2 py-0.5 text-[10px] font-medium rounded border shadow-sm ${getConfidenceStyle(attribution.confidence)} ${attribution.confidence === "high" ? "shadow-green-500/20" : attribution.confidence === "medium" ? "shadow-yellow-500/20" : ""}`}>
+                信頼度: {getConfidenceLabel(attribution.confidence)}
+              </span>
             )}
           </div>
-
-          {/* UTM情報 */}
-          <div className="bg-surface-elevated rounded px-3 py-2">
-            <p className="text-[10px] text-gray-500 font-medium flex items-center gap-0.5">
-              UTM / 流入元情報
-              <SourceBadge source="sync" />
+          <p className="text-xl font-bold text-white">
+            {attribution?.marketing_channel || "未計算"}
+          </p>
+          {attribution && (
+            <p className="text-[10px] text-gray-500 mt-1">
+              根拠: {getAttributionSourceLabel(attribution.attribution_source)}
+              {attribution.is_multi_touch && " (マルチタッチ)"}
             </p>
-            <div className="mt-0.5 space-y-0.5">
-              {c.utm_source ? (
-                <>
-                  <p className="text-sm text-gray-200">source: {c.utm_source}</p>
-                  {c.utm_medium && <p className="text-[11px] text-gray-400">medium: {c.utm_medium}</p>}
-                  {c.utm_campaign && <p className="text-[11px] text-gray-400">campaign: {c.utm_campaign}</p>}
-                  {c.utm_id && <p className="text-[11px] text-gray-400">id: {c.utm_id}</p>}
-                </>
-              ) : (
-                <p className="text-sm text-gray-400">-</p>
+          )}
+        </div>
+
+        {/* 3つの情報源 */}
+        <div className="space-y-2">
+          <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider border-b border-white/[0.06] pb-1.5 mb-3 flex items-center gap-1.5">
+            <span className="w-1 h-1 rounded-full bg-gray-600" />
+            情報源
+          </p>
+
+          <div className="grid grid-cols-1 gap-2">
+            {/* 弊塾を最初に知った場所 */}
+            <div className="bg-surface-elevated rounded px-3 py-2">
+              <p className="text-[10px] text-gray-500 font-medium flex items-center gap-0.5">
+                弊塾を最初に知った場所
+                <SourceBadge source="sync" />
+              </p>
+              <p className="text-sm text-gray-200 mt-0.5">
+                {(p as Record<string, unknown>).initial_channel as string || "-"}
+              </p>
+            </div>
+
+            {/* 面談申し込みのきっかけ・決め手 */}
+            <div className="bg-surface-elevated rounded px-3 py-2">
+              <p className="text-[10px] text-gray-500 font-medium flex items-center gap-0.5">
+                申込のきっかけ・決め手
+                <SourceBadge source="sync" />
+              </p>
+              <p className="text-sm text-gray-200 mt-0.5">
+                {c.application_reason_karte || c.application_reason || "-"}
+              </p>
+              {c.application_reason_karte && c.application_reason && c.application_reason_karte !== c.application_reason && (
+                <p className="text-[10px] text-gray-500 mt-0.5">LP申込: {c.application_reason}</p>
               )}
             </div>
-          </div>
-          {/* 営業ルート */}
-          <div className="bg-surface-elevated rounded px-3 py-2">
-            <p className="text-[10px] text-gray-500 font-medium flex items-center gap-0.5">
-              営業ルート（営業報告）
-              <SourceBadge source="sync" />
-            </p>
-            <p className="text-sm text-gray-200 mt-0.5">
-              {(p as Record<string, unknown>).sales_route as string || "-"}
-            </p>
+
+            {/* UTM情報 */}
+            <div className="bg-surface-elevated rounded px-3 py-2">
+              <p className="text-[10px] text-gray-500 font-medium flex items-center gap-0.5">
+                UTM / 流入元情報
+                <SourceBadge source="sync" />
+              </p>
+              <div className="mt-0.5 space-y-0.5">
+                {c.utm_source ? (
+                  <>
+                    <p className="text-sm text-gray-200">source: {c.utm_source}</p>
+                    {c.utm_medium && <p className="text-[11px] text-gray-400">medium: {c.utm_medium}</p>}
+                    {c.utm_campaign && <p className="text-[11px] text-gray-400">campaign: {c.utm_campaign}</p>}
+                    {c.utm_id && <p className="text-[11px] text-gray-400">id: {c.utm_id}</p>}
+                  </>
+                ) : (
+                  <p className="text-sm text-gray-600 italic">-</p>
+                )}
+              </div>
+            </div>
+            {/* 営業ルート */}
+            <div className="bg-surface-elevated rounded px-3 py-2">
+              <p className="text-[10px] text-gray-500 font-medium flex items-center gap-0.5">
+                営業ルート（営業報告）
+                <SourceBadge source="sync" />
+              </p>
+              <p className="text-sm text-gray-200 mt-0.5">
+                {(p as Record<string, unknown>).sales_route as string || "-"}
+              </p>
+            </div>
           </div>
         </div>
       </div>
@@ -1073,27 +1137,27 @@ export function CustomerDetailClient({
     const dateKeys = new Set(["meeting_scheduled_date", "additional_coaching_date", "sales_date", "sales_date_2", "sales_date_3", "response_deadline", "response_date_2", "response_date_3", "payment_date", "coaching_end_date", "last_coaching_date", "placement_date", "application_date"]);
     // customer fields
     const cFields = customer as unknown as unknown as Record<string, unknown>;
-    for (const key of ["name", "email", "phone", "attribute", "priority", "university", "faculty", "notes", "caution_notes"]) {
-      vals[`customer.${key}`] = cFields[key] != null ? String(cFields[key]) : "";
+    for (const key of ["name", "email", "phone", "attribute", "priority", "university", "faculty", "notes", "caution_notes", "application_date", "initial_level", "career_history", "target_companies", "target_firm_type", "transfer_intent", "name_kana", "birth_date", "graduation_year"]) {
+      vals[`customer.${key}`] = dateKeys.has(key) ? toDateValue(cFields[key]) : (cFields[key] != null ? String(cFields[key]) : "");
     }
     // pipeline fields
     if (customer.pipeline) {
       const p = customer.pipeline as unknown as Record<string, unknown>;
-      for (const key of ["stage", "probability", "meeting_scheduled_date", "additional_coaching_date", "sales_date", "sales_date_2", "sales_date_3", "response_deadline", "response_date_2", "response_date_3", "decision_factor", "sales_content", "sales_strategy"]) {
+      for (const key of ["stage", "probability", "meeting_scheduled_date", "additional_coaching_date", "sales_date", "sales_date_2", "sales_date_3", "response_deadline", "response_date_2", "response_date_3", "decision_factor", "sales_content", "sales_strategy", "projected_amount", "meeting_url", "marketing_memo"]) {
         vals[`pipeline.${key}`] = dateKeys.has(key) ? toDateValue(p[key]) : (p[key] != null ? String(p[key]) : "");
       }
     }
     // contract fields
     if (customer.contract) {
       const ct = customer.contract as unknown as Record<string, unknown>;
-      for (const key of ["plan_name", "confirmed_amount", "first_amount", "discount", "billing_status", "subsidy_eligible", "payment_date", "changed_plan"]) {
+      for (const key of ["plan_name", "subsidy_eligible", "subsidy_amount", "payment_date", "enrollment_status", "referral_category", "progress_sheet_url"]) {
         vals[`contract.${key}`] = dateKeys.has(key) ? toDateValue(ct[key]) : (ct[key] != null ? String(ct[key]) : "");
       }
     }
     // learning fields
     if (customer.learning) {
       const l = customer.learning as unknown as Record<string, unknown>;
-      for (const key of ["mentor_name", "coaching_end_date", "last_coaching_date", "total_sessions", "completed_sessions", "current_level"]) {
+      for (const key of ["mentor_name", "coaching_end_date", "last_coaching_date", "total_sessions", "completed_sessions", "current_level", "contract_months", "weekly_sessions", "extension_days", "selection_status", "coaching_requests", "enrollment_reason"]) {
         vals[`learning.${key}`] = dateKeys.has(key) ? toDateValue(l[key]) : (l[key] != null ? String(l[key]) : "");
       }
     }
@@ -1140,11 +1204,17 @@ export function CustomerDetailClient({
         if (!payload[table]) payload[table] = {};
 
         // 型変換
-        const numFields = ["confirmed_amount", "first_amount", "discount", "probability", "total_sessions", "completed_sessions", "offer_salary", "referral_fee_rate", "margin"];
+        const numFields = ["confirmed_amount", "first_amount", "discount", "probability", "total_sessions", "completed_sessions", "offer_salary", "referral_fee_rate", "margin", "subsidy_amount", "projected_amount", "contract_months", "weekly_sessions", "extension_days", "graduation_year"];
         if (numFields.includes(key)) {
           payload[table][key] = val ? Number(val) : null;
         } else if (key === "subsidy_eligible") {
-          payload[table][key] = val === "true";
+          const isEligible = val === "true";
+          payload[table][key] = isEligible;
+          if (isEligible && !editValues["contract.subsidy_amount"]) {
+            payload[table]["subsidy_amount"] = 203636;
+          }
+        } else if (key === "subsidy_amount") {
+          payload[table][key] = val ? Number(val) : null;
         } else {
           payload[table][key] = val || null;
         }
@@ -1202,20 +1272,21 @@ export function CustomerDetailClient({
   const pipelineGroups = useMemo(() => buildPipelineFieldGroups(customer), [customer]);
   const learningFields = useMemo(() => buildLearningFields(customer, applicationHistory), [customer, applicationHistory]);
   const learningGroups = useMemo(() => buildLearningFieldGroups(customer, applicationHistory), [customer, applicationHistory]);
+  const agentFields = useMemo(() => buildAgentFields(customer), [customer]);
 
   return (
-    <div className="p-4 space-y-3">
+    <div className="p-6 space-y-5">
       {/* ヘッダー */}
-      <div className="flex items-center gap-4">
-        <Link href="/customers" className="text-gray-400 hover:text-gray-300 transition-colors text-sm">
+      <div className="flex items-center gap-4 border-b border-white/[0.06] pb-5">
+        <Link href="/customers" className="text-gray-400 hover:text-gray-300 transition-all duration-150 text-sm">
           ← 戻る
         </Link>
         <div className="flex-1 flex items-center gap-3">
-          <div className="w-12 h-12 bg-brand-muted text-brand rounded-full flex items-center justify-center font-bold text-lg shrink-0">
+          <div className="w-14 h-14 bg-brand-muted text-brand rounded-full flex items-center justify-center font-bold text-xl shrink-0">
             {customer.name.charAt(0)}
           </div>
           <div>
-            <h1 className="text-xl font-bold text-white">{customer.name}</h1>
+            <h1 className="text-2xl font-bold text-white">{customer.name}</h1>
             <div className="flex items-center gap-2 mt-0.5">
               <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getAttributeColor(customer.attribute)}`}>
                 {customer.attribute}
@@ -1226,6 +1297,11 @@ export function CustomerDetailClient({
                 </span>
               )}
             </div>
+            <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
+              {customer.email && <span>{customer.email}</span>}
+              {customer.phone && <span>{customer.phone}</span>}
+              {customer.application_date && <span>申込: {formatDate(customer.application_date)}</span>}
+            </div>
           </div>
         </div>
 
@@ -1235,13 +1311,13 @@ export function CustomerDetailClient({
         <div className="flex items-center gap-2 shrink-0">
           {isEditing ? (
             <>
-              <button onClick={cancelEditing} className="px-3 py-2 text-gray-400 hover:text-white text-xs transition-colors">
+              <button onClick={cancelEditing} className="px-3 py-2 text-gray-400 hover:text-white text-xs transition-all duration-150">
                 キャンセル
               </button>
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium disabled:opacity-50 transition-colors"
+                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium disabled:opacity-50 transition-all duration-150"
               >
                 {saving ? "保存中..." : "保存"}
               </button>
@@ -1251,13 +1327,13 @@ export function CustomerDetailClient({
               <button
                 onClick={handleDelete}
                 disabled={deleting}
-                className="px-3 py-2 text-red-400 hover:text-red-300 text-xs font-medium transition-colors disabled:opacity-50"
+                className="px-3 py-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg text-xs font-medium transition-all duration-150 disabled:opacity-50"
               >
                 {deleting ? "削除中..." : "削除"}
               </button>
               <button
                 onClick={startEditing}
-                className="px-4 py-2 bg-brand text-white rounded-lg text-sm font-medium hover:bg-brand-dark transition-colors"
+                className="px-4 py-2 bg-brand text-white rounded-lg text-sm font-medium hover:bg-brand/90 transition-all duration-150"
               >
                 編集
               </button>
@@ -1267,9 +1343,9 @@ export function CustomerDetailClient({
       </div>
 
       {/* 2カラムレイアウト: 左=基本+契約+売上、右=営業+学習 */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
         {/* 左カラム */}
-        <div className="space-y-3">
+        <div className="space-y-5">
           <Section title="基本情報" fields={basicFields} customer={customer} isEditing={isEditing} editValues={editValues} onEditChange={handleEditChange} cols={4}>
             {emailList.length > 1 && (
               <div className="mt-3 pt-3 border-t border-white/10">
@@ -1297,6 +1373,10 @@ export function CustomerDetailClient({
 
           <Section title="契約" fields={contractFields} customer={customer} isEditing={isEditing} editValues={editValues} onEditChange={handleEditChange} cols={4} />
 
+          {agentFields.length > 0 && (
+            <Section title="人材紹介" fields={agentFields} customer={customer} isEditing={isEditing} editValues={editValues} onEditChange={handleEditChange} cols={4} />
+          )}
+
           {/* 支払い履歴 */}
           {orders.length > 0 && (
             <OrdersSection orders={orders} />
@@ -1307,7 +1387,7 @@ export function CustomerDetailClient({
         </div>
 
         {/* 右カラム */}
-        <div className="space-y-3">
+        <div className="space-y-5">
           <MarketingInfoSection customer={customer} attribution={attribution as ChannelAttributionData | null} />
 
           <GroupedSection title="営業・商談" groups={pipelineGroups} customer={customer} isEditing={isEditing} editValues={editValues} onEditChange={handleEditChange} cols={4} />
@@ -1323,92 +1403,106 @@ export function CustomerDetailClient({
 
           {/* 担当メンター */}
           {mentors.length > 0 && (
-            <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-4">
-              <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">担当メンター</h2>
-              <div className="space-y-2">
-                {mentors.map((assignment) => (
-                  <div key={assignment.id} className="flex items-center justify-between bg-surface-elevated rounded-lg px-3 py-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-gray-200">{assignment.mentor.name}</span>
-                      {assignment.role === "primary" ? (
-                        <span className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium rounded bg-red-500/20 text-red-400 border border-red-500/30">
-                          主担当
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium rounded bg-gray-500/20 text-gray-400 border border-gray-500/30">
-                          副担当
-                        </span>
-                      )}
+            <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 overflow-hidden transition-shadow duration-200 hover:shadow-[0_2px_8px_rgba(0,0,0,0.5)]">
+              <div className="flex items-center justify-between px-5 py-3 border-b border-white/[0.06]">
+                <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                  <span className="w-[3px] h-3.5 bg-brand rounded-sm" />
+                  担当メンター
+                </h2>
+              </div>
+              <div className="p-5">
+                <div className="space-y-2">
+                  {mentors.map((assignment) => (
+                    <div key={assignment.id} className="flex items-center justify-between bg-surface-elevated rounded-lg px-3 py-2 hover:bg-white/[0.04] transition-colors duration-150">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-gray-200">{assignment.mentor.name}</span>
+                        {assignment.role === "primary" ? (
+                          <span className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium rounded bg-red-500/20 text-red-400 border border-red-500/30">
+                            主担当
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium rounded bg-gray-500/20 text-gray-400 border border-gray-500/30">
+                            副担当
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {assignment.mentor.line_url && (
+                          <a
+                            href={assignment.mentor.line_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-green-400 hover:text-green-300 hover:underline transition-colors duration-150"
+                          >
+                            LINE
+                          </a>
+                        )}
+                        {assignment.mentor.booking_url && (
+                          <a
+                            href={assignment.mentor.booking_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-blue-400 hover:text-blue-300 hover:underline transition-colors duration-150"
+                          >
+                            予約
+                          </a>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      {assignment.mentor.line_url && (
-                        <a
-                          href={assignment.mentor.line_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs text-green-400 hover:text-green-300 hover:underline"
-                        >
-                          LINE
-                        </a>
-                      )}
-                      {assignment.mentor.booking_url && (
-                        <a
-                          href={assignment.mentor.booking_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs text-blue-400 hover:text-blue-300 hover:underline"
-                        >
-                          予約
-                        </a>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </div>
           )}
 
           {/* プロフィール */}
-          <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-4">
-            <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">プロフィール</h2>
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              {customer.sns_accounts && (
-                <div>
-                  <p className="text-[10px] text-gray-500 font-medium flex items-center gap-0.5">SNS <SourceBadge source="sync" /></p>
-                  <p className="text-gray-300 mt-0.5">{customer.sns_accounts}</p>
+          <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 overflow-hidden transition-shadow duration-200 hover:shadow-[0_2px_8px_rgba(0,0,0,0.5)]">
+            <div className="flex items-center justify-between px-5 py-3 border-b border-white/[0.06]">
+              <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                <span className="w-[3px] h-3.5 bg-brand rounded-sm" />
+                プロフィール
+              </h2>
+            </div>
+            <div className="p-5">
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                {customer.sns_accounts && (
+                  <div>
+                    <p className="text-[10px] text-gray-500 font-medium flex items-center gap-0.5">SNS <SourceBadge source="sync" /></p>
+                    <p className="text-gray-300 mt-0.5">{customer.sns_accounts}</p>
+                  </div>
+                )}
+                {customer.reference_media && (
+                  <div>
+                    <p className="text-[10px] text-gray-500 font-medium flex items-center gap-0.5">参考メディア <SourceBadge source="sync" /></p>
+                    <p className="text-gray-300 mt-0.5">{customer.reference_media}</p>
+                  </div>
+                )}
+                {customer.hobbies && (
+                  <div>
+                    <p className="text-[10px] text-gray-500 font-medium flex items-center gap-0.5">趣味・特技 <SourceBadge source="sync" /></p>
+                    <p className="text-gray-300 mt-0.5">{customer.hobbies}</p>
+                  </div>
+                )}
+                {customer.behavioral_traits && (
+                  <div>
+                    <p className="text-[10px] text-gray-500 font-medium flex items-center gap-0.5">行動特性 <SourceBadge source="manual" /></p>
+                    <p className="text-gray-300 mt-0.5">{customer.behavioral_traits}</p>
+                  </div>
+                )}
+              </div>
+              {customer.notes && (
+                <div className="mt-3">
+                  <p className="text-[10px] text-gray-500 font-medium flex items-center gap-0.5">備考 <SourceBadge source="manual" /></p>
+                  <p className="text-sm text-gray-300 bg-yellow-900/20 p-2 rounded mt-0.5">{customer.notes}</p>
                 </div>
               )}
-              {customer.reference_media && (
-                <div>
-                  <p className="text-[10px] text-gray-500 font-medium flex items-center gap-0.5">参考メディア <SourceBadge source="sync" /></p>
-                  <p className="text-gray-300 mt-0.5">{customer.reference_media}</p>
-                </div>
-              )}
-              {customer.hobbies && (
-                <div>
-                  <p className="text-[10px] text-gray-500 font-medium flex items-center gap-0.5">趣味・特技 <SourceBadge source="sync" /></p>
-                  <p className="text-gray-300 mt-0.5">{customer.hobbies}</p>
-                </div>
-              )}
-              {customer.behavioral_traits && (
-                <div>
-                  <p className="text-[10px] text-gray-500 font-medium flex items-center gap-0.5">行動特性 <SourceBadge source="manual" /></p>
-                  <p className="text-gray-300 mt-0.5">{customer.behavioral_traits}</p>
+              {customer.caution_notes && (
+                <div className="mt-3">
+                  <p className="text-[10px] text-gray-500 font-medium flex items-center gap-0.5">注意事項 <SourceBadge source="manual" /></p>
+                  <p className="text-sm text-gray-300 bg-red-900/20 p-2 rounded mt-0.5">{customer.caution_notes}</p>
                 </div>
               )}
             </div>
-            {customer.notes && (
-              <div className="mt-3">
-                <p className="text-[10px] text-gray-500 font-medium flex items-center gap-0.5">備考 <SourceBadge source="manual" /></p>
-                <p className="text-sm text-gray-300 bg-yellow-900/20 p-2 rounded mt-0.5">{customer.notes}</p>
-              </div>
-            )}
-            {customer.caution_notes && (
-              <div className="mt-3">
-                <p className="text-[10px] text-gray-500 font-medium flex items-center gap-0.5">注意事項 <SourceBadge source="manual" /></p>
-                <p className="text-sm text-gray-300 bg-red-900/20 p-2 rounded mt-0.5">{customer.caution_notes}</p>
-              </div>
-            )}
           </div>
 
           {/* 1回限りフォーム（入塾フォーム・営業報告） */}
@@ -1426,21 +1520,32 @@ export function CustomerDetailClient({
           )}
 
           {/* 活動履歴 */}
-          <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-4">
-            <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">活動履歴</h2>
-            <div className="space-y-3">
+          <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 overflow-hidden transition-shadow duration-200 hover:shadow-[0_2px_8px_rgba(0,0,0,0.5)]">
+            <div className="flex items-center justify-between px-5 py-3 border-b border-white/[0.06]">
+              <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                <span className="w-[3px] h-3.5 bg-brand rounded-sm" />
+                活動履歴
+              </h2>
+            </div>
+            <div className="p-5">
               {activities.length === 0 && (
-                <p className="text-sm text-gray-400">活動履歴がありません</p>
+                <p className="text-sm text-gray-600 italic">活動履歴がありません</p>
               )}
-              {activities.map((activity) => (
-                <div key={activity.id} className="border-l-2 border-brand/30 pl-3 py-1">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <span className="text-xs font-medium bg-surface-elevated text-gray-300 px-2 py-0.5 rounded">{activity.activity_type}</span>
-                    <span className="text-xs text-gray-400">{formatDate(activity.created_at)}</span>
-                  </div>
-                  <p className="text-sm text-gray-300">{activity.content}</p>
+              {activities.length > 0 && (
+                <div className="relative pl-6">
+                  <div className="absolute left-[7px] top-2 bottom-2 w-px bg-white/[0.08]" />
+                  {activities.map((activity, i) => (
+                    <div key={activity.id} className="relative pb-4 last:pb-0">
+                      <div className={`absolute left-[-17px] top-1.5 w-2 h-2 rounded-full border-2 ${i === 0 ? 'border-brand bg-brand/20' : 'border-white/20 bg-surface-card'}`} />
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <span className="text-xs font-medium bg-surface-elevated text-gray-300 px-2 py-0.5 rounded">{activity.activity_type}</span>
+                        <span className="text-xs text-gray-400">{formatDate(activity.created_at)}</span>
+                      </div>
+                      <p className="text-sm text-gray-300">{activity.content}</p>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
           </div>
         </div>
