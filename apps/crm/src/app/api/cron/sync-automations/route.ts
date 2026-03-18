@@ -301,41 +301,42 @@ export async function GET(request: Request) {
       let rowsSkippedDup = 0;
       const extraTargets: ExtraTarget[] = automation.extra_targets || [];
       const botUsername: string | undefined = automation.bot_username || undefined;
-
-      // 重複排除: 過去に送信済みの行ハッシュを取得
-      const { data: recentLogs } = await db
-        .from("automation_logs")
-        .select("details")
-        .eq("automation_id", automation.id)
-        .eq("status", "success")
-        .order("id", { ascending: false })
-        .limit(10);
-      const sentHashes = new Set<string>();
-      for (const log of (recentLogs || [])) {
-        const hashes = (log.details as Record<string, unknown>)?.sent_hashes;
-        if (Array.isArray(hashes)) {
-          for (const h of hashes) sentHashes.add(h as string);
-        }
-      }
       const newSentHashes: string[] = [];
 
       for (const row of dataRows) {
         if (row.every((cell: string) => !cell || cell.trim() === "")) continue;
 
-        // 行データのハッシュで重複チェック（タイムスタンプ列を除外）
+        // 行データのハッシュ生成（タイムスタンプ列を除外）
         const rowForHash: Record<string, string> = {};
         headers.forEach((h: string, i: number) => {
           if (i < row.length && row[i] && h !== "タイムスタンプ") rowForHash[h] = row[i];
         });
         const rowHash = crypto.createHash("md5").update(JSON.stringify(rowForHash)).digest("hex");
-        if (sentHashes.has(rowHash)) {
-          rowsSkippedDup++;
-          continue;
+
+        // ★ DBレベルの重複チェック: automation_sent_hashesテーブルで確認
+        // UNIQUE(automation_id, row_hash)制約により、同じハッシュは絶対に二重送信されない
+        const { error: insertHashError } = await db
+          .from("automation_sent_hashes")
+          .insert({
+            automation_id: automation.id,
+            row_hash: rowHash,
+          });
+
+        if (insertHashError) {
+          // UNIQUE制約違反 = 既に送信済み → スキップ
+          if (insertHashError.code === "23505") {
+            rowsSkippedDup++;
+            continue;
+          }
+          // その他のエラーはログ出力して続行
+          console.error(
+            `[sync-automations] ${automation.name}: hash insert error:`,
+            insertHashError
+          );
         }
-        sentHashes.add(rowHash);
-        newSentHashes.push(rowHash);
 
         newRowsCount++;
+        newSentHashes.push(rowHash);
 
         // 行データをkey-valueに変換
         const rowData: Record<string, string> = {};
@@ -373,8 +374,8 @@ export async function GET(request: Request) {
         }
       }
 
-      // last_synced_row更新 — 楽観ロック: 処理開始時の値と一致する場合のみ更新
-      // （同時実行で別リクエストが先に更新していた場合、上書きしない）
+      // ★ last_synced_row更新: 楽観ロック → 失敗時は強制更新
+      // ハッシュテーブルがあるので、last_synced_rowが多少ずれても重複送信は防げる
       const totalRow = automation.last_synced_row + dataRows.length;
 
       const { data: updateResult, error: updateError } = await db
@@ -393,10 +394,28 @@ export async function GET(request: Request) {
           `[sync-automations] ${automation.name}: last_synced_row更新失敗:`,
           updateError
         );
+        // 楽観ロック失敗時は強制更新（ハッシュテーブルで重複は防がれる）
+        await db
+          .from("automations")
+          .update({
+            last_synced_row: totalRow,
+            last_triggered_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", automation.id);
       } else if (!updateResult || updateResult.length === 0) {
         console.warn(
-          `[sync-automations] ${automation.name}: last_synced_row競合検出 (expected=${automation.last_synced_row}, target=${totalRow}). 別プロセスが先に更新済み。スキップ。`
+          `[sync-automations] ${automation.name}: last_synced_row競合検出 → 強制更新 (target=${totalRow})`
         );
+        // ★ 競合時も強制更新。ハッシュテーブルが重複を防ぐので安全
+        await db
+          .from("automations")
+          .update({
+            last_synced_row: totalRow,
+            last_triggered_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", automation.id);
       } else {
         console.log(
           `[sync-automations] ${automation.name}: last_synced_row ${automation.last_synced_row} → ${totalRow}`
