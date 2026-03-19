@@ -100,6 +100,9 @@ export async function generateInvoicePdf(params: DocParams): Promise<Buffer> {
     "　50万円を控除した残額に2分の1を乗じた金額によって所得税額を計算することとされて",
     "　いますので、他の一時所得とされる所得との合計額が90万円を超えない限り、",
     "　確定申告をする必要はありません。",
+    "",
+    "※当社負担による受講料補填は、当社エージェント活用促進のために当社が独自で行っている",
+    "　キャンペーンに基づくものとなります。",
   ];
   for (const line of notes) {
     page.drawText(line, { x: colX, y, size: 7, font, color: gray });
