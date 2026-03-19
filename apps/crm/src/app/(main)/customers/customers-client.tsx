@@ -646,6 +646,8 @@ export function CustomersClient() {
       { key: "offer_rank", label: "内定ランク", width: 70, align: "center" as const, category: "agent",
         render: (c) => {
           if (!isAgentCustomer(c)) return <span className="text-gray-600 text-xs">-</span>;
+          const jobStatus = jobStatusOverrides[c.id] !== undefined ? jobStatusOverrides[c.id] : (c.agent?.job_search_status || "");
+          if (jobStatus === "終了") return <span className="text-gray-600 text-xs">-</span>;
           const rank = offerRankOverrides[c.id] !== undefined ? offerRankOverrides[c.id] : (c.agent?.offer_rank || "");
           const meta = rank ? OFFER_RANK_META[rank] : null;
           return (
@@ -677,6 +679,8 @@ export function CustomersClient() {
       { key: "ai_offer_probability", label: "AI内定確度", width: 75, align: "center" as const, category: "agent",
         render: (c) => {
           if (!isAgentCustomer(c)) return <span className="text-gray-600 text-xs">-</span>;
+          const js = jobStatusOverrides[c.id] !== undefined ? jobStatusOverrides[c.id] : (c.agent?.job_search_status || "");
+          if (js === "終了") return <span className="text-gray-600 text-xs">-</span>;
           const prob = c.agent?.ai_offer_probability;
           if (prob == null) return <span className="text-gray-600 text-xs">-</span>;
           const color = prob >= 60 ? "text-emerald-400" : prob >= 30 ? "text-amber-400" : "text-gray-400";
@@ -706,27 +710,18 @@ export function CustomersClient() {
       { key: "rev_agent", label: "人材見込", width: 90, align: "right" as const, category: "sales",
         render: (c) => {
           if (!isAgentCustomer(c)) return <span className="text-gray-600 text-xs">-</span>;
-          const v = calcExpectedReferralFee(c);
+          const v = calcAgentProjectedRevenue(c);
           return v > 0 ? <span className="text-xs">{formatCurrency(v)}</span> : <span className="text-gray-600 text-xs">-</span>;
-        }, sortValue: (c) => isAgentCustomer(c) ? calcExpectedReferralFee(c) : 0 },
+        }, sortValue: (c) => calcAgentProjectedRevenue(c) },
 
       { key: "rev_eq", label: "=", width: 16, align: "center" as const, category: "sales",
         render: () => <span className="text-gray-500 text-[10px]">=</span> },
 
       { key: "rev_total", label: "見込含む売上", width: 100, align: "right" as const, category: "sales",
         render: (c) => {
-          const school = getSchoolRevenue(c);
-          const agent = isAgentCustomer(c) ? calcExpectedReferralFee(c) : 0;
-          const subsidyOk = subsidyOverrides[c.id] ?? c.contract?.subsidy_eligible;
-          const subsidy = subsidyOk ? getSubsidyAmount(c) : 0;
-          const total = school + agent + subsidy;
+          const total = calcSalesProjection(c);
           return total > 0 ? <span className="font-semibold text-brand text-xs">{formatCurrency(total)}</span> : "-";
-        }, sortValue: (c) => {
-          const school = getSchoolRevenue(c);
-          const agent = isAgentCustomer(c) ? calcExpectedReferralFee(c) : 0;
-          const subsidyOk = subsidyOverrides[c.id] ?? c.contract?.subsidy_eligible;
-          return school + agent + (subsidyOk ? getSubsidyAmount(c) : 0);
-        } },
+        }, sortValue: (c) => calcSalesProjection(c) },
       { key: "expected_ltv", label: "見込みLTV", width: 100, align: "right" as const, category: "sales",
         render: (c) => {
           const ltv = calcExpectedLTV(c);

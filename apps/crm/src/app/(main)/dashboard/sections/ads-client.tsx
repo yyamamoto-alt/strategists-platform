@@ -102,7 +102,7 @@ export function AdsSummaryClient({ weeklyRows, monthlyRows, campaignDaily = [] }
         ...vals,
       }));
     return { stackedData: data, campaignNames: camps };
-  }, [campaignDaily, periodRange, granularity]);
+  }, [campaignDaily, granularity]);
 
   // Period totals
   const totals = rows.reduce((acc, r) => ({
