@@ -101,8 +101,7 @@ export async function generateInvoicePdf(params: DocParams): Promise<Buffer> {
     "　いますので、他の一時所得とされる所得との合計額が90万円を超えない限り、",
     "　確定申告をする必要はありません。",
     "",
-    "※当社負担による受講料補填は、当社エージェント活用促進のために当社が独自で行っている",
-    "　キャンペーンに基づくものとなります。",
+    "※当社負担による受講料補填は、当社が独自で行っているキャンペーンに基づくものとなります。",
   ];
   for (const line of notes) {
     page.drawText(line, { x: colX, y, size: 7, font, color: gray });
