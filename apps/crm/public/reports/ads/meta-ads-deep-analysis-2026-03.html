@@ -391,34 +391,158 @@
   </div>
 </section>
 
+<!-- SECTION: CRITICAL DISCOVERY -->
+<section>
+  <div class="container">
+    <h2>重大発見: 「日2万 - 既卒」は停止すべきではなかった</h2>
+
+    <div class="alert alert-danger">
+      <strong>Meta管理画面のMicroCVに騙されていた</strong>
+      「日2万 - 既卒」キャンペーンはMeta管理画面上のCPA（¥23,021〜¥284,393）が悪く見えたため停止された。しかし<strong>CRM実データで測定するとROAS 3.85xで目標の3xを超えていた</strong>。一方、現在稼働中の新規B/CはMeta管理画面上のCPAが良く見える（¥4,157）が、CRM実データではROAS 1.13xで大幅に劣る。
+    </div>
+
+    <h3>CRM実データによるキャンペーン比較</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>指標</th>
+          <th class="num">日2万 - 既卒<br>(2025/08-12)</th>
+          <th class="num">新規B/C<br>(2026/01-03)</th>
+          <th>差異</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>広告費</td>
+          <td class="num">¥1,240,131</td>
+          <td class="num">¥667,364</td>
+          <td>-</td>
+        </tr>
+        <tr>
+          <td>社会人申込</td>
+          <td class="num good">27名</td>
+          <td class="num">11名</td>
+          <td class="good">既卒が2.5倍</td>
+        </tr>
+        <tr>
+          <td>学生申込</td>
+          <td class="num good">4名（13%）</td>
+          <td class="num bad">18名（62%）</td>
+          <td class="good">既卒は学生を排除できていた</td>
+        </tr>
+        <tr>
+          <td>社会人成約</td>
+          <td class="num good">8名</td>
+          <td class="num">1名</td>
+          <td class="good">既卒が8倍</td>
+        </tr>
+        <tr>
+          <td><strong>社会人成約率</strong></td>
+          <td class="num good">29.6%</td>
+          <td class="num bad">9.1%</td>
+          <td class="good">既卒が3.3倍</td>
+        </tr>
+        <tr>
+          <td><strong>社会人1成約CPA</strong></td>
+          <td class="num good">¥155,016</td>
+          <td class="num bad">¥667,364</td>
+          <td class="good">既卒が4.3倍効率的</td>
+        </tr>
+        <tr>
+          <td>社会人売上</td>
+          <td class="num good">¥4,770,600</td>
+          <td class="num">¥751,636</td>
+          <td>-</td>
+        </tr>
+        <tr style="background:#E8F5E9;font-weight:700">
+          <td><strong>ROAS</strong></td>
+          <td class="num good">3.85x</td>
+          <td class="num bad">1.13x</td>
+          <td class="good">既卒が目標3x超え</td>
+        </tr>
+        <tr>
+          <td>Meta管理画面CPA</td>
+          <td class="num bad">¥23,021〜¥284,393</td>
+          <td class="num good">¥4,157〜¥6,265</td>
+          <td class="bad">← これに騙された</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>なぜ「既卒」が優れていたか ― ターゲティング設定の違い</h3>
+    <table>
+      <thead>
+        <tr><th>設定項目</th><th>日2万 - 既卒</th><th>新規B/C</th><th>影響</th></tr>
+      </thead>
+      <tbody>
+        <tr class="highlight">
+          <td><strong>年齢下限</strong></td>
+          <td class="good">25歳</td>
+          <td class="bad">18歳</td>
+          <td>既卒は学生をほぼ排除 → 社会人集中</td>
+        </tr>
+        <tr>
+          <td><strong>interests</strong></td>
+          <td class="good">経営コンサルタント</td>
+          <td class="bad">なし</td>
+          <td>既卒はコンサル志望者に絞り込み</td>
+        </tr>
+        <tr>
+          <td><strong>カスタムオーディエンス</strong></td>
+          <td class="good">成約見込ターゲット + 類似3%</td>
+          <td class="bad">なし</td>
+          <td>既卒は既存成約者に似たユーザーに配信</td>
+        </tr>
+        <tr>
+          <td><strong>除外オーディエンス</strong></td>
+          <td class="good">設定あり</td>
+          <td class="bad">なし</td>
+          <td>既卒はCV済みユーザーを除外</td>
+        </tr>
+        <tr>
+          <td><strong>Advantage+ 拡張</strong></td>
+          <td>不明（旧形式）</td>
+          <td class="bad">ON</td>
+          <td>新規B/CはMetaが勝手にターゲット外に配信</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="alert alert-success">
+      <strong>結論: 「既卒」キャンペーンのターゲティングが正解だった</strong>
+      <p>Meta管理画面のMicroCVベースのCPAは信頼できない指標。CRM実データ（成約・売上）で測ると、「既卒」キャンペーンはROAS 3.85xで極めて優秀だった。新規B/Cは見かけのCPAが良いだけで、実際の成約にはほとんど繋がっていない。</p>
+    </div>
+  </div>
+</section>
+
 <!-- SECTION 8: DIAGNOSIS -->
 <section>
   <div class="container">
     <h2>診断: なぜ成約が減ったのか</h2>
 
     <div class="finding">
-      <h4>問題1: 学生CVの混在（最大の問題）</h4>
+      <h4>問題1: 「既卒」の正しいターゲティングを捨て、学生を呼ぶ設定に切り替えた</h4>
       <span class="impact impact-high">影響: 特大</span>
-      <p>age_min=18で有名大学ターゲティング → 大量の在学生に配信。</p>
+      <p>「既卒」キャンペーン（age_min=25、interests・カスタムオーディエンス設定済み）を停止し、新規B/C（age_min=18、Advantage+ ON、オーディエンスなし）に切り替えたことで、広告配信先が社会人→学生にシフト。</p>
       <p style="background:#FFF3E0;padding:12px;border-radius:4px;margin-top:8px">
         <strong>CRM実データによる事実:</strong><br>
-        - FB広告経由の全申込154名のうち<strong>92名（60%）が学生</strong><br>
-        - 学生成約率: <strong>3.3%</strong>（3/92名）、社会人成約率: <strong>18.0%</strong>（11/61名）<br>
-        - 社会人1成約あたりCPA: ¥3,300,783 ÷ 11名 = <strong>¥300,071</strong><br>
-        - 学生を排除し同じ予算で社会人のみに配信すれば、成約数は大幅に改善見込み
+        - 既卒キャンペーン: 学生比率 <strong>13%</strong>、社会人成約率 <strong>29.6%</strong>、ROAS <strong>3.85x</strong><br>
+        - 新規B/C: 学生比率 <strong>62%</strong>、社会人成約率 <strong>9.1%</strong>、ROAS <strong>1.13x</strong><br>
+        - Meta管理画面のMicroCVベースCPAに騙されて、正しい判断ができていなかった
       </p>
     </div>
 
     <div class="finding">
-      <h4>問題2: クリエイティブ疲弊</h4>
-      <span class="impact impact-high">影響: 大</span>
-      <p>「下黒1」クリエイティブは2ヶ月間でCPAが80%悪化。フリクエンシーの上昇（1.6→2.4）が示す通り、同じユーザーへの重複表示が増加。新規リーチが減り、既に見た人への再表示が増えている。</p>
+      <h4>問題2: MicroCVの罠 ― Meta管理画面の数字を信じてはいけない</h4>
+      <span class="impact impact-high">影響: 特大</span>
+      <p>2025年10月にMicroCV最適化でCV 104件/CPA¥2,913を記録。しかしCRMでは同月の実申込はわずか7名、成約2名。<strong>Meta管理画面のCV数と実際の申込数は15倍の乖離</strong>。</p>
+      <p>この乖離がキャンペーンの正しい評価を不可能にし、本来優秀だった「既卒」キャンペーンを停止させる誤判断に繋がった。</p>
     </div>
 
     <div class="finding">
-      <h4>問題3: Advantage+ Audience による制御不能</h4>
-      <span class="impact impact-medium">影響: 中</span>
-      <p><code>advantage_audience: 1</code> はMetaに「ターゲティング設定はあくまで参考値」と伝える設定。つまり年齢18-65のeducation_schools指定は、Metaが必要と判断すれば無視される。この結果、意図しないユーザーへの配信が拡大する。</p>
+      <h4>問題3: クリエイティブ疲弊</h4>
+      <span class="impact impact-high">影響: 大</span>
+      <p>「下黒1」クリエイティブは2ヶ月間でCPAが80%悪化。フリクエンシーの上昇（1.6→2.4）が示す通り、同じユーザーへの重複表示が増加。新規リーチが減り、既に見た人への再表示が増えている。</p>
     </div>
 
     <div class="finding">
@@ -428,9 +552,9 @@
     </div>
 
     <div class="finding">
-      <h4>問題5: MicroCVの罠（2025年10月の教訓）</h4>
+      <h4>問題5: Advantage+ Audience による制御不能</h4>
       <span class="impact impact-medium">影響: 中</span>
-      <p>2025年10月にMicroCV最適化でCV 104件/CPA¥2,913を記録したが、翌月には37件に激減。MicroCVは「ボタンクリック」等の軽いアクションであり、<strong>実際の申込とは大きな乖離</strong>がある。数値が良く見えるだけで成約に繋がらないオプティマイゼーションになっていた。</p>
+      <p><code>advantage_audience: 1</code> はMetaに「ターゲティング設定はあくまで参考値」と伝える設定。つまり年齢18-65のeducation_schools指定は、Metaが必要と判断すれば無視される。「既卒」キャンペーンではこの設定がなかった。</p>
     </div>
   </div>
 </section>
@@ -442,22 +566,29 @@
 
     <ol class="rec-list">
       <li>
-        <strong>年齢下限を25歳に変更 <span class="priority-tag priority-critical">最優先</span></strong>
-        <p>全アクティブ広告セット（下黒、しおりさん_広告画像、詩織さん画像）の<code>age_min</code>を18→25に変更。これだけで広告費の約40%を社会人に再配分できる。</p>
-        <p><strong>予測効果:</strong> 社会人CPAが表面上¥5,654→実質¥4,000前後に改善。月間社会人CV数 +50%。</p>
-        <p><strong>実施方法:</strong> Meta広告マネージャーで各広告セットの編集画面から年齢設定を変更。学習期間リセットに1-2日要するが、中長期的なROI改善は明確。</p>
+        <strong>「日2万 - 既卒」キャンペーンを再開する（クリエイティブ差替え） <span class="priority-tag priority-critical">最優先</span></strong>
+        <p>CRM実データでROAS 3.85xを記録していた「既卒」キャンペーンを再開する。ターゲティング設定（age_min=25、interests、カスタムオーディエンス、除外リスト）はそのまま活かし、クリエイティブのみ新しいものに差し替える。</p>
+        <p><strong>根拠:</strong> 既卒キャンペーンの社会人成約率29.6%は新規B/Cの3.3倍。同じ広告費で3倍以上の成約が見込める。</p>
+        <p><strong>クリエイティブ:</strong> 旧FB画像シリーズは疲弊済み。新規B/Cで使用中の「下黒1」「黒背景（しおりさん）」を流用、または新規制作。</p>
       </li>
 
       <li>
-        <strong>Advantage+ Audience をOFFにする <span class="priority-tag priority-critical">最優先</span></strong>
-        <p>各広告セットの「Advantage+オーディエンス」をOFFに変更。これによりMetaの自動拡張を止め、指定したターゲティング条件を厳密に適用させる。</p>
-        <p><strong>注意:</strong> 一度にすべて変更すると学習がリセットされるため、1広告セットずつ段階的に変更することを推奨。</p>
+        <strong>新規B/Cのターゲティングを「既卒」に合わせる <span class="priority-tag priority-critical">最優先</span></strong>
+        <p>再開ではなく既存キャンペーンを改修する場合: 新規B/Cの全広告セットに以下の変更を適用。</p>
+        <ul style="margin-left:24px;font-size:14px">
+          <li><code>age_min</code>を18→<strong>25</strong>に変更</li>
+          <li>Advantage+ AudienceをOFFに変更</li>
+          <li>カスタムオーディエンス（成約見込ターゲット + 類似3%）を追加</li>
+          <li>CV済みユーザーの除外リストを追加</li>
+          <li>interests「経営コンサルタント」を追加</li>
+        </ul>
+        <p><strong>注意:</strong> 一度にすべて変更すると学習がリセットされるため、段階的に変更することを推奨。</p>
       </li>
 
       <li>
-        <strong>CV済みユーザーの除外リスト作成 <span class="priority-tag priority-high">高</span></strong>
-        <p>Pixelで取得したCV済みユーザーのカスタムオーディエンスを作成し、全広告セットの除外リストに追加。再コンバージョンへの無駄な配信を防止。</p>
-        <p>旧キャンペーン（「Conversion - デモグラのみ」）では<code>excluded_custom_audiences</code>が設定されていたが、現在アクティブな広告セットには<strong>設定されていない</strong>。</p>
+        <strong>今後の判断基準をMeta管理画面CPA → CRM成約ベースに切り替え <span class="priority-tag priority-critical">最優先</span></strong>
+        <p>Meta管理画面のMicroCVベースCPAでキャンペーン評価を行うと、「CPA良い=学生大量」「CPA悪い=社会人中心」という逆転現象が起きる。</p>
+        <p><strong>正しいKPI:</strong> CRM帰属チャネルの「社会人申込数」「社会人成約数」「ROAS」。月次でこれらを確認し、キャンペーンの継続/停止を判断する。</p>
       </li>
 
       <li>
@@ -483,32 +614,8 @@
       </li>
 
       <li>
-        <strong>新規Cの予算を新規Bに集中 <span class="priority-tag priority-medium">中</span></strong>
-        <p>新規BのCPA¥4,157 vs 新規Cの¥6,265。同じターゲティング・クリエイティブで30-50%の差がある。新規Cの予算の一部を新規Bに移管して効率化。</p>
-        <p><strong>ただし注意:</strong> 完全停止ではなくA/Bテストの受け皿として低予算維持が望ましい。</p>
-      </li>
-
-      <li>
-        <strong>インタレストターゲティングの追加テスト <span class="priority-tag priority-medium">中</span></strong>
-        <p>現在のeducation_schoolsターゲティングは学生/卒業生の区別ができない。追加で以下のインタレストターゲティングをテスト:</p>
-        <ul style="margin-left:24px;font-size:14px">
-          <li>「転職」「キャリアチェンジ」関連インタレスト</li>
-          <li>「経営コンサルティング」（旧「上黒」広告セットで使用実績あり）</li>
-          <li>「戦略コンサルティング」「BCG」「マッキンゼー」等のファーム名</li>
-          <li>LinkedIn / ビズリーチ等の転職サービス利用者</li>
-        </ul>
-      </li>
-
-      <li>
-        <strong>類似オーディエンスの再構築 <span class="priority-tag priority-medium">中</span></strong>
-        <p>旧キャンペーンでは「成約に繋がりそうなターゲット」「サイト訪問者の3%類似」のカスタムオーディエンスが使われていたが、現在のアクティブ広告セットには未設定。</p>
-        <p><strong>提案:</strong> CRMの<strong>成約済み社会人</strong>顧客データでカスタムオーディエンスを作成し、その類似オーディエンス（1-3%）をテスト。</p>
-      </li>
-
-      <li>
         <strong>コンバージョン定義の見直し <span class="priority-tag priority-medium">中</span></strong>
-        <p>現在の<code>offsite_conversion.fb_pixel_custom</code>が具体的に何を計測しているか再確認が必要。「ページ閲覧」「ボタンクリック」レベルのMicroCVと「申込フォーム送信」では意味が全く異なる。</p>
-        <p>理想的には「申込フォーム送信」のみをCVイベントとして設定し、それに最適化をかける。</p>
+        <p>現在の<code>offsite_conversion.fb_pixel_custom</code>が具体的に何を計測しているか再確認が必要。MicroCVと実際の申込の15倍の乖離を埋めるため、「申込フォーム送信」のみをCVイベントとして設定し、それに最適化をかけることを検討。</p>
       </li>
     </ol>
   </div>
@@ -519,10 +626,10 @@
   <div class="container">
     <h2>改善インパクトシミュレーション</h2>
 
-    <h3>現状 vs 改善後の予測（月間）</h3>
+    <h3>現状（新規B/C） vs 改善後（既卒ターゲティング適用）の予測（月間）</h3>
     <table>
       <thead>
-        <tr><th>指標</th><th class="num">現状実績（月平均）</th><th class="num">改善後予測</th><th class="num">変化</th></tr>
+        <tr><th>指標</th><th class="num">現状: 新規B/C</th><th class="num">改善後予測</th><th class="num">根拠</th></tr>
       </thead>
       <tbody>
         <tr>
@@ -532,33 +639,33 @@
           <td class="num">同額</td>
         </tr>
         <tr>
-          <td>CRM実申込（月平均）</td>
-          <td class="num">約14名</td>
-          <td class="num">約10名</td>
-          <td class="num">学生排除で減少</td>
+          <td>社会人申込（月平均）</td>
+          <td class="num bad">約4名</td>
+          <td class="num good">約6名</td>
+          <td class="num">既卒実績: ¥46K/社会人申込</td>
         </tr>
         <tr>
-          <td>うち社会人申込</td>
-          <td class="num">約6名</td>
-          <td class="num good">約10名</td>
-          <td class="num good">+67%（予算集中）</td>
+          <td>学生申込（月平均）</td>
+          <td class="num bad">約6名</td>
+          <td class="num good">約1名</td>
+          <td class="num">既卒実績: 学生比率13%</td>
         </tr>
         <tr>
           <td><strong>社会人成約（月平均）</strong></td>
-          <td class="num">約1名</td>
-          <td class="num good">約1.8名</td>
-          <td class="num good">+80%</td>
+          <td class="num bad">約0.3名</td>
+          <td class="num good">約1.6名</td>
+          <td class="num">既卒実績: 成約率29.6%</td>
         </tr>
         <tr>
           <td><strong>月間売上見込</strong></td>
-          <td class="num">¥575,000</td>
-          <td class="num good">¥1,035,000</td>
-          <td class="num good">+80%</td>
+          <td class="num bad">¥251,000</td>
+          <td class="num good">¥920,000</td>
+          <td class="num">成約率×平均LTV ¥575K</td>
         </tr>
-        <tr>
+        <tr style="background:#E8F5E9;font-weight:700">
           <td><strong>ROAS</strong></td>
-          <td class="num bad">1.92x</td>
-          <td class="num good">3.5x</td>
+          <td class="num bad">1.13x</td>
+          <td class="num good">3.3x</td>
           <td class="num good">目標3x達成</td>
         </tr>
       </tbody>
@@ -566,7 +673,7 @@
 
     <div class="alert alert-success">
       <strong>改善の本質</strong>
-      CRM実データが証明: 社会人成約率18.0% vs 学生3.3%。社会人の平均LTV ¥575,058。<strong>同じ広告費で社会人申込を増やせば、ROAS 3x達成は現実的</strong>。「CVの量」ではなく「成約する社会人の申込数」が唯一の正しいKPI。
+      これは「予測」ではなく<strong>「既卒キャンペーンで実際に達成していた実績の再現」</strong>。2025年8-12月に既卒キャンペーンが月平均¥248Kの広告費でROAS 3.85xを実現していた事実がある。同じターゲティング設定を適用すれば、同等の成果が再現可能。
     </div>
   </div>
 </section>
