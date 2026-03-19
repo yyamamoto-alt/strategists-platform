@@ -74,22 +74,25 @@ export function YouTubeDashboardClient({ weeklyViews, weeklyMinutes, videoInfoMa
 
   // 週ごとのトップN: 各週でトップNに入ったことがある動画を全てトラッキング
   const { chartData, topVideoIds } = useMemo(() => {
-    // 全ユニークなトップN動画IDを収集（週ごとに算出）
-    const globalTopSet = new Set<string>();
+    // 全期間合計でトップN動画を算出
+    const totals = new Map<string, number>();
     for (const w of weeklyData) {
-      const entries = Object.entries(w.videoBreakdown).sort((a, b) => b[1] - a[1]);
-      for (let i = 0; i < Math.min(TOP_N, entries.length); i++) {
-        globalTopSet.add(entries[i][0]);
+      for (const [vid, count] of Object.entries(w.videoBreakdown)) {
+        totals.set(vid, (totals.get(vid) || 0) + count);
       }
     }
-    const topIds = Array.from(globalTopSet);
+    const topIds = Array.from(totals.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, TOP_N)
+      .map(([id]) => id);
+    const topSet = new Set(topIds);
 
     // チャートデータ作成
     const data = weeklyData.map(w => {
       const row: Record<string, number | string> = { week: w.weekKey };
       let others = 0;
       for (const [vid, count] of Object.entries(w.videoBreakdown)) {
-        if (globalTopSet.has(vid)) {
+        if (topSet.has(vid)) {
           row[vid] = count;
         } else {
           others += count;
