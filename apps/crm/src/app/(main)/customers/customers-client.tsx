@@ -30,6 +30,8 @@ import {
   isShinsotsu,
   getSubsidyAmount,
   getSchoolRevenue,
+  AGENT_CATEGORIES,
+  OFFER_RANK_META,
 } from "@/lib/calc-fields";
 import {
   SpreadsheetTable,
@@ -286,6 +288,7 @@ export function CustomersClient() {
   const [stageOverrides, setStageOverrides] = useState<Record<string, string>>({});
   const [subsidyOverrides, setSubsidyOverrides] = useState<Record<string, boolean>>({});
   const [agentExcludeOverrides, setAgentExcludeOverrides] = useState<Record<string, string>>({});
+  const [jobStatusOverrides, setJobStatusOverrides] = useState<Record<string, string>>({});
   const [callMemoOverrides, setCallMemoOverrides] = useState<Record<string, string>>({});
 
   const [totalCount, setTotalCount] = useState(0);
@@ -365,23 +368,64 @@ export function CustomersClient() {
     }
   }, []);
 
-  // エージェント利用トグル（利用 ⇔ 非対象）
-  const handleAgentToggle = useCallback(async (customerId: string, currentCategory: string | null | undefined) => {
-    const newVal = currentCategory === "非対象" ? "" : "非対象";
-    setAgentExcludeOverrides((prev) => ({ ...prev, [customerId]: newVal }));
+  // 人材紹介区分ドロップダウン更新
+  const handleReferralCategoryChange = useCallback(async (customerId: string, value: string) => {
+    const newVal = value || null;
+    setAgentExcludeOverrides((prev) => ({ ...prev, [customerId]: value }));
     try {
       const res = await fetch(`/api/customers/${customerId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contract: { referral_category: newVal || null } }),
+        body: JSON.stringify({ contract: { referral_category: newVal } }),
       });
       if (!res.ok) {
         setAgentExcludeOverrides((prev) => { const next = { ...prev }; delete next[customerId]; return next; });
-        alert("エージェント利用ステータス更新に失敗しました");
+        alert("人材紹介区分の更新に失敗しました");
       }
     } catch {
       setAgentExcludeOverrides((prev) => { const next = { ...prev }; delete next[customerId]; return next; });
-      alert("エージェント利用ステータス更新に失敗しました");
+      alert("人材紹介区分の更新に失敗しました");
+    }
+  }, []);
+
+  // 活動状況ドロップダウン更新
+  const handleJobStatusChange = useCallback(async (customerId: string, value: string) => {
+    const newVal = value || null;
+    setJobStatusOverrides((prev) => ({ ...prev, [customerId]: value }));
+    try {
+      const res = await fetch(`/api/customers/${customerId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ agent: { job_search_status: newVal } }),
+      });
+      if (!res.ok) {
+        setJobStatusOverrides((prev) => { const next = { ...prev }; delete next[customerId]; return next; });
+        alert("活動状況の更新に失敗しました");
+      }
+    } catch {
+      setJobStatusOverrides((prev) => { const next = { ...prev }; delete next[customerId]; return next; });
+      alert("活動状況の更新に失敗しました");
+    }
+  }, []);
+
+  // 内定ランク更新
+  const [offerRankOverrides, setOfferRankOverrides] = useState<Record<string, string>>({});
+  const handleOfferRankChange = useCallback(async (customerId: string, value: string) => {
+    const newVal = value || null;
+    setOfferRankOverrides((prev) => ({ ...prev, [customerId]: value }));
+    try {
+      const res = await fetch(`/api/customers/${customerId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ agent: { offer_rank: newVal } }),
+      });
+      if (!res.ok) {
+        setOfferRankOverrides((prev) => { const next = { ...prev }; delete next[customerId]; return next; });
+        alert("内定ランクの更新に失敗しました");
+      }
+    } catch {
+      setOfferRankOverrides((prev) => { const next = { ...prev }; delete next[customerId]; return next; });
+      alert("内定ランクの更新に失敗しました");
     }
   }, []);
 
@@ -530,43 +574,108 @@ export function CustomersClient() {
           return eligible ? "対象" : eligible === false ? "非対象" : "";
         } },
 
-      // ─── 経歴 ───
-      { key: "career_history", label: "経歴", width: 500,
-        render: (c) => <Truncated value={c.career_history} width={500} /> },
-
-      // ─── 人材紹介利用 ───
-      { key: "is_agent_customer", label: "エージェント利用", width: 50, align: "center" as const,
+      // ─── 人材紹介区分（ドロップダウン） ───
+      { key: "referral_category", label: "人材紹介区分", width: 100, category: "agent",
         render: (c) => {
-          const catOverride = agentExcludeOverrides[c.id];
-          const cat = catOverride !== undefined ? catOverride : c.contract?.referral_category;
-          const excluded = cat === "非対象";
-          if (excluded) {
-            return (
-              <button
-                onClick={(e) => { e.stopPropagation(); handleAgentToggle(c.id, "非対象"); }}
-                className="text-[10px] text-gray-500 cursor-pointer hover:opacity-80"
-                title="クリックで解除"
-              >非対象</button>
-            );
-          }
-          const isAgent = cat === "フル利用" || cat === "一部利用";
+          const cat = agentExcludeOverrides[c.id] !== undefined ? agentExcludeOverrides[c.id] : (c.contract?.referral_category || "");
           return (
-            <span className="flex items-center gap-0.5">
-              <span className={isAgent ? "text-purple-400 text-sm" : "text-gray-600 text-sm"}>
-                {isAgent ? "\u2611" : "\u2610"}
-              </span>
-              <button
-                onClick={(e) => { e.stopPropagation(); handleAgentToggle(c.id, cat); }}
-                className="text-[9px] text-gray-600 cursor-pointer hover:text-gray-400"
-                title="非対象に設定"
-              >✕</button>
-            </span>
+            <select
+              value={cat}
+              onChange={(e) => { e.stopPropagation(); handleReferralCategoryChange(c.id, e.target.value); }}
+              className="bg-transparent border border-white/10 rounded px-1 py-0.5 text-[10px] text-gray-300 focus:outline-none focus:ring-1 focus:ring-brand cursor-pointer w-full"
+            >
+              <option value="">未設定</option>
+              <option value="フル利用">フル利用</option>
+              <option value="一部利用">一部利用</option>
+              <option value="自社">自社</option>
+              <option value="該当">該当</option>
+              <option value="非対象">非対象</option>
+              <option value="なし">なし</option>
+              <option value="スクールのみ">スクールのみ</option>
+            </select>
           );
         },
         sortValue: (c) => {
-          const cat = agentExcludeOverrides[c.id] !== undefined ? agentExcludeOverrides[c.id] : c.contract?.referral_category;
-          return cat === "非対象" ? -1 : (cat === "フル利用" || cat === "一部利用") ? 1 : 0;
+          const cat = agentExcludeOverrides[c.id] !== undefined ? agentExcludeOverrides[c.id] : (c.contract?.referral_category || "");
+          return AGENT_CATEGORIES.has(cat) ? 1 : cat === "非対象" ? -1 : 0;
+        },
+        filterValue: (c) => {
+          const cat = agentExcludeOverrides[c.id] !== undefined ? agentExcludeOverrides[c.id] : (c.contract?.referral_category || "");
+          return cat || "未設定";
         } },
+
+      // ─── 活動状況（ドロップダウン） ───
+      { key: "job_search_status", label: "活動状況", width: 85, category: "agent",
+        render: (c) => {
+          const status = jobStatusOverrides[c.id] !== undefined ? jobStatusOverrides[c.id] : (c.agent?.job_search_status || "");
+          return (
+            <select
+              value={status}
+              onChange={(e) => { e.stopPropagation(); handleJobStatusChange(c.id, e.target.value); }}
+              className={`border border-white/10 rounded px-1 py-0.5 text-[10px] font-medium focus:outline-none focus:ring-1 focus:ring-brand cursor-pointer w-full ${
+                status === "活動中" ? "bg-brand/20 text-brand border-brand/30" :
+                status === "終了" ? "bg-gray-800 text-gray-400 border-gray-700" :
+                "bg-transparent text-gray-500"
+              }`}
+            >
+              <option value="">未設定</option>
+              <option value="活動中">活動中</option>
+              <option value="終了">終了</option>
+            </select>
+          );
+        },
+        sortValue: (c) => {
+          const s = jobStatusOverrides[c.id] !== undefined ? jobStatusOverrides[c.id] : (c.agent?.job_search_status || "");
+          return s === "活動中" ? 2 : s === "終了" ? 1 : 0;
+        },
+        filterValue: (c) => {
+          const s = jobStatusOverrides[c.id] !== undefined ? jobStatusOverrides[c.id] : (c.agent?.job_search_status || "");
+          return s || "未設定";
+        } },
+
+      // ─── 内定ランク（インライン編集） ───
+      { key: "offer_rank", label: "内定ランク", width: 70, align: "center" as const, category: "agent",
+        render: (c) => {
+          const rank = offerRankOverrides[c.id] !== undefined ? offerRankOverrides[c.id] : (c.agent?.offer_rank || "");
+          const meta = rank ? OFFER_RANK_META[rank] : null;
+          return (
+            <select
+              value={rank}
+              onChange={(e) => { e.stopPropagation(); handleOfferRankChange(c.id, e.target.value); }}
+              className={`border rounded px-1 py-0.5 text-[10px] font-bold focus:outline-none focus:ring-1 focus:ring-brand cursor-pointer w-full ${
+                meta ? `${meta.color} ${meta.bgColor} border-white/20` : "bg-transparent text-gray-500 border-white/10"
+              }`}
+            >
+              <option value="">-</option>
+              {Object.entries(OFFER_RANK_META).map(([k, v]) => (
+                <option key={k} value={k}>{k} ({v.label})</option>
+              ))}
+            </select>
+          );
+        },
+        sortValue: (c) => {
+          const rank = offerRankOverrides[c.id] !== undefined ? offerRankOverrides[c.id] : (c.agent?.offer_rank || "");
+          const order: Record<string, number> = { S: 5, A: 4, B: 3, C: 2, D: 1 };
+          return order[rank] || 0;
+        },
+        filterValue: (c) => {
+          const rank = offerRankOverrides[c.id] !== undefined ? offerRankOverrides[c.id] : (c.agent?.offer_rank || "");
+          return rank || "未設定";
+        } },
+
+      // ─── AI内定確度 ───
+      { key: "ai_offer_probability", label: "AI内定確度", width: 75, align: "center" as const, category: "agent",
+        render: (c) => {
+          const prob = c.agent?.ai_offer_probability;
+          if (prob == null) return <span className="text-gray-600 text-xs">-</span>;
+          const color = prob >= 60 ? "text-emerald-400" : prob >= 30 ? "text-amber-400" : "text-gray-400";
+          return <span className={`text-xs font-medium ${color}`}>{prob}%</span>;
+        },
+        sortValue: (c) => c.agent?.ai_offer_probability || 0 },
+
+      // ─── 経歴 ───
+      { key: "career_history", label: "経歴", width: 500,
+        render: (c) => <Truncated value={c.career_history} width={500} /> },
 
       // ═══ 売上（計算式表示） ═══
       { key: "confirmed_amount", label: "確定売上", width: 90, align: "right" as const, category: "sales",
@@ -861,7 +970,7 @@ export function CustomersClient() {
           : "-" },
       { key: "agent_memo", label: "メモ", width: 160,        render: (c) => c.agent?.agent_memo || "-" },
     ],
-    [attributionMap, stageOverrides, handleStageUpdate, subsidyOverrides, handleSubsidyToggle, agentExcludeOverrides, handleAgentToggle, callMemoOverrides, handleCallMemoSave]
+    [attributionMap, stageOverrides, handleStageUpdate, subsidyOverrides, handleSubsidyToggle, agentExcludeOverrides, handleReferralCategoryChange, jobStatusOverrides, handleJobStatusChange, offerRankOverrides, handleOfferRankChange, callMemoOverrides, handleCallMemoSave]
   );
 
   // 日程未確タブ: データフィルタリング
