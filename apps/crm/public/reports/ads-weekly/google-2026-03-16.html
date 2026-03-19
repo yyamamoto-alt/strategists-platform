@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Google Ads Weekly Report - 3/16〜3/20</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=Noto+Serif+JP:wght@700&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Noto Sans JP', sans-serif; background: #fff; color: #222; line-height: 1.7; }
+  .container { max-width: 1100px; margin: 0 auto; padding: 24px; }
+  h1, h2, h3 { font-family: 'Noto Serif JP', serif; color: #000; }
+  h1 { font-size: 32px; margin-bottom: 8px; }
+  h2 { font-size: 24px; margin: 40px 0 16px; padding-left: 16px; border-left: 4px solid #A62B17; }
+  h3 { font-size: 20px; margin: 24px 0 12px; }
+  .header { background: #1A1A1A; color: #fff; padding: 40px 0; margin-bottom: 32px; }
+  .header .container { display: flex; align-items: center; justify-content: space-between; }
+  .header h1 { color: #fff; font-size: 28px; }
+  .header .period { color: #ccc; font-size: 16px; }
+  .header .logo { font-size: 24px; font-weight: 700; color: #A62B17; }
+  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 32px; }
+  .kpi-card { background: #F5F5F5; border-top: 3px solid #A62B17; padding: 20px; border-radius: 4px; }
+  .kpi-card .label { font-size: 13px; color: #555; margin-bottom: 4px; }
+  .kpi-card .value { font-size: 28px; font-weight: 700; color: #000; }
+  .kpi-card .sub { font-size: 13px; color: #555; margin-top: 4px; }
+  .kpi-card .change { font-size: 13px; margin-top: 4px; }
+  .kpi-card .change.down { color: #c62828; }
+  .kpi-card .change.up { color: #2e7d32; }
+  .kpi-card .change.alert { color: #e65100; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
+  th { background: #1A1A1A; color: #fff; padding: 10px 12px; text-align: left; font-weight: 500; }
+  td { padding: 10px 12px; border-bottom: 1px solid #E0E0E0; }
+  tr:nth-child(even) { background: #F5F5F5; }
+  .highlight { color: #A62B17; font-weight: 700; }
+  .kpt-section { margin: 32px 0; }
+  .kpt-box { background: #F5F5F5; border-left: 4px solid #A62B17; padding: 20px; margin: 12px 0; border-radius: 0 4px 4px 0; }
+  .kpt-box h3 { margin: 0 0 8px; font-size: 18px; }
+  .kpt-box ul { padding-left: 20px; }
+  .kpt-box li { margin: 6px 0; }
+  .summary-box { background: #F5F5F5; border-left: 4px solid #A62B17; padding: 24px; margin: 24px 0; font-size: 16px; border-radius: 0 4px 4px 0; }
+  .alert-box { background: #fce4ec; border-left: 4px solid #c62828; padding: 20px; margin: 24px 0; border-radius: 0 4px 4px 0; }
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 12px; font-weight: 500; }
+  .tag-confirmed { background: #e8f5e9; color: #2e7d32; }
+  .tag-maturing { background: #fff3e0; color: #e65100; }
+  .tag-none { background: #fce4ec; color: #c62828; }
+  .roas-table td.positive { color: #2e7d32; font-weight: 700; }
+  .roas-table td.zero { color: #999; }
+  .trend-table { margin: 24px 0; }
+  .trend-table th { font-size: 13px; }
+  .trend-table td { font-size: 13px; }
+  footer { text-align: center; padding: 32px; color: #555; font-size: 13px; border-top: 1px solid #E0E0E0; margin-top: 48px; }
+  @media (max-width: 768px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="container">
+    <div>
+      <div class="logo">S Strategists</div>
+      <h1>Google Ads 週次レポート</h1>
+      <div class="period">2026/3/16 (月) 〜 3/20 (金) ｜ Week 4（5日間・途中経過）</div>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+
+<h2>結論・概要</h2>
+<div class="alert-box">
+  <strong>緊急課題:</strong> 5日間で費用¥68,496。7日換算で¥95,894に相当し、4週間で最高の支出ペース。一方、CRM帰属の申込は3週連続0件。CPCは¥110と初週¥16の約7倍に急騰。コスト効率が著しく悪化しており、キャンペーン構成の根本的見直しが必要。
+</div>
+
+<div class="summary-box">
+  「複製版_ABテスト用」が費用¥56,637（全体の82.7%）を占め、CPC¥119と高額。「完全一致_オリジナル」はCPC¥79。4週間のトレンドを見ると、「1/22A」停止後にコスト構造が根本的に変化し、同じ予算で獲得できるクリック数が大幅に減少。Google広告経由のCRM申込は初週の1件以降途絶えている。
+</div>
+
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div class="label">費用（5日間）</div>
+    <div class="value">&yen;68,496</div>
+    <div class="change down">7日換算 &yen;95,894</div>
+  </div>
+  <div class="kpi-card">
+    <div class="label">インプレッション</div>
+    <div class="value">1,269</div>
+    <div class="change down">前週比 -26.4%</div>
+  </div>
+  <div class="kpi-card">
+    <div class="label">クリック</div>
+    <div class="value">625</div>
+    <div class="change down">前週比 -10.8%</div>
+  </div>
+  <div class="kpi-card">
+    <div class="label">CPC</div>
+    <div class="value highlight">&yen;110</div>
+    <div class="change down">前週比 +74.6%</div>
+  </div>
+  <div class="kpi-card">
+    <div class="label">CTR</div>
+    <div class="value">49.3%</div>
+    <div class="change alert">引き続き異常値</div>
+  </div>
+  <div class="kpi-card">
+    <div class="label">申込</div>
+    <div class="value">0<span class="sub">件</span></div>
+    <div class="change down">3週連続0件</div>
+  </div>
+  <div class="kpi-card">
+    <div class="label">日程確定</div>
+    <div class="value">0<span class="sub">件</span></div>
+  </div>
+  <div class="kpi-card">
+    <div class="label">成約 / ROAS</div>
+    <div class="value">-</div>
+    <div class="sub">売上 &yen;0</div>
+  </div>
+</div>
+
+<!-- 4週間トレンド -->
+<h2>4週間トレンド分析</h2>
+<table class="trend-table">
+  <thead>
+    <tr><th>指標</th><th>Week1 (2/23-3/1)</th><th>Week2 (3/2-3/8)</th><th>Week3 (3/9-3/15)</th><th>Week4 (3/16-3/20)*</th><th>トレンド</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>費用</td><td>&yen;30,843</td><td>&yen;28,277</td><td>&yen;44,469</td><td>&yen;68,496</td><td class="highlight">急増</td></tr>
+    <tr><td>Imp</td><td>63,328</td><td>51,888</td><td>1,724</td><td>1,269</td><td class="highlight">急減</td></tr>
+    <tr><td>Click</td><td>1,984</td><td>1,392</td><td>701</td><td>625</td><td class="highlight">減少</td></tr>
+    <tr><td>CPC</td><td>&yen;16</td><td>&yen;20</td><td>&yen;63</td><td>&yen;110</td><td class="highlight">急騰</td></tr>
+    <tr><td>CTR</td><td>3.13%</td><td>2.68%</td><td>40.7%</td><td>49.3%</td><td class="highlight">構造変化</td></tr>
+    <tr><td>申込</td><td>1</td><td>0</td><td>0</td><td>0</td><td class="highlight">低迷</td></tr>
+    <tr><td>ROAS</td><td>24.4x</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+  </tbody>
+</table>
+<div class="summary-box">
+  *Week4は5日間のため、7日換算では費用約¥96kに達する見込み。4週間の合計費用¥172,085に対し、CRM帰属の申込は1件のみ（CPA ¥172,085）。ただし初週の成約でROAS 4.37xは確保。
+</div>
+
+<h2>ROAS成熟分析</h2>
+<table class="roas-table">
+  <thead>
+    <tr><th>週</th><th>費用</th><th>申込</th><th>成約</th><th>売上</th><th>ROAS</th><th>成熟度</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>2/17-2/23</td><td>&yen;35,234</td><td>1</td><td>1</td><td class="positive">&yen;751,636</td><td class="positive">21.3x</td><td><span class="tag tag-confirmed">確定</span></td></tr>
+    <tr><td>2/24-3/2</td><td>&yen;32,545</td><td>0</td><td>0</td><td class="zero">&yen;0</td><td class="zero">0x</td><td><span class="tag tag-maturing">未成熟</span></td></tr>
+    <tr><td>3/3-3/9</td><td>&yen;22,628</td><td>0</td><td>0</td><td class="zero">&yen;0</td><td class="zero">0x</td><td><span class="tag tag-maturing">未成熟</span></td></tr>
+    <tr><td>3/10-3/16</td><td>&yen;50,986</td><td>0</td><td>0</td><td class="zero">&yen;0</td><td class="zero">0x</td><td><span class="tag tag-maturing">未成熟</span></td></tr>
+    <tr><td style="font-weight:700">3/17-3/20（今週）</td><td>&yen;41,395</td><td>0</td><td>0</td><td class="zero">&yen;0</td><td class="zero">0x</td><td><span class="tag tag-maturing">未成熟</span></td></tr>
+  </tbody>
+</table>
+
+<h2>キャンペーン別分析</h2>
+<table>
+  <thead>
+    <tr><th>キャンペーン</th><th>状態</th><th>Imp</th><th>Click</th><th>費用</th><th>CPC</th><th>CTR</th><th>CV</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>複製版_ABテスト用</strong></td><td>ENABLED</td><td>993</td><td>474</td><td>&yen;56,637</td><td>&yen;119</td><td>47.7%</td><td>1.0</td></tr>
+    <tr><td><strong>完全一致_オリジナル</strong></td><td>ENABLED</td><td>276</td><td>151</td><td>&yen;11,859</td><td>&yen;79</td><td>54.7%</td><td>12.0</td></tr>
+    <tr><td>1/22A</td><td>PAUSED</td><td>0</td><td>0</td><td>&yen;0</td><td>-</td><td>-</td><td>0</td></tr>
+  </tbody>
+</table>
+<div class="summary-box">
+  <strong>分析:</strong> 「複製版_ABテスト用」が費用の82.7%を占めるが、CV 1件のみ。CPC¥119は「完全一致_オリジナル」の¥79より50%高い。一方「完全一致_オリジナル」はCV 12件を獲得しておりCV効率が圧倒的に高い。費用対効果の観点から、「複製版_ABテスト用」の費用配分見直しが急務。
+</div>
+
+<h2>広告グループ別分析</h2>
+<table>
+  <thead>
+    <tr><th>キャンペーン</th><th>広告グループ</th><th>Imp</th><th>Click</th><th>費用</th><th>CTR</th><th>CV</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>複製版_ABテスト用</td><td><strong>社会人向け</strong></td><td>907</td><td>468</td><td>&yen;55,547</td><td>51.6%</td><td>1.0</td></tr>
+    <tr><td>完全一致_オリジナル</td><td><strong>社会人向け</strong></td><td>276</td><td>151</td><td>&yen;11,859</td><td>54.7%</td><td>12.0</td></tr>
+    <tr><td>複製版_ABテスト用</td><td>グループ3:ケース面接</td><td>81</td><td>6</td><td>&yen;1,090</td><td>7.41%</td><td>0</td></tr>
+    <tr><td>複製版_ABテスト用</td><td>グループ1:ファーム名+対策形</td><td>5</td><td>0</td><td>&yen;0</td><td>0%</td><td>0</td></tr>
+  </tbody>
+</table>
+
+<h2>検索語句分析</h2>
+<table>
+  <thead>
+    <tr><th>検索語句</th><th>Imp</th><th>Click</th><th>費用</th><th>CV</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>ケース 面接</td><td>30</td><td>1</td><td>&yen;561</td><td>0</td></tr>
+    <tr><td>ココナラ ケース 面接</td><td>8</td><td>0</td><td>&yen;0</td><td>0</td></tr>
+    <tr><td>ケース 面接 対策</td><td>6</td><td>0</td><td>&yen;0</td><td>0</td></tr>
+    <tr><td>アクセンチュア 面接 対策</td><td>5</td><td>1</td><td>&yen;216</td><td>0</td></tr>
+    <tr><td>ケース 面接 アクセンチュア</td><td>5</td><td>0</td><td>&yen;0</td><td>0</td></tr>
+  </tbody>
+</table>
+<div class="summary-box">
+  検索語句レポートの合計Imp/Clickが非常に少なく、625クリックの大部分は検索語句として記録されない配信面からのもの。検索広告としてのパフォーマンスは微弱。「ココナラ ケース 面接」は競合サービスへの流出意図を示す検索語句で、除外キーワード候補。
+</div>
+
+<h2>プロセス評価</h2>
+<div class="summary-box">
+  <strong>前週のTry振り返り:</strong><br>
+  1. CTR 40%超の原因特定 → <span class="highlight">未実施</span>。今週も49.3%で継続<br>
+  2. 「1/22A」再開/同等キャンペーン立ち上げ → <span class="highlight">未実施</span><br>
+  3. 配信面の確認 → <span class="highlight">未実施</span><br>
+  4. LP改善 → 未確認<br>
+  3週連続でTryの実行が滞っている。広告運用の改善サイクルが回っていない状態。
+</div>
+
+<h2>結果評価</h2>
+<div class="alert-box">
+  <strong>深刻な状況:</strong><br>
+  - 4週間合計: 費用¥172,085、申込1件、CPA¥172,085<br>
+  - ただし初週成約の売上¥751,636があるため、4週間ROAS 4.37x<br>
+  - Week3-4の2週間だけで費用¥112,965を使い、申込0件<br>
+  - CPC¥16→¥110（6.9倍）に急騰。同予算でのクリック数は約1/7に<br>
+  - 「1/22A」停止後のキャンペーン構成が費用対効果の悪化を招いている
+</div>
+
+<h2>KPT</h2>
+<div class="kpt-section">
+  <div class="kpt-box">
+    <h3>Keep</h3>
+    <ul>
+      <li>「完全一致_オリジナル」はCV 12件を獲得し、費用対効果は「複製版」より高い</li>
+      <li>4週間全体ではROAS 4.37xと、投資金額に対するリターンは確保できている</li>
+      <li>ブランド指名検索「strategist」関連の検索意図は依然として存在</li>
+    </ul>
+  </div>
+  <div class="kpt-box">
+    <h3>Problem</h3>
+    <ul>
+      <li>CPC¥110は持続不可能な水準。初週¥16からの急騰は構造的問題</li>
+      <li>申込0件が3週連続。Google広告のパイプライン貢献がストップ</li>
+      <li>「複製版_ABテスト用」が費用の83%を消費しているがCV効率が悪い</li>
+      <li>CTR 49%の異常値放置が3週目。配信面の品質管理ができていない</li>
+      <li>前週のTryが3週連続で未実施。改善PDCAが回っていない</li>
+      <li>「ココナラ」等の競合サービス検索への無駄な広告表示</li>
+    </ul>
+  </div>
+  <div class="kpt-box">
+    <h3>Try</h3>
+    <ul>
+      <li>「複製版_ABテスト用」の日予算を大幅削減し、「完全一致_オリジナル」に配分をシフト</li>
+      <li>「1/22A」または同等の低CPC検索キャンペーンを即時再開。検索広告のリーチ回復が最優先</li>
+      <li>「複製版_ABテスト用」のPmax/ディスプレイ配信面を確認し、検索のみに限定</li>
+      <li>「ココナラ」等の競合名を除外キーワードに追加</li>
+      <li>Google広告経由の申込が3週間途絶えている原因をLP側から検証（フォーム動線・オファー内容）</li>
+      <li>週次の広告運用レビューMTGを設定し、Tryの実行を確実にする仕組みを作る</li>
+    </ul>
+  </div>
+</div>
+
+<!-- 4週間サマリー -->
+<h2>4週間総括</h2>
+<div class="summary-box">
+  <strong>4週間合計:</strong> 費用¥172,085 / 申込1件 / 成約1件 / 売上¥751,636 / ROAS 4.37x<br><br>
+  初週は「1/22A」の低CPC大量配信で効率的に集客し、1件の成約・ROAS 24.4xを記録。しかしWeek3以降の「1/22A」停止と「複製版_ABテスト用」への移行で、CPCが7倍に急騰、費用は増加したが申込は途絶えた。<br><br>
+  <strong>最重要アクション:</strong> 低CPC検索キャンペーンの再構築と、高CPC非検索配信の抑制。現状の費用配分では持続可能な獲得ができない。
+</div>
+
+</div>
+
+<footer>&copy; Strategists ｜ Google Ads Weekly Report ｜ Week 4 (3/16〜3/20) ※5日間途中経過</footer>
+
+</body>
+</html>

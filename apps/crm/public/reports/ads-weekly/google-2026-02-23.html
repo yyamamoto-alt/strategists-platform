@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Google Ads Weekly Report - 2/23〜3/1</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=Noto+Serif+JP:wght@700&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Noto Sans JP', sans-serif; background: #fff; color: #222; line-height: 1.7; }
+  .container { max-width: 1100px; margin: 0 auto; padding: 24px; }
+  h1, h2, h3 { font-family: 'Noto Serif JP', serif; color: #000; }
+  h1 { font-size: 32px; margin-bottom: 8px; }
+  h2 { font-size: 24px; margin: 40px 0 16px; padding-left: 16px; border-left: 4px solid #A62B17; }
+  h3 { font-size: 20px; margin: 24px 0 12px; }
+  .header { background: #1A1A1A; color: #fff; padding: 40px 0; margin-bottom: 32px; }
+  .header .container { display: flex; align-items: center; justify-content: space-between; }
+  .header h1 { color: #fff; font-size: 28px; }
+  .header .period { color: #ccc; font-size: 16px; }
+  .header .logo { font-size: 24px; font-weight: 700; color: #A62B17; }
+  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 32px; }
+  .kpi-card { background: #F5F5F5; border-top: 3px solid #A62B17; padding: 20px; border-radius: 4px; }
+  .kpi-card .label { font-size: 13px; color: #555; margin-bottom: 4px; }
+  .kpi-card .value { font-size: 28px; font-weight: 700; color: #000; }
+  .kpi-card .sub { font-size: 13px; color: #555; margin-top: 4px; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
+  th { background: #1A1A1A; color: #fff; padding: 10px 12px; text-align: left; font-weight: 500; }
+  td { padding: 10px 12px; border-bottom: 1px solid #E0E0E0; }
+  tr:nth-child(even) { background: #F5F5F5; }
+  .highlight { color: #A62B17; font-weight: 700; }
+  .kpt-section { margin: 32px 0; }
+  .kpt-box { background: #F5F5F5; border-left: 4px solid #A62B17; padding: 20px; margin: 12px 0; border-radius: 0 4px 4px 0; }
+  .kpt-box h3 { margin: 0 0 8px; font-size: 18px; }
+  .kpt-box ul { padding-left: 20px; }
+  .kpt-box li { margin: 6px 0; }
+  .summary-box { background: #F5F5F5; border-left: 4px solid #A62B17; padding: 24px; margin: 24px 0; font-size: 16px; border-radius: 0 4px 4px 0; }
+  .roas-table td.positive { color: #2e7d32; font-weight: 700; }
+  .roas-table td.zero { color: #999; }
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 12px; font-weight: 500; }
+  .tag-confirmed { background: #e8f5e9; color: #2e7d32; }
+  .tag-maturing { background: #fff3e0; color: #e65100; }
+  .tag-none { background: #fce4ec; color: #c62828; }
+  footer { text-align: center; padding: 32px; color: #555; font-size: 13px; border-top: 1px solid #E0E0E0; margin-top: 48px; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  @media (max-width: 768px) { .two-col { grid-template-columns: 1fr; } .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="container">
+    <div>
+      <div class="logo">S Strategists</div>
+      <h1>Google Ads 週次レポート</h1>
+      <div class="period">2026/2/23 (月) 〜 3/1 (日) ｜ Week 1</div>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- 1. 結論・概要 -->
+<h2>結論・概要</h2>
+<div class="summary-box">
+  主力キャンペーン「1/22A」がインプレッション62,698、クリック1,930と大量のトラフィックを獲得。CRM帰属で1件の申込・成約が確認され、売上¥751,636（スクール+補助金+人材紹介）を記録。ROAS 24.4xと非常に高い水準。CPC¥16の低コストで効率的な集客が実現できた週。
+</div>
+
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div class="label">費用</div>
+    <div class="value">&yen;30,843</div>
+  </div>
+  <div class="kpi-card">
+    <div class="label">インプレッション</div>
+    <div class="value">63,328</div>
+  </div>
+  <div class="kpi-card">
+    <div class="label">クリック</div>
+    <div class="value">1,984</div>
+  </div>
+  <div class="kpi-card">
+    <div class="label">CPC</div>
+    <div class="value">&yen;16</div>
+  </div>
+  <div class="kpi-card">
+    <div class="label">CTR</div>
+    <div class="value">3.13%</div>
+  </div>
+  <div class="kpi-card">
+    <div class="label">申込</div>
+    <div class="value">1<span class="sub">件</span></div>
+    <div class="sub">CPA &yen;30,843</div>
+  </div>
+  <div class="kpi-card">
+    <div class="label">日程確定</div>
+    <div class="value">1<span class="sub">件</span></div>
+  </div>
+  <div class="kpi-card">
+    <div class="label">成約 / ROAS</div>
+    <div class="value highlight">24.4x</div>
+    <div class="sub">売上 &yen;751,636</div>
+  </div>
+</div>
+
+<!-- 2. ROAS成熟分析 -->
+<h2>ROAS成熟分析</h2>
+<p style="color:#555;margin-bottom:12px;">過去3ヶ月のGoogle広告経由のCRM帰属データ。成約・売上が確定するまでタイムラグがある。</p>
+<table class="roas-table">
+  <thead>
+    <tr><th>週</th><th>費用</th><th>申込</th><th>成約</th><th>売上</th><th>ROAS</th><th>成熟度</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>12/23-12/29</td><td>-</td><td>1</td><td>1</td><td class="positive">&yen;620,000</td><td class="positive">-</td><td><span class="tag tag-confirmed">確定</span></td></tr>
+    <tr><td>12/30-1/5</td><td>-</td><td>0</td><td>0</td><td class="zero">&yen;0</td><td class="zero">-</td><td><span class="tag tag-none">なし</span></td></tr>
+    <tr><td>1/6-1/12</td><td>-</td><td>0</td><td>0</td><td class="zero">&yen;0</td><td class="zero">-</td><td><span class="tag tag-none">なし</span></td></tr>
+    <tr><td>1/13-1/19</td><td>&yen;17,879</td><td>0</td><td>0</td><td class="zero">&yen;0</td><td class="zero">0x</td><td><span class="tag tag-none">なし</span></td></tr>
+    <tr><td>1/20-1/26</td><td>&yen;33,361</td><td>0</td><td>0</td><td class="zero">&yen;0</td><td class="zero">0x</td><td><span class="tag tag-none">なし</span></td></tr>
+    <tr><td>1/27-2/2</td><td>&yen;33,658</td><td>2</td><td>2</td><td class="positive">&yen;522,000</td><td class="positive">15.5x</td><td><span class="tag tag-confirmed">確定</span></td></tr>
+    <tr><td>2/3-2/9</td><td>&yen;46,479</td><td>0</td><td>0</td><td class="zero">&yen;0</td><td class="zero">0x</td><td><span class="tag tag-none">なし</span></td></tr>
+    <tr><td>2/10-2/16</td><td>&yen;40,311</td><td>2</td><td>2</td><td class="positive">&yen;977,626</td><td class="positive">24.3x</td><td><span class="tag tag-confirmed">確定</span></td></tr>
+    <tr><td>2/17-2/23</td><td>&yen;35,234</td><td>1</td><td>1</td><td class="positive">&yen;751,636</td><td class="positive">21.3x</td><td><span class="tag tag-confirmed">確定</span></td></tr>
+  </tbody>
+</table>
+
+<!-- 3. キャンペーン別分析 -->
+<h2>キャンペーン別分析</h2>
+<table>
+  <thead>
+    <tr><th>キャンペーン</th><th>状態</th><th>Imp</th><th>Click</th><th>費用</th><th>CPC</th><th>CTR</th><th>CV</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>1/22A</strong></td><td>PAUSED</td><td>62,698</td><td>1,930</td><td>&yen;27,105</td><td>&yen;14</td><td>3.08%</td><td>70.0</td></tr>
+    <tr><td><strong>完全一致_オリジナル</strong></td><td>ENABLED</td><td>630</td><td>54</td><td>&yen;3,738</td><td>&yen;69</td><td>8.57%</td><td>4.5</td></tr>
+    <tr><td>複製版_ABテスト用</td><td>ENABLED</td><td>0</td><td>0</td><td>&yen;0</td><td>-</td><td>-</td><td>0</td></tr>
+  </tbody>
+</table>
+<div class="summary-box">
+  <strong>分析:</strong> 「1/22A」が費用の87.9%を占め、CPC¥14と非常に安価。ただしCTR 3.08%は平均的。「完全一致_オリジナル」はCTR 8.57%と高く、ターゲティング精度が高い。CPC¥69と高めだが、CV効率では良好。「複製版_ABテスト用」はまだ稼働していない。
+</div>
+
+<!-- 4. 広告グループ別分析 -->
+<h2>広告グループ別分析</h2>
+<table>
+  <thead>
+    <tr><th>キャンペーン</th><th>広告グループ</th><th>Imp</th><th>Click</th><th>費用</th><th>CTR</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>1/22A</td><td>Ad group 1</td><td>62,698</td><td>1,930</td><td>&yen;27,105</td><td>3.08%</td></tr>
+    <tr><td>完全一致_オリジナル</td><td>社会人向け</td><td>630</td><td>54</td><td>&yen;3,738</td><td>8.57%</td></tr>
+  </tbody>
+</table>
+<div class="summary-box">
+  「社会人向け」グループのCTR 8.57%は非常に優秀。ターゲティングが明確で、検索意図とのマッチ度が高い。
+</div>
+
+<!-- 5. キーワード別分析 -->
+<h2>キーワード別分析</h2>
+<h3>上位パフォーマー</h3>
+<table>
+  <thead>
+    <tr><th>キーワード</th><th>マッチ</th><th>Imp</th><th>Click</th><th>費用</th><th>CTR</th><th>CV</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>戦略コンサル 対策</td><td>PHRASE</td><td>193</td><td>16</td><td>&yen;1,708</td><td>8.29%</td><td>2.0</td></tr>
+    <tr><td>戦コン 面接</td><td>PHRASE</td><td>21</td><td>4</td><td>&yen;369</td><td>19.0%</td><td>2.5</td></tr>
+    <tr><td>フェルミ推定 対策</td><td>EXACT</td><td>148</td><td>6</td><td>&yen;1,095</td><td>4.05%</td><td>0</td></tr>
+  </tbody>
+</table>
+<div class="summary-box">
+  「戦コン 面接」がCTR 19%・CV 2.5と最高効率。「戦略コンサル 対策」も安定的にCVを獲得。「フェルミ推定 対策」はImpは多いがCV未発生で改善余地あり。
+</div>
+
+<!-- 6. クリエイティブ別分析 -->
+<h2>クリエイティブ別分析</h2>
+<table>
+  <thead>
+    <tr><th>キャンペーン</th><th>広告グループ</th><th>Imp</th><th>Click</th><th>CTR</th><th>CV</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>1/22A</td><td>Ad group 1</td><td>62,698</td><td>1,930</td><td>3.08%</td><td>70.0</td></tr>
+    <tr><td>完全一致_オリジナル</td><td>社会人向け</td><td>630</td><td>54</td><td>8.57%</td><td>4.5</td></tr>
+  </tbody>
+</table>
+<p style="color:#555;margin-top:8px;">「完全一致_オリジナル」の広告には「戦略コンサル内定獲得プログラム」「元MBB面接官監修プログラム」等のヘッドラインがGOOD評価。「受講生内定率82%」「戦コン内定率82%ケース面接指導」はPENDING評価で改善検討の余地あり。</p>
+
+<!-- 7. 検索語句分析 -->
+<h2>検索語句分析</h2>
+<h3>注目の検索語句</h3>
+<table>
+  <thead>
+    <tr><th>検索語句</th><th>Imp</th><th>Click</th><th>費用</th><th>CV</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>アクセンチュア ケース 面接</td><td>38</td><td>5</td><td>&yen;71</td><td>0</td></tr>
+    <tr><td>アクセンチュア 面接 対策</td><td>20</td><td>5</td><td>&yen;90</td><td>0</td></tr>
+    <tr><td><strong class="highlight">strategist ケース 面接</strong></td><td>12</td><td>2</td><td>&yen;271</td><td>2.5</td></tr>
+    <tr><td>戦略 コンサル ケース 面接 対策</td><td>1</td><td>1</td><td>&yen;255</td><td>0</td></tr>
+    <tr><td>戦略 コンサル 内定 塾</td><td>8</td><td>0</td><td>&yen;0</td><td>0</td></tr>
+  </tbody>
+</table>
+<div class="summary-box">
+  <strong>重要発見:</strong> 「strategist ケース 面接」が2クリックでCV 2.5と指名検索の高い効率。ブランド認知が一定程度あることを示唆。アクセンチュア関連のファーム名検索が多く、ファーム別対策を訴求するLPが効果的と考えられる。
+</div>
+
+<!-- 8. プロセス評価 -->
+<h2>プロセス評価</h2>
+<div class="summary-box">
+  今週は分析の起点となる初回週のため、過去のTryに対する評価は対象外。「1/22A」キャンペーンの大量配信と「完全一致_オリジナル」の精密ターゲティングという2軸運用が確認できた。
+</div>
+
+<!-- 9. 結果評価 -->
+<h2>結果評価</h2>
+<div class="summary-box">
+  <strong>ポジティブ:</strong> 1件の成約で¥751,636の売上。ROAS 24.4xは直近3ヶ月でも上位の水準。CPC¥16という低コストでの大量集客も良好。<br>
+  <strong>注意点:</strong> 申込1件/週というペースは、月間の必要申込数を考えると十分とは言えない。次週以降の申込獲得が課題。
+</div>
+
+<!-- 10. KPT -->
+<h2>KPT</h2>
+<div class="kpt-section">
+  <div class="kpt-box">
+    <h3>Keep（継続すべきこと）</h3>
+    <ul>
+      <li>「1/22A」キャンペーンのCPC¥14は非常に効率的。低コスト大量配信を維持</li>
+      <li>「完全一致_オリジナル」のCTR 8.57%は高精度ターゲティングの証。現行キーワード設定を維持</li>
+      <li>「strategist ケース 面接」等の指名検索がCV化。ブランド認知施策が機能している</li>
+      <li>CRM帰属で1件成約・ROAS 24.4xを記録。投資効率は十分</li>
+    </ul>
+  </div>
+  <div class="kpt-box">
+    <h3>Problem（課題）</h3>
+    <ul>
+      <li>「フェルミ推定 対策」はImp 148あるがCV 0。インプレッション対比のCV効率が低い</li>
+      <li>「複製版_ABテスト用」がENABLEDだがImp/Click共に0。設定不備の可能性</li>
+      <li>申込数が週1件ペース。広告の量は十分だがLP側のCV率改善が必要な可能性</li>
+    </ul>
+  </div>
+  <div class="kpt-box">
+    <h3>Try（次週試すこと）</h3>
+    <ul>
+      <li>「複製版_ABテスト用」の配信状況を確認し、テスト稼働を開始する</li>
+      <li>アクセンチュア関連の検索語句が多いため、ファーム別LPへの誘導を検討</li>
+      <li>「フェルミ推定 対策」キーワードの広告文やLP適合性を見直す</li>
+      <li>「1/22A」のCVデータ（70件）の内訳を確認。マイクロCVの価値を精査する</li>
+    </ul>
+  </div>
+</div>
+
+</div>
+
+<footer>&copy; Strategists ｜ Google Ads Weekly Report ｜ Week 1 (2/23〜3/1)</footer>
+
+</body>
+</html>

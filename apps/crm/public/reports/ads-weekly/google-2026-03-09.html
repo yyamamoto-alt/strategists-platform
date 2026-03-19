@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Google Ads Weekly Report - 3/9〜3/15</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=Noto+Serif+JP:wght@700&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Noto Sans JP', sans-serif; background: #fff; color: #222; line-height: 1.7; }
+  .container { max-width: 1100px; margin: 0 auto; padding: 24px; }
+  h1, h2, h3 { font-family: 'Noto Serif JP', serif; color: #000; }
+  h1 { font-size: 32px; margin-bottom: 8px; }
+  h2 { font-size: 24px; margin: 40px 0 16px; padding-left: 16px; border-left: 4px solid #A62B17; }
+  h3 { font-size: 20px; margin: 24px 0 12px; }
+  .header { background: #1A1A1A; color: #fff; padding: 40px 0; margin-bottom: 32px; }
+  .header .container { display: flex; align-items: center; justify-content: space-between; }
+  .header h1 { color: #fff; font-size: 28px; }
+  .header .period { color: #ccc; font-size: 16px; }
+  .header .logo { font-size: 24px; font-weight: 700; color: #A62B17; }
+  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 32px; }
+  .kpi-card { background: #F5F5F5; border-top: 3px solid #A62B17; padding: 20px; border-radius: 4px; }
+  .kpi-card .label { font-size: 13px; color: #555; margin-bottom: 4px; }
+  .kpi-card .value { font-size: 28px; font-weight: 700; color: #000; }
+  .kpi-card .sub { font-size: 13px; color: #555; margin-top: 4px; }
+  .kpi-card .change { font-size: 13px; margin-top: 4px; }
+  .kpi-card .change.down { color: #c62828; }
+  .kpi-card .change.up { color: #2e7d32; }
+  .kpi-card .change.alert { color: #e65100; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
+  th { background: #1A1A1A; color: #fff; padding: 10px 12px; text-align: left; font-weight: 500; }
+  td { padding: 10px 12px; border-bottom: 1px solid #E0E0E0; }
+  tr:nth-child(even) { background: #F5F5F5; }
+  .highlight { color: #A62B17; font-weight: 700; }
+  .kpt-section { margin: 32px 0; }
+  .kpt-box { background: #F5F5F5; border-left: 4px solid #A62B17; padding: 20px; margin: 12px 0; border-radius: 0 4px 4px 0; }
+  .kpt-box h3 { margin: 0 0 8px; font-size: 18px; }
+  .kpt-box ul { padding-left: 20px; }
+  .kpt-box li { margin: 6px 0; }
+  .summary-box { background: #F5F5F5; border-left: 4px solid #A62B17; padding: 24px; margin: 24px 0; font-size: 16px; border-radius: 0 4px 4px 0; }
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 12px; font-weight: 500; }
+  .tag-confirmed { background: #e8f5e9; color: #2e7d32; }
+  .tag-maturing { background: #fff3e0; color: #e65100; }
+  .tag-none { background: #fce4ec; color: #c62828; }
+  .roas-table td.positive { color: #2e7d32; font-weight: 700; }
+  .roas-table td.zero { color: #999; }
+  .alert-box { background: #fff3e0; border-left: 4px solid #e65100; padding: 20px; margin: 24px 0; border-radius: 0 4px 4px 0; }
+  footer { text-align: center; padding: 32px; color: #555; font-size: 13px; border-top: 1px solid #E0E0E0; margin-top: 48px; }
+  @media (max-width: 768px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="container">
+    <div>
+      <div class="logo">S Strategists</div>
+      <h1>Google Ads 週次レポート</h1>
+      <div class="period">2026/3/9 (月) 〜 3/15 (日) ｜ Week 3</div>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+
+<h2>結論・概要</h2>
+<div class="summary-box">
+  キャンペーン構成が大きく変化した転換週。「1/22A」がPAUSEDになり、代わりに「複製版_ABテスト用」が本格稼働開始。費用は¥44,469と前週比+57.3%増加。しかしImpは1,724と前週51,888から96.7%減少。CTRは40.7%と異常に高い数値で、キャンペーン種別が検索広告からPmax等に変わった可能性。CRM帰属では申込0件が2週連続。
+</div>
+
+<div class="alert-box">
+  <strong>構造変化アラート:</strong> Imp 63,328→51,888→1,724と急減。CTR 40.7%はディスプレイ/動画広告のクリック計上を示唆。検索広告のリーチが大幅に減少している可能性があり、アカウント構成の確認が急務。
+</div>
+
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div class="label">費用</div>
+    <div class="value">&yen;44,469</div>
+    <div class="change down">前週比 +57.3%</div>
+  </div>
+  <div class="kpi-card">
+    <div class="label">インプレッション</div>
+    <div class="value">1,724</div>
+    <div class="change down">前週比 -96.7%</div>
+  </div>
+  <div class="kpi-card">
+    <div class="label">クリック</div>
+    <div class="value">701</div>
+    <div class="change down">前週比 -49.6%</div>
+  </div>
+  <div class="kpi-card">
+    <div class="label">CPC</div>
+    <div class="value">&yen;63</div>
+    <div class="change down">前週比 +215%</div>
+  </div>
+  <div class="kpi-card">
+    <div class="label">CTR</div>
+    <div class="value highlight">40.7%</div>
+    <div class="change alert">異常値</div>
+  </div>
+  <div class="kpi-card">
+    <div class="label">申込</div>
+    <div class="value">0<span class="sub">件</span></div>
+    <div class="change down">2週連続0件</div>
+  </div>
+  <div class="kpi-card">
+    <div class="label">日程確定</div>
+    <div class="value">0<span class="sub">件</span></div>
+  </div>
+  <div class="kpi-card">
+    <div class="label">成約 / ROAS</div>
+    <div class="value">-</div>
+    <div class="sub">売上 &yen;0</div>
+  </div>
+</div>
+
+<h2>ROAS成熟分析</h2>
+<table class="roas-table">
+  <thead>
+    <tr><th>週</th><th>費用</th><th>申込</th><th>成約</th><th>売上</th><th>ROAS</th><th>成熟度</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>2/10-2/16</td><td>&yen;40,311</td><td>2</td><td>2</td><td class="positive">&yen;977,626</td><td class="positive">24.3x</td><td><span class="tag tag-confirmed">確定</span></td></tr>
+    <tr><td>2/17-2/23</td><td>&yen;35,234</td><td>1</td><td>1</td><td class="positive">&yen;751,636</td><td class="positive">21.3x</td><td><span class="tag tag-confirmed">確定</span></td></tr>
+    <tr><td>2/24-3/2</td><td>&yen;32,545</td><td>0</td><td>0</td><td class="zero">&yen;0</td><td class="zero">0x</td><td><span class="tag tag-maturing">未成熟</span></td></tr>
+    <tr><td>3/3-3/9</td><td>&yen;22,628</td><td>0</td><td>0</td><td class="zero">&yen;0</td><td class="zero">0x</td><td><span class="tag tag-maturing">未成熟</span></td></tr>
+    <tr><td style="font-weight:700">3/10-3/16（今週）</td><td>&yen;50,986</td><td>0</td><td>0</td><td class="zero">&yen;0</td><td class="zero">0x</td><td><span class="tag tag-maturing">未成熟</span></td></tr>
+  </tbody>
+</table>
+
+<h2>キャンペーン別分析</h2>
+<table>
+  <thead>
+    <tr><th>キャンペーン</th><th>状態</th><th>Imp</th><th>Click</th><th>費用</th><th>CPC</th><th>CTR</th><th>CV</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>複製版_ABテスト用</strong></td><td>ENABLED</td><td>805</td><td>409</td><td>&yen;24,457</td><td>&yen;60</td><td>50.8%</td><td>22.0</td></tr>
+    <tr><td><strong>完全一致_オリジナル</strong></td><td>ENABLED</td><td>919</td><td>292</td><td>&yen;20,012</td><td>&yen;69</td><td>31.8%</td><td>32.0</td></tr>
+    <tr><td>1/22A</td><td>PAUSED</td><td>0</td><td>0</td><td>&yen;0</td><td>-</td><td>-</td><td>0</td></tr>
+  </tbody>
+</table>
+<div class="summary-box">
+  <strong>分析:</strong> 「1/22A」が完全停止し、「複製版_ABテスト用」が稼働開始。両アクティブキャンペーンのCTRが30-50%と異常に高い。これは広告タイプの変更（検索→ショッピングやPmaxの内部遷移）を示唆。「完全一致_オリジナル」のCPC¥69は前週¥126から改善。費用配分はほぼ均等（55%:45%）。
+</div>
+
+<h2>広告グループ別分析</h2>
+<table>
+  <thead>
+    <tr><th>キャンペーン</th><th>広告グループ</th><th>Imp</th><th>Click</th><th>費用</th><th>CTR</th><th>CV</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>複製版_ABテスト用</td><td><strong>社会人向け</strong></td><td>752</td><td>408</td><td>&yen;24,300</td><td>54.3%</td><td>22.0</td></tr>
+    <tr><td>完全一致_オリジナル</td><td><strong>社会人向け</strong></td><td>919</td><td>292</td><td>&yen;20,012</td><td>31.8%</td><td>32.0</td></tr>
+    <tr><td>複製版_ABテスト用</td><td>グループ3:ケース面接</td><td>53</td><td>1</td><td>&yen;157</td><td>1.89%</td><td>0</td></tr>
+  </tbody>
+</table>
+<div class="summary-box">
+  両キャンペーンの「社会人向け」グループに配信が集中。「グループ3:ケース面接」はImp 53ながらClick 1でCTR 1.89%。検索広告としては正常な数値で、「社会人向け」の異常なCTRとの乖離が目立つ。
+</div>
+
+<h2>検索語句分析</h2>
+<table>
+  <thead>
+    <tr><th>検索語句</th><th>Imp</th><th>Click</th><th>費用</th><th>CV</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>ケース 面接 対策</td><td>32</td><td>1</td><td>&yen;157</td><td>0</td></tr>
+    <tr><td>アクセンチュア ケース 面接</td><td>29</td><td>2</td><td>&yen;16</td><td>0</td></tr>
+    <tr><td>ケース 面接</td><td>12</td><td>0</td><td>&yen;0</td><td>0</td></tr>
+    <tr><td>アクセンチュア 面接 対策</td><td>10</td><td>1</td><td>&yen;33</td><td>0</td></tr>
+    <tr><td>戦略 コンサル 対策</td><td>9</td><td>0</td><td>&yen;0</td><td>0</td></tr>
+  </tbody>
+</table>
+<div class="summary-box">
+  検索語句レポートのImp合計は少なく、大半のクリック（700件中の大部分）は検索語句レポートに出ないタイプの配信（Pmax/ディスプレイ系）と推定される。検索広告としてのパフォーマンスは前週から大きく変化なし。
+</div>
+
+<h2>プロセス評価</h2>
+<div class="summary-box">
+  <strong>前週のTry振り返り:</strong><br>
+  1. 「複製版_ABテスト用」稼働開始 → <span style="color:#2e7d32;font-weight:700;">実施済み</span>。Imp 805、Click 409で配信開始<br>
+  2. 「1/22A」の広告文刷新 → キャンペーン自体がPAUSEDに変更<br>
+  3. 「完全一致_オリジナル」のCPC調査 → CPC¥126→¥69に改善<br>
+  4. ファーム名キーワード個別入札 → 未確認<br>
+  ABテスト用キャンペーン開始は前進だが、「1/22A」停止で検索広告のリーチが大幅減少。
+</div>
+
+<h2>結果評価</h2>
+<div class="summary-box">
+  <strong>ネガティブ:</strong> 申込0件が2週連続。費用は+57%増加しているのに成果なし。CPC¥63は3週間で¥16→¥20→¥63と急上昇。<br>
+  <strong>構造的変化:</strong> 低CPC大量配信の「1/22A」停止と高CPC少量配信への移行で、獲得構造が根本的に変化。この方向性が正しいか検証が必要。<br>
+  <strong>要確認:</strong> CTR 40%超の異常値の原因特定が最優先。
+</div>
+
+<h2>KPT</h2>
+<div class="kpt-section">
+  <div class="kpt-box">
+    <h3>Keep</h3>
+    <ul>
+      <li>「複製版_ABテスト用」が稼働開始。前週のTryを1つ実行できた</li>
+      <li>「完全一致_オリジナル」のCPCが¥126→¥69に改善</li>
+      <li>Google Ads CV数は54件と一定の反応はある（マイクロCV含む）</li>
+    </ul>
+  </div>
+  <div class="kpt-box">
+    <h3>Problem</h3>
+    <ul>
+      <li>申込0件が2週連続。パイプラインへの投入がストップしている</li>
+      <li>CTR 40.7%は明らかに異常。配信面の品質に問題がある可能性</li>
+      <li>費用¥44,469と増加しているのに、検索広告のImpは急減</li>
+      <li>CPC¥63は初週の¥16から約4倍。コスト効率が大幅に悪化</li>
+      <li>「1/22A」停止で低コスト大量配信チャネルを失った</li>
+    </ul>
+  </div>
+  <div class="kpt-box">
+    <h3>Try</h3>
+    <ul>
+      <li>CTR 40%超の原因を特定。Pmax/ディスプレイなら検索広告と分離して管理</li>
+      <li>「1/22A」の再開または同等の低CPC検索キャンペーンの立ち上げを検討</li>
+      <li>「複製版_ABテスト用」の「社会人向け」グループの配信面を確認（検索 vs ディスプレイ）</li>
+      <li>申込0件が続くなら、LP改善またはオファー変更を検討</li>
+    </ul>
+  </div>
+</div>
+
+</div>
+
+<footer>&copy; Strategists ｜ Google Ads Weekly Report ｜ Week 3 (3/9〜3/15)</footer>
+
+</body>
+</html>
