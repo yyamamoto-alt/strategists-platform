@@ -2,8 +2,10 @@
 
 import { useState, useMemo } from "react";
 import {
-  XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend, Line, ComposedChart, Bar,
+  XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend, Line, ComposedChart, Bar, BarChart,
 } from "recharts";
+
+const CAMPAIGN_COLORS = ["#8b5cf6", "#ec4899", "#06b6d4", "#f59e0b", "#10b981", "#ef4444", "#6366f1", "#84cc16"];
 
 export interface MetaAdsRow {
   period: string;
@@ -15,13 +17,30 @@ export interface MetaAdsRow {
   rolling_ltv: number;
 }
 
+interface CampaignDailyRow {
+  date: string;
+  campaign_name: string;
+  cost: number;
+}
+
 interface Props {
   weeklyRows: MetaAdsRow[];
   monthlyRows: MetaAdsRow[];
+  campaignDaily?: CampaignDailyRow[];
 }
 
 type Granularity = "weekly" | "monthly";
 type ViewMode = "chart" | "table";
+type ChartType = "total" | "campaign";
+
+function weekKeyLocal(dateStr: string): string {
+  const d = new Date(dateStr);
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+  const mon = new Date(d);
+  mon.setDate(diff);
+  return mon.toISOString().slice(0, 10);
+}
 
 function yAxisFmt(v: number): string {
   if (v >= 10000) return `${(v / 10000).toFixed(0)}万`;
@@ -29,9 +48,10 @@ function yAxisFmt(v: number): string {
   return String(v);
 }
 
-export function MetaAdsSummaryClient({ weeklyRows, monthlyRows }: Props) {
+export function MetaAdsSummaryClient({ weeklyRows, monthlyRows, campaignDaily = [] }: Props) {
   const [granularity, setGranularity] = useState<Granularity>("weekly");
   const [viewMode, setViewMode] = useState<ViewMode>("chart");
+  const [chartType, setChartType] = useState<ChartType>("campaign");
   const rows = granularity === "weekly" ? weeklyRows : monthlyRows;
 
   // Chart data needs ascending order
@@ -39,6 +59,29 @@ export function MetaAdsSummaryClient({ weeklyRows, monthlyRows }: Props) {
     ...r,
     label: granularity === "weekly" ? r.period.slice(5) : r.period,
   })), [rows, granularity]);
+
+  // Campaign stacked chart data
+  const { stackedData, campaignNames } = useMemo(() => {
+    if (campaignDaily.length === 0) return { stackedData: [], campaignNames: [] };
+    const dateMap = new Map<string, Record<string, number>>();
+    const campSet = new Set<string>();
+    for (const r of campaignDaily) {
+      if (r.cost <= 0) continue;
+      const key = granularity === "weekly" ? weekKeyLocal(r.date) : r.date.slice(0, 7);
+      campSet.add(r.campaign_name);
+      const ex = dateMap.get(key) || {};
+      ex[r.campaign_name] = (ex[r.campaign_name] || 0) + r.cost;
+      dateMap.set(key, ex);
+    }
+    const camps = Array.from(campSet).sort();
+    const data = Array.from(dateMap.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, vals]) => ({
+        label: granularity === "weekly" ? date.slice(5) : date,
+        ...vals,
+      }));
+    return { stackedData: data, campaignNames: camps };
+  }, [campaignDaily, granularity]);
 
   // Period totals
   const totals = rows.reduce((acc, r) => ({
@@ -84,8 +127,49 @@ export function MetaAdsSummaryClient({ weeklyRows, monthlyRows }: Props) {
           </div>
         </div>
 
-        {/* Chart view */}
-        {viewMode === "chart" && chartData.length > 0 && (
+        {/* Chart type toggle */}
+        {viewMode === "chart" && (
+          <div className="px-5 pt-3 flex gap-0.5 bg-transparent">
+            <div className="flex gap-0.5 bg-white/5 rounded-lg p-0.5">
+              <button onClick={() => setChartType("campaign")}
+                className={`px-2.5 py-1 text-xs rounded-md transition-colors ${chartType === "campaign" ? "bg-white/15 text-white" : "text-gray-400 hover:text-white"}`}>
+                キャンペーン別
+              </button>
+              <button onClick={() => setChartType("total")}
+                className={`px-2.5 py-1 text-xs rounded-md transition-colors ${chartType === "total" ? "bg-white/15 text-white" : "text-gray-400 hover:text-white"}`}>
+                合計+CPA
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Stacked campaign chart */}
+        {viewMode === "chart" && chartType === "campaign" && stackedData.length > 0 && (
+          <div className="p-5">
+            <ResponsiveContainer width="100%" height={280}>
+              <BarChart data={stackedData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#6b7280" }}
+                  interval={Math.max(Math.floor(stackedData.length / 12), 1)} />
+                <YAxis tick={{ fontSize: 10, fill: "#6b7280" }}
+                  tickFormatter={(v: number) => v >= 10000 ? `${(v/10000).toFixed(1)}万` : `¥${Math.round(v)}`} />
+                <Tooltip
+                  contentStyle={{ backgroundColor: "#1f2937", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 12 }}
+                  labelStyle={{ color: "#9ca3af" }}
+                  formatter={(value: unknown) => [`¥${Math.round(Number(value)).toLocaleString()}`, ""]}
+                />
+                <Legend wrapperStyle={{ fontSize: 10 }} />
+                {campaignNames.map((camp, i) => (
+                  <Bar key={camp} dataKey={camp} stackId="cost" fill={CAMPAIGN_COLORS[i % CAMPAIGN_COLORS.length]}
+                    name={camp.length > 20 ? camp.slice(0, 18) + "…" : camp} />
+                ))}
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+
+        {/* Total cost + CPA/LTV chart */}
+        {viewMode === "chart" && chartType === "total" && chartData.length > 0 && (
           <div className="p-5">
             <ResponsiveContainer width="100%" height={280}>
               <ComposedChart data={chartData}>

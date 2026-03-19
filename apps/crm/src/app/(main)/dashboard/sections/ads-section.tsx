@@ -162,10 +162,18 @@ export async function AdsSection() {
     };
   });
 
+  // --- キャンペーン別日別データ（積み上げ棒グラフ用） ---
+  const campaignDaily = campaigns.map(r => ({
+    date: r.date,
+    campaign_name: r.campaign_name,
+    cost: r.cost,
+  }));
+
   return (
     <AdsSummaryClient
       weeklyRows={weeklyRows}
       monthlyRows={monthlyRows}
+      campaignDaily={campaignDaily}
     />
   );
 }

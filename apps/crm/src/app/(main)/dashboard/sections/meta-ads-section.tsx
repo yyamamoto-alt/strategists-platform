@@ -151,10 +151,18 @@ export async function MetaAdsSection() {
     };
   });
 
+  // --- キャンペーン別日別データ（積み上げ棒グラフ用） ---
+  const campaignDaily = campaigns.map(r => ({
+    date: r.date,
+    campaign_name: r.campaign_name,
+    cost: r.spend,
+  }));
+
   return (
     <MetaAdsSummaryClient
       weeklyRows={weeklyRows}
       monthlyRows={monthlyRows}
+      campaignDaily={campaignDaily}
     />
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 
 interface AdsWeeklyReport {
   id: string;
@@ -32,7 +32,7 @@ const fmtPct = (v: number | null) =>
 const fmtNum = (v: number | null) =>
   v != null ? v.toLocaleString() : "-";
 const fmtRoas = (v: number | null) =>
-  v != null ? `${v.toFixed(1)}x` : "-";
+  v != null && v > 0 ? `${v.toFixed(1)}x` : "-";
 const fmtWeek = (start: string, end: string) => {
   const s = new Date(start);
   const e = new Date(end);
@@ -63,6 +63,23 @@ export function AdsReportsClient({ reports }: { reports: AdsWeeklyReport[] }) {
       ? r.platform?.toLowerCase() === "google"
       : r.platform?.toLowerCase() === "meta"
   );
+
+  // 8週ローリングROAS計算
+  const rollingRoasMap = useMemo(() => {
+    const sorted = [...filtered].sort((a, b) => a.week_start.localeCompare(b.week_start));
+    const map = new Map<string, number | null>();
+    for (let i = 0; i < sorted.length; i++) {
+      const windowStart = Math.max(0, i - 7); // 過去8週分（自分含む）
+      let totalCost = 0;
+      let totalRevenue = 0;
+      for (let j = windowStart; j <= i; j++) {
+        totalCost += sorted[j].cost ?? 0;
+        totalRevenue += sorted[j].revenue ?? 0;
+      }
+      map.set(sorted[i].week_start, totalCost > 0 ? totalRevenue / totalCost : null);
+    }
+    return map;
+  }, [filtered]);
 
   return (
     <div className="p-6 space-y-6">
@@ -121,7 +138,7 @@ export function AdsReportsClient({ reports }: { reports: AdsWeeklyReport[] }) {
                   "\u65E5\u7A0B\u78BA\u5B9A",
                   "\u6210\u7D04\u6570",
                   "\u58F2\u4E0A",
-                  "ROAS",
+                  "ROAS(8\u9031)",
                   "Keep",
                   "Problem",
                   "Try",
@@ -178,7 +195,7 @@ export function AdsReportsClient({ reports }: { reports: AdsWeeklyReport[] }) {
                     {fmtCurrency(r.revenue)}
                   </td>
                   <td className="px-3 py-2 text-sm text-gray-200 whitespace-nowrap text-right">
-                    {fmtRoas(r.roas)}
+                    {fmtRoas(rollingRoasMap.get(r.week_start) ?? null)}
                   </td>
                   <td className="px-3 py-2 whitespace-normal min-w-[150px] max-w-[200px]">
                     {renderKpt(r.keeps)}
