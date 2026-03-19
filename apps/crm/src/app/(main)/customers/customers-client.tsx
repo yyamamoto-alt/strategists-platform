@@ -279,6 +279,7 @@ export function CustomersClient() {
   const [attributeFilter, setAttributeFilter] = useState<string>("");
   const [stageFilter, setStageFilter] = useState<string>("");
   const [contractFilter, setContractFilter] = useState<string>("");
+  const [agentFilter, setAgentFilter] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<ViewTab>("overview");
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -452,8 +453,11 @@ export function CustomersClient() {
     } else if (contractFilter === "未成約") {
       result = result.filter((c) => !CLOSED_STAGES.has(c.pipeline?.stage || ""));
     }
+    if (agentFilter) {
+      result = result.filter((c) => isAgentCustomer(c));
+    }
     return result;
-  }, [customers, attributeFilter, stageFilter, contractFilter]);
+  }, [customers, attributeFilter, stageFilter, contractFilter, agentFilter]);
 
 
   // ================================================================
@@ -935,6 +939,18 @@ export function CustomersClient() {
             </button>
           ))}
         </div>
+
+        {/* エージェント利用者フィルタ */}
+        <button
+          onClick={() => setAgentFilter((v) => !v)}
+          className={`px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors border ${
+            agentFilter
+              ? "bg-brand text-white border-brand"
+              : "bg-surface-elevated text-gray-400 hover:text-white border-white/10"
+          }`}
+        >
+          エージェント利用者
+        </button>
 
         <select
           value={stageFilter}
