@@ -88,8 +88,8 @@ const VIEW_COLUMNS: Record<ViewTab, string[] | null> = {
     "marketing_channel", "initial_channel_base", "application_reason_base", "utm_source_base", "sales_route_base",
     "subsidy_eligible",
     "career_history",
-    // 売上（見込含む = 確定 + 人材見込）
-    "rev_total", "rev_eq", "confirmed_amount", "rev_plus", "rev_agent",
+    // 売上（見込含む = 確定 + 人材見込 + 見込みLTV）
+    "rev_total", "rev_eq", "confirmed_amount", "rev_plus", "rev_agent", "expected_ltv",
     // プラン名
     "plan_name",
     // （sales_routeは上のマーケ帰属に統合）
@@ -101,14 +101,14 @@ const VIEW_COLUMNS: Record<ViewTab, string[] | null> = {
   all: null, // 全カラム表示
   marketing: [
     "application_date", "name", "attribute", "stage", "subsidy_eligible",
-    "rev_total",
+    "rev_total", "confirmed_amount", "rev_agent", "expected_ltv",
     "marketing_channel", "initial_channel", "application_reason",
     "sales_route", "comparison_services",
     "utm_source", "utm_medium", "utm_id", "utm_campaign",
   ],
   sales: [
     "application_date", "name", "attribute", "stage", "subsidy_eligible",
-    "confirmed_amount", "rev_plus", "rev_agent", "rev_eq", "rev_total",
+    "confirmed_amount", "rev_plus", "rev_agent", "rev_eq", "rev_total", "expected_ltv",
     "meeting_scheduled", "probability", "sales_date", "additional_coaching_date", "response_deadline",
     "first_amount", "discount",
     "sales_person", "sales_content", "sales_strategy",
@@ -121,7 +121,7 @@ const VIEW_COLUMNS: Record<ViewTab, string[] | null> = {
   ],
   education: [
     "application_date", "name", "attribute", "stage", "subsidy_eligible",
-    "rev_total",
+    "rev_total", "confirmed_amount", "rev_agent", "expected_ltv",
     "offer_company",
     "enrollment_status", "plan_name", "mentor_name",
     "coaching_start", "coaching_end", "last_coaching",
@@ -143,7 +143,7 @@ const VIEW_COLUMNS: Record<ViewTab, string[] | null> = {
   agent: [
     "application_date", "name", "attribute", "stage",
     "referral_category", "job_search_status", "offer_rank", "ai_offer_probability",
-    "confirmed_amount", "rev_plus", "rev_agent", "rev_eq", "rev_total",
+    "confirmed_amount", "rev_plus", "rev_agent", "rev_eq", "rev_total", "expected_ltv",
     "external_agents", "offer_salary",
     "referral_fee_rate", "margin",
     "placement_confirmed", "placement_date",
@@ -158,7 +158,7 @@ const VIEW_COLUMNS: Record<ViewTab, string[] | null> = {
     "marketing_channel", "initial_channel_base", "application_reason_base", "utm_source_base", "sales_route_base",
     "subsidy_eligible",
     "career_history",
-    "rev_total", "rev_eq", "confirmed_amount", "rev_plus", "rev_agent",
+    "rev_total", "rev_eq", "confirmed_amount", "rev_plus", "rev_agent", "expected_ltv",
     "plan_name",
     "probability",
     "referral_category", "external_agents",
@@ -722,6 +722,11 @@ export function CustomersClient() {
           const subsidyOk = subsidyOverrides[c.id] ?? c.contract?.subsidy_eligible;
           return school + agent + (subsidyOk ? getSubsidyAmount(c) : 0);
         } },
+      { key: "expected_ltv", label: "見込みLTV", width: 100, align: "right" as const, category: "sales",
+        render: (c) => {
+          const ltv = calcExpectedLTV(c);
+          return ltv > 0 ? <span className="text-xs text-cyan-400">{formatCurrency(ltv)}</span> : "-";
+        }, sortValue: (c) => calcExpectedLTV(c) },
 
       // ─── マーケ帰属（概要に表示） ───
       { key: "marketing_channel", label: "帰属チャネル", width: 120, category: "base",

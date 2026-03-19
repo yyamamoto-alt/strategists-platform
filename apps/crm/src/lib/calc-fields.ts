@@ -76,6 +76,12 @@ export function isCurrentlyEnrolled(c: CustomerWithRelations): boolean {
   return endDate >= new Date();
 }
 
+/** 成約ステージか判定 */
+export function isStageClosed(stage: string | undefined | null): boolean {
+  if (!stage) return false;
+  return stage === "成約" || stage === "追加指導" || stage === "受講終了" || stage === "卒業";
+}
+
 /** 顧客のエージェント確定フラグを判定 */
 export function isAgentConfirmed(c: CustomerWithRelations): boolean {
   return c.agent?.placement_confirmed === "確定";
@@ -181,7 +187,8 @@ export function getSchoolRevenue(c: CustomerWithRelations): number {
  */
 export function calcSalesProjection(c: CustomerWithRelations): number {
   const confirmed = getSchoolRevenue(c);
-  const subsidy = getSubsidyAmount(c);
+  const closed = isStageClosed(c.pipeline?.stage);
+  const subsidy = closed ? getSubsidyAmount(c) : 0;
   const a = confirmed + subsidy;
 
   // 人材確定時: a + c
@@ -251,14 +258,22 @@ export function calcProgressStatus(c: CustomerWithRelations): "順調" | "遅延
 /** 確定売上合計（e）= a + c = スクール確定(a1) + 補助金(a2) + 人材確定(c) */
 export function calcConfirmedRevenue(c: CustomerWithRelations): number {
   const schoolConfirmed = getSchoolRevenue(c);
-  const subsidy = getSubsidyAmount(c);
+  const closed = isStageClosed(c.pipeline?.stage);
+  const subsidy = closed ? getSubsidyAmount(c) : 0;
   const agentConfirmed = isAgentConfirmed(c) ? calcExpectedReferralFee(c) : 0;
   return schoolConfirmed + subsidy + agentConfirmed;
 }
 
+/** 転職活動中か判定: 「終了」以外は全て活動中とみなす */
+export function isActivelyJobSearching(c: CustomerWithRelations): boolean {
+  const status = c.agent?.job_search_status;
+  // 「終了」のみ除外。「活動中」も未設定も活動中とみなす
+  return status !== "終了";
+}
+
 /** 人材見込売上（人材紹介区分に基づく乗数）（Excel Col BU） */
 export function calcAgentProjectedRevenue(c: CustomerWithRelations): number {
-  if (!isCurrentlyEnrolled(c) || !isAgentCustomer(c) || isAgentConfirmed(c)) return 0;
+  if (!isActivelyJobSearching(c) || !isAgentCustomer(c) || isAgentConfirmed(c)) return 0;
   // offer_rank（S/A/B/C/D）に基づく報酬期待値をそのまま使用
   // 一部利用/フル利用の区別は廃止（確定分は calcExpectedReferralFee で100%計上済み）
   return calcExpectedReferralFee(c);
