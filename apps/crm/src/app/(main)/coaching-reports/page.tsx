@@ -17,6 +17,8 @@ export interface CoachingReport {
   level_mck: string | null;
   customer_id: string | null;
   customer_name: string | null;
+  session_format: string | null;
+  duration_minutes: number | null;
 }
 
 async function fetchCoachingReports(): Promise<CoachingReport[]> {
@@ -37,6 +39,8 @@ async function fetchCoachingReports(): Promise<CoachingReport[]> {
       level_case,
       level_mck,
       customer_id,
+      session_format,
+      duration_minutes,
       customers ( name )
     `)
     .order("coaching_date", { ascending: false });
@@ -60,6 +64,8 @@ async function fetchCoachingReports(): Promise<CoachingReport[]> {
     customer_id: row.customer_id as string | null,
     customer_name:
       (row.customers as { name: string } | null)?.name ?? null,
+    session_format: (row.session_format as string | null) || "面談（オンライン）",
+    duration_minutes: (row.duration_minutes as number | null) || 60,
   }));
 }
 

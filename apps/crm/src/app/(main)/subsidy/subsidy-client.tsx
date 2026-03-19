@@ -339,7 +339,7 @@ function CertificatePreview({ customer, certNumber, startDate, endDate, issueDat
       </p>
       <div className="mb-6 space-y-1">
         <p>受講開始日：{startDate}</p>
-        <p>受講終了日：{endDate}</p>
+        <p>受講修了日：{endDate}</p>
         <p>講座の受講金額（税抜）：407,273円</p>
       </div>
       <div className="mt-8 text-right">
@@ -517,7 +517,7 @@ function DocumentModal({
                 />
               </div>
               <div>
-                <label className="text-xs text-gray-400 block mb-1">受講終了日</label>
+                <label className="text-xs text-gray-400 block mb-1">受講修了日</label>
                 <input
                   type="date"
                   value={endDate}
@@ -995,7 +995,7 @@ function CustomerDetailModal({
                 ? "border-green-500/30 bg-green-900/10"
                 : "border-red-500/30 bg-red-900/10"
             }`}>
-              <ConditionBadge label="書類目視確認" met={(checks?.identityDocVerified && checks?.bankDocVerified) || false} />
+              <ConditionBadge label="本人確認書類目視確認" met={(checks?.identityDocVerified && checks?.bankDocVerified) || false} />
               <p className="text-[10px] text-gray-500 mt-1">本人確認書類・振込先書類の両方を目視確認</p>
               <div className="mt-2 space-y-1.5">
                 <div className="flex items-center justify-between">
@@ -1047,7 +1047,7 @@ function CustomerDetailModal({
 
             {/* Condition 6: 契約書締結 */}
             <div className={`p-3 rounded-lg border ${checks?.contractVerified ? "border-green-500/30 bg-green-900/10" : "border-red-500/30 bg-red-900/10"}`}>
-              <ConditionBadge label="契約書締結" met={checks?.contractVerified || false} />
+              <ConditionBadge label="契約書目視確認" met={checks?.contractVerified || false} />
               <p className="text-[10px] text-gray-500 mt-1">目検チェックが最終条件（自己申告は参考情報）</p>
               <div className="mt-2 space-y-1.5">
                 <div className="flex items-center justify-between">
@@ -1290,8 +1290,8 @@ function buildColumns(
           { met: d?.caseConditionMet || false, label: "ケース面接" },
           { met: d?.behaviorConditionMet || false, label: "BH/追加指導" },
           { met: d?.hasPassingEvaluation || false, label: "総合評価" },
-          { met: (chk?.identityDocVerified && chk?.bankDocVerified) || false, label: "目視確認" },
-          { met: chk?.contractVerified || false, label: "契約書" },
+          { met: (chk?.identityDocVerified && chk?.bankDocVerified) || false, label: "本人確認書類" },
+          { met: chk?.contractVerified || false, label: "契約書目視" },
           { met: !!(docs?.invoiceSentAt && docs?.receiptSentAt && docs?.certificateSentAt), label: "書類送付" },
         ];
         return (
@@ -1454,12 +1454,12 @@ function buildColumns(
     {
       key: "doc_verified",
       label: "目視確認",
-      width: 90,
-      sortValue: (c) => { const chk = checksData[c.id]; return (chk?.identityDocVerified ? 1 : 0) + (chk?.bankDocVerified ? 1 : 0); },
+      width: 130,
+      sortValue: (c) => { const chk = checksData[c.id]; return (chk?.identityDocVerified ? 1 : 0) + (chk?.bankDocVerified ? 1 : 0) + (chk?.contractVerified ? 1 : 0); },
       render: (c) => {
         const chk = checksData[c.id];
         return (
-          <div className="flex gap-1.5">
+          <div className="flex gap-1">
             <button
               onClick={(e) => { e.stopPropagation(); onToggleCheck(c.id, "identity_doc_verified"); }}
               title="本人確認書類 目視確認"
@@ -1481,6 +1481,17 @@ function buildColumns(
               }`}
             >
               {chk?.bankDocVerified ? "✓" : "○"}口
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); onToggleCheck(c.id, "contract_verified"); }}
+              title="契約書 目視確認"
+              className={`text-[10px] px-1 py-0.5 rounded border transition-colors ${
+                chk?.contractVerified
+                  ? "bg-green-900/40 text-green-300 border-green-500/30"
+                  : "bg-gray-800 text-gray-500 border-gray-600 hover:border-gray-400"
+              }`}
+            >
+              {chk?.contractVerified ? "✓" : "○"}契
             </button>
           </div>
         );

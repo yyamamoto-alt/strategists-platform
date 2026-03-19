@@ -223,7 +223,7 @@ export async function generateCertificatePdf(params: DocParams): Promise<Buffer>
   // 日付
   page.drawText(`受講開始日：${startDate || ""}`, { x: margin, y, size: 11, font, color: black });
   y -= 22;
-  page.drawText(`受講終了日：${endDate || ""}`, { x: margin, y, size: 11, font, color: black });
+  page.drawText(`受講修了日：${endDate || ""}`, { x: margin, y, size: 11, font, color: black });
   y -= 22;
   page.drawText("講座の受講金額（税抜）：407,273円", { x: margin, y, size: 11, font, color: black });
   y -= 50;

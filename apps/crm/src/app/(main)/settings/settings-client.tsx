@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useMemo, useEffect } from "react";
+import { useAuth } from "@/lib/auth-context";
 
 // ================================================================
 // Types
@@ -325,6 +326,9 @@ export function SettingsClient({ settings, freeeConnected, freeeCompanyName }: P
   const [freeSyncing, setFreeSyncing] = useState(false);
   const [freeSyncResult, setFreeSyncResult] = useState<string | null>(null);
 
+  const { role } = useAuth();
+  const isAdmin = role === "admin";
+
   // Staff mapping state
   const [staffMapping, setStaffMapping] = useState<Record<string, string>>({});
   const [staffEdits, setStaffEdits] = useState<{ name: string; slackId: string }[]>([]);
@@ -333,6 +337,13 @@ export function SettingsClient({ settings, freeeConnected, freeeCompanyName }: P
   const [staffToast, setStaffToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [newStaffName, setNewStaffName] = useState("");
   const [newStaffSlackId, setNewStaffSlackId] = useState("");
+
+  // Staff name mapping state (admin-only, nickname → real name)
+  const [nameMapping, setNameMapping] = useState<{ nickname: string; realName: string }[]>([]);
+  const [nameMappingSaving, setNameMappingSaving] = useState(false);
+  const [nameMappingToast, setNameMappingToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [newNickname, setNewNickname] = useState("");
+  const [newRealName, setNewRealName] = useState("");
 
   // Fetch staff mapping
   useEffect(() => {
@@ -353,6 +364,49 @@ export function SettingsClient({ settings, freeeConnected, freeeCompanyName }: P
       .catch(() => {})
       .finally(() => setStaffLoading(false));
   }, []);
+
+  // Fetch staff name mapping (admin only)
+  useEffect(() => {
+    if (!isAdmin) return;
+    fetch("/api/staff-mapping?type=name")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data && typeof data === "object" && !Array.isArray(data)) {
+          setNameMapping(
+            Object.entries(data).map(([nickname, realName]) => ({
+              nickname,
+              realName: realName as string,
+            }))
+          );
+        }
+      })
+      .catch(() => {});
+  }, [isAdmin]);
+
+  const handleNameMappingSave = useCallback(async () => {
+    setNameMappingSaving(true);
+    const mapping: Record<string, string> = {};
+    for (const entry of nameMapping) {
+      if (entry.nickname.trim()) mapping[entry.nickname.trim()] = entry.realName.trim();
+    }
+    try {
+      const res = await fetch("/api/staff-mapping?type=name", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(mapping),
+      });
+      if (res.ok) {
+        setNameMappingToast({ type: "success", message: "スタッフ名マッピングを保存しました" });
+      } else {
+        setNameMappingToast({ type: "error", message: "保存に失敗しました" });
+      }
+    } catch {
+      setNameMappingToast({ type: "error", message: "保存に失敗しました" });
+    } finally {
+      setNameMappingSaving(false);
+      setTimeout(() => setNameMappingToast(null), 3000);
+    }
+  }, [nameMapping]);
 
   const handleStaffEdit = useCallback((index: number, field: "name" | "slackId", value: string) => {
     setStaffEdits((prev) => {
@@ -880,6 +934,111 @@ export function SettingsClient({ settings, freeeConnected, freeeCompanyName }: P
             )}
           </div>
         </div>
+
+        {/* スタッフ名マッピング（管理者のみ） */}
+        {isAdmin && (
+          <div className="mt-6 bg-surface-card border border-white/10 rounded-xl overflow-hidden">
+            <div className="px-6 py-4 border-b border-white/10">
+              <h2 className="text-lg font-semibold text-white">スタッフ名マッピング</h2>
+              <p className="text-sm text-gray-400 mt-0.5">
+                ニックネーム（苗字）と本名の対応を管理します。受講記録の正式書類出力時に使用します。
+              </p>
+            </div>
+            <div className="px-6 py-4">
+              {nameMappingToast && (
+                <div className={`mb-4 px-4 py-3 rounded-lg text-sm ${
+                  nameMappingToast.type === "success"
+                    ? "bg-green-900/40 text-green-300 border border-green-800/50"
+                    : "bg-red-900/40 text-red-300 border border-red-800/50"
+                }`}>
+                  {nameMappingToast.message}
+                </div>
+              )}
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-xs text-gray-400 border-b border-white/10">
+                    <th className="text-left pb-2 font-medium">ニックネーム（苗字）</th>
+                    <th className="text-left pb-2 font-medium">本名（フルネーム）</th>
+                    <th className="pb-2 w-10"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {nameMapping.map((entry, index) => (
+                    <tr key={index} className="border-b border-white/5">
+                      <td className="py-2 pr-3">
+                        <input
+                          type="text"
+                          value={entry.nickname}
+                          onChange={(e) => setNameMapping((prev) => prev.map((item, i) => i === index ? { ...item, nickname: e.target.value } : item))}
+                          className="w-full px-2 py-1.5 bg-white/5 border border-white/10 rounded text-sm text-white placeholder-gray-600"
+                          placeholder="田中"
+                        />
+                      </td>
+                      <td className="py-2 pr-3">
+                        <input
+                          type="text"
+                          value={entry.realName}
+                          onChange={(e) => setNameMapping((prev) => prev.map((item, i) => i === index ? { ...item, realName: e.target.value } : item))}
+                          className="w-full px-2 py-1.5 bg-white/5 border border-white/10 rounded text-sm text-white placeholder-gray-600"
+                          placeholder="田中太郎"
+                        />
+                      </td>
+                      <td className="py-2 text-center">
+                        <button
+                          onClick={() => setNameMapping((prev) => prev.filter((_, i) => i !== index))}
+                          className="text-gray-400 hover:text-red-400 transition-colors text-xs"
+                          title="削除"
+                        >
+                          ✕
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              <div className="mt-3 flex items-center gap-2">
+                <input
+                  type="text"
+                  value={newNickname}
+                  onChange={(e) => setNewNickname(e.target.value)}
+                  className="flex-1 px-2 py-1.5 bg-white/5 border border-white/10 rounded text-sm text-white placeholder-gray-600"
+                  placeholder="ニックネーム"
+                />
+                <input
+                  type="text"
+                  value={newRealName}
+                  onChange={(e) => setNewRealName(e.target.value)}
+                  className="flex-1 px-2 py-1.5 bg-white/5 border border-white/10 rounded text-sm text-white placeholder-gray-600"
+                  placeholder="本名"
+                />
+                <button
+                  onClick={() => {
+                    if (newNickname.trim()) {
+                      setNameMapping((prev) => [...prev, { nickname: newNickname.trim(), realName: newRealName.trim() }]);
+                      setNewNickname("");
+                      setNewRealName("");
+                    }
+                  }}
+                  disabled={!newNickname.trim()}
+                  className="px-3 py-1.5 text-sm text-gray-400 hover:text-white border border-white/10 rounded hover:bg-white/5 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  追加
+                </button>
+              </div>
+
+              <div className="mt-4 flex justify-end">
+                <button
+                  onClick={handleNameMappingSave}
+                  disabled={nameMappingSaving}
+                  className="px-4 py-2 text-sm font-medium bg-brand text-white rounded-lg hover:bg-brand/90 transition-colors disabled:opacity-50"
+                >
+                  {nameMappingSaving ? "保存中..." : "保存"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Change Summary Footer */}
         {hasChanges && (

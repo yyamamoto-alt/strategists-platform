@@ -116,6 +116,21 @@ export function CoachingReportsClient({ reports }: CoachingReportsClientProps) {
         sortValue: (r) => r.mentor_name || "",
       },
       {
+        key: "session_format",
+        label: "実施形式",
+        width: 130,
+        render: (r) => <span className="text-xs">{r.session_format || "面談（オンライン）"}</span>,
+        sortValue: (r) => r.session_format || "",
+      },
+      {
+        key: "duration_minutes",
+        label: "時間",
+        width: 60,
+        align: "right" as const,
+        render: (r) => <span className="text-xs">{r.duration_minutes || 60}分</span>,
+        sortValue: (r) => r.duration_minutes || 60,
+      },
+      {
         key: "cancellation",
         label: "キャンセル",
         width: 110,
