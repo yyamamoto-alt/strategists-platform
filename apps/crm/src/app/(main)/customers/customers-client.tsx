@@ -142,9 +142,9 @@ const VIEW_COLUMNS: Record<ViewTab, string[] | null> = {
   ],
   agent: [
     "application_date", "name", "attribute", "stage",
-    "referral_category", "job_search_status", "offer_rank", "ai_offer_probability", "placement_confirmed",
+    "referral_category", "job_search_status", "offer_rank", "ai_offer_probability", "placement_confirmed", "offer_salary",
     "confirmed_amount", "rev_plus", "rev_agent", "rev_eq", "rev_total", "expected_ltv",
-    "external_agents", "offer_salary",
+    "external_agents",
     "referral_fee_rate", "margin",
     "placement_date",
     "agent_staff", "agent_memo", "loss_reason",
@@ -388,7 +388,7 @@ export function CustomersClient() {
     }
   }, []);
 
-  // 活動状況ドロップダウン更新
+  // 活動状況ドロップダウン更新（売上カラムに影響するためリロード）
   const handleJobStatusChange = useCallback(async (customerId: string, value: string) => {
     const newVal = value || null;
     setJobStatusOverrides((prev) => ({ ...prev, [customerId]: value }));
@@ -401,6 +401,9 @@ export function CustomersClient() {
       if (!res.ok) {
         setJobStatusOverrides((prev) => { const next = { ...prev }; delete next[customerId]; return next; });
         alert("活動状況の更新に失敗しました");
+      } else {
+        // 売上カラムの再計算のためリロード
+        window.location.reload();
       }
     } catch {
       setJobStatusOverrides((prev) => { const next = { ...prev }; delete next[customerId]; return next; });
@@ -422,6 +425,8 @@ export function CustomersClient() {
       if (!res.ok) {
         setOfferRankOverrides((prev) => { const next = { ...prev }; delete next[customerId]; return next; });
         alert("内定ランクの更新に失敗しました");
+      } else {
+        window.location.reload();
       }
     } catch {
       setOfferRankOverrides((prev) => { const next = { ...prev }; delete next[customerId]; return next; });
@@ -860,8 +865,31 @@ export function CustomersClient() {
       // ═══ 人材紹介（紫） ═══
       { key: "external_agents", label: "利用エージェント", width: 110, category: "agent",
         render: (c) => <span className="text-xs">{c.agent?.external_agents || "-"}</span> },
-      { key: "offer_salary", label: "想定年収", width: 100, align: "right" as const, category: "agent",
-        render: (c) => c.agent?.offer_salary ? formatCurrency(c.agent.offer_salary) : "-",
+      { key: "offer_salary", label: "想定年収", width: 110, align: "right" as const, category: "agent",
+        render: (c) => {
+          if (!isAgentCustomer(c)) return <span className="text-gray-600 text-xs">-</span>;
+          const val = c.agent?.offer_salary || 0;
+          return (
+            <input
+              type="number"
+              defaultValue={val || ""}
+              placeholder="800万"
+              onBlur={async (e) => {
+                const newVal = Number(e.target.value) || null;
+                if (newVal === val) return;
+                try {
+                  await fetch(`/api/customers/${c.id}`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ agent: { offer_salary: newVal } }),
+                  });
+                } catch { /* ignore */ }
+              }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-transparent border border-white/10 rounded px-1 py-0.5 text-[10px] text-right text-gray-300 w-full focus:outline-none focus:ring-1 focus:ring-brand"
+            />
+          );
+        },
         sortValue: (c) => c.agent?.offer_salary || 0 },
       { key: "referral_fee_rate", label: "紹介料率", width: 70, align: "right" as const, category: "agent",
         render: (c) => c.agent?.referral_fee_rate != null ? formatPercent(c.agent.referral_fee_rate) : "-" },
@@ -873,12 +901,36 @@ export function CustomersClient() {
         } },
       { key: "placement_date", label: "入社予定日", width: 78, category: "agent",
         render: (c) => <span className="text-xs">{fmtDate(c.agent?.placement_date)}</span> },
-      { key: "placement_confirmed", label: "人材確定", width: 70, align: "center" as const, computed: true, category: "agent",
-        formula: "人材確定フラグ = \"確定\"",
+      { key: "placement_confirmed", label: "人材確定", width: 80, align: "center" as const, category: "agent",
         render: (c) => {
           if (!isAgentCustomer(c)) return <span className="text-gray-600 text-xs">-</span>;
-          return isAgentConfirmed(c) ? <span className="text-purple-400 font-medium">確定</span> : <span className="text-gray-500 text-xs">未確定</span>;
-        } },
+          const confirmed = c.agent?.placement_confirmed || "";
+          return (
+            <select
+              value={confirmed}
+              onChange={async (e) => {
+                e.stopPropagation();
+                const newVal = e.target.value || null;
+                try {
+                  await fetch(`/api/customers/${c.id}`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ agent: { placement_confirmed: newVal } }),
+                  });
+                  window.location.reload();
+                } catch { /* ignore */ }
+              }}
+              className={`border rounded px-1 py-0.5 text-[10px] font-medium focus:outline-none focus:ring-1 focus:ring-brand cursor-pointer w-full ${
+                confirmed === "確定" ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" :
+                "bg-transparent text-gray-500 border-white/10"
+              }`}
+            >
+              <option value="">未確定</option>
+              <option value="確定">確定</option>
+            </select>
+          );
+        },
+        filterValue: (c) => c.agent?.placement_confirmed || "未確定" },
       { key: "agent_staff", label: "エージェント担当", width: 100, category: "agent",
         render: (c) => <span className="text-xs">{c.agent?.agent_staff || "-"}</span> },
       { key: "agent_memo", label: "エージェント業務メモ", width: 150, category: "agent",        render: (c) => c.agent?.agent_memo || "-" },
