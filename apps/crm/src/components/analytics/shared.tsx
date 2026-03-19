@@ -88,6 +88,8 @@ export interface AnalyticsProps {
     meta: string | null;
     youtube: string | null;
   };
+  adsSummary?: React.ReactNode;
+  metaAdsSummary?: React.ReactNode;
 }
 
 /* ───────── Shared Utils ───────── */

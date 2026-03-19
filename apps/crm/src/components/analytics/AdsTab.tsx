@@ -28,10 +28,12 @@ export function AdsTab({ adsCampaigns, adsKeywords, adsFunnel }: AdsTabProps) {
   const [granularity, setGranularity] = useState<AdsGranularity>("weekly");
   const [adsSub, setAdsSub] = useState<AdsSub>("overview");
 
-  // Date range filter
+  // Date range filter — draft values for picker, applied on button click
   const dataRange = useMemo(() => getDataDateRange(adsCampaigns), [adsCampaigns]);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [draftFrom, setDraftFrom] = useState("");
+  const [draftTo, setDraftTo] = useState("");
 
   // Filter campaigns/keywords by date range
   const filteredCampaigns = useMemo(() => {
@@ -71,15 +73,17 @@ export function AdsTab({ adsCampaigns, adsKeywords, adsFunnel }: AdsTabProps) {
         </div>
         {adsSub !== "funnel" && (
           <div className="flex items-center gap-2 text-xs">
-            <input type="date" value={dateFrom || effectiveFrom} onChange={e => setDateFrom(e.target.value)}
+            <input type="date" value={draftFrom || dateFrom || effectiveFrom} onChange={e => setDraftFrom(e.target.value)}
               min={dataRange.min} max={dataRange.max}
               className="bg-white/5 border border-white/10 rounded-md px-2 py-1 text-gray-300 text-xs" />
             <span className="text-gray-500">〜</span>
-            <input type="date" value={dateTo || effectiveTo} onChange={e => setDateTo(e.target.value)}
+            <input type="date" value={draftTo || dateTo || effectiveTo} onChange={e => setDraftTo(e.target.value)}
               min={dataRange.min} max={dataRange.max}
               className="bg-white/5 border border-white/10 rounded-md px-2 py-1 text-gray-300 text-xs" />
+            <button onClick={() => { setDateFrom(draftFrom || dateFrom || effectiveFrom); setDateTo(draftTo || dateTo || effectiveTo); setDraftFrom(""); setDraftTo(""); }}
+              className="text-white text-[10px] px-2 py-0.5 rounded bg-brand hover:bg-brand/80 font-medium">適用</button>
             {(dateFrom || dateTo) && (
-              <button onClick={() => { setDateFrom(""); setDateTo(""); }}
+              <button onClick={() => { setDateFrom(""); setDateTo(""); setDraftFrom(""); setDraftTo(""); }}
                 className="text-gray-500 hover:text-white text-[10px] px-1.5 py-0.5 rounded bg-white/5">リセット</button>
             )}
           </div>

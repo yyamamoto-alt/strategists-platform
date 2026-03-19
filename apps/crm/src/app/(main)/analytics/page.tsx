@@ -21,6 +21,8 @@ import {
   fetchYouTubeSearchTerms,
 } from "@/lib/data/analytics";
 import { AnalyticsClient } from "./analytics-client";
+import { AdsSection } from "../dashboard/sections/ads-section";
+import { MetaAdsSection } from "../dashboard/sections/meta-ads-section";
 
 export default async function AnalyticsPage() {
   // Use allSettled so one failing fetch doesn't break the entire page
@@ -79,26 +81,30 @@ export default async function AnalyticsPage() {
   };
 
   return (
-    <AnalyticsClient
-      pageDailyRows={pageDailyRows}
-      traffic={traffic}
-      searchQueries={searchQueries}
-      searchDailyRows={searchDailyRows}
-      hourlyRows={hourlyRows}
-      adsCampaigns={adsCampaigns}
-      adsKeywords={adsKeywords}
-      adsFunnel={adsFunnel}
-      metaCampaigns={metaCampaigns}
-      metaAdsets={metaAdsets}
-      metaAds={metaAds}
-      metaFunnel={metaFunnel}
-      youtubeVideos={youtubeVideos}
-      youtubeDaily={youtubeDaily}
-      youtubeChannelDaily={youtubeChannelDaily}
-      youtubeFunnel={youtubeFunnel}
-      youtubeTrafficSources={youtubeTrafficSources}
-      youtubeSearchTerms={youtubeSearchTerms}
-      lastUpdated={lastUpdated}
-    />
+    <>
+      <AnalyticsClient
+        pageDailyRows={pageDailyRows}
+        traffic={traffic}
+        searchQueries={searchQueries}
+        searchDailyRows={searchDailyRows}
+        hourlyRows={hourlyRows}
+        adsCampaigns={adsCampaigns}
+        adsKeywords={adsKeywords}
+        adsFunnel={adsFunnel}
+        metaCampaigns={metaCampaigns}
+        metaAdsets={metaAdsets}
+        metaAds={metaAds}
+        metaFunnel={metaFunnel}
+        youtubeVideos={youtubeVideos}
+        youtubeDaily={youtubeDaily}
+        youtubeChannelDaily={youtubeChannelDaily}
+        youtubeFunnel={youtubeFunnel}
+        youtubeTrafficSources={youtubeTrafficSources}
+        youtubeSearchTerms={youtubeSearchTerms}
+        lastUpdated={lastUpdated}
+        adsSummary={<AdsSection />}
+        metaAdsSummary={<MetaAdsSection />}
+      />
+    </>
   );
 }

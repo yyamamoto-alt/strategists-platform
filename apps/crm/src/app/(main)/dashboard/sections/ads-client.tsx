@@ -146,7 +146,8 @@ export function AdsSummaryClient({ weeklyRows, monthlyRows }: Props) {
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                 <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#6b7280" }}
                   interval={Math.max(Math.floor(chartData.length / 10), 0)} />
-                <YAxis tick={{ fontSize: 10, fill: "#6b7280" }} tickFormatter={yAxisFmt} domain={[0, 200000]} />
+                <YAxis yAxisId="left" tick={{ fontSize: 10, fill: "#6b7280" }} tickFormatter={yAxisFmt} domain={[0, 200000]} allowDataOverflow />
+                <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10, fill: "#6b7280" }} tickFormatter={yAxisFmt} hide />
                 <Tooltip
                   contentStyle={{ backgroundColor: "#1f2937", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 12 }}
                   labelStyle={{ color: "#9ca3af" }}
@@ -157,9 +158,9 @@ export function AdsSummaryClient({ weeklyRows, monthlyRows }: Props) {
                   }}
                 />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
-                <Bar dataKey="cost" name="広告費" fill="#f59e0b" radius={[2, 2, 0, 0]} />
-                <Line type="monotone" dataKey="cpa_scheduled" name="日程確定CPA(2ヶ月移動)" stroke="#ef4444" strokeWidth={2} dot={false} />
-                <Line type="monotone" dataKey="rolling_ltv" name="確定LTV(2ヶ月移動)" stroke="#10b981" strokeWidth={2} dot={false} strokeDasharray="6 3" />
+                <Bar yAxisId="left" dataKey="cost" name="広告費" fill="#f59e0b" radius={[2, 2, 0, 0]} />
+                <Line yAxisId="right" type="monotone" dataKey="cpa_scheduled" name="日程確定CPA(2ヶ月移動)" stroke="#ef4444" strokeWidth={2} dot={false} />
+                <Line yAxisId="right" type="monotone" dataKey="rolling_ltv" name="確定LTV(2ヶ月移動)" stroke="#10b981" strokeWidth={2} dot={false} strokeDasharray="6 3" />
               </ComposedChart>
             </ResponsiveContainer>
           </div>
