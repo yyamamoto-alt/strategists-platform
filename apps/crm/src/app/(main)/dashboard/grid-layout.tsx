@@ -131,33 +131,64 @@ export function DashboardGrid({ items }: DashboardGridProps) {
         containerPadding={[0, 0]}
         onLayoutChange={handleLayoutChange}
         dragConfig={{ enabled: true, bounded: false, handle: ".grid-drag-handle", threshold: 3 }}
-        resizeConfig={{ enabled: false, handles: [] }}
+        resizeConfig={{ enabled: true, handles: ["se"] }}
         compactor={verticalCompactor}
       >
         {items.map(item => (
-          <div key={item.id} className="relative group">
+          <div key={item.id} className="relative group overflow-auto">
             <div className="grid-drag-handle absolute top-0 left-0 right-0 h-8 cursor-grab active:cursor-grabbing z-20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
               <div className="bg-white/10 rounded-full px-3 py-0.5 text-[10px] text-gray-400 backdrop-blur-sm">
-                ドラッグで移動
+                ⋮⋮ ドラッグで移動 / 右下でリサイズ
               </div>
             </div>
-            {item.children}
+            <div className="h-full overflow-auto">
+              {item.children}
+            </div>
           </div>
         ))}
       </Responsive>
       <style jsx global>{`
         .dashboard-grid .react-grid-item {
           transition: all 200ms ease;
+          overflow: hidden;
         }
         .dashboard-grid .react-grid-item.react-draggable-dragging {
           z-index: 100;
           opacity: 0.9;
           box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
         }
+        .dashboard-grid .react-grid-item.resizing {
+          z-index: 100;
+          opacity: 0.95;
+        }
         .dashboard-grid .react-grid-placeholder {
           background: rgba(59, 130, 246, 0.15) !important;
           border: 2px dashed rgba(59, 130, 246, 0.3) !important;
           border-radius: 12px;
+        }
+        .dashboard-grid .react-resizable-handle {
+          position: absolute;
+          width: 20px;
+          height: 20px;
+          bottom: 0;
+          right: 0;
+          cursor: se-resize;
+          z-index: 10;
+        }
+        .dashboard-grid .react-resizable-handle::after {
+          content: '';
+          position: absolute;
+          right: 4px;
+          bottom: 4px;
+          width: 8px;
+          height: 8px;
+          border-right: 2px solid rgba(255,255,255,0.2);
+          border-bottom: 2px solid rgba(255,255,255,0.2);
+          border-radius: 0 0 2px 0;
+          transition: border-color 0.2s;
+        }
+        .dashboard-grid .react-grid-item:hover .react-resizable-handle::after {
+          border-color: rgba(255,255,255,0.5);
         }
       `}</style>
     </div>
