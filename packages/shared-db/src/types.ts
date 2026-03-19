@@ -158,6 +158,7 @@ export interface SalesPipeline {
   additional_notes?: string | null;
   additional_coaching_date?: string | null;
   initial_channel?: string | null;
+  call_memo?: string | null;
   customer?: Customer;
 }
 

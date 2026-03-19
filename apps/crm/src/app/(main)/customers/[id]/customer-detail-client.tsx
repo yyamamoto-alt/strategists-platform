@@ -689,6 +689,7 @@ function buildPipelineFieldGroups(c: CustomerWithRelations): { label: string; fi
       { key: "google_ads_target", label: "Google広告成果対象", source: "sync", getValue: () => c.pipeline?.google_ads_target || "-" },
       { key: "sales_form_status", label: "営業フォーム提出状況", source: "sync", getValue: () => c.pipeline?.sales_form_status || "-" },
       { key: "marketing_memo", label: "マーケメモ", source: "manual", type: "textarea", table: "pipeline", getValue: () => c.pipeline?.marketing_memo || "-" },
+      { key: "call_memo", label: "架電メモ", source: "manual", type: "textarea", table: "pipeline", getValue: () => c.pipeline?.call_memo || "-" },
     ]},
   ];
 }
@@ -1149,7 +1150,7 @@ export function CustomerDetailClient({
     // pipeline fields
     if (customer.pipeline) {
       const p = customer.pipeline as unknown as Record<string, unknown>;
-      for (const key of ["stage", "probability", "meeting_scheduled_date", "additional_coaching_date", "sales_date", "sales_date_2", "sales_date_3", "response_deadline", "response_date_2", "response_date_3", "decision_factor", "sales_content", "sales_strategy", "projected_amount", "meeting_url", "marketing_memo"]) {
+      for (const key of ["stage", "probability", "meeting_scheduled_date", "additional_coaching_date", "sales_date", "sales_date_2", "sales_date_3", "response_deadline", "response_date_2", "response_date_3", "decision_factor", "sales_content", "sales_strategy", "projected_amount", "meeting_url", "marketing_memo", "call_memo"]) {
         vals[`pipeline.${key}`] = dateKeys.has(key) ? toDateValue(p[key]) : (p[key] != null ? String(p[key]) : "");
       }
     }

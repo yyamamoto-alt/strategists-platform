@@ -63,7 +63,7 @@ function Truncated({ value, width = 140 }: { value: string | null | undefined; w
 // ================================================================
 // ビュータブ定義
 // ================================================================
-type ViewTab = "overview" | "all" | "marketing" | "sales" | "education" | "agent";
+type ViewTab = "overview" | "all" | "marketing" | "sales" | "education" | "agent" | "schedule_unconfirmed";
 
 const VIEW_TABS: { key: ViewTab; label: string }[] = [
   { key: "overview", label: "概要" },
@@ -72,6 +72,7 @@ const VIEW_TABS: { key: ViewTab; label: string }[] = [
   { key: "sales", label: "営業" },
   { key: "education", label: "エデュ" },
   { key: "agent", label: "エージェント" },
+  { key: "schedule_unconfirmed", label: "架電用" },
 ];
 
 // タブごとに表示するカラムキーの定義
@@ -147,6 +148,20 @@ const VIEW_COLUMNS: Record<ViewTab, string[] | null> = {
     "placement_confirmed", "placement_date",
     "agent_staff", "agent_memo", "loss_reason",
   ],
+  schedule_unconfirmed: [
+    "application_date", "name",
+    // 重要: 名前の次に志望先・属性・電話・メアド
+    "target_firm_type", "attribute", "phone", "email",
+    "stage", "call_memo",
+    "meeting_scheduled", "sales_person", "additional_coaching_date", "response_deadline",
+    "marketing_channel", "initial_channel_base", "application_reason_base", "utm_source_base", "sales_route_base",
+    "subsidy_eligible",
+    "career_history", "is_agent_customer",
+    "rev_total", "rev_eq", "confirmed_amount", "rev_plus", "rev_agent",
+    "plan_name",
+    "probability",
+    "referral_category", "external_agents",
+  ],
 };
 
 const CLOSED_STAGES = new Set(["成約"]);
@@ -207,6 +222,52 @@ function InlineStageSelect({ customerId, currentStage, onUpdate }: { customerId:
   );
 }
 
+function InlineTextArea({ customerId, value, onSave }: { customerId: string; value: string | null | undefined; onSave: (id: string, val: string) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [text, setText] = useState(value || "");
+  const ref = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (editing && ref.current) {
+      ref.current.focus();
+      ref.current.selectionStart = ref.current.value.length;
+    }
+  }, [editing]);
+
+  const save = () => {
+    setEditing(false);
+    if (text !== (value || "")) onSave(customerId, text);
+  };
+
+  if (!editing) {
+    return (
+      <div
+        onClick={(e) => { e.stopPropagation(); setEditing(true); setText(value || ""); }}
+        className="cursor-text min-h-[24px] w-full text-xs text-gray-300 hover:bg-white/5 rounded px-1 py-0.5 whitespace-pre-wrap break-words"
+        title="クリックで編集"
+      >
+        {value || <span className="text-gray-600">メモを入力...</span>}
+      </div>
+    );
+  }
+
+  return (
+    <textarea
+      ref={ref}
+      value={text}
+      onChange={(e) => setText(e.target.value)}
+      onBlur={save}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") { setEditing(false); setText(value || ""); }
+        if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) save();
+      }}
+      onClick={(e) => e.stopPropagation()}
+      className="w-full min-h-[60px] px-1 py-0.5 bg-surface border border-brand/50 rounded text-xs text-white resize-y focus:outline-none focus:ring-1 focus:ring-brand"
+      placeholder="架電メモを入力... (Cmd+Enter or フォーカス外で保存)"
+    />
+  );
+}
+
 export function CustomersClient() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -224,6 +285,7 @@ export function CustomersClient() {
   const [stageOverrides, setStageOverrides] = useState<Record<string, string>>({});
   const [subsidyOverrides, setSubsidyOverrides] = useState<Record<string, boolean>>({});
   const [agentExcludeOverrides, setAgentExcludeOverrides] = useState<Record<string, string>>({});
+  const [callMemoOverrides, setCallMemoOverrides] = useState<Record<string, string>>({});
 
   const [totalCount, setTotalCount] = useState(0);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -319,6 +381,25 @@ export function CustomersClient() {
     } catch {
       setAgentExcludeOverrides((prev) => { const next = { ...prev }; delete next[customerId]; return next; });
       alert("エージェント利用ステータス更新に失敗しました");
+    }
+  }, []);
+
+  // 架電メモ保存
+  const handleCallMemoSave = useCallback(async (customerId: string, memo: string) => {
+    setCallMemoOverrides((prev) => ({ ...prev, [customerId]: memo }));
+    try {
+      const res = await fetch(`/api/customers/${customerId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pipeline: { call_memo: memo || null } }),
+      });
+      if (!res.ok) {
+        setCallMemoOverrides((prev) => { const next = { ...prev }; delete next[customerId]; return next; });
+        alert("架電メモ保存に失敗しました");
+      }
+    } catch {
+      setCallMemoOverrides((prev) => { const next = { ...prev }; delete next[customerId]; return next; });
+      alert("架電メモ保存に失敗しました");
     }
   }, []);
 
@@ -620,6 +701,11 @@ export function CustomersClient() {
       { key: "payment_date", label: "入金日", width: 78, category: "sales",
         render: (c) => <span className="text-xs">{fmtDate(firstPaidMap[c.id] || c.contract?.payment_date)}</span>,
         sortValue: (c) => firstPaidMap[c.id] || c.contract?.payment_date || "" },
+      { key: "call_memo", label: "架電メモ", width: 240, category: "sales",
+        render: (c) => {
+          const memo = callMemoOverrides[c.id] !== undefined ? callMemoOverrides[c.id] : c.pipeline?.call_memo;
+          return <InlineTextArea customerId={c.id} value={memo} onSave={handleCallMemoSave} />;
+        } },
       { key: "additional_notes", label: "[追加]学び", width: 140, category: "sales",        render: (c) => c.pipeline?.additional_notes || "-" },
 
       // ─── 追加指導（営業） ───
@@ -749,6 +835,12 @@ export function CustomersClient() {
       { key: "extension_days", label: "延長(日)", width: 70, align: "right" as const, category: "education",
         render: (c) => c.learning?.extension_days != null ? `${c.learning.extension_days}` : "-" },
 
+      // ═══ 連絡先 ═══
+      { key: "phone", label: "電話番号", width: 120,
+        render: (c) => <span className="text-xs">{c.phone || "-"}</span>, sortValue: (c) => c.phone || "" },
+      { key: "email", label: "メールアドレス", width: 180,
+        render: (c) => <span className="text-xs truncate block" style={{ maxWidth: 180 }}>{c.email || "-"}</span>, sortValue: (c) => c.email || "" },
+
       // ═══ その他基本情報 ═══
       { key: "university", label: "大学名", width: 110,
         render: (c) => <span className="text-xs">{c.university || "-"}</span>, sortValue: (c) => c.university || "" },
@@ -765,8 +857,27 @@ export function CustomersClient() {
           : "-" },
       { key: "agent_memo", label: "メモ", width: 160,        render: (c) => c.agent?.agent_memo || "-" },
     ],
-    [attributionMap, stageOverrides, handleStageUpdate, subsidyOverrides, handleSubsidyToggle, agentExcludeOverrides, handleAgentToggle]
+    [attributionMap, stageOverrides, handleStageUpdate, subsidyOverrides, handleSubsidyToggle, agentExcludeOverrides, handleAgentToggle, callMemoOverrides, handleCallMemoSave]
   );
+
+  // 日程未確タブ: データフィルタリング
+  const SCHEDULE_UNCONFIRMED_STAGES = new Set(["日程未確", "実施不可", "失注見込", "失注見込(自動)"]);
+  const NOSHOW_CL_STAGES = new Set(["NoShow", "キャンセル"]);
+
+  const tabFiltered = useMemo(() => {
+    if (activeTab !== "schedule_unconfirmed") return baseFiltered;
+    return baseFiltered.filter((c) => {
+      // 追加指導日が入っている顧客は非表示
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if ((c.pipeline as any)?.additional_coaching_date) return false;
+      const stage = stageOverrides[c.id] || c.pipeline?.stage || "";
+      // NoShow or キャンセル → 常に表示
+      if (NOSHOW_CL_STAGES.has(stage)) return true;
+      // 日程未確/実施不可/失注見込/失注見込(自動) かつ 営業日が空
+      if (SCHEDULE_UNCONFIRMED_STAGES.has(stage) && !c.pipeline?.sales_date) return true;
+      return false;
+    });
+  }, [baseFiltered, activeTab, stageOverrides]);
 
   // タブに応じたカラムフィルタリング
   const spreadsheetColumns = useMemo(() => {
@@ -781,7 +892,7 @@ export function CustomersClient() {
       <div className="flex items-center gap-3 flex-wrap">
         <h1 className="text-lg font-bold text-white shrink-0">顧客一覧</h1>
         <span className="text-xs text-gray-500 shrink-0">
-          {baseFiltered.length}件{loadingMore ? ` / ${totalCount}件 読込中...` : totalCount > 0 && totalCount !== baseFiltered.length ? ` / ${totalCount}件` : ""}
+          {tabFiltered.length}件{loadingMore ? ` / ${totalCount}件 読込中...` : totalCount > 0 && totalCount !== tabFiltered.length ? ` / ${totalCount}件` : ""}
         </span>
 
         <button
@@ -888,19 +999,22 @@ export function CustomersClient() {
         </div>
       ) : (<SpreadsheetTable
         columns={spreadsheetColumns}
-        data={baseFiltered}
+        data={tabFiltered}
         getRowKey={(c) => c.id}
         storageKey={`customers-${activeTab}`}
         searchPlaceholder="名前・メール・大学・経歴・チャネルで検索..."
         initialSearch={initialSearch}
         pageSize={100}
-        searchFilter={(c, q) =>
-          c.name.toLowerCase().includes(q) ||
-          (c.email?.toLowerCase().includes(q) ?? false) ||
-          (c.university?.toLowerCase().includes(q) ?? false) ||
-          (c.career_history?.toLowerCase().includes(q) ?? false) ||
-          (attributionMap[c.id]?.marketing_channel?.toLowerCase().includes(q) ?? false)
-        }
+        searchFilter={(c, q) => {
+          // スペース有無を無視して検索（「小形 哲司」「小形哲司」両方マッチ）
+          const normalize = (s: string) => s.toLowerCase().replace(/\s+/g, "");
+          const nq = normalize(q);
+          return normalize(c.name).includes(nq) ||
+            (c.email ? normalize(c.email).includes(nq) : false) ||
+            (c.university ? normalize(c.university).includes(nq) : false) ||
+            (c.career_history ? normalize(c.career_history).includes(nq) : false) ||
+            (attributionMap[c.id]?.marketing_channel ? normalize(attributionMap[c.id].marketing_channel).includes(nq) : false);
+        }}
       />
       )}
 

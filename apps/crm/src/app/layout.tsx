@@ -9,7 +9,6 @@ import { ProgressBarProvider } from "@/components/progress-bar-provider";
 export const metadata: Metadata = {
   title: "Strategists CRM | 経営管理",
   description: "戦略コンサル転職塾 - 顧客管理・営業パイプライン・売上管理",
-  icons: { icon: "/favicon.png" },
 };
 
 export default async function RootLayout({
