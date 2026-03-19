@@ -500,7 +500,7 @@ export async function fetchMetaFunnelData(): Promise<AdsFunnelCustomer[]> {
   const { data: attrData, error: attrError } = await supabase()
     .from("customer_channel_attribution")
     .select("customer_id")
-    .like("marketing_channel", "%Meta広告%");
+    .like("marketing_channel", "%FB広告%");
 
   if (attrError || !attrData || attrData.length === 0) {
     if (attrError) console.error("Meta attribution fetch error:", attrError.message);
