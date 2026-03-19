@@ -87,7 +87,7 @@ const VIEW_COLUMNS: Record<ViewTab, string[] | null> = {
     // マーケ帰属
     "marketing_channel", "initial_channel_base", "application_reason_base", "utm_source_base", "sales_route_base",
     "subsidy_eligible",
-    "career_history", "is_agent_customer",
+    "career_history", "referral_category",
     // 売上（見込含む = 確定 + 人材見込）
     "rev_total", "rev_eq", "confirmed_amount", "rev_plus", "rev_agent",
     // プラン名
@@ -141,11 +141,10 @@ const VIEW_COLUMNS: Record<ViewTab, string[] | null> = {
     "extension_days",
   ],
   agent: [
-    "application_date", "name", "attribute", "stage", "subsidy_eligible",
+    "application_date", "name", "attribute", "stage",
+    "referral_category", "job_search_status", "offer_rank", "ai_offer_probability",
     "confirmed_amount", "rev_plus", "rev_agent", "rev_eq", "rev_total",
-    "is_agent_customer", "referral_category",
-    "external_agents",
-    "offer_rank", "offer_salary",
+    "external_agents", "offer_salary",
     "referral_fee_rate", "margin",
     "placement_confirmed", "placement_date",
     "agent_staff", "agent_memo", "loss_reason",
@@ -158,7 +157,7 @@ const VIEW_COLUMNS: Record<ViewTab, string[] | null> = {
     "meeting_scheduled", "sales_person", "additional_coaching_date", "response_deadline",
     "marketing_channel", "initial_channel_base", "application_reason_base", "utm_source_base", "sales_route_base",
     "subsidy_eligible",
-    "career_history", "is_agent_customer",
+    "career_history", "referral_category",
     "rev_total", "rev_eq", "confirmed_amount", "rev_plus", "rev_agent",
     "plan_name",
     "probability",
@@ -281,7 +280,7 @@ export function CustomersClient() {
   const [attributeFilter, setAttributeFilter] = useState<string>("");
   const [stageFilter, setStageFilter] = useState<string>("");
   const [contractFilter, setContractFilter] = useState<string>("");
-  const [agentFilter, setAgentFilter] = useState<boolean>(false);
+  const [agentFilter, setAgentFilter] = useState<boolean>(searchParams.get("filter") === "agent");
   const [activeTab, setActiveTab] = useState<ViewTab>("overview");
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -1104,7 +1103,7 @@ export function CustomersClient() {
         {VIEW_TABS.map((tab) => (
           <button
             key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
+            onClick={() => { setActiveTab(tab.key); if (tab.key === "agent") setAgentFilter(true); }}
             className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
               activeTab === tab.key
                 ? "bg-brand text-white shadow-sm"

@@ -10,6 +10,7 @@ import { ReceivableSection } from "./sections/receivable-section";
 import { ChannelSection } from "./sections/channel-section";
 import { SalesRateSection } from "./sections/sales-rate-section";
 import { InsightsSection } from "./sections/insights-section";
+import { DashboardGridWrapper } from "./grid-wrapper";
 import {
   HeaderSkeleton,
   ChartsSkeleton,
@@ -26,33 +27,46 @@ export default async function DashboardPage() {
       <Suspense fallback={<HeaderSkeleton />}>
         <HeaderSection />
       </Suspense>
-      <Suspense fallback={<ChartsSkeleton />}>
-        <ChartsSection />
-      </Suspense>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 px-6">
-        <Suspense fallback={<AdsSummarySkeleton />}>
-          <AdsSection />
-        </Suspense>
-        <Suspense fallback={<MetaAdsSkeleton />}>
-          <MetaAdsSection />
-        </Suspense>
-      </div>
-      <div className="px-6">
-        <Suspense fallback={<ChannelSkeleton />}>
-          <ChannelSection />
-        </Suspense>
-      </div>
-      <div className="px-6">
-        <Suspense fallback={<div className="bg-surface-card rounded-xl border border-white/10 p-4 h-[400px] animate-pulse" />}>
-          <SalesRateSection />
-        </Suspense>
-      </div>
-      <Suspense fallback={<InsightsSkeleton />}>
-        <InsightsSection />
-      </Suspense>
-      <Suspense fallback={<ReceivableSkeleton />}>
-        <ReceivableSection />
-      </Suspense>
+
+      <DashboardGridWrapper>
+        {{
+          charts: (
+            <Suspense fallback={<ChartsSkeleton />}>
+              <ChartsSection />
+            </Suspense>
+          ),
+          ads: (
+            <Suspense fallback={<AdsSummarySkeleton />}>
+              <AdsSection />
+            </Suspense>
+          ),
+          metaAds: (
+            <Suspense fallback={<MetaAdsSkeleton />}>
+              <MetaAdsSection />
+            </Suspense>
+          ),
+          channel: (
+            <Suspense fallback={<ChannelSkeleton />}>
+              <ChannelSection />
+            </Suspense>
+          ),
+          salesRate: (
+            <Suspense fallback={<div className="bg-surface-card rounded-xl border border-white/10 p-4 h-[200px] animate-pulse" />}>
+              <SalesRateSection />
+            </Suspense>
+          ),
+          insights: (
+            <Suspense fallback={<InsightsSkeleton />}>
+              <InsightsSection />
+            </Suspense>
+          ),
+          receivable: (
+            <Suspense fallback={<ReceivableSkeleton />}>
+              <ReceivableSection />
+            </Suspense>
+          ),
+        }}
+      </DashboardGridWrapper>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useMemo } from "react";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend,
 } from "recharts";
@@ -12,25 +12,37 @@ const CHANNEL_COLORS = [
   "#14b8a6", "#e11d48", "#a855f7", "#0ea5e9", "#facc15",
 ];
 
-type AttrFilter = "all" | "kisotsu" | "shinsotsu";
-
 interface ChannelClientProps {
   channelTrends: ChannelTrend[];
   monthlyRaw: ChannelMonthlyRaw[];
 }
 
-function useChannelChartData(
-  data: ChannelMonthlyRaw[],
-  mode: "application" | "closed",
-  attrFilter: AttrFilter,
-) {
-  return useMemo(() => {
-    let filtered = mode === "closed" ? data.filter(d => d.isClosed) : data;
-    if (attrFilter === "kisotsu") filtered = filtered.filter(d => !d.isShinsotsu);
-    else if (attrFilter === "shinsotsu") filtered = filtered.filter(d => d.isShinsotsu);
+/**
+ * 属性別チャネル状況グラフ
+ * 1つのグラフ内で申し込み数と成約数を両方表示
+ */
+function ChannelByAttrChart({
+  data,
+  title,
+  attrFilter,
+}: {
+  data: ChannelMonthlyRaw[];
+  title: string;
+  attrFilter: "kisotsu" | "shinsotsu";
+}) {
+  const { chartData, channelNames, totalApp, totalClosed } = useMemo(() => {
+    // 属性フィルタ
+    const filtered = attrFilter === "kisotsu"
+      ? data.filter(d => !d.isShinsotsu)
+      : data.filter(d => d.isShinsotsu);
 
+    // チャネル別の申し込み/成約を分ける
+    const appRecords = filtered;
+    const closedRecords = filtered.filter(d => d.isClosed);
+
+    // チャネル別合計（申し込みベース）でメジャーチャネル決定
     const channelTotals = new Map<string, number>();
-    for (const d of filtered) {
+    for (const d of appRecords) {
       channelTotals.set(d.channel, (channelTotals.get(d.channel) || 0) + 1);
     }
 
@@ -39,6 +51,7 @@ function useChannelChartData(
       if (count > 3) majorChannels.add(ch);
     }
 
+    // 24ヶ月分
     const now = new Date();
     const months: string[] = [];
     for (let i = 23; i >= 0; i--) {
@@ -46,74 +59,51 @@ function useChannelChartData(
       months.push(`${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, "0")}`);
     }
 
-    const monthMap = new Map<string, Record<string, number>>();
-    for (const m of months) monthMap.set(m, {});
+    // 月 × チャネル で申し込みと成約を集計
+    const monthAppMap = new Map<string, Record<string, number>>();
+    const monthClosedMap = new Map<string, Record<string, number>>();
+    for (const m of months) {
+      monthAppMap.set(m, {});
+      monthClosedMap.set(m, {});
+    }
 
-    for (const d of filtered) {
+    for (const d of appRecords) {
       const ch = majorChannels.has(d.channel) ? d.channel : "その他";
-      const bucket = monthMap.get(d.month);
+      const bucket = monthAppMap.get(d.month);
       if (bucket) bucket[ch] = (bucket[ch] || 0) + 1;
     }
 
-    const chart = months.map(m => ({ month: m, ...monthMap.get(m) }));
+    for (const d of closedRecords) {
+      const ch = majorChannels.has(d.channel) ? d.channel : "その他";
+      const bucket = monthClosedMap.get(d.month);
+      if (bucket) bucket[ch] = (bucket[ch] || 0) + 1;
+    }
 
+    // チャネル名ソート
     const names = Array.from(majorChannels).sort((a, b) =>
       (channelTotals.get(b) || 0) - (channelTotals.get(a) || 0)
     );
-    if (filtered.some(d => !majorChannels.has(d.channel))) names.push("その他");
+    if (appRecords.some(d => !majorChannels.has(d.channel))) names.push("その他");
 
-    return { chartData: chart, channelNames: names, total: filtered.length };
-  }, [data, mode, attrFilter]);
-}
+    // チャートデータ: 申し込みは正の値、成約は「ch_成約」キーで区別
+    const chart = months.map(m => {
+      const row: Record<string, string | number> = { month: m };
+      const appBucket = monthAppMap.get(m) || {};
+      const closedBucket = monthClosedMap.get(m) || {};
+      for (const ch of names) {
+        row[`${ch}_申込`] = appBucket[ch] || 0;
+        row[`${ch}_成約`] = closedBucket[ch] || 0;
+      }
+      return row;
+    });
 
-function ChannelSingleChart({
-  chartData,
-  channelNames,
-  total,
-  label,
-}: {
-  chartData: Record<string, unknown>[];
-  channelNames: string[];
-  total: number;
-  label: string;
-}) {
-  return (
-    <div>
-      <div className="flex items-center gap-2 mb-2">
-        <span className="text-[11px] text-gray-400">{label}</span>
-        <span className="text-sm font-bold text-white">{total}<span className="text-xs text-gray-400 ml-1">件</span></span>
-      </div>
-      <ResponsiveContainer width="100%" height={240}>
-        <BarChart data={chartData} margin={{ left: 0, right: 8, top: 4, bottom: 4 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-          <XAxis dataKey="month" tick={{ fontSize: 9, fill: "#6b7280" }} tickFormatter={(v: string) => v.slice(5)} interval={1} />
-          <YAxis tick={{ fontSize: 10, fill: "#6b7280" }} allowDecimals={false} />
-          <Tooltip
-            contentStyle={{ backgroundColor: "#1f2937", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 11 }}
-            labelStyle={{ color: "#e5e7eb", fontWeight: 600 }}
-            formatter={(value, name) => [`${name}: ${Number(value)}件`]}
-          />
-          <Legend wrapperStyle={{ fontSize: 10 }} />
-          {channelNames.map((name, i) => (
-            <Bar key={name} dataKey={name} stackId="channels" fill={CHANNEL_COLORS[i % CHANNEL_COLORS.length]} />
-          ))}
-        </BarChart>
-      </ResponsiveContainer>
-    </div>
-  );
-}
-
-function ChannelMonthlyChart({
-  data,
-  title,
-  mode,
-}: {
-  data: ChannelMonthlyRaw[];
-  title: string;
-  mode: "application" | "closed";
-}) {
-  const kisotsu = useChannelChartData(data, mode, "kisotsu");
-  const shinsotsu = useChannelChartData(data, mode, "shinsotsu");
+    return {
+      chartData: chart,
+      channelNames: names,
+      totalApp: appRecords.length,
+      totalClosed: closedRecords.length,
+    };
+  }, [data, attrFilter]);
 
   return (
     <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-4">
@@ -122,11 +112,64 @@ function ChannelMonthlyChart({
           <h2 className="text-sm font-semibold text-white">{title}</h2>
           <p className="text-[10px] text-gray-500">過去24ヶ月 / 3件以下は「その他」</p>
         </div>
+        <div className="flex items-center gap-3">
+          <span className="text-[11px] text-gray-400">申込 <span className="text-white font-bold">{totalApp}</span></span>
+          <span className="text-[11px] text-gray-400">成約 <span className="text-white font-bold">{totalClosed}</span></span>
+        </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <ChannelSingleChart chartData={kisotsu.chartData} channelNames={kisotsu.channelNames} total={kisotsu.total} label="既卒" />
-        <ChannelSingleChart chartData={shinsotsu.chartData} channelNames={shinsotsu.channelNames} total={shinsotsu.total} label="新卒" />
+      <ResponsiveContainer width="100%" height={280}>
+        <BarChart data={chartData} margin={{ left: 0, right: 8, top: 4, bottom: 4 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+          <XAxis dataKey="month" tick={{ fontSize: 9, fill: "#6b7280" }} tickFormatter={(v: string) => v.slice(5)} interval={1} />
+          <YAxis tick={{ fontSize: 10, fill: "#6b7280" }} allowDecimals={false} />
+          <Tooltip
+            contentStyle={{ backgroundColor: "#1f2937", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 11 }}
+            labelStyle={{ color: "#e5e7eb", fontWeight: 600 }}
+            formatter={(value, name) => {
+              const v = Number(value);
+              if (v === 0) return [null, null]; // 0は非表示
+              return [`${name}: ${v}件`];
+            }}
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            itemSorter={(item: any) => -(item.value || 0)}
+          />
+          <Legend
+            wrapperStyle={{ fontSize: 10 }}
+            // 申込と成約で同じチャネル色、成約はパターンで区別
+            formatter={(value: string) => {
+              const parts = value.split("_");
+              return `${parts[0]}(${parts[1]})`;
+            }}
+          />
+          {/* 申し込み: 実線バー */}
+          {channelNames.map((name, i) => (
+            <Bar
+              key={`${name}_申込`}
+              dataKey={`${name}_申込`}
+              stackId="application"
+              fill={CHANNEL_COLORS[i % CHANNEL_COLORS.length]}
+              radius={[0, 0, 0, 0]}
+            />
+          ))}
+          {/* 成約: 同じ色で半透明ストライプ感（opacity下げ） */}
+          {channelNames.map((name, i) => (
+            <Bar
+              key={`${name}_成約`}
+              dataKey={`${name}_成約`}
+              stackId="closed"
+              fill={CHANNEL_COLORS[i % CHANNEL_COLORS.length]}
+              fillOpacity={0.4}
+              stroke={CHANNEL_COLORS[i % CHANNEL_COLORS.length]}
+              strokeWidth={1}
+              radius={[0, 0, 0, 0]}
+            />
+          ))}
+        </BarChart>
+      </ResponsiveContainer>
+      <div className="flex items-center justify-center gap-4 mt-1 text-[10px] text-gray-500">
+        <span>■ 濃い色 = 申し込み</span>
+        <span>□ 薄い色 = 成約</span>
       </div>
     </div>
   );
@@ -135,13 +178,13 @@ function ChannelMonthlyChart({
 export function ChannelClient({ channelTrends, monthlyRaw }: ChannelClientProps) {
   return (
     <div className="space-y-4">
-      {/* 月別棒グラフ: 申し込み数 & 成約数 横並び */}
+      {/* 属性別チャネル状況: 既卒 & 新卒 横並び */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <ChannelMonthlyChart data={monthlyRaw} title="チャネル別 申し込み数" mode="application" />
-        <ChannelMonthlyChart data={monthlyRaw} title="チャネル別 成約数" mode="closed" />
+        <ChannelByAttrChart data={monthlyRaw} title="チャネル別状況（既卒）" attrFilter="kisotsu" />
+        <ChannelByAttrChart data={monthlyRaw} title="チャネル別状況（新卒）" attrFilter="shinsotsu" />
       </div>
 
-      {/* 既存のチャネル推移バッジ */}
+      {/* チャネル別申込推移バッジ */}
       <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-4">
         <div className="mb-2">
           <h2 className="text-sm font-semibold text-white">チャネル別申込推移</h2>
