@@ -53,11 +53,12 @@ export async function AdsSection() {
 
   // --- ファネルデータ: 顧客の application_date ベースで週/月に振り分け ---
   // cv_application（申し込み数）もファネルデータからカウント
-  type FunnelAgg = { cv_application: number; scheduled: number; closed: number; revenue: number };
+  type ClosedCustomer = { name: string; ltv: number };
+  type FunnelAgg = { cv_application: number; scheduled: number; closed: number; revenue: number; closedCustomers: ClosedCustomer[] };
 
   const weeklyFunnel = new Map<string, FunnelAgg>();
   const monthlyFunnel = new Map<string, FunnelAgg>();
-  const zero = (): FunnelAgg => ({ cv_application: 0, scheduled: 0, closed: 0, revenue: 0 });
+  const zero = (): FunnelAgg => ({ cv_application: 0, scheduled: 0, closed: 0, revenue: 0, closedCustomers: [] });
 
   for (const c of funnel) {
     if (!c.application_date) continue;
@@ -69,10 +70,11 @@ export async function AdsSection() {
     const rev = isClosed ? (c.confirmed_amount + c.subsidy_amount + agentFee) : 0;
 
     const wf = weeklyFunnel.get(wk) || zero();
-    wf.cv_application += 1; // 顧客DBベースのカウント
+    wf.cv_application += 1;
     wf.scheduled += isScheduled;
     wf.closed += isClosed;
     wf.revenue += rev;
+    if (isClosed) wf.closedCustomers.push({ name: c.name, ltv: rev });
     weeklyFunnel.set(wk, wf);
 
     const mf = monthlyFunnel.get(mk) || zero();
@@ -80,6 +82,7 @@ export async function AdsSection() {
     mf.scheduled += isScheduled;
     mf.closed += isClosed;
     mf.revenue += rev;
+    if (isClosed) mf.closedCustomers.push({ name: c.name, ltv: rev });
     monthlyFunnel.set(mk, mf);
   }
 
@@ -142,6 +145,7 @@ export async function AdsSection() {
       revenue: Math.round(fnl.revenue),
       cpa_scheduled: calcRollingCpa(wk),
       rolling_ltv: calcRollingLtv(wk),
+      closedCustomers: fnl.closedCustomers,
     };
   });
 
@@ -159,6 +163,7 @@ export async function AdsSection() {
       revenue: Math.round(fnl.revenue),
       cpa_scheduled: calcRollingCpa(mk),
       rolling_ltv: calcRollingLtv(mk),
+      closedCustomers: fnl.closedCustomers,
     };
   });
 

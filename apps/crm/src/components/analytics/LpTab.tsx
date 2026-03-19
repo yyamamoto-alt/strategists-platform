@@ -19,14 +19,14 @@ interface LpTabProps {
 }
 
 export function LpTab({ traffic, pageDailyRows }: LpTabProps) {
-  const [lpTab, setLpTab] = useState<"main" | "lp3" | "content">("main");
+  const [lpTab, setLpTab] = useState<"main" | "lp3" | "content">("content");
 
   return (
     <div className="space-y-4">
       <div className="flex gap-2">
+        <SubTab label="ページ別分析" active={lpTab === "content"} onClick={() => setLpTab("content")} />
         <SubTab label="メインLP" active={lpTab === "main"} onClick={() => setLpTab("main")} />
         <SubTab label="面談申込特化LP" active={lpTab === "lp3"} onClick={() => setLpTab("lp3")} />
-        <SubTab label="ページ別分析" active={lpTab === "content"} onClick={() => setLpTab("content")} />
       </div>
       {lpTab === "main" && <LpTrafficTrendTab traffic={traffic} landingPage="/" />}
       {lpTab === "lp3" && <LpTrafficTrendTab traffic={traffic} landingPage="/lp3/" />}
@@ -50,7 +50,7 @@ interface AggregatedTrafficSource {
 }
 
 function LpTrafficTrendTab({ traffic, landingPage }: { traffic: TrafficDaily[]; landingPage: string }) {
-  const [period, setPeriod] = useState<Period>("week");
+  const [period, setPeriod] = useState<Period>("month");
   const [metric, setMetric] = useState<LpMetric>("sessions");
 
   const lpRows = useMemo(() => traffic.filter(t => t.landing_page === landingPage), [traffic, landingPage]);

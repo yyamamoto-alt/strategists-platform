@@ -114,7 +114,7 @@ interface YouTubeTabProps {
 }
 
 export function YouTubeTab({ youtubeVideos, youtubeDaily, youtubeChannelDaily, youtubeFunnel, youtubeTrafficSources, youtubeSearchTerms, searchQueries, adsKeywords }: YouTubeTabProps) {
-  const [sub, setSub] = useState<YouTubeSub>("videos");
+  const [sub, setSub] = useState<YouTubeSub>("detail");
 
   const hasData = youtubeVideos.length > 0 || youtubeChannelDaily.length > 0;
 
@@ -129,8 +129,8 @@ export function YouTubeTab({ youtubeVideos, youtubeDaily, youtubeChannelDaily, y
   return (
     <div className="space-y-4">
       <div className="flex gap-2 flex-wrap">
-        <SubTab label="動画別比較" active={sub === "videos"} onClick={() => setSub("videos")} />
         <SubTab label="動画別KPI詳細" active={sub === "detail"} onClick={() => setSub("detail")} />
+        <SubTab label="動画別比較" active={sub === "videos"} onClick={() => setSub("videos")} />
         <SubTab label="成約顧客リスト" active={sub === "customers"} onClick={() => setSub("customers")} />
         <SubTab label="キーワード攻略" active={sub === "keywords"} onClick={() => setSub("keywords")} />
       </div>
@@ -183,7 +183,7 @@ function YouTubeVideoTable({ youtubeVideos, youtubeDaily, channelDaily }: {
 }) {
   const [includeShorts, setIncludeShorts] = useState(false);
   const [chartGranularity, setChartGranularity] = useState<ChartGranularity>("weekly");
-  const [videoSort, setVideoSort] = useState<VideoSortKey>("views");
+  const [videoSort, setVideoSort] = useState<VideoSortKey>("published_at");
 
   const filteredVideos = useMemo(() =>
     includeShorts ? youtubeVideos : youtubeVideos.filter(v => !isShort(v)),

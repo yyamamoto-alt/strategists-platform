@@ -47,11 +47,12 @@ export async function MetaAdsSection() {
   }
 
   // --- ファネルデータ: 顧客の application_date ベースで週/月に振り分け ---
-  type FunnelAgg = { scheduled: number; closed: number; revenue: number };
+  type ClosedCustomer = { name: string; ltv: number };
+  type FunnelAgg = { scheduled: number; closed: number; revenue: number; closedCustomers: ClosedCustomer[] };
 
   const weeklyFunnel = new Map<string, FunnelAgg>();
   const monthlyFunnel = new Map<string, FunnelAgg>();
-  const zero = (): FunnelAgg => ({ scheduled: 0, closed: 0, revenue: 0 });
+  const zero = (): FunnelAgg => ({ scheduled: 0, closed: 0, revenue: 0, closedCustomers: [] });
 
   for (const c of funnel) {
     if (!c.application_date) continue;
@@ -66,12 +67,14 @@ export async function MetaAdsSection() {
     wf.scheduled += isScheduled;
     wf.closed += isClosed;
     wf.revenue += rev;
+    if (isClosed) wf.closedCustomers.push({ name: c.name, ltv: rev });
     weeklyFunnel.set(wk, wf);
 
     const mf = monthlyFunnel.get(mk) || zero();
     mf.scheduled += isScheduled;
     mf.closed += isClosed;
     mf.revenue += rev;
+    if (isClosed) mf.closedCustomers.push({ name: c.name, ltv: rev });
     monthlyFunnel.set(mk, mf);
   }
 
@@ -132,6 +135,7 @@ export async function MetaAdsSection() {
       revenue: Math.round(fnl.revenue),
       cpa_scheduled: calcRollingCpa(wk),
       rolling_ltv: calcRollingLtv(wk),
+      closedCustomers: fnl.closedCustomers,
     };
   });
 
@@ -148,6 +152,7 @@ export async function MetaAdsSection() {
       revenue: Math.round(fnl.revenue),
       cpa_scheduled: calcRollingCpa(mk),
       rolling_ltv: calcRollingLtv(mk),
+      closedCustomers: fnl.closedCustomers,
     };
   });
 

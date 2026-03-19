@@ -26,10 +26,17 @@ interface AdsTabProps {
 
 export function AdsTab({ adsCampaigns, adsKeywords, adsFunnel }: AdsTabProps) {
   const [granularity, setGranularity] = useState<AdsGranularity>("weekly");
-  const [adsSub, setAdsSub] = useState<AdsSub>("overview");
+  const [adsSub, setAdsSub] = useState<AdsSub>("keywords");
 
-  // Date range filter — draft values for picker, applied on button click
+  // Date range filter — default to ~1 month
   const dataRange = useMemo(() => getDataDateRange(adsCampaigns), [adsCampaigns]);
+  const defaultFrom = useMemo(() => {
+    if (!dataRange.max) return "";
+    const d = new Date(dataRange.max);
+    d.setDate(d.getDate() - 30);
+    const iso = d.toISOString().slice(0, 10);
+    return iso < dataRange.min ? dataRange.min : iso;
+  }, [dataRange]);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [draftFrom, setDraftFrom] = useState("");
@@ -37,18 +44,18 @@ export function AdsTab({ adsCampaigns, adsKeywords, adsFunnel }: AdsTabProps) {
 
   // Filter campaigns/keywords by date range
   const filteredCampaigns = useMemo(() => {
-    const from = dateFrom || dataRange.min;
+    const from = dateFrom || defaultFrom || dataRange.min;
     const to = dateTo || dataRange.max;
     if (!from || !to) return adsCampaigns;
     return adsCampaigns.filter(r => r.date >= from && r.date <= to);
-  }, [adsCampaigns, dateFrom, dateTo, dataRange]);
+  }, [adsCampaigns, dateFrom, dateTo, dataRange, defaultFrom]);
 
   const filteredKeywords = useMemo(() => {
-    const from = dateFrom || dataRange.min;
+    const from = dateFrom || defaultFrom || dataRange.min;
     const to = dateTo || dataRange.max;
     if (!from || !to) return adsKeywords;
     return adsKeywords.filter(r => r.date >= from && r.date <= to);
-  }, [adsKeywords, dateFrom, dateTo, dataRange]);
+  }, [adsKeywords, dateFrom, dateTo, dataRange, defaultFrom]);
 
   if (adsCampaigns.length === 0) {
     return (
@@ -58,7 +65,7 @@ export function AdsTab({ adsCampaigns, adsKeywords, adsFunnel }: AdsTabProps) {
     );
   }
 
-  const effectiveFrom = dateFrom || dataRange.min;
+  const effectiveFrom = dateFrom || defaultFrom || dataRange.min;
   const effectiveTo = dateTo || dataRange.max;
 
   return (
@@ -66,9 +73,9 @@ export function AdsTab({ adsCampaigns, adsKeywords, adsFunnel }: AdsTabProps) {
       {/* Sub tabs + Date range picker (統合) */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex gap-2 flex-wrap">
-          <SubTab label="日別消化" active={adsSub === "overview"} onClick={() => setAdsSub("overview")} />
-          <SubTab label="キャンペーン別" active={adsSub === "campaigns"} onClick={() => setAdsSub("campaigns")} />
           <SubTab label="キーワード別" active={adsSub === "keywords"} onClick={() => setAdsSub("keywords")} />
+          <SubTab label="キャンペーン別" active={adsSub === "campaigns"} onClick={() => setAdsSub("campaigns")} />
+          <SubTab label="日別消化" active={adsSub === "overview"} onClick={() => setAdsSub("overview")} />
           <SubTab label="成約顧客リスト" active={adsSub === "funnel"} onClick={() => setAdsSub("funnel")} />
         </div>
         {adsSub !== "funnel" && (
@@ -178,14 +185,14 @@ function AdsOverview({ adsCampaigns }: { adsCampaigns: AdsCampaignDaily[] }) {
       {/* KPI Cards — period totals */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         <KpiCard title="広告費用" value={`¥${Math.round(totals.cost).toLocaleString()}`} sub={<span className="text-gray-500 text-[10px]">{totals.days}日間合計</span>} />
-        <KpiCard title="申し込み数" value={totals.cvApp.toFixed(1)} sub={<span className="text-gray-500 text-[10px]">{totals.days}日間合計</span>} />
+        <KpiCard title="申込CV（Ads API）" value={totals.cvApp.toFixed(1)} sub={<span className="text-gray-500 text-[10px]">{totals.days}日間合計</span>} />
         <KpiCard title="確定CPA（申込ベース）" value={totals.cpa > 0 ? `¥${Math.round(totals.cpa).toLocaleString()}` : "—"} sub={<span className="text-gray-500 text-[10px]">{totals.days}日間平均</span>} />
         <KpiCard title="CTR" value={`${totals.ctr.toFixed(2)}%`} sub={<span className="text-gray-500 text-[10px]">{totals.days}日間平均</span>} />
         <KpiCard title="クリック数" value={totals.clicks.toLocaleString()} sub={<span className="text-gray-500 text-[10px]">{totals.days}日間合計</span>} />
         <KpiCard title="マイクロCV" value={totals.cvMicro.toFixed(0)} sub={<span className="text-gray-500 text-[10px]">{totals.days}日間合計</span>} />
       </div>
 
-      {/* Charts: Cost by campaign (stacked bar) + Applications (bar) */}
+      {/* Charts hidden — duplicates dashboard. Uncomment to restore.
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="bg-surface-raised border border-white/10 rounded-xl p-5">
           <h3 className="text-sm font-medium text-gray-300 mb-4">広告費推移 キャンペーン別（日別）</h3>
@@ -230,6 +237,7 @@ function AdsOverview({ adsCampaigns }: { adsCampaigns: AdsCampaignDaily[] }) {
           </ResponsiveContainer>
         </div>
       </div>
+      */}
 
       {/* Daily table — rows=dates, columns=metrics */}
       <div className="bg-surface-raised border border-white/10 rounded-xl overflow-hidden">
@@ -245,7 +253,7 @@ function AdsOverview({ adsCampaigns }: { adsCampaigns: AdsCampaignDaily[] }) {
                 <th className="text-right py-2.5 px-3">クリック</th>
                 <th className="text-right py-2.5 px-3">表示回数</th>
                 <th className="text-right py-2.5 px-3">CTR</th>
-                <th className="text-right py-2.5 px-3">申し込み</th>
+                <th className="text-right py-2.5 px-3" title="Google Ads APIのコンバージョンデータ（CRM申込数とは異なります）">申込CV</th>
                 <th className="text-right py-2.5 px-3">マイクロCV</th>
                 <th className="text-right py-2.5 px-3">CPA</th>
               </tr>
@@ -390,7 +398,7 @@ function AdsCampaignTable({ adsCampaigns, granularity, setGranularity }: {
               <tr className="border-b border-white/10 text-gray-400">
                 <th className="text-left py-2.5 px-3 min-w-[200px]">キャンペーン</th>
                 <th className="text-right py-2.5 px-2 w-20">合計費用</th>
-                <th className="text-right py-2.5 px-2 w-16">申込数</th>
+                <th className="text-right py-2.5 px-2 w-16" title="Google Ads APIのコンバージョンデータ（CRM申込数とは異なります）">申込CV</th>
                 <th className="text-right py-2.5 px-2 w-16">確定CPA</th>
                 <th className="text-right py-2.5 px-2 w-16">CTR</th>
                 {periodKeys.map(pk => (
@@ -535,7 +543,7 @@ function AdsKeywordTable({ adsKeywords, granularity, setGranularity }: {
                 <th className="text-right py-2.5 px-2 w-14">Click</th>
                 <th className="text-right py-2.5 px-2 w-14">表示</th>
                 <th className="text-right py-2.5 px-2 w-12">CTR</th>
-                <th className="text-right py-2.5 px-2 w-10">申し込み</th>
+                <th className="text-right py-2.5 px-2 w-10" title="Google Ads APIのコンバージョンデータ（CRM申込数とは異なります）">申込CV</th>
                 {periodKeys.slice(-12).map(pk => (
                   <th key={pk} className="text-center py-2.5 px-1 w-14 whitespace-nowrap text-[10px]">{formatPK(pk)}</th>
                 ))}

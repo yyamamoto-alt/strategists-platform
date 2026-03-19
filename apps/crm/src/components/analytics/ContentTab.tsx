@@ -144,7 +144,19 @@ export function ContentTab({ pageDailyRows, traffic }: { pageDailyRows: PageDail
       if (cvData) wd.cv = cvData.cv;
     }
 
-    const sortedPages = Array.from(pageMap.values()).sort((a, b) => b.totalUsers - a.totalUsers);
+    // Sort by sum of the most recent 2 weeks' total values (descending)
+    const recentPeriods = Array.from(new Set(contentRows.map((r) => periodKey(r.date)))).sort().reverse().slice(0, 2);
+    const sortedPages = Array.from(pageMap.values()).sort((a, b) => {
+      const sumRecent = (p: typeof a) => {
+        let s = 0;
+        for (const wk of recentPeriods) {
+          const wd = p.weekData.get(wk);
+          if (wd) s += wd.users + wd.sessions;
+        }
+        return s;
+      };
+      return sumRecent(b) - sumRecent(a);
+    });
 
     let mx = 0;
     const mtx = new Map<string, Map<string, number>>();
@@ -218,6 +230,24 @@ export function ContentTab({ pageDailyRows, traffic }: { pageDailyRows: PageDail
             </tr>
           </thead>
           <tbody>
+            <tr className="border-b border-white/10 bg-white/5">
+              <td className="px-3 py-2 text-gray-400 font-medium sticky left-0 bg-white/5 z-10">合計</td>
+              {periods.map((wk) => {
+                let weekTotal = 0;
+                for (const page of pages) {
+                  weekTotal += matrix.get(page.path)?.get(wk) || 0;
+                }
+                if (metric === "bounce_rate" || metric === "avg_duration" || metric === "cvr") {
+                  weekTotal = pages.length > 0 ? weekTotal / pages.length : 0;
+                }
+                return (
+                  <td key={wk} className="text-center px-2 py-2 text-white font-medium">
+                    {formatVal(metric, weekTotal)}
+                  </td>
+                );
+              })}
+              <td className="text-center px-3 py-2 text-white font-bold" />
+            </tr>
             {pages.map((page) => {
               const row = matrix.get(page.path)!;
               const total = Array.from(row.values()).reduce((a, b) => a + b, 0);
@@ -314,24 +344,6 @@ export function ContentTab({ pageDailyRows, traffic }: { pageDailyRows: PageDail
                 </Fragment>
               );
             })}
-            <tr className="border-t border-white/10 bg-white/5">
-              <td className="px-3 py-2 text-gray-400 font-medium sticky left-0 bg-white/5 z-10">合計</td>
-              {periods.map((wk) => {
-                let weekTotal = 0;
-                for (const page of pages) {
-                  weekTotal += matrix.get(page.path)?.get(wk) || 0;
-                }
-                if (metric === "bounce_rate" || metric === "avg_duration" || metric === "cvr") {
-                  weekTotal = pages.length > 0 ? weekTotal / pages.length : 0;
-                }
-                return (
-                  <td key={wk} className="text-center px-2 py-2 text-white font-medium">
-                    {formatVal(metric, weekTotal)}
-                  </td>
-                );
-              })}
-              <td className="text-center px-3 py-2 text-white font-bold" />
-            </tr>
           </tbody>
         </table>
       </div>

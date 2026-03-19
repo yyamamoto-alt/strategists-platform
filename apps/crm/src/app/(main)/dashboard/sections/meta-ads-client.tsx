@@ -2,10 +2,15 @@
 
 import { useState, useMemo } from "react";
 import {
-  XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend, Line, ComposedChart, Bar, BarChart,
+  XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend, Line, ComposedChart, Bar, BarChart, Scatter,
 } from "recharts";
 
 const CAMPAIGN_COLORS = ["#8b5cf6", "#ec4899", "#06b6d4", "#f59e0b", "#10b981", "#ef4444", "#6366f1", "#84cc16"];
+
+export interface ClosedCustomerInfo {
+  name: string;
+  ltv: number;
+}
 
 export interface MetaAdsRow {
   period: string;
@@ -15,6 +20,7 @@ export interface MetaAdsRow {
   revenue: number;
   cpa_scheduled: number;
   rolling_ltv: number;
+  closedCustomers?: ClosedCustomerInfo[];
 }
 
 interface CampaignDailyRow {
@@ -138,13 +144,35 @@ export function MetaAdsSummaryClient({ weeklyRows, monthlyRows, campaignDaily = 
                 <YAxis yAxisId="left" tick={{ fontSize: 10, fill: "#6b7280" }}
                   tickFormatter={(v: number) => v >= 10000 ? `${(v/10000).toFixed(1)}万` : `¥${Math.round(v)}`} />
                 <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10, fill: "#6b7280" }} tickFormatter={yAxisFmt} hide />
+                <YAxis yAxisId="closedAxis" orientation="right" domain={[0, 10]} tick={{ fontSize: 9, fill: "#fbbf24" }} allowDecimals={false} width={20} />
                 <Tooltip
                   contentStyle={{ backgroundColor: "#1f2937", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 12 }}
                   labelStyle={{ color: "#9ca3af" }}
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  formatter={(value: any, name: any) => {
-                    const v = Number(value);
-                    return [v > 0 ? `¥${Math.round(v).toLocaleString()}` : "—", name];
+                  content={({ active, payload, label }: any) => {
+                    if (!active || !payload || payload.length === 0) return null;
+                    const dataPoint = payload[0]?.payload;
+                    const customers: ClosedCustomerInfo[] = dataPoint?.closedCustomers || [];
+                    return (
+                      <div style={{ backgroundColor: "#1f2937", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, padding: "8px 12px", fontSize: 12 }}>
+                        <p style={{ color: "#9ca3af", marginBottom: 4 }}>{label}</p>
+                        {payload.filter((p: { value: number }) => p.value > 0).map((p: { name: string; value: number; color: string }, i: number) => (
+                          <p key={i} style={{ color: p.color || "#fff", margin: "2px 0" }}>
+                            {p.name}: {typeof p.value === "number" && p.name !== "成約" ? `¥${Math.round(p.value).toLocaleString()}` : p.value}
+                          </p>
+                        ))}
+                        {customers.length > 0 && (
+                          <div style={{ borderTop: "1px solid rgba(255,255,255,0.1)", marginTop: 6, paddingTop: 6 }}>
+                            <p style={{ color: "#fbbf24", fontWeight: 600, marginBottom: 2 }}>成約顧客:</p>
+                            {customers.map((c, i) => (
+                              <p key={i} style={{ color: "#e5e7eb", margin: "1px 0", fontSize: 11 }}>
+                                {c.name} — ¥{c.ltv.toLocaleString()}
+                              </p>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
                   }}
                 />
                 <Legend wrapperStyle={{ fontSize: 10 }} />
@@ -154,6 +182,7 @@ export function MetaAdsSummaryClient({ weeklyRows, monthlyRows, campaignDaily = 
                 ))}
                 <Line yAxisId="right" type="monotone" dataKey="cpa_scheduled" name="CPA(2ヶ月移動)" stroke="#ef4444" strokeWidth={2} dot={false} />
                 <Line yAxisId="right" type="monotone" dataKey="rolling_ltv" name="確定LTV(2ヶ月移動)" stroke="#10b981" strokeWidth={2} dot={false} strokeDasharray="6 3" />
+                <Scatter yAxisId="closedAxis" dataKey="closed" name="成約" fill="#fbbf24" shape="circle" legendType="circle" />
               </ComposedChart>
             </ResponsiveContainer>
           </div>
