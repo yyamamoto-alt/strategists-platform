@@ -859,13 +859,6 @@ export function CustomersClient() {
       // ═══ 人材紹介（紫） ═══
       { key: "external_agents", label: "利用エージェント", width: 110, category: "agent",
         render: (c) => <span className="text-xs">{c.agent?.external_agents || "-"}</span> },
-      { key: "offer_rank", label: "内定ランク", width: 90, category: "agent",
-        render: (c) => {
-          const rank = c.agent?.offer_rank || "-";
-          if (rank === "-") return "-";
-          return <span className="text-xs font-bold">{rank}</span>;
-        },
-        sortValue: (c) => ({ S: 5, A: 4, B: 3, C: 2, D: 1 }[c.agent?.offer_rank || "B"] || 0) },
       { key: "offer_salary", label: "想定年収", width: 100, align: "right" as const, category: "agent",
         render: (c) => c.agent?.offer_salary ? formatCurrency(c.agent.offer_salary) : "-",
         sortValue: (c) => c.agent?.offer_salary || 0 },

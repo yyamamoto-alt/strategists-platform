@@ -151,6 +151,7 @@ export function AgentsClient({ customers, agentSummary }: AgentsClientProps) {
                 <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">活動状況</th>
                 <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">確定</th>
                 <th className="text-center py-3 px-4 text-xs font-semibold text-gray-500">内定ランク</th>
+                <th className="text-center py-3 px-4 text-xs font-semibold text-gray-500">AI内定確度</th>
                 <th className="text-right py-3 px-4 text-xs font-semibold text-gray-500">想定年収</th>
                 <th className="text-right py-3 px-4 text-xs font-semibold text-gray-500">紹介報酬期待値</th>
                 <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">外部エージェント</th>
@@ -186,6 +187,7 @@ export function AgentsClient({ customers, agentSummary }: AgentsClientProps) {
                         onChange={(e) => handleJobStatusChange(c.id, e.target.value)}
                         className={`border border-white/10 rounded px-2 py-1 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-brand cursor-pointer ${
                           jobStatus === "活動中" ? "bg-brand/20 text-brand border-brand/30" :
+                          jobStatus === "活動予定" ? "bg-cyan-500/15 text-cyan-400 border-cyan-500/30" :
                           jobStatus === "終了" ? "bg-gray-800 text-gray-400 border-gray-700" :
                           "bg-white/5 text-gray-500"
                         }`}
@@ -207,6 +209,13 @@ export function AgentsClient({ customers, agentSummary }: AgentsClientProps) {
                     </td>
                     <td className="py-3 px-4 text-center">
                       <RankBadge rank={c.agent.offer_rank} />
+                    </td>
+                    <td className="py-3 px-4 text-center">
+                      {c.agent.ai_offer_probability != null ? (
+                        <span className={`text-xs font-medium ${c.agent.ai_offer_probability >= 60 ? "text-emerald-400" : c.agent.ai_offer_probability >= 30 ? "text-amber-400" : "text-gray-400"}`}>
+                          {c.agent.ai_offer_probability}%
+                        </span>
+                      ) : <span className="text-gray-600 text-xs">-</span>}
                     </td>
                     <td className="py-3 px-4 text-sm text-right text-gray-300">
                       {c.agent.offer_salary ? formatCurrency(c.agent.offer_salary) : "-"}
