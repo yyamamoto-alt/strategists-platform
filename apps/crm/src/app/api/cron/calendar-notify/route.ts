@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { google } from "googleapis";
-import { notifyCalendarEvent } from "@/lib/slack";
+import { notifyCalendarEvent, logNotification, isSystemAutomationEnabled } from "@/lib/slack";
+import { createServiceClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -47,6 +48,10 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  if (!(await isSystemAutomationEnabled("calendar-notify"))) {
+    return NextResponse.json({ ok: true, skipped: true, reason: "disabled" });
+  }
+
   try {
     const auth = getCalendarAuth();
     const calendar = google.calendar({ version: "v3", auth });
@@ -71,14 +76,38 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: true, notified: 0 });
     }
 
+    // ★ 重複防止: notification_logsで直近1時間以内に同じイベントIDの通知があればスキップ
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const db = createServiceClient() as any;
+    const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000).toISOString();
+    const { data: recentNotifs } = await db
+      .from("notification_logs")
+      .select("metadata")
+      .eq("type", "calendar_event")
+      .gte("created_at", oneHourAgo);
+
+    const notifiedEventIds = new Set<string>();
+    for (const n of (recentNotifs || [])) {
+      const meta = n.metadata as Record<string, unknown> | null;
+      if (meta?.event_id) notifiedEventIds.add(meta.event_id as string);
+    }
+
     let notified = 0;
+    let skipped = 0;
 
     for (const event of events) {
       const title = event.summary || "（タイトルなし）";
       // 終日イベントはスキップ（dateTimeがなくdateのみ）
       if (!event.start?.dateTime) continue;
-      const startStr = event.start.dateTime;
 
+      // ★ 重複チェック
+      const eventId = event.id || `${title}_${event.start.dateTime}`;
+      if (notifiedEventIds.has(eventId)) {
+        skipped++;
+        continue;
+      }
+
+      const startStr = event.start.dateTime;
       const startDate = new Date(startStr);
       const timeStr = startDate.toLocaleString("ja-JP", {
         timeZone: "Asia/Tokyo",
@@ -110,10 +139,19 @@ export async function GET(request: Request) {
       const text = lines.join("\n");
 
       await notifyCalendarEvent(text);
+
+      // ★ 送信記録をnotification_logsに保存（重複防止用）
+      await logNotification({
+        type: "calendar_event",
+        message: text.slice(0, 500),
+        status: "success",
+        metadata: { event_id: eventId, event_title: title, event_start: startStr },
+      }).catch(() => {});
+
       notified++;
     }
 
-    return NextResponse.json({ success: true, notified });
+    return NextResponse.json({ success: true, notified, skipped });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Unknown error";
     console.error("[calendar-notify]", e);
