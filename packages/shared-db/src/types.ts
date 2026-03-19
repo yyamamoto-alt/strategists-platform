@@ -588,6 +588,8 @@ export interface ThreeTierRevenue {
   // 既卒/新卒セグメント内訳
   confirmed_school_kisotsu: number;
   confirmed_school_shinsotsu: number;
+  // 新卒 卒年別内訳 (e.g. {"26卒": 120000, "27卒": 300000})
+  shinsotsu_by_grad_year?: Record<string, number>;
   // Tier 2: 見込み含む売上（確定 + 受講中エージェント見込み）
   projected_agent: number;
   projected_total: number;

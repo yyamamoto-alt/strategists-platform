@@ -33,6 +33,7 @@ import {
   getSchoolRevenue,
   calcAgentProjectedRevenue,
   isShinsotsu,
+  extractGradYear,
   DEFAULT_LTV_CONFIG,
   type LtvConfig,
 } from "@/lib/calc-fields";
@@ -363,6 +364,8 @@ export function computeThreeTierRevenue(
       forecast_subsidy: number;
       // MAXライン: 見込みLTV合計
       expected_ltv: number;
+      // 新卒 卒年別内訳
+      shinsotsu_by_grad_year: Record<string, number>;
     }
   >();
 
@@ -382,6 +385,7 @@ export function computeThreeTierRevenue(
         forecast_agent: 0,
         forecast_subsidy: 0,
         expected_ltv: 0,
+        shinsotsu_by_grad_year: {},
       });
     }
     const m = byMonth.get(period)!;
@@ -397,6 +401,11 @@ export function computeThreeTierRevenue(
       m.confirmed_school += amount;
       if (isShinsotsu(c.attribute)) {
         m.confirmed_school_shinsotsu += amount;
+        // 卒年別内訳
+        const gy = extractGradYear(c.attribute);
+        if (gy) {
+          m.shinsotsu_by_grad_year[gy] = (m.shinsotsu_by_grad_year[gy] || 0) + amount;
+        }
       } else {
         m.confirmed_school_kisotsu += amount;
       }
@@ -451,6 +460,7 @@ export function computeThreeTierRevenue(
       confirmed_subsidy: 0, projected_agent: 0,
       forecast_school: 0, forecast_agent: 0, forecast_subsidy: 0,
       expected_ltv: 0,
+      shinsotsu_by_grad_year: {},
     });
   }
 
@@ -486,6 +496,7 @@ export function computeThreeTierRevenue(
         projected_total: projectedTotal,
         forecast_total: Math.round(forecastTotal),
         expected_ltv_total: expectedLtvTotal,
+        shinsotsu_by_grad_year: Object.keys(m.shinsotsu_by_grad_year).length > 0 ? m.shinsotsu_by_grad_year : undefined,
       };
     });
 }

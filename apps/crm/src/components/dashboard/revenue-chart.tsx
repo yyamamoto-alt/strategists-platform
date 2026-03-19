@@ -201,6 +201,19 @@ function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
   const [showPicker, setShowPicker] = useState(false);
   const [periodMode, setPeriodMode] = useState<"monthly" | "quarterly">("monthly");
   const [showCost, setShowCost] = useState(false);
+  const [gradYearFilter, setGradYearFilter] = useState<string | null>(null);
+  const [showGradFilter, setShowGradFilter] = useState(false);
+
+  // 利用可能な卒年を抽出
+  const availableGradYears = useMemo(() => {
+    const years = new Set<string>();
+    for (const d of data) {
+      if (d.shinsotsu_by_grad_year) {
+        for (const gy of Object.keys(d.shinsotsu_by_grad_year)) years.add(gy);
+      }
+    }
+    return Array.from(years).sort().reverse();
+  }, [data]);
 
   const { costMap, loading: costLoading } = useFreeeCoasts(showCost);
 
@@ -233,6 +246,14 @@ function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
       const revenue = d.confirmed_total || 0;
       const profit = cost ? revenue - totalCost : 0;
 
+      // 卒年フィルタ: 選択卒年の新卒スクール額とそれ以外
+      let shinsotsu_active = d.confirmed_school_shinsotsu || 0;
+      let shinsotsu_gray = 0;
+      if (gradYearFilter && d.shinsotsu_by_grad_year) {
+        shinsotsu_active = d.shinsotsu_by_grad_year[gradYearFilter] || 0;
+        shinsotsu_gray = (d.confirmed_school_shinsotsu || 0) - shinsotsu_active;
+      }
+
       return {
         ...d,
         ltv_gap: gap,
@@ -240,6 +261,8 @@ function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
         sga: cost?.sga || 0,
         total_cost: totalCost,
         profit,
+        shinsotsu_active,
+        shinsotsu_gray: Math.max(0, shinsotsu_gray),
       };
     });
   }, [data, costMap]);
@@ -351,6 +374,35 @@ function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
             四半期
           </button>
         </div>
+        {/* 卒年分析ドロップダウン */}
+        {availableGradYears.length > 0 && (
+          <div className="relative">
+            <button
+              onClick={() => setShowGradFilter(!showGradFilter)}
+              className={`px-2.5 py-1 text-[10px] font-medium rounded-lg border transition-colors ${
+                gradYearFilter
+                  ? "bg-blue-500/20 border-blue-500/40 text-blue-400"
+                  : "bg-surface-elevated border-white/10 text-gray-400 hover:text-white"
+              }`}
+            >
+              {gradYearFilter ? `新卒:${gradYearFilter}` : "卒年分析"}
+            </button>
+            {showGradFilter && (
+              <div className="absolute top-8 right-0 z-50 bg-[#1A1A1A] border border-white/15 rounded-lg p-2 shadow-xl min-w-[100px]">
+                <button onClick={() => { setGradYearFilter(null); setShowGradFilter(false); }}
+                  className={`block w-full text-left px-2 py-1 text-[11px] rounded transition-colors ${!gradYearFilter ? "bg-brand text-white" : "text-gray-400 hover:text-white"}`}>
+                  全体
+                </button>
+                {availableGradYears.map(gy => (
+                  <button key={gy} onClick={() => { setGradYearFilter(gy); setShowGradFilter(false); }}
+                    className={`block w-full text-left px-2 py-1 text-[11px] rounded transition-colors ${gradYearFilter === gy ? "bg-brand text-white" : "text-gray-400 hover:text-white"}`}>
+                    {gy}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
         <button
           onClick={() => setShowCost(!showCost)}
           className={`px-2.5 py-1 text-[10px] font-medium rounded-lg border transition-colors ${
@@ -415,7 +467,14 @@ function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
           {/* 売上棒グラフ */}
           <Bar yAxisId="left" dataKey="confirmed_school_kisotsu" name="既卒スクール" fill={colors.kisotsu} stackId="revenue" radius={[0, 0, 0, 0]} />
           <Bar yAxisId="left" dataKey="confirmed_subsidy" name="補助金" fill={colors.subsidy} stackId="revenue" />
-          <Bar yAxisId="left" dataKey="confirmed_school_shinsotsu" name="新卒スクール" fill={colors.shinsotsu} stackId="revenue" />
+          {gradYearFilter ? (
+            <>
+              <Bar yAxisId="left" dataKey="shinsotsu_gray" name={`新卒(他卒年)`} fill="#3f3f46" fillOpacity={0.3} stackId="revenue" legendType="none" />
+              <Bar yAxisId="left" dataKey="shinsotsu_active" name={`新卒(${gradYearFilter})`} fill={colors.shinsotsu} stackId="revenue" />
+            </>
+          ) : (
+            <Bar yAxisId="left" dataKey="confirmed_school_shinsotsu" name="新卒スクール" fill={colors.shinsotsu} stackId="revenue" />
+          )}
           <Bar yAxisId="left" dataKey="confirmed_agent" name="人材確定" fill={colors.agent} stackId="revenue" />
           <Bar yAxisId="left" dataKey="content_revenue" name="note売上" fill={colors.note} stackId="revenue" />
           <Bar yAxisId="left" dataKey="myvision_revenue" name="MyVision受託" fill={colors.myvision} stackId="revenue" />

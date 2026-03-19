@@ -5,6 +5,7 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend,
 } from "recharts";
 import type { ChannelTrend, ChannelMonthlyRaw } from "@/lib/data/dashboard-metrics";
+import { extractGradYear } from "@/lib/calc-fields";
 
 const CHANNEL_COLORS = [
   "#3b82f6", "#f59e0b", "#10b981", "#ef4444", "#8b5cf6",
@@ -14,11 +15,7 @@ const CHANNEL_COLORS = [
 
 const GRAY = "#3f3f46"; // グレーアウト用
 
-/** 属性文字列から卒年を抽出（"27卒" → "27卒", "既卒・中途" → null） */
-function extractGradYear(attr: string): string | null {
-  const m = attr.match(/(\d{2})卒/);
-  return m ? `${m[1]}卒` : null;
-}
+// extractGradYear は @/lib/calc-fields からインポート済み
 
 function useChannelChartData(
   data: ChannelMonthlyRaw[],

@@ -11,6 +11,13 @@ export function isShinsotsu(attribute: string | null | undefined): boolean {
   return attribute.includes("卒");
 }
 
+/** 属性から卒年を抽出（"27卒" → "27卒", "既卒・中途" → null） */
+export function extractGradYear(attribute: string | null | undefined): string | null {
+  if (!attribute) return null;
+  const m = attribute.match(/(\d{2})卒/);
+  return m ? `${m[1]}卒` : null;
+}
+
 /** 内定ランク → 通過率マッピング */
 const OFFER_RANK_RATE: Record<string, number> = {
   S: 0.60,

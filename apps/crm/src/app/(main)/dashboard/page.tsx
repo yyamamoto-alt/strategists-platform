@@ -15,6 +15,7 @@ import {
   ChannelTrends,
 } from "./sections/channel-section";
 import { SalesRateSection } from "./sections/sales-rate-section";
+import { YouTubeSection } from "./sections/youtube-section";
 import {
   HeaderSkeleton,
   ChartsSkeleton,
@@ -71,6 +72,11 @@ export default async function DashboardPage() {
       {/* チャネル別申込推移 */}
       <Suspense fallback={<ChannelSkeleton />}>
         <ChannelTrends />
+      </Suspense>
+
+      {/* YouTube 視聴推移 + 成約LTV */}
+      <Suspense fallback={<CardSkeleton />}>
+        <YouTubeSection />
       </Suspense>
 
       {/* 営業マン別成約率 */}
