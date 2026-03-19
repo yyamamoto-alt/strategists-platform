@@ -1,4 +1,5 @@
 import { createServiceClient } from "@/lib/supabase/server";
+import { AGENT_CATEGORIES } from "@/lib/calc-fields";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const supabase = () => createServiceClient() as any;
@@ -286,9 +287,9 @@ export interface AdsFunnelCustomer {
   referral_category: string | null;
 }
 
-/** エージェント利用者か判定（referral_categoryが「フル利用」or「一部利用」） */
+/** エージェント利用者か判定（referral_categoryが「フル利用」「一部利用」「自社」「該当」） */
 export function isAgentFunnelCustomer(c: { referral_category: string | null }): boolean {
-  return c.referral_category === "フル利用" || c.referral_category === "一部利用";
+  return !!c.referral_category && AGENT_CATEGORIES.has(c.referral_category);
 }
 
 /** 見込みLTV算出: スクール確定 + 補助金 + 人材報酬（エージェント利用者のみ） */
