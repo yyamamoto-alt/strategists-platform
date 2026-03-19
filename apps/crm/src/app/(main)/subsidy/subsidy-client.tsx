@@ -1048,21 +1048,30 @@ function CustomerDetailModal({
             {/* Condition 6: 契約書締結 */}
             <div className={`p-3 rounded-lg border ${checks?.contractVerified ? "border-green-500/30 bg-green-900/10" : "border-red-500/30 bg-red-900/10"}`}>
               <ConditionBadge label="契約書締結" met={checks?.contractVerified || false} />
-              <p className="text-[10px] text-gray-500 mt-1">契約書への署名確認</p>
-              {d?.contractSigned && <p className="text-[10px] text-amber-400 mt-1">📋 自己申告済</p>}
-              <div className="mt-1.5">
-                {checks && (
-                  <button
-                    onClick={() => onToggleCheck?.("contract_verified")}
-                    className={`text-[9px] px-1.5 py-0.5 rounded border transition-colors ${
-                      checks.contractVerified
-                        ? "bg-green-900/40 text-green-300 border-green-500/30"
-                        : "bg-gray-800 text-gray-500 border-gray-600 hover:border-gray-400"
-                    }`}
-                  >
-                    {checks.contractVerified ? "✓ 確認済" : "未確認"}
-                  </button>
-                )}
+              <p className="text-[10px] text-gray-500 mt-1">目検チェックが最終条件（自己申告は参考情報）</p>
+              <div className="mt-2 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <span className={`text-[10px] ${checks?.contractVerified ? "text-green-400" : d?.contractSigned ? "text-amber-400" : "text-red-400"}`}>
+                      {checks?.contractVerified ? "✅" : d?.contractSigned ? "📋" : "❌"} 契約書
+                    </span>
+                    {d?.contractSigned && !checks?.contractVerified && (
+                      <span className="text-[9px] text-amber-400/70">自己申告済</span>
+                    )}
+                  </div>
+                  {checks && (
+                    <button
+                      onClick={() => onToggleCheck?.("contract_verified")}
+                      className={`text-[9px] px-1.5 py-0.5 rounded border transition-colors ${
+                        checks.contractVerified
+                          ? "bg-green-900/40 text-green-300 border-green-500/30"
+                          : "bg-gray-800 text-gray-500 border-gray-600 hover:border-gray-400"
+                      }`}
+                    >
+                      {checks.contractVerified ? "✓ 確認済" : "未確認"}
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
 
