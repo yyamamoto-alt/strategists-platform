@@ -470,7 +470,7 @@ function DocumentModal({
               振込先書類: {completion.bankDocUrl ? "✅ 提出済み" : "❌ 未提出"}
             </p>
             <p className="text-xs text-blue-300">
-              契約書締結: {completion.contractSigned ? "📋 自己申告済（要目視確認）" : "❌ 未確認"}
+              契約書締結: {completion.contractSigned ? "📋 自己申告済（要目検確認）" : "❌ 未確認"}
             </p>
           </div>
         )}
@@ -989,14 +989,14 @@ function CustomerDetailModal({
               )}
             </div>
 
-            {/* Condition 5: 書類目視確認（提出書類の確認・目視チェック統合） */}
+            {/* Condition 5: 書類目検確認（提出書類の確認・目検チェック統合） */}
             <div className={`p-3 rounded-lg border ${
               checks?.identityDocVerified && checks?.bankDocVerified
                 ? "border-green-500/30 bg-green-900/10"
                 : "border-red-500/30 bg-red-900/10"
             }`}>
-              <ConditionBadge label="本人確認書類目視確認" met={(checks?.identityDocVerified && checks?.bankDocVerified) || false} />
-              <p className="text-[10px] text-gray-500 mt-1">本人確認書類・振込先書類の両方を目視確認</p>
+              <ConditionBadge label="本人確認書類目検確認" met={(checks?.identityDocVerified && checks?.bankDocVerified) || false} />
+              <p className="text-[10px] text-gray-500 mt-1">本人確認書類・振込先書類の両方を目検確認</p>
               <div className="mt-2 space-y-1.5">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
@@ -1047,7 +1047,7 @@ function CustomerDetailModal({
 
             {/* Condition 6: 契約書締結 */}
             <div className={`p-3 rounded-lg border ${checks?.contractVerified ? "border-green-500/30 bg-green-900/10" : "border-red-500/30 bg-red-900/10"}`}>
-              <ConditionBadge label="契約書目視確認" met={checks?.contractVerified || false} />
+              <ConditionBadge label="契約書目検確認" met={checks?.contractVerified || false} />
               <p className="text-[10px] text-gray-500 mt-1">目検チェックが最終条件（自己申告は参考情報）</p>
               <div className="mt-2 space-y-1.5">
                 <div className="flex items-center justify-between">
@@ -1109,7 +1109,7 @@ function CustomerDetailModal({
             {([
               { type: "invoice" as const, icon: "\ud83d\udcc4", label: "請求書/明細書", desc: "入塾時に発行",
                 sent: documents?.invoiceSentAt, issued: documents?.invoiceIssuedAt, extra: null },
-              { type: "receipt" as const, icon: "\ud83e\uddfe", label: "領収書", desc: "書類目視確認後に発行",
+              { type: "receipt" as const, icon: "\ud83e\uddfe", label: "領収書", desc: "書類目検確認後に発行",
                 sent: documents?.receiptSentAt, issued: documents?.receiptIssuedAt, extra: null },
               { type: "certificate" as const, icon: "\ud83c\udf93", label: "修了証明書", desc: "修了条件達成後に発行",
                 sent: documents?.certificateSentAt, issued: documents?.certificateIssuedAt,
@@ -1291,7 +1291,7 @@ function buildColumns(
           { met: d?.behaviorConditionMet || false, label: "BH/追加指導" },
           { met: d?.hasPassingEvaluation || false, label: "総合評価" },
           { met: (chk?.identityDocVerified && chk?.bankDocVerified) || false, label: "本人確認書類" },
-          { met: chk?.contractVerified || false, label: "契約書目視" },
+          { met: chk?.contractVerified || false, label: "契約書目検" },
           { met: !!(docs?.invoiceSentAt && docs?.receiptSentAt && docs?.certificateSentAt), label: "書類送付" },
         ];
         return (
@@ -1453,7 +1453,7 @@ function buildColumns(
     },
     {
       key: "doc_verified",
-      label: "目視確認",
+      label: "目検確認",
       width: 130,
       sortValue: (c) => { const chk = checksData[c.id]; return (chk?.identityDocVerified ? 1 : 0) + (chk?.bankDocVerified ? 1 : 0) + (chk?.contractVerified ? 1 : 0); },
       render: (c) => {
@@ -1462,7 +1462,7 @@ function buildColumns(
           <div className="flex gap-1">
             <button
               onClick={(e) => { e.stopPropagation(); onToggleCheck(c.id, "identity_doc_verified"); }}
-              title="本人確認書類 目視確認"
+              title="本人確認書類 目検確認"
               className={`text-[10px] px-1 py-0.5 rounded border transition-colors ${
                 chk?.identityDocVerified
                   ? "bg-green-900/40 text-green-300 border-green-500/30"
@@ -1473,7 +1473,7 @@ function buildColumns(
             </button>
             <button
               onClick={(e) => { e.stopPropagation(); onToggleCheck(c.id, "bank_doc_verified"); }}
-              title="振込先書類 目視確認"
+              title="振込先書類 目検確認"
               className={`text-[10px] px-1 py-0.5 rounded border transition-colors ${
                 chk?.bankDocVerified
                   ? "bg-green-900/40 text-green-300 border-green-500/30"
@@ -1484,7 +1484,7 @@ function buildColumns(
             </button>
             <button
               onClick={(e) => { e.stopPropagation(); onToggleCheck(c.id, "contract_verified"); }}
-              title="契約書 目視確認"
+              title="契約書 目検確認"
               className={`text-[10px] px-1 py-0.5 rounded border transition-colors ${
                 chk?.contractVerified
                   ? "bg-green-900/40 text-green-300 border-green-500/30"
