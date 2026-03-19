@@ -100,7 +100,16 @@ export async function GET(request: Request) {
       // 終日イベントはスキップ（dateTimeがなくdateのみ）
       if (!event.start?.dateTime) continue;
 
-      // ★ 重複チェック
+      // ★ 開始時刻が過去のイベントはスキップ
+      // Google Calendar APIはtimeMin〜timeMaxと「重なる」イベントを全て返すため、
+      // 長時間イベント（深夜ブロック等）は開始時刻を過ぎても返され続ける
+      const eventStart = new Date(event.start.dateTime);
+      if (eventStart.getTime() < now.getTime()) {
+        skipped++;
+        continue;
+      }
+
+      // ★ 重複チェック（notification_logsベース）
       const eventId = event.id || `${title}_${event.start.dateTime}`;
       if (notifiedEventIds.has(eventId)) {
         skipped++;
