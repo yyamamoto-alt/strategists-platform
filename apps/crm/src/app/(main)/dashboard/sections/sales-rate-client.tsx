@@ -72,14 +72,14 @@ export function SalesRateClient({ reports }: SalesRateClientProps) {
       if (r.result === "成約") m.numer++;
     }
 
-    // Generate 12 months + 2 for rolling
+    // Generate 3 months + 2 for rolling
     const now = new Date();
     const allMonths: string[] = [];
-    for (let i = 14; i >= 0; i--) {
+    for (let i = 5; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       allMonths.push(`${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, "0")}`);
     }
-    const displayMonths = allMonths.slice(3); // last 12
+    const displayMonths = allMonths.slice(3); // last 3
 
     // Compute rolling 3-month averages
     const persons = Array.from(qualifiedPersons).sort();
@@ -134,9 +134,13 @@ export function SalesRateClient({ reports }: SalesRateClientProps) {
         latestNumer: rollingNumer,
         totalCount: totalByPerson.get(sp) || 0,
       };
-    }).sort((a, b) => b.latestRate - a.latestRate);
+    })
+    .filter(ps => ps.latestDenom > 0) // 分母0（面談なし）は非表示
+    .sort((a, b) => b.latestRate - a.latestRate);
 
-    return { chartData: chart, salesPersons: persons, personSummaries: summaries };
+    // チャートに表示する営業マン = summariesに残った人のみ
+    const visiblePersons = summaries.map(s => s.name);
+    return { chartData: chart, salesPersons: visiblePersons, personSummaries: summaries };
   }, [reports, attrFilter]);
 
   const attrLabel = attrFilter === "all" ? "全体" : attrFilter === "kisotsu" ? "既卒" : "新卒";
@@ -145,7 +149,7 @@ export function SalesRateClient({ reports }: SalesRateClientProps) {
     <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-4">
       <div className="flex items-center justify-between mb-3">
         <div>
-          <h2 className="text-sm font-semibold text-white">営業マン別 成約率（3ヶ月移動平均）</h2>
+          <h2 className="text-sm font-semibold text-white">営業マン別 成約率（直近3ヶ月）</h2>
           <p className="text-[10px] text-gray-500">データソース: 営業報告フォーム / 分母: 面談実施 / 分子: 成約 / {attrLabel}</p>
         </div>
         <div className="flex gap-0.5 bg-white/5 rounded-lg p-0.5">
