@@ -36,7 +36,32 @@ function renderTemplate(
   template: string,
   rowData: Record<string, string>
 ): string {
-  return template.replace(/\{\{(.+?)\}\}/g, (_, key) => rowData[key.trim()] || "");
+  // rowDataのキーを正規化して検索用マップを作成
+  // ヘッダーに改行・注釈・余分な空白が含まれるケースに対応
+  const normalizedMap = new Map<string, string>();
+  for (const [k, v] of Object.entries(rowData)) {
+    // 正規化: 改行除去、前後空白除去
+    const normalized = k.replace(/[\n\r]/g, "").trim();
+    normalizedMap.set(normalized, v);
+    // 注釈除去版も登録（「※」以降を切る）
+    const withoutNote = normalized.split("※")[0].trim();
+    if (withoutNote && withoutNote !== normalized) {
+      normalizedMap.set(withoutNote, v);
+    }
+  }
+
+  return template.replace(/\{\{(.+?)\}\}/g, (_, key) => {
+    const trimmed = key.trim();
+    // 1. 完全一致
+    if (rowData[trimmed] !== undefined) return rowData[trimmed];
+    // 2. 正規化マッチ
+    const normalized = trimmed.replace(/[\n\r]/g, "").trim();
+    if (normalizedMap.has(normalized)) return normalizedMap.get(normalized)!;
+    // 3. 注釈除去マッチ
+    const withoutNote = normalized.split("※")[0].trim();
+    if (normalizedMap.has(withoutNote)) return normalizedMap.get(withoutNote)!;
+    return "";
+  });
 }
 
 function buildSlackMessage(
