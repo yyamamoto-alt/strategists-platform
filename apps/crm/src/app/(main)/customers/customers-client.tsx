@@ -281,6 +281,7 @@ export function CustomersClient() {
   const [stageFilter, setStageFilter] = useState<string>("");
   const [contractFilter, setContractFilter] = useState<string>("");
   const [agentFilter, setAgentFilter] = useState<boolean>(searchParams.get("filter") === "agent");
+  const [subsidyFilter, setSubsidyFilter] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<ViewTab>("overview");
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -499,8 +500,14 @@ export function CustomersClient() {
     if (agentFilter) {
       result = result.filter((c) => isAgentCustomer(c));
     }
+    if (subsidyFilter) {
+      result = result.filter((c) => {
+        const eligible = subsidyOverrides[c.id] ?? c.contract?.subsidy_eligible;
+        return eligible === true;
+      });
+    }
     return result;
-  }, [customers, attributeFilter, stageFilter, contractFilter, agentFilter]);
+  }, [customers, attributeFilter, stageFilter, contractFilter, agentFilter, subsidyFilter, subsidyOverrides]);
 
 
   // ================================================================
@@ -718,38 +725,51 @@ export function CustomersClient() {
 
       // ─── マーケ帰属（概要に表示） ───
       { key: "marketing_channel", label: "帰属チャネル", width: 120, category: "base",
+        filterValue: (c) => attributionMap[c.id]?.marketing_channel || "",
         render: (c) => {
           const attr = attributionMap[c.id];
           return attr ? <span className={`inline-block px-2 py-px rounded-full text-[10px] leading-none font-medium whitespace-nowrap ${getChannelColor(attr.marketing_channel)}`}>{attr.marketing_channel}</span> : <span className="text-gray-600 text-xs">-</span>;
         }, sortValue: (c) => attributionMap[c.id]?.marketing_channel || "" },
       { key: "initial_channel_base", label: "初回認知", width: 100, category: "base",
         render: (c) => <span className="text-xs text-gray-300">{c.pipeline?.initial_channel || "-"}</span>,
-        sortValue: (c) => c.pipeline?.initial_channel || "" },
+        sortValue: (c) => c.pipeline?.initial_channel || "",
+        filterValue: (c) => c.pipeline?.initial_channel || "" },
       { key: "application_reason_base", label: "決め手", width: 120, category: "base",
         render: (c) => <span className="text-xs text-gray-300 truncate block">{(c as unknown as Record<string, unknown>).application_reason_karte as string || c.application_reason || "-"}</span>,
-        sortValue: (c) => c.application_reason || "" },
+        sortValue: (c) => c.application_reason || "",
+        filterValue: (c) => c.application_reason || "" },
       { key: "utm_source_base", label: "utm", width: 80, category: "base",
         render: (c) => <span className="text-xs text-gray-400">{c.utm_source || "-"}</span>,
-        sortValue: (c) => c.utm_source || "" },
+        sortValue: (c) => c.utm_source || "",
+        filterValue: (c) => c.utm_source || "" },
       { key: "sales_route_base", label: "営業ルート", width: 90, category: "base",
         render: (c) => <span className="text-xs text-gray-400 truncate block">{c.pipeline?.sales_route || "-"}</span>,
-        sortValue: (c) => c.pipeline?.sales_route || "" },
+        sortValue: (c) => c.pipeline?.sales_route || "",
+        filterValue: (c) => c.pipeline?.sales_route || "" },
 
       // ═══ マーケティング（タブ内） ═══
       { key: "initial_channel", label: "初回認知経路", width: 110, category: "marketing",
-        render: (c) => <span className="text-xs">{c.pipeline?.initial_channel || "-"}</span> },
-      { key: "application_reason", label: "申し込みの決め手", width: 160, category: "marketing",        render: (c) => c.application_reason || "-" },
+        render: (c) => <span className="text-xs">{c.pipeline?.initial_channel || "-"}</span>,
+        filterValue: (c) => c.pipeline?.initial_channel || "" },
+      { key: "application_reason", label: "申し込みの決め手", width: 160, category: "marketing",
+        render: (c) => c.application_reason || "-",
+        filterValue: (c) => c.application_reason || "" },
       { key: "sales_route", label: "経路(営業)", width: 100, category: "marketing",
-        render: (c) => <span className="text-xs">{c.pipeline?.sales_route || c.pipeline?.route_by_sales || "-"}</span> },
+        render: (c) => <span className="text-xs">{c.pipeline?.sales_route || c.pipeline?.route_by_sales || "-"}</span>,
+        filterValue: (c) => c.pipeline?.sales_route || "" },
       { key: "comparison_services", label: "比較サービス", width: 140, category: "marketing",        render: (c) => c.pipeline?.comparison_services || "-" },
       { key: "utm_source", label: "utm_source", width: 90, category: "marketing",
-        render: (c) => <span className="text-xs">{c.utm_source || "-"}</span>, sortValue: (c) => c.utm_source || "" },
+        render: (c) => <span className="text-xs">{c.utm_source || "-"}</span>, sortValue: (c) => c.utm_source || "",
+        filterValue: (c) => c.utm_source || "" },
       { key: "utm_medium", label: "utm_medium", width: 90, category: "marketing",
-        render: (c) => <span className="text-xs">{c.utm_medium || "-"}</span> },
+        render: (c) => <span className="text-xs">{c.utm_medium || "-"}</span>,
+        filterValue: (c) => c.utm_medium || "" },
       { key: "utm_id", label: "utm_id", width: 70, category: "marketing",
-        render: (c) => <span className="text-xs">{c.utm_id || "-"}</span> },
+        render: (c) => <span className="text-xs">{c.utm_id || "-"}</span>,
+        filterValue: (c) => c.utm_id || "" },
       { key: "utm_campaign", label: "utm_campaign", width: 100, category: "marketing",
-        render: (c) => <span className="text-xs">{c.utm_campaign || "-"}</span> },
+        render: (c) => <span className="text-xs">{c.utm_campaign || "-"}</span>,
+        filterValue: (c) => c.utm_campaign || "" },
 
       // ═══ 営業（青） ═══
       { key: "meeting_scheduled", label: "営業予定日", width: 82, category: "sales",
@@ -1053,6 +1073,18 @@ export function CustomersClient() {
           }`}
         >
           エージェント利用者
+        </button>
+
+        {/* 補助金利用者フィルタ */}
+        <button
+          onClick={() => setSubsidyFilter((v) => !v)}
+          className={`px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors border ${
+            subsidyFilter
+              ? "bg-emerald-600 text-white border-emerald-600"
+              : "bg-surface-elevated text-gray-400 hover:text-white border-white/10"
+          }`}
+        >
+          補助金利用者
         </button>
 
         <select
