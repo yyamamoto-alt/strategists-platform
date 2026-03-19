@@ -56,6 +56,7 @@ interface Props {
   completionData: Record<string, SubsidyCompletionData>;
   documentData: Record<string, DocumentData>;
   checksData: Record<string, SubsidyCheckData>;
+  coachingMentors: Record<string, string[]>;
 }
 
 // ================================================================
@@ -1173,6 +1174,7 @@ function buildColumns(
   completionData: Record<string, SubsidyCompletionData>,
   documentData: Record<string, DocumentData>,
   checksData: Record<string, SubsidyCheckData>,
+  coachingMentors: Record<string, string[]>,
   onRowClick: (c: CustomerWithRelations) => void,
   onToggleCheck: (customerId: string, field: "identity_doc_verified" | "bank_doc_verified" | "contract_verified") => void,
 ): SpreadsheetColumn<CustomerWithRelations>[] {
@@ -1218,6 +1220,27 @@ function buildColumns(
           </a>
         </div>
       ),
+    },
+    {
+      key: "assign_mentor",
+      label: "アサインメンター",
+      width: 90,
+      sortValue: (c) => c.learning?.mentor_name || "",
+      render: (c) => {
+        const name = c.learning?.mentor_name;
+        return name ? <span className="text-xs text-purple-300">{name}</span> : <span className="text-gray-600 text-xs">-</span>;
+      },
+    },
+    {
+      key: "coaching_mentors",
+      label: "指導メンター",
+      width: 120,
+      sortValue: (c) => (coachingMentors[c.id] || []).join(","),
+      render: (c) => {
+        const mentors = coachingMentors[c.id] || [];
+        if (mentors.length === 0) return <span className="text-gray-600 text-xs">-</span>;
+        return <span className="text-xs text-green-300">{mentors.join(", ")}</span>;
+      },
     },
     {
       key: "first_coaching",
@@ -1591,7 +1614,7 @@ const METRIC_LABELS: Record<DrillMetric, string> = {
   courseStarted: "講座受講開始人数",
 };
 
-export function SubsidyClient({ customers, firstPaidMap, completionData, documentData, checksData: initialChecksData }: Props) {
+export function SubsidyClient({ customers, firstPaidMap, completionData, documentData, checksData: initialChecksData, coachingMentors }: Props) {
   const [activeTab, setActiveTab] = useState<TabKey>("list");
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerWithRelations | null>(null);
   const [docModal, setDocModal] = useState<DocModalState>({ open: false, type: "invoice", customer: null, completion: null });
@@ -1625,8 +1648,8 @@ export function SubsidyClient({ customers, firstPaidMap, completionData, documen
   }, []);
 
   const columns = useMemo(
-    () => buildColumns(firstPaidMap, completionData, documentData, checksData, setSelectedCustomer, handleToggleCheck),
-    [firstPaidMap, completionData, documentData, checksData, handleToggleCheck]
+    () => buildColumns(firstPaidMap, completionData, documentData, checksData, coachingMentors, setSelectedCustomer, handleToggleCheck),
+    [firstPaidMap, completionData, documentData, checksData, coachingMentors, handleToggleCheck]
   );
 
   // Summary stats

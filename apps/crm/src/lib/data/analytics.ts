@@ -316,36 +316,56 @@ function adsFunnelIsScheduled(stage: string | null | undefined): boolean {
   return stage !== "日程未確";
 }
 
-/** Google Ads UTM経由の顧客ファネルデータ */
+/** Google広告帰属の顧客ファネルデータ（customer_channel_attributionベース） */
 export async function fetchAdsFunnelData(): Promise<AdsFunnelCustomer[]> {
-  const { data, error } = await supabase()
-    .from("customers")
-    .select("id,name,application_date,attribute,utm_source,utm_medium,utm_campaign,sales_pipeline(stage),contracts(confirmed_amount,subsidy_amount,referral_category),agent_records(expected_referral_fee)")
-    .eq("utm_source", "googleads")
-    .order("application_date", { ascending: false });
+  // 1. Google広告帰属の顧客IDを取得
+  const { data: attrData, error: attrError } = await supabase()
+    .from("customer_channel_attribution")
+    .select("customer_id")
+    .like("marketing_channel", "%Google広告%");
 
-  if (error) {
-    console.error("Ads funnel fetch error:", error.message);
+  if (attrError || !attrData || attrData.length === 0) {
+    if (attrError) console.error("Google Ads attribution fetch error:", attrError.message);
     return [];
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const r = (obj: any) => Array.isArray(obj) ? obj[0] : obj;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (data || []).map((row: any) => ({
-    id: row.id,
-    name: row.name,
-    application_date: row.application_date,
-    attribute: row.attribute,
-    utm_source: row.utm_source,
-    utm_medium: row.utm_medium,
-    utm_campaign: row.utm_campaign,
-    stage: r(row.sales_pipeline)?.stage ?? null,
-    confirmed_amount: r(row.contracts)?.confirmed_amount ?? 0,
-    subsidy_amount: r(row.contracts)?.subsidy_amount ?? 0,
-    expected_referral_fee: r(row.agent_records)?.expected_referral_fee ?? 0,
-    referral_category: r(row.contracts)?.referral_category ?? null,
-  }));
+  const customerIds = attrData.map((r: { customer_id: string }) => r.customer_id);
+
+  // 2. 顧客データをバッチで取得（PostgREST URLサイズ制限回避）
+  const BATCH = 200;
+  const allRows: AdsFunnelCustomer[] = [];
+  for (let i = 0; i < customerIds.length; i += BATCH) {
+    const batch = customerIds.slice(i, i + BATCH);
+    const { data, error } = await supabase()
+      .from("customers")
+      .select("id,name,application_date,attribute,utm_source,utm_medium,utm_campaign,sales_pipeline(stage),contracts(confirmed_amount,subsidy_amount,referral_category),agent_records(expected_referral_fee)")
+      .in("id", batch)
+      .order("application_date", { ascending: false });
+
+    if (error) {
+      console.error("Ads funnel fetch error:", error.message);
+      continue;
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const r = (obj: any) => Array.isArray(obj) ? obj[0] : obj;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    allRows.push(...(data || []).map((row: any) => ({
+      id: row.id,
+      name: row.name,
+      application_date: row.application_date,
+      attribute: row.attribute,
+      utm_source: row.utm_source,
+      utm_medium: row.utm_medium,
+      utm_campaign: row.utm_campaign,
+      stage: r(row.sales_pipeline)?.stage ?? null,
+      confirmed_amount: r(row.contracts)?.confirmed_amount ?? 0,
+      subsidy_amount: r(row.contracts)?.subsidy_amount ?? 0,
+      expected_referral_fee: r(row.agent_records)?.expected_referral_fee ?? 0,
+      referral_category: r(row.contracts)?.referral_category ?? null,
+    })));
+  }
+  return allRows;
 }
 
 export { adsFunnelIsClosed, adsFunnelIsConducted, adsFunnelIsScheduled };

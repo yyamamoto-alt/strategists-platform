@@ -22,43 +22,42 @@ function monthKey(dateStr: string): string {
 }
 
 export async function AdsSection() {
+  // 全期間分のデータを取得（クライアント側で期間フィルタ）
   const [campaigns, funnel] = await Promise.all([
-    fetchAdsCampaignDaily(180),
+    fetchAdsCampaignDaily(730), // 2年分取得（ADS_STARTでフィルタ）
     fetchAdsFunnelData(),
   ]);
 
   // --- 広告データの週次/月次集計用の生データ ---
-  // 日別の広告費/申し込みCV を週キーでまとめる
-  const weeklyAds = new Map<string, { cost: number; cv_application: number }>();
+  const weeklyAds = new Map<string, { cost: number }>();
   for (const r of campaigns) {
     const wk = weekKey(r.date);
     const ex = weeklyAds.get(wk);
     if (ex) {
       ex.cost += r.cost;
-      ex.cv_application += r.cv_application;
     } else {
-      weeklyAds.set(wk, { cost: r.cost, cv_application: r.cv_application });
+      weeklyAds.set(wk, { cost: r.cost });
     }
   }
 
-  const monthlyAds = new Map<string, { cost: number; cv_application: number }>();
+  const monthlyAds = new Map<string, { cost: number }>();
   for (const r of campaigns) {
     const mk = monthKey(r.date);
     const ex = monthlyAds.get(mk);
     if (ex) {
       ex.cost += r.cost;
-      ex.cv_application += r.cv_application;
     } else {
-      monthlyAds.set(mk, { cost: r.cost, cv_application: r.cv_application });
+      monthlyAds.set(mk, { cost: r.cost });
     }
   }
 
   // --- ファネルデータ: 顧客の application_date ベースで週/月に振り分け ---
-  type FunnelAgg = { scheduled: number; closed: number; revenue: number };
+  // cv_application（申し込み数）もファネルデータからカウント
+  type FunnelAgg = { cv_application: number; scheduled: number; closed: number; revenue: number };
 
   const weeklyFunnel = new Map<string, FunnelAgg>();
   const monthlyFunnel = new Map<string, FunnelAgg>();
-  const zero = (): FunnelAgg => ({ scheduled: 0, closed: 0, revenue: 0 });
+  const zero = (): FunnelAgg => ({ cv_application: 0, scheduled: 0, closed: 0, revenue: 0 });
 
   for (const c of funnel) {
     if (!c.application_date) continue;
@@ -70,12 +69,14 @@ export async function AdsSection() {
     const rev = isClosed ? (c.confirmed_amount + c.subsidy_amount + agentFee) : 0;
 
     const wf = weeklyFunnel.get(wk) || zero();
+    wf.cv_application += 1; // 顧客DBベースのカウント
     wf.scheduled += isScheduled;
     wf.closed += isClosed;
     wf.revenue += rev;
     weeklyFunnel.set(wk, wf);
 
     const mf = monthlyFunnel.get(mk) || zero();
+    mf.cv_application += 1;
     mf.scheduled += isScheduled;
     mf.closed += isClosed;
     mf.revenue += rev;
@@ -130,12 +131,12 @@ export async function AdsSection() {
   const ADS_START = "2025-08";
   const allWeekKeys = new Set([...weeklyAds.keys(), ...weeklyFunnel.keys()]);
   const weeklyRows: AdsWeeklyRow[] = Array.from(allWeekKeys).filter(wk => wk >= ADS_START).sort().reverse().map(wk => {
-    const ads = weeklyAds.get(wk) || { cost: 0, cv_application: 0 };
+    const ads = weeklyAds.get(wk) || { cost: 0 };
     const fnl = weeklyFunnel.get(wk) || zero();
     return {
       period: wk,
       cost: Math.round(ads.cost),
-      cv_application: ads.cv_application,
+      cv_application: fnl.cv_application,
       scheduled: fnl.scheduled,
       closed: fnl.closed,
       revenue: Math.round(fnl.revenue),
@@ -147,12 +148,12 @@ export async function AdsSection() {
   // --- 月次行を組み立て ---
   const allMonthKeys = new Set([...monthlyAds.keys(), ...monthlyFunnel.keys()]);
   const monthlyRows: AdsWeeklyRow[] = Array.from(allMonthKeys).filter(mk => mk >= ADS_START).sort().reverse().map(mk => {
-    const ads = monthlyAds.get(mk) || { cost: 0, cv_application: 0 };
+    const ads = monthlyAds.get(mk) || { cost: 0 };
     const fnl = monthlyFunnel.get(mk) || zero();
     return {
       period: mk,
       cost: Math.round(ads.cost),
-      cv_application: ads.cv_application,
+      cv_application: fnl.cv_application,
       scheduled: fnl.scheduled,
       closed: fnl.closed,
       revenue: Math.round(fnl.revenue),

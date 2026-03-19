@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { fetchCustomersWithRelations, fetchFirstPaidDates } from "@/lib/data/customers";
-import { fetchSubsidyCompletionData, fetchSubsidyDocuments, fetchSubsidyChecks } from "@/lib/data/subsidy";
+import { fetchSubsidyCompletionData, fetchSubsidyDocuments, fetchSubsidyChecks, fetchCoachingMentors } from "@/lib/data/subsidy";
 import { SubsidyClient } from "./subsidy-client";
 import type { CustomerWithRelations } from "@strategy-school/shared-db";
 
@@ -28,10 +28,11 @@ export default async function SubsidyPage() {
   const subsidyCustomers = customers.filter(isSubsidyTarget);
   const subsidyIds = subsidyCustomers.map((c) => c.id);
 
-  const [completionData, documentData, checksData] = await Promise.all([
+  const [completionData, documentData, checksData, coachingMentors] = await Promise.all([
     fetchSubsidyCompletionData(subsidyIds),
     fetchSubsidyDocuments(subsidyIds),
     fetchSubsidyChecks(subsidyIds),
+    fetchCoachingMentors(subsidyIds),
   ]);
 
   return (
@@ -41,6 +42,7 @@ export default async function SubsidyPage() {
       completionData={completionData}
       documentData={documentData}
       checksData={checksData}
+      coachingMentors={coachingMentors}
     />
   );
 }

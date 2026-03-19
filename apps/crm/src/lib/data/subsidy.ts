@@ -228,6 +228,45 @@ export async function fetchSubsidyDocuments(
   return result;
 }
 
+/** 指導メンター一覧を coaching_reports から取得（アセスメント除外） */
+export async function fetchCoachingMentors(
+  customerIds: string[]
+): Promise<Record<string, string[]>> {
+  if (customerIds.length === 0) return {};
+
+  const supabase = createServiceClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db = supabase as any;
+  const { data } = await db
+    .from("coaching_reports")
+    .select("customer_id, mentor_name, session_number")
+    .in("customer_id", customerIds)
+    .not("mentor_name", "is", null);
+
+  const result: Record<string, Set<string>> = {};
+  for (const cid of customerIds) {
+    result[cid] = new Set();
+  }
+
+  if (data) {
+    for (const row of data) {
+      if (!result[row.customer_id]) continue;
+      // アセスメント除外
+      const sn = String(row.session_number || "");
+      if (sn.includes("アセスメント")) continue;
+      if (row.mentor_name) {
+        result[row.customer_id].add(row.mentor_name);
+      }
+    }
+  }
+
+  const out: Record<string, string[]> = {};
+  for (const cid of customerIds) {
+    out[cid] = Array.from(result[cid]);
+  }
+  return out;
+}
+
 export interface SubsidyCheckData {
   identityDocVerified: boolean;
   bankDocVerified: boolean;
