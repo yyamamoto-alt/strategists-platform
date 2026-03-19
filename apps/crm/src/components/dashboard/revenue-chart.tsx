@@ -465,42 +465,57 @@ function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
           <Legend iconSize={10} wrapperStyle={{ fontSize: 11, color: "#9ca3af" }} />
 
           {/* 売上棒グラフ */}
-          <Bar yAxisId="left" dataKey="confirmed_school_kisotsu" name="既卒スクール" fill={colors.kisotsu} stackId="revenue" radius={[0, 0, 0, 0]} />
-          <Bar yAxisId="left" dataKey="confirmed_subsidy" name="補助金" fill={colors.subsidy} stackId="revenue" />
           {gradYearFilter ? (
             <>
-              <Bar yAxisId="left" dataKey="shinsotsu_gray" name={`新卒(他卒年)`} fill="#3f3f46" fillOpacity={0.3} stackId="revenue" legendType="none" />
-              <Bar yAxisId="left" dataKey="shinsotsu_active" name={`新卒(${gradYearFilter})`} fill={colors.shinsotsu} stackId="revenue" />
+              {/* 卒年フィルタON: 選択卒年の新卒が一番下（カラー）、残り全部グレー */}
+              <Bar yAxisId="left" dataKey="shinsotsu_active" name={`新卒(${gradYearFilter})`} fill={colors.shinsotsu} stackId="revenue" radius={[0, 0, 0, 0]} />
+              <Bar yAxisId="left" dataKey="shinsotsu_gray" name="新卒(他)" fill="#3f3f46" fillOpacity={0.3} stackId="revenue" legendType="none" />
+              <Bar yAxisId="left" dataKey="confirmed_school_kisotsu" name="既卒スクール" fill="#3f3f46" fillOpacity={0.3} stackId="revenue" legendType="none" />
+              <Bar yAxisId="left" dataKey="confirmed_subsidy" name="補助金" fill="#3f3f46" fillOpacity={0.3} stackId="revenue" legendType="none" />
+              <Bar yAxisId="left" dataKey="confirmed_agent" name="人材確定" fill="#3f3f46" fillOpacity={0.3} stackId="revenue" legendType="none" />
+              <Bar yAxisId="left" dataKey="content_revenue" name="note" fill="#3f3f46" fillOpacity={0.3} stackId="revenue" legendType="none" />
+              <Bar yAxisId="left" dataKey="myvision_revenue" name="MV" fill="#3f3f46" fillOpacity={0.3} stackId="revenue" legendType="none" />
+              <Bar yAxisId="left" dataKey="other_misc_revenue" name="他" fill="#3f3f46" fillOpacity={0.3} stackId="revenue" legendType="none" />
+              <Bar yAxisId="left" dataKey="projected_agent" name="人材見込" fill="#3f3f46" fillOpacity={0.15} stackId="revenue" legendType="none" />
             </>
           ) : (
-            <Bar yAxisId="left" dataKey="confirmed_school_shinsotsu" name="新卒スクール" fill={colors.shinsotsu} stackId="revenue" />
+            <>
+              {/* 通常表示 */}
+              <Bar yAxisId="left" dataKey="confirmed_school_kisotsu" name="既卒スクール" fill={colors.kisotsu} stackId="revenue" radius={[0, 0, 0, 0]} />
+              <Bar yAxisId="left" dataKey="confirmed_subsidy" name="補助金" fill={colors.subsidy} stackId="revenue" />
+              <Bar yAxisId="left" dataKey="confirmed_school_shinsotsu" name="新卒スクール" fill={colors.shinsotsu} stackId="revenue" />
+              <Bar yAxisId="left" dataKey="confirmed_agent" name="人材確定" fill={colors.agent} stackId="revenue" />
+              <Bar yAxisId="left" dataKey="content_revenue" name="note売上" fill={colors.note} stackId="revenue" />
+              <Bar yAxisId="left" dataKey="myvision_revenue" name="MyVision受託" fill={colors.myvision} stackId="revenue" />
+              <Bar yAxisId="left" dataKey="other_misc_revenue" name="その他" fill={colors.other} stackId="revenue" />
+              <Bar
+                yAxisId="left"
+                dataKey="projected_agent"
+                name="人材見込"
+                fill="url(#dot-projected)"
+                stroke={colors.projected}
+                strokeWidth={1}
+                strokeOpacity={0.5}
+                strokeDasharray="3 2"
+                stackId="revenue"
+              />
+            </>
           )}
-          <Bar yAxisId="left" dataKey="confirmed_agent" name="人材確定" fill={colors.agent} stackId="revenue" />
-          <Bar yAxisId="left" dataKey="content_revenue" name="note売上" fill={colors.note} stackId="revenue" />
-          <Bar yAxisId="left" dataKey="myvision_revenue" name="MyVision受託" fill={colors.myvision} stackId="revenue" />
-          <Bar yAxisId="left" dataKey="other_misc_revenue" name="その他" fill={colors.other} stackId="revenue" />
-          <Bar
-            yAxisId="left"
-            dataKey="projected_agent"
-            name="人材見込"
-            fill="url(#dot-projected)"
-            stroke={colors.projected}
-            strokeWidth={1}
-            strokeOpacity={0.5}
-            strokeDasharray="3 2"
-            stackId="revenue"
-          />
-          <Bar
-            yAxisId="left"
-            dataKey="ltv_gap"
-            name="着地見込（forecast）"
-            fill="url(#stripe-ltv)"
-            stroke={colors.ltv}
-            strokeWidth={0.5}
-            strokeOpacity={0.4}
-            stackId="revenue"
-            radius={[4, 4, 0, 0]}
-          />
+          {gradYearFilter ? (
+            <Bar yAxisId="left" dataKey="ltv_gap" name="forecast" fill="#3f3f46" fillOpacity={0.1} stackId="revenue" radius={[4, 4, 0, 0]} legendType="none" />
+          ) : (
+            <Bar
+              yAxisId="left"
+              dataKey="ltv_gap"
+              name="着地見込（forecast）"
+              fill="url(#stripe-ltv)"
+              stroke={colors.ltv}
+              strokeWidth={0.5}
+              strokeOpacity={0.4}
+              stackId="revenue"
+              radius={[4, 4, 0, 0]}
+            />
+          )}
 
           {/* 費用表示ON時: コスト棒グラフ（内訳）+ 利益折れ線 */}
           {showCost && Object.keys(costMap).length > 0 && (
