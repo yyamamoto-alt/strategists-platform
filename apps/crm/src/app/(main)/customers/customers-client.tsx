@@ -277,12 +277,23 @@ export function CustomersClient() {
   const [attributionMap, setAttributionMap] = useState<Record<string, ChannelAttribution>>({});
   const [firstPaidMap, setFirstPaidMap] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
-  const [attributeFilter, setAttributeFilter] = useState<string>("");
-  const [stageFilter, setStageFilter] = useState<string>("");
-  const [contractFilter, setContractFilter] = useState<string>("");
+  const [attributeFilter, setAttributeFilter] = useState<string>(searchParams.get("attr") || "");
+  const [stageFilter, setStageFilter] = useState<string>(searchParams.get("stage") || "");
+  const [contractFilter, setContractFilter] = useState<string>(searchParams.get("contract") || "");
   const [agentFilter, setAgentFilter] = useState<boolean>(searchParams.get("filter") === "agent");
-  const [subsidyFilter, setSubsidyFilter] = useState<boolean>(false);
-  const [activeTab, setActiveTab] = useState<ViewTab>("overview");
+  const [subsidyFilter, setSubsidyFilter] = useState<boolean>(searchParams.get("subsidy") === "1");
+  const [activeTab, setActiveTab] = useState<ViewTab>((searchParams.get("tab") as ViewTab) || "overview");
+
+  // フィルター/タブ変更時にURLパラメータを更新（履歴に残さずreplaceで）
+  const syncUrl = useCallback((overrides: Record<string, string>) => {
+    const params = new URLSearchParams(searchParams.toString());
+    for (const [k, v] of Object.entries(overrides)) {
+      if (v) params.set(k, v);
+      else params.delete(k);
+    }
+    const qs = params.toString();
+    router.replace(`/customers${qs ? `?${qs}` : ""}`, { scroll: false });
+  }, [searchParams, router]);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [creating, setCreating] = useState(false);
   const [stageOverrides, setStageOverrides] = useState<Record<string, string>>({});
@@ -1093,7 +1104,7 @@ export function CustomersClient() {
           {["", "既卒", "新卒"].map((val) => (
             <button
               key={val}
-              onClick={() => setAttributeFilter(val)}
+              onClick={() => { setAttributeFilter(val); syncUrl({ attr: val }); }}
               className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
                 attributeFilter === val
                   ? "bg-brand text-white"
@@ -1110,7 +1121,7 @@ export function CustomersClient() {
           {["", "成約済み", "未成約"].map((val) => (
             <button
               key={val}
-              onClick={() => setContractFilter(val)}
+              onClick={() => { setContractFilter(val); syncUrl({ contract: val }); }}
               className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
                 contractFilter === val
                   ? "bg-brand text-white"
@@ -1124,7 +1135,7 @@ export function CustomersClient() {
 
         {/* エージェント利用者フィルタ */}
         <button
-          onClick={() => setAgentFilter((v) => !v)}
+          onClick={() => { setAgentFilter((v) => { const next = !v; syncUrl({ filter: next ? "agent" : "" }); return next; }); }}
           className={`px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors border ${
             agentFilter
               ? "bg-brand text-white border-brand"
@@ -1136,7 +1147,7 @@ export function CustomersClient() {
 
         {/* 補助金利用者フィルタ */}
         <button
-          onClick={() => setSubsidyFilter((v) => !v)}
+          onClick={() => { setSubsidyFilter((v) => { const next = !v; syncUrl({ subsidy: next ? "1" : "" }); return next; }); }}
           className={`px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors border ${
             subsidyFilter
               ? "bg-emerald-600 text-white border-emerald-600"
@@ -1148,7 +1159,7 @@ export function CustomersClient() {
 
         <select
           value={stageFilter}
-          onChange={(e) => setStageFilter(e.target.value)}
+          onChange={(e) => { setStageFilter(e.target.value); syncUrl({ stage: e.target.value }); }}
           className="px-2 py-1 bg-surface-elevated border border-white/10 text-white rounded text-xs focus:outline-none focus:ring-1 focus:ring-brand"
         >
           <option value="">全ステージ</option>
@@ -1189,7 +1200,11 @@ export function CustomersClient() {
         {VIEW_TABS.map((tab) => (
           <button
             key={tab.key}
-            onClick={() => { setActiveTab(tab.key); if (tab.key === "agent") setAgentFilter(true); }}
+            onClick={() => {
+              setActiveTab(tab.key);
+              if (tab.key === "agent") { setAgentFilter(true); syncUrl({ tab: tab.key, filter: "agent" }); }
+              else syncUrl({ tab: tab.key });
+            }}
             className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
               activeTab === tab.key
                 ? "bg-brand text-white shadow-sm"
