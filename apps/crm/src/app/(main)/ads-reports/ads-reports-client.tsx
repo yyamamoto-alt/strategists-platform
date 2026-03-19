@@ -23,6 +23,11 @@ interface AdsWeeklyReport {
   problems: string[] | null;
   tries: string[] | null;
   report_url: string | null;
+  customer_details: {
+    applications?: { name: string; date?: string }[];
+    schedules?: { name: string; stage?: string }[];
+    contracts?: { name: string; revenue?: number }[];
+  } | null;
 }
 
 const fmtCurrency = (v: number | null) =>
@@ -81,6 +86,29 @@ function renderKpt(items: string[] | null) {
       ))}
     </div>
   );
+}
+
+function customerTooltip(
+  details: AdsWeeklyReport["customer_details"],
+  field: "applications" | "schedules" | "contracts"
+): string {
+  if (!details) return "";
+  const list = details[field];
+  if (!list || list.length === 0) return "該当なし";
+  return list
+    .map((c) => {
+      if (field === "applications") return `${c.name}（${(c as { date?: string }).date || ""}）`;
+      if (field === "contracts") return `${c.name}（¥${((c as { revenue?: number }).revenue || 0).toLocaleString()}）`;
+      return `${c.name}（${(c as { stage?: string }).stage || ""}）`;
+    })
+    .join("\n");
+}
+
+function revenueTooltip(details: AdsWeeklyReport["customer_details"]): string {
+  if (!details?.contracts || details.contracts.length === 0) return "内訳: スクール確定額 + 補助金 + 人材紹介見込";
+  return details.contracts
+    .map((c) => `${c.name}: ¥${((c as { revenue?: number }).revenue || 0).toLocaleString()}`)
+    .join("\n");
 }
 
 type Tab = "google" | "meta";
@@ -252,22 +280,22 @@ export function AdsReportsClient({ reports }: { reports: AdsWeeklyReport[] }) {
                       {fmtPct(r.ctr)}
                     </td>
                     <td className="px-3 py-2 text-sm text-gray-200 whitespace-nowrap text-right cursor-help" style={heatStyle("applications", r.applications)}
-                      title="詳細は右端のレポートリンクから確認">
+                      title={customerTooltip(r.customer_details, "applications")}>
                       {fmtNum(r.applications)}
                     </td>
                     <td className="px-3 py-2 text-sm text-gray-200 whitespace-nowrap text-right" style={heatStyle("application_cpa", r.application_cpa)}>
                       {fmtCurrency(r.application_cpa)}
                     </td>
                     <td className="px-3 py-2 text-sm text-gray-200 whitespace-nowrap text-right cursor-help" style={heatStyle("schedules", r.schedules)}
-                      title="詳細は右端のレポートリンクから確認">
+                      title={customerTooltip(r.customer_details, "schedules")}>
                       {fmtNum(r.schedules)}
                     </td>
                     <td className="px-3 py-2 text-sm text-gray-200 whitespace-nowrap text-right cursor-help" style={heatStyle("contracts", r.contracts)}
-                      title="詳細は右端のレポートリンクから確認">
+                      title={customerTooltip(r.customer_details, "contracts")}>
                       {fmtNum(r.contracts)}
                     </td>
                     <td className="px-3 py-2 text-sm text-gray-200 whitespace-nowrap text-right cursor-help" style={heatStyle("revenue", r.revenue)}
-                      title="内訳: スクール確定額 + 補助金 + 人材紹介見込">
+                      title={revenueTooltip(r.customer_details)}>
                       {fmtCurrency(r.revenue)}
                     </td>
                     <td className="px-3 py-2 text-sm text-gray-200 whitespace-nowrap text-right" style={heatStyle("roas", rollingRoas)}>
