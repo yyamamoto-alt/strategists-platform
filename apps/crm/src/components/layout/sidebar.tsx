@@ -30,6 +30,7 @@ const navGroups: NavGroup[] = [
       { name: "パイプライン", href: "/pipeline" },
       { name: "マーケティング分析", href: "/analytics" },
       { name: "競合分析", href: "/competitors" },
+      { name: "広告分析レポート", href: "/ads-reports" },
     ],
   },
   {
