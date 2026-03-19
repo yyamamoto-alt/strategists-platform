@@ -211,7 +211,7 @@ export function ShinsotsuChannelChartItem({
           <Legend wrapperStyle={{ fontSize: 9 }} {...{ payload: channelNames.map((name, i) => ({ value: name, type: "square", color: CHANNEL_COLORS[i % CHANNEL_COLORS.length] })) } as any} />
           {/* グレーアウト（非選択卒年） */}
           {selectedYear && channelNames.map((name) => (
-            <Bar key={`${name}_gray`} dataKey={`${name}_gray`} stackId="gray" fill={GRAY} fillOpacity={0.3} />
+            <Bar key={`${name}_gray`} dataKey={`${name}_gray`} stackId="gray" fill={GRAY} fillOpacity={0.3} legendType="none" />
           ))}
           {/* アクティブ（選択卒年 or 全体） */}
           {channelNames.map((name, i) => (
