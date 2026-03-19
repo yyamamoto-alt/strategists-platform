@@ -14,19 +14,19 @@ interface AdsWeeklyReport {
   ctr: number | null;
   applications: number | null;
   application_cpa: number | null;
-  scheduled: number | null;
-  closed: number | null;
+  schedules: number | null;
+  schedule_cpa: number | null;
+  contracts: number | null;
+  revenue: number | null;
   roas: number | null;
-  keep: string[] | null;
-  problem: string[] | null;
-  try: string[] | null;
+  keeps: string[] | null;
+  problems: string[] | null;
+  tries: string[] | null;
   report_url: string | null;
 }
 
 const fmtCurrency = (v: number | null) =>
-  v != null ? `\u00a5${Math.round(v / 1000).toLocaleString()}k` : "-";
-const fmtCurrencyExact = (v: number | null) =>
-  v != null ? `\u00a5${Math.round(v).toLocaleString()}` : "-";
+  v != null ? `¥${Math.round(v).toLocaleString()}` : "-";
 const fmtPct = (v: number | null) =>
   v != null ? `${(v * 100).toFixed(2)}%` : "-";
 const fmtNum = (v: number | null) =>
@@ -120,6 +120,7 @@ export function AdsReportsClient({ reports }: { reports: AdsWeeklyReport[] }) {
                   "\u7533\u8FBCCPA",
                   "\u65E5\u7A0B\u78BA\u5B9A",
                   "\u6210\u7D04\u6570",
+                  "\u58F2\u4E0A",
                   "ROAS",
                   "Keep",
                   "Problem",
@@ -156,7 +157,7 @@ export function AdsReportsClient({ reports }: { reports: AdsWeeklyReport[] }) {
                     {fmtNum(r.clicks)}
                   </td>
                   <td className="px-3 py-2 text-sm text-gray-200 whitespace-nowrap text-right">
-                    {fmtCurrencyExact(r.cpc)}
+                    {fmtCurrency(r.cpc)}
                   </td>
                   <td className="px-3 py-2 text-sm text-gray-200 whitespace-nowrap text-right">
                     {fmtPct(r.ctr)}
@@ -168,22 +169,25 @@ export function AdsReportsClient({ reports }: { reports: AdsWeeklyReport[] }) {
                     {fmtCurrency(r.application_cpa)}
                   </td>
                   <td className="px-3 py-2 text-sm text-gray-200 whitespace-nowrap text-right">
-                    {fmtNum(r.scheduled)}
+                    {fmtNum(r.schedules)}
                   </td>
                   <td className="px-3 py-2 text-sm text-gray-200 whitespace-nowrap text-right">
-                    {fmtNum(r.closed)}
+                    {fmtNum(r.contracts)}
+                  </td>
+                  <td className="px-3 py-2 text-sm text-gray-200 whitespace-nowrap text-right">
+                    {fmtCurrency(r.revenue)}
                   </td>
                   <td className="px-3 py-2 text-sm text-gray-200 whitespace-nowrap text-right">
                     {fmtRoas(r.roas)}
                   </td>
                   <td className="px-3 py-2 whitespace-normal min-w-[150px] max-w-[200px]">
-                    {renderKpt(r.keep)}
+                    {renderKpt(r.keeps)}
                   </td>
                   <td className="px-3 py-2 whitespace-normal min-w-[150px] max-w-[200px]">
-                    {renderKpt(r.problem)}
+                    {renderKpt(r.problems)}
                   </td>
                   <td className="px-3 py-2 whitespace-normal min-w-[150px] max-w-[200px]">
-                    {renderKpt(r.try)}
+                    {renderKpt(r.tries)}
                   </td>
                   <td className="px-3 py-2 text-sm whitespace-nowrap">
                     {r.report_url ? (
