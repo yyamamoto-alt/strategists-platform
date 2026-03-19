@@ -12,7 +12,7 @@ interface AgentsClientProps {
 }
 
 const REFERRAL_OPTIONS = ["フル利用", "一部利用", "自社", "該当", "非対象", "なし", "スクールのみ"] as const;
-const JOB_STATUS_OPTIONS = ["活動中", "終了"] as const;
+const JOB_STATUS_OPTIONS = ["活動中", "活動予定", "終了"] as const;
 
 /** 内定ランクの色バッジ */
 function RankBadge({ rank }: { rank: string | null | undefined }) {
@@ -44,6 +44,7 @@ export function AgentsClient({ customers, agentSummary }: AgentsClientProps) {
   const getReferralCat = (c: CustomerWithRelations) => overrides[c.id]?.referral_category ?? c.contract?.referral_category ?? null;
 
   const activeSearch = enrolled.filter((c) => getJobStatus(c) === "活動中");
+  const planned = enrolled.filter((c) => getJobStatus(c) === "活動予定");
   const ended = enrolled.filter((c) => getJobStatus(c) === "終了");
   const confirmed = agentCustomers.filter(
     (c) => c.agent.placement_confirmed === "確定"
@@ -52,6 +53,7 @@ export function AgentsClient({ customers, agentSummary }: AgentsClientProps) {
   const statusColor = (status: string | null) => {
     switch (status) {
       case "活動中": return "bg-brand-muted text-brand";
+      case "活動予定": return "bg-cyan-500/15 text-cyan-400";
       case "終了": return "bg-gray-900/20 text-gray-400";
       default: return "bg-white/10 text-gray-300";
     }
@@ -111,6 +113,10 @@ export function AgentsClient({ customers, agentSummary }: AgentsClientProps) {
         <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-4">
           <p className="text-xs text-gray-500">転職活動中</p>
           <p className="text-2xl font-bold text-white mt-1">{activeSearch.length}名</p>
+        </div>
+        <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-4">
+          <p className="text-xs text-gray-500">活動予定</p>
+          <p className="text-2xl font-bold text-cyan-400 mt-1">{planned.length}名</p>
         </div>
         <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-4">
           <p className="text-xs text-gray-500">終了</p>

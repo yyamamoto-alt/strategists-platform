@@ -142,11 +142,11 @@ const VIEW_COLUMNS: Record<ViewTab, string[] | null> = {
   ],
   agent: [
     "application_date", "name", "attribute", "stage",
-    "referral_category", "job_search_status", "offer_rank", "ai_offer_probability",
+    "referral_category", "job_search_status", "offer_rank", "ai_offer_probability", "placement_confirmed",
     "confirmed_amount", "rev_plus", "rev_agent", "rev_eq", "rev_total", "expected_ltv",
     "external_agents", "offer_salary",
     "referral_fee_rate", "margin",
-    "placement_confirmed", "placement_date",
+    "placement_date",
     "agent_staff", "agent_memo", "loss_reason",
   ],
   schedule_unconfirmed: [
@@ -613,6 +613,7 @@ export function CustomersClient() {
       // ─── 活動状況（ドロップダウン） ───
       { key: "job_search_status", label: "活動状況", width: 85, category: "agent",
         render: (c) => {
+          if (!isAgentCustomer(c)) return <span className="text-gray-600 text-xs">-</span>;
           const status = jobStatusOverrides[c.id] !== undefined ? jobStatusOverrides[c.id] : (c.agent?.job_search_status || "");
           return (
             <select
@@ -620,12 +621,14 @@ export function CustomersClient() {
               onChange={(e) => { e.stopPropagation(); handleJobStatusChange(c.id, e.target.value); }}
               className={`border border-white/10 rounded px-1 py-0.5 text-[10px] font-medium focus:outline-none focus:ring-1 focus:ring-brand cursor-pointer w-full ${
                 status === "活動中" ? "bg-brand/20 text-brand border-brand/30" :
+                status === "活動予定" ? "bg-cyan-500/15 text-cyan-400 border-cyan-500/30" :
                 status === "終了" ? "bg-gray-800 text-gray-400 border-gray-700" :
                 "bg-transparent text-gray-500"
               }`}
             >
               <option value="">未設定</option>
               <option value="活動中">活動中</option>
+              <option value="活動予定">活動予定</option>
               <option value="終了">終了</option>
             </select>
           );
@@ -642,6 +645,7 @@ export function CustomersClient() {
       // ─── 内定ランク（インライン編集） ───
       { key: "offer_rank", label: "内定ランク", width: 70, align: "center" as const, category: "agent",
         render: (c) => {
+          if (!isAgentCustomer(c)) return <span className="text-gray-600 text-xs">-</span>;
           const rank = offerRankOverrides[c.id] !== undefined ? offerRankOverrides[c.id] : (c.agent?.offer_rank || "");
           const meta = rank ? OFFER_RANK_META[rank] : null;
           return (
@@ -672,6 +676,7 @@ export function CustomersClient() {
       // ─── AI内定確度 ───
       { key: "ai_offer_probability", label: "AI内定確度", width: 75, align: "center" as const, category: "agent",
         render: (c) => {
+          if (!isAgentCustomer(c)) return <span className="text-gray-600 text-xs">-</span>;
           const prob = c.agent?.ai_offer_probability;
           if (prob == null) return <span className="text-gray-600 text-xs">-</span>;
           const color = prob >= 60 ? "text-emerald-400" : prob >= 30 ? "text-amber-400" : "text-gray-400";
@@ -876,7 +881,10 @@ export function CustomersClient() {
         render: (c) => <span className="text-xs">{fmtDate(c.agent?.placement_date)}</span> },
       { key: "placement_confirmed", label: "人材確定", width: 70, align: "center" as const, computed: true, category: "agent",
         formula: "人材確定フラグ = \"確定\"",
-        render: (c) => isAgentConfirmed(c) ? <span className="text-purple-400">確定</span> : "-" },
+        render: (c) => {
+          if (!isAgentCustomer(c)) return <span className="text-gray-600 text-xs">-</span>;
+          return isAgentConfirmed(c) ? <span className="text-purple-400 font-medium">確定</span> : <span className="text-gray-500 text-xs">未確定</span>;
+        } },
       { key: "agent_staff", label: "エージェント担当", width: 100, category: "agent",
         render: (c) => <span className="text-xs">{c.agent?.agent_staff || "-"}</span> },
       { key: "agent_memo", label: "エージェント業務メモ", width: 150, category: "agent",        render: (c) => c.agent?.agent_memo || "-" },
