@@ -14,6 +14,7 @@ import type {
   SearchQueryRow,
   AdsKeywordDaily,
 } from "@/lib/data/analytics";
+import { AGENT_CATEGORIES } from "@/lib/calc-fields";
 
 /* ───── Types ───── */
 type YouTubeSub = "videos" | "detail" | "customers" | "keywords";
@@ -1047,7 +1048,7 @@ function YouTubeClosedCustomersTab({ youtubeFunnel, youtubeVideos }: {
     closedCustomers.reduce((s, c) => s + c.confirmed_amount, 0),
   [closedCustomers]);
 
-  const isAgent = (c: YouTubeFunnelCustomer) => c.referral_category === "フル利用" || c.referral_category === "一部利用";
+  const isAgent = (c: YouTubeFunnelCustomer) => !!(c.referral_category && AGENT_CATEGORIES.has(c.referral_category));
   const totalLTV = useMemo(() =>
     closedCustomers.reduce((s, c) => s + c.confirmed_amount + c.subsidy_amount + (isAgent(c) ? c.expected_referral_fee : 0), 0),
   [closedCustomers]);

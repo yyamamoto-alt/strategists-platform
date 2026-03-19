@@ -2,9 +2,10 @@
 
 import { useState, useMemo } from "react";
 import {
-  LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend,
+  LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend,
 } from "recharts";
 import type { AdsCampaignDaily, AdsKeywordDaily, AdsFunnelCustomer, AdsGranularity } from "./shared";
+import { AGENT_CATEGORIES } from "@/lib/calc-fields";
 import {
   getWeekKey,
   getMonthKey,
@@ -60,7 +61,7 @@ export function AdsTab({ adsCampaigns, adsKeywords, adsFunnel }: AdsTabProps) {
 
   return (
     <div className="space-y-4">
-      {/* Sub tabs + Date range picker */}
+      {/* Sub tabs + Date range picker (統合) */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex gap-2 flex-wrap">
           <SubTab label="日別消化" active={adsSub === "overview"} onClick={() => setAdsSub("overview")} />
@@ -70,18 +71,17 @@ export function AdsTab({ adsCampaigns, adsKeywords, adsFunnel }: AdsTabProps) {
         </div>
         {adsSub !== "funnel" && (
           <div className="flex items-center gap-2 text-xs">
-            <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
+            <input type="date" value={dateFrom || effectiveFrom} onChange={e => setDateFrom(e.target.value)}
               min={dataRange.min} max={dataRange.max}
               className="bg-white/5 border border-white/10 rounded-md px-2 py-1 text-gray-300 text-xs" />
             <span className="text-gray-500">〜</span>
-            <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
+            <input type="date" value={dateTo || effectiveTo} onChange={e => setDateTo(e.target.value)}
               min={dataRange.min} max={dataRange.max}
               className="bg-white/5 border border-white/10 rounded-md px-2 py-1 text-gray-300 text-xs" />
             {(dateFrom || dateTo) && (
               <button onClick={() => { setDateFrom(""); setDateTo(""); }}
                 className="text-gray-500 hover:text-white text-[10px] px-1.5 py-0.5 rounded bg-white/5">リセット</button>
             )}
-            <span className="text-gray-600 text-[10px]">{effectiveFrom} 〜 {effectiveTo}</span>
           </div>
         )}
       </div>
@@ -137,8 +137,27 @@ function AdsOverview({ adsCampaigns }: { adsCampaigns: AdsCampaignDaily[] }) {
     return { cost, clicks, impressions, cvApp, cvMicro, ctr, cpa, days: dailyRows.length };
   }, [dailyRows]);
 
-  // Chart data (ascending for charts)
-  const chartData = useMemo(() => [...dailyRows].reverse(), [dailyRows]);
+  // Chart data (ascending for charts) — stacked by campaign
+  const CAMPAIGN_COLORS = ["#FBBC04", "#4285F4", "#EA4335", "#34A853", "#FF6D01", "#46BDC6", "#AB47BC", "#7CB342"];
+  const { stackedChartData, chartCampaigns } = useMemo(() => {
+    // Aggregate by date x campaign
+    const dateMap = new Map<string, Record<string, number>>();
+    const campSet = new Set<string>();
+    for (const r of (selectedCampaign === "__all__" ? adsCampaigns : adsCampaigns.filter(c => c.campaign_name === selectedCampaign))) {
+      campSet.add(r.campaign_name);
+      const ex = dateMap.get(r.date) || {};
+      ex[r.campaign_name] = (ex[r.campaign_name] || 0) + r.cost;
+      dateMap.set(r.date, ex);
+    }
+    const camps = Array.from(campSet).sort();
+    const data = Array.from(dateMap.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, vals]) => ({ date, ...vals }));
+    return { stackedChartData: data, chartCampaigns: camps };
+  }, [adsCampaigns, selectedCampaign]);
+
+  // Application bar chart data
+  const appChartData = useMemo(() => [...dailyRows].reverse(), [dailyRows]);
 
   return (
     <div className="space-y-6">
@@ -154,41 +173,46 @@ function AdsOverview({ adsCampaigns }: { adsCampaigns: AdsCampaignDaily[] }) {
 
       {/* KPI Cards — period totals */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        <KpiCard title="合計 費用" value={`¥${Math.round(totals.cost).toLocaleString()}`} sub={<span className="text-gray-500 text-[10px]">期間合計</span>} />
-        <KpiCard title="合計 申し込み" value={totals.cvApp.toFixed(1)} sub={<span className="text-gray-500 text-[10px]">期間合計</span>} />
-        <KpiCard title="申し込みCPA" value={totals.cpa > 0 ? `¥${Math.round(totals.cpa).toLocaleString()}` : "—"} sub={<span className="text-gray-500 text-[10px]">期間平均</span>} />
-        <KpiCard title="CTR" value={`${totals.ctr.toFixed(2)}%`} sub={<span className="text-gray-500 text-[10px]">期間平均</span>} />
-        <KpiCard title="合計 クリック" value={totals.clicks.toLocaleString()} sub={<span className="text-gray-500 text-[10px]">期間合計</span>} />
-        <KpiCard title="合計 マイクロCV" value={totals.cvMicro.toFixed(0)} sub={<span className="text-gray-500 text-[10px]">期間合計</span>} />
+        <KpiCard title="広告費用" value={`¥${Math.round(totals.cost).toLocaleString()}`} sub={<span className="text-gray-500 text-[10px]">{totals.days}日間合計</span>} />
+        <KpiCard title="申し込み数" value={totals.cvApp.toFixed(1)} sub={<span className="text-gray-500 text-[10px]">{totals.days}日間合計</span>} />
+        <KpiCard title="確定CPA（申込ベース）" value={totals.cpa > 0 ? `¥${Math.round(totals.cpa).toLocaleString()}` : "—"} sub={<span className="text-gray-500 text-[10px]">{totals.days}日間平均</span>} />
+        <KpiCard title="CTR" value={`${totals.ctr.toFixed(2)}%`} sub={<span className="text-gray-500 text-[10px]">{totals.days}日間平均</span>} />
+        <KpiCard title="クリック数" value={totals.clicks.toLocaleString()} sub={<span className="text-gray-500 text-[10px]">{totals.days}日間合計</span>} />
+        <KpiCard title="マイクロCV" value={totals.cvMicro.toFixed(0)} sub={<span className="text-gray-500 text-[10px]">{totals.days}日間合計</span>} />
       </div>
 
-      {/* Charts: Cost + CV trend */}
+      {/* Charts: Cost by campaign (stacked bar) + Applications (bar) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="bg-surface-raised border border-white/10 rounded-xl p-5">
-          <h3 className="text-sm font-medium text-gray-300 mb-4">広告費推移（日別）</h3>
+          <h3 className="text-sm font-medium text-gray-300 mb-4">広告費推移 キャンペーン別（日別）</h3>
           <ResponsiveContainer width="100%" height={250}>
-            <LineChart data={chartData}>
+            <BarChart data={stackedChartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
               <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#6b7280" }}
-                tickFormatter={(v: string) => v.slice(5)} interval={Math.max(Math.floor(chartData.length / 12), 1)} />
+                tickFormatter={(v: string) => v.slice(5)} interval={Math.max(Math.floor(stackedChartData.length / 12), 1)} />
               <YAxis tick={{ fontSize: 10, fill: "#6b7280" }}
-                tickFormatter={(v: number) => v >= 1000 ? `${(v/1000).toFixed(0)}k` : String(v)} />
+                tickFormatter={(v: number) => v >= 10000 ? `${(v/10000).toFixed(1)}万` : `¥${Math.round(v)}`} />
               <Tooltip
                 contentStyle={{ backgroundColor: "#1f2937", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 12 }}
                 labelStyle={{ color: "#9ca3af" }}
-                formatter={(value) => [`¥${Math.round(Number(value)).toLocaleString()}`, "広告費"]}
+                formatter={(value) => [`¥${Math.round(Number(value)).toLocaleString()}`, "費用"]}
               />
-              <Line type="monotone" dataKey="cost" name="Google Ads 費用" stroke="#FBBC04" strokeWidth={2} dot={false} />
-            </LineChart>
+              <Legend wrapperStyle={{ fontSize: 10 }} />
+              {chartCampaigns.map((camp, i) => (
+                <Bar key={camp} dataKey={camp} stackId="cost" fill={CAMPAIGN_COLORS[i % CAMPAIGN_COLORS.length]}
+                  name={camp.length > 20 ? camp.slice(0, 18) + "…" : camp} />
+              ))}
+            </BarChart>
           </ResponsiveContainer>
         </div>
         <div className="bg-surface-raised border border-white/10 rounded-xl p-5">
-          <h3 className="text-sm font-medium text-gray-300 mb-4">申し込み・クリック数推移（日別）</h3>
-          <ResponsiveContainer width="100%" height={250}>
-            <LineChart data={chartData}>
+          <h3 className="text-sm font-medium text-gray-300 mb-1">申し込み数・クリック数（日別）</h3>
+          <p className="text-[10px] text-gray-600 mb-3">※ Google Ads APIのコンバージョンデータ（既卒schedule遷移）</p>
+          <ResponsiveContainer width="100%" height={240}>
+            <BarChart data={appChartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
               <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#6b7280" }}
-                tickFormatter={(v: string) => v.slice(5)} interval={Math.max(Math.floor(chartData.length / 12), 1)} />
+                tickFormatter={(v: string) => v.slice(5)} interval={Math.max(Math.floor(appChartData.length / 12), 1)} />
               <YAxis yAxisId="left" tick={{ fontSize: 10, fill: "#6b7280" }} domain={[0, (dataMax: number) => Math.max(dataMax, 5)]} />
               <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10, fill: "#6b7280" }} />
               <Tooltip
@@ -196,9 +220,9 @@ function AdsOverview({ adsCampaigns }: { adsCampaigns: AdsCampaignDaily[] }) {
                 labelStyle={{ color: "#9ca3af" }}
               />
               <Legend wrapperStyle={{ fontSize: 11 }} />
-              <Line yAxisId="right" type="monotone" dataKey="clicks" name="Google Ads クリック" stroke="#4285F4" strokeWidth={2} dot={false} />
-              <Line yAxisId="left" type="monotone" dataKey="cv_application" name="Google Ads 申込" stroke="#34A853" strokeWidth={2} dot={false} />
-            </LineChart>
+              <Bar yAxisId="right" dataKey="clicks" name="クリック数" fill="#4285F4" opacity={0.6} />
+              <Bar yAxisId="left" dataKey="cv_application" name="申込数" fill="#34A853" />
+            </BarChart>
           </ResponsiveContainer>
         </div>
       </div>
@@ -268,12 +292,19 @@ function AdsOverview({ adsCampaigns }: { adsCampaigns: AdsCampaignDaily[] }) {
 }
 
 /* ─── Campaign Table (with granularity) ─── */
+function fmtCostCompact(v: number): string {
+  if (v >= 10000) return `${(v / 10000).toFixed(1)}万`;
+  return `¥${Math.round(v).toLocaleString()}`;
+}
+
 function AdsCampaignTable({ adsCampaigns, granularity, setGranularity }: {
   adsCampaigns: AdsCampaignDaily[];
   granularity: AdsGranularity;
   setGranularity: (g: AdsGranularity) => void;
 }) {
-  const { rows, periodKeys } = useMemo(() => {
+  const [showInactive, setShowInactive] = useState(false);
+
+  const { allRows, periodKeys } = useMemo(() => {
     const getPK = granularity === "daily" ? (d: string) => d
       : granularity === "weekly" ? getWeekKey : getMonthKey;
 
@@ -305,10 +336,28 @@ function AdsCampaignTable({ adsCampaigns, granularity, setGranularity }: {
     }
 
     return {
-      rows: Array.from(campMap.values()).sort((a, b) => b.totals.cost - a.totals.cost),
+      allRows: Array.from(campMap.values()).sort((a, b) => b.totals.cost - a.totals.cost),
       periodKeys: Array.from(allPKs).sort().reverse(),
     };
   }, [adsCampaigns, granularity]);
+
+  // Filter: hide campaigns with zero cost in last 28 days
+  const rows = useMemo(() => {
+    if (showInactive) return allRows;
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 28);
+    const cutoffStr = cutoff.toISOString().slice(0, 10);
+    return allRows.filter(r => {
+      // Check if campaign had any cost in recent 28 days from original data
+      let recentCost = 0;
+      for (const [pk, p] of r.periods) {
+        if (pk >= cutoffStr) recentCost += p.cost;
+      }
+      return recentCost > 0;
+    });
+  }, [allRows, showInactive]);
+
+  const inactiveCount = allRows.length - rows.length;
 
   const formatPK = (pk: string) => {
     if (granularity === "daily") return pk.slice(5); // MM-DD
@@ -319,7 +368,15 @@ function AdsCampaignTable({ adsCampaigns, granularity, setGranularity }: {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-xs text-gray-500">{rows.length} キャンペーン / 選択期間</p>
+        <div className="flex items-center gap-3">
+          <p className="text-xs text-gray-500">{rows.length} キャンペーン{!showInactive && inactiveCount > 0 ? ` （${inactiveCount}件非表示）` : ""}</p>
+          {inactiveCount > 0 && (
+            <button onClick={() => setShowInactive(!showInactive)}
+              className={`text-[10px] px-2 py-0.5 rounded border transition-colors ${showInactive ? "border-amber-500/30 bg-amber-500/10 text-amber-300" : "border-white/10 bg-white/5 text-gray-500 hover:text-gray-300"}`}>
+              {showInactive ? "停止中を非表示" : "停止中も表示"}
+            </button>
+          )}
+        </div>
         <GranularitySelector granularity={granularity} setGranularity={setGranularity} />
       </div>
       <div className="bg-surface-raised border border-white/10 rounded-xl overflow-hidden">
@@ -328,9 +385,9 @@ function AdsCampaignTable({ adsCampaigns, granularity, setGranularity }: {
             <thead className="sticky top-0 bg-surface-raised z-10">
               <tr className="border-b border-white/10 text-gray-400">
                 <th className="text-left py-2.5 px-3 min-w-[200px]">キャンペーン</th>
-                <th className="text-right py-2.5 px-2 w-20">合計 費用</th>
-                <th className="text-right py-2.5 px-2 w-16">合計 申し込み</th>
-                <th className="text-right py-2.5 px-2 w-16">CPA</th>
+                <th className="text-right py-2.5 px-2 w-20">合計費用</th>
+                <th className="text-right py-2.5 px-2 w-16">申込数</th>
+                <th className="text-right py-2.5 px-2 w-16">確定CPA</th>
                 <th className="text-right py-2.5 px-2 w-16">CTR</th>
                 {periodKeys.map(pk => (
                   <th key={pk} className="text-center py-2.5 px-1 w-20 whitespace-nowrap text-[10px]">{formatPK(pk)}</th>
@@ -358,7 +415,7 @@ function AdsCampaignTable({ adsCampaigns, granularity, setGranularity }: {
                       const bg = intensity > 0.6 ? "bg-amber-500/30" : intensity > 0.3 ? "bg-amber-500/15" : intensity > 0 ? "bg-amber-500/5" : "";
                       return (
                         <td key={pk} className={`text-center py-2.5 px-1 ${bg}`} title={`費用: ¥${Math.round(p.cost).toLocaleString()} / 申込CV: ${p.cv_application.toFixed(1)}`}>
-                          <span className="text-white/80 text-[10px]">¥{p.cost >= 1000 ? `${(p.cost/1000).toFixed(0)}k` : Math.round(p.cost)}</span>
+                          <span className="text-white/80 text-[10px]">{fmtCostCompact(p.cost)}</span>
                         </td>
                       );
                     })}
@@ -544,8 +601,7 @@ function AdsFunnelTab({ adsFunnel }: { adsFunnel: AdsFunnelCustomer[] }) {
 
   const kpis = useMemo(() => {
     const count = closedCustomers.length;
-    const isAgent = (c: AdsFunnelCustomer) => c.referral_category === "フル利用" || c.referral_category === "一部利用";
-    const revenue = closedCustomers.reduce((s, c) => s + c.confirmed_amount + c.subsidy_amount + (isAgent(c) ? c.expected_referral_fee : 0), 0);
+    const revenue = closedCustomers.reduce((s, c) => s + c.confirmed_amount + c.subsidy_amount + (!!(c.referral_category && AGENT_CATEGORIES.has(c.referral_category)) ? c.expected_referral_fee : 0), 0);
     const kisotsu = closedCustomers.filter(c => isKisotsu(c.attribute)).length;
     const shinsotsu = count - kisotsu;
     return { count, revenue, kisotsu, shinsotsu };
@@ -603,7 +659,7 @@ function AdsFunnelTab({ adsFunnel }: { adsFunnel: AdsFunnelCustomer[] }) {
                   </td>
                   <td className="py-2.5 px-3 text-gray-400 truncate max-w-[150px]">{c.utm_campaign || "—"}</td>
                   <td className="py-2.5 px-3 text-gray-400 truncate max-w-[150px]">{c.utm_medium || "—"}</td>
-                  <td className="text-right py-2.5 px-3 text-white">{(() => { const agent = (c.referral_category === "フル利用" || c.referral_category === "一部利用") ? c.expected_referral_fee : 0; const ltv = c.confirmed_amount + c.subsidy_amount + agent; return ltv > 0 ? `¥${Math.round(ltv).toLocaleString()}` : "—"; })()}</td>
+                  <td className="text-right py-2.5 px-3 text-white">{(() => { const agent = !!(c.referral_category && AGENT_CATEGORIES.has(c.referral_category)) ? c.expected_referral_fee : 0; const ltv = c.confirmed_amount + c.subsidy_amount + agent; return ltv > 0 ? `¥${Math.round(ltv).toLocaleString()}` : "—"; })()}</td>
                 </tr>
               ))}
               {closedCustomers.length === 0 && (

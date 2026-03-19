@@ -94,12 +94,12 @@ export function AdsSummaryClient({ weeklyRows, monthlyRows }: Props) {
   return (
     <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 overflow-hidden">
         {/* Header */}
-        <div className="px-5 py-4 border-b border-white/10">
+        <div className="px-5 py-4 border-b border-white/10 min-h-[72px]">
           <div className="flex items-center justify-between mb-3">
             <div>
-              <h2 className="text-sm font-semibold text-white">広告パフォーマンス</h2>
+              <h2 className="text-sm font-semibold text-white">Google広告パフォーマンス</h2>
               <p className="text-[10px] text-gray-500 mt-0.5">
-                Google広告帰属の顧客データ（帰属チャネル: Google広告）
+                帰属チャネル: Google広告
                 {periodText && <span className="ml-2 text-gray-400">{periodText}</span>}
               </p>
             </div>
@@ -146,7 +146,7 @@ export function AdsSummaryClient({ weeklyRows, monthlyRows }: Props) {
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                 <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#6b7280" }}
                   interval={Math.max(Math.floor(chartData.length / 10), 0)} />
-                <YAxis tick={{ fontSize: 10, fill: "#6b7280" }} tickFormatter={yAxisFmt} />
+                <YAxis tick={{ fontSize: 10, fill: "#6b7280" }} tickFormatter={yAxisFmt} domain={[0, 200000]} />
                 <Tooltip
                   contentStyle={{ backgroundColor: "#1f2937", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 12 }}
                   labelStyle={{ color: "#9ca3af" }}

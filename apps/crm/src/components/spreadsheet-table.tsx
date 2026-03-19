@@ -369,73 +369,7 @@ export function SpreadsheetTable<T>({
   );
   const hasFrozen = frozenCols.length > 0;
 
-  // ヘッダーセル描画
-  const renderTh = useCallback(
-    (col: SpreadsheetColumn<T>, inFrozen: boolean) => {
-      const cat = col.category || "base";
-      return (
-        <th
-          key={col.key}
-          className={cn(
-            "py-1.5 px-2 text-[11px] font-semibold whitespace-nowrap select-none relative",
-            col.computed
-              ? "text-amber-400/80 border-b-2 border-amber-500/40"
-              : CATEGORY_HEADER_TEXT[cat],
-            CATEGORY_HEADER_COLORS[cat],
-            inFrozen ? "bg-surface-elevated" : "",
-            col.align === "right" ? "text-right" : "text-left",
-          )}
-          style={{
-            width: getColWidth(col),
-            minWidth: 40,
-            maxWidth: getColWidth(col),
-            height: HEADER_H,
-          }}
-        >
-          <span className="inline-flex items-center gap-0.5 overflow-hidden">
-            {col.label}
-            {col.computed && col.formula && <FormulaTooltip formula={col.formula} />}
-          </span>
-          <div
-            onMouseDown={(e) => handleResizeStart(e, col.key)}
-            className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-brand/50 active:bg-brand/70 transition-colors"
-          />
-        </th>
-      );
-    },
-    [getColWidth, handleResizeStart]
-  );
 
-  // ボディセル描画
-  const renderTd = useCallback(
-    (col: SpreadsheetColumn<T>, item: T, rowIdx: number, inFrozen: boolean) => {
-      const cat = col.category || "base";
-      return (
-        <td
-          key={col.key}
-          className={cn(
-            "py-0.5 px-2 text-xs overflow-hidden whitespace-nowrap text-ellipsis",
-            col.align === "right"
-              ? "text-right"
-              : col.align === "center"
-                ? "text-center"
-                : "text-left",
-            inFrozen
-              ? "font-medium text-white bg-surface-card"
-              : cn("text-gray-300", CATEGORY_CELL_COLORS[cat])
-          )}
-          style={{
-            width: getColWidth(col),
-            maxWidth: getColWidth(col),
-            height: ROW_H,
-          }}
-        >
-          {col.render(item)}
-        </td>
-      );
-    },
-    [getColWidth]
-  );
 
   const virtualItems = rowVirtualizer.getVirtualItems();
   const totalHeight = rowVirtualizer.getTotalSize();
@@ -471,140 +405,178 @@ export function SpreadsheetTable<T>({
                 className="sticky left-0 z-20 flex-shrink-0 bg-surface-card"
                 style={{ width: frozenWidth, boxShadow: "3px 0 6px rgba(0,0,0,0.4)" }}
               >
-                <table className="w-full border-collapse" style={{ tableLayout: "fixed" }}>
-                  <thead className="bg-surface-elevated border-b border-white/10 sticky top-0 z-30">
-                    <tr>
-                      {frozenCols.map((col) => renderTh(col, true))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filtered.length === 0 ? (
-                      <tr>
-                        <td colSpan={frozenCols.length} className="py-8 text-center text-gray-500 text-sm">
-                          &nbsp;
-                        </td>
-                      </tr>
-                    ) : (
-                      <tr>
-                        <td colSpan={frozenCols.length} style={{ padding: 0, height: totalHeight, position: "relative" }}>
-                          {virtualItems.map((virtualRow) => {
-                            const item = filtered[virtualRow.index];
-                            const rowIdx = virtualRow.index;
-                            return (
-                              <div
-                                key={getRowKey(item)}
-                                className={cn(
-                                  "border-b border-white/[0.06] hover:bg-white/5 transition-colors flex",
-                                  rowIdx % 2 === 1 && "bg-white/[0.015]"
-                                )}
-                                style={{
-                                  position: "absolute",
-                                  top: 0,
-                                  left: 0,
-                                  width: "100%",
-                                  height: ROW_H,
-                                  transform: `translateY(${virtualRow.start}px)`,
-                                }}
-                              >
-                                {frozenCols.map((col) => {
-                                  const cat = col.category || "base";
-                                  return (
-                                    <div
-                                      key={col.key}
-                                      className={cn(
-                                        "py-0.5 px-2 text-xs overflow-hidden whitespace-nowrap text-ellipsis flex-shrink-0",
-                                        col.align === "right" ? "text-right" : col.align === "center" ? "text-center" : "text-left",
-                                        "font-medium text-white bg-surface-card"
-                                      )}
-                                      style={{
-                                        width: getColWidth(col),
-                                        maxWidth: getColWidth(col),
-                                        height: ROW_H,
-                                        lineHeight: `${ROW_H}px`,
-                                      }}
-                                    >
-                                      {col.render(item)}
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            );
-                          })}
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
+                {/* ヘッダー（flex div — ボディと同じレイアウトシステムでズレ防止） */}
+                <div className="bg-surface-elevated border-b border-white/10 sticky top-0 z-30 flex">
+                  {frozenCols.map((col) => {
+                    const cat = col.category || "base";
+                    return (
+                      <div
+                        key={col.key}
+                        className={cn(
+                          "py-0.5 px-2 text-[11px] font-semibold whitespace-nowrap select-none relative flex-shrink-0",
+                          col.computed
+                            ? "text-amber-400/80 border-b-2 border-amber-500/40"
+                            : CATEGORY_HEADER_TEXT[cat],
+                          CATEGORY_HEADER_COLORS[cat],
+                          "bg-surface-elevated",
+                          col.align === "right" ? "text-right" : "text-left",
+                        )}
+                        style={{
+                          width: getColWidth(col),
+                          maxWidth: getColWidth(col),
+                          height: HEADER_H,
+                          lineHeight: `${HEADER_H}px`,
+                        }}
+                      >
+                        <span className="inline-flex items-center gap-0.5 overflow-hidden">
+                          {col.label}
+                          {col.computed && col.formula && <FormulaTooltip formula={col.formula} />}
+                        </span>
+                        <div
+                          onMouseDown={(e) => handleResizeStart(e, col.key)}
+                          className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-brand/50 active:bg-brand/70 transition-colors"
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+                {/* ボディ */}
+                <div style={{ height: filtered.length === 0 ? undefined : totalHeight, position: "relative" }}>
+                  {filtered.length === 0 ? (
+                    <div className="py-8 text-center text-gray-500 text-sm">&nbsp;</div>
+                  ) : (
+                    virtualItems.map((virtualRow) => {
+                      const item = filtered[virtualRow.index];
+                      const rowIdx = virtualRow.index;
+                      return (
+                        <div
+                          key={getRowKey(item)}
+                          className={cn(
+                            "border-b border-white/[0.06] hover:bg-white/5 transition-colors flex",
+                            rowIdx % 2 === 1 && "bg-white/[0.015]"
+                          )}
+                          style={{
+                            position: "absolute",
+                            top: 0,
+                            left: 0,
+                            width: "100%",
+                            height: ROW_H,
+                            transform: `translateY(${virtualRow.start}px)`,
+                          }}
+                        >
+                          {frozenCols.map((col) => (
+                            <div
+                              key={col.key}
+                              className={cn(
+                                "py-0.5 px-2 text-xs overflow-hidden whitespace-nowrap text-ellipsis flex-shrink-0",
+                                col.align === "right" ? "text-right" : col.align === "center" ? "text-center" : "text-left",
+                                "font-medium text-white bg-surface-card"
+                              )}
+                              style={{
+                                width: getColWidth(col),
+                                maxWidth: getColWidth(col),
+                                height: ROW_H,
+                                lineHeight: `${ROW_H}px`,
+                              }}
+                            >
+                              {col.render(item)}
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
               </div>
             )}
 
             {/* ═══ 可変列ペイン ═══ */}
             <div className="flex-shrink-0">
-              <table className="border-collapse" style={{ tableLayout: "fixed" }}>
-                <thead className="bg-surface-elevated border-b border-white/10 sticky top-0 z-10">
-                  <tr>
-                    {scrollCols.map((col) => renderTh(col, false))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.length === 0 ? (
-                    <tr>
-                      <td colSpan={scrollCols.length} className="py-8 text-center text-gray-500 text-sm">
-                        データがありません
-                      </td>
-                    </tr>
-                  ) : (
-                    <tr>
-                      <td colSpan={scrollCols.length} style={{ padding: 0, height: totalHeight, position: "relative" }}>
-                        {virtualItems.map((virtualRow) => {
-                          const item = filtered[virtualRow.index];
-                          const rowIdx = virtualRow.index;
+              {/* ヘッダー（flex div — ボディと同じレイアウトシステムでズレ防止） */}
+              <div className="bg-surface-elevated border-b border-white/10 sticky top-0 z-10 flex">
+                {scrollCols.map((col) => {
+                  const cat = col.category || "base";
+                  return (
+                    <div
+                      key={col.key}
+                      className={cn(
+                        "py-0.5 px-2 text-[11px] font-semibold whitespace-nowrap select-none relative flex-shrink-0",
+                        col.computed
+                          ? "text-amber-400/80 border-b-2 border-amber-500/40"
+                          : CATEGORY_HEADER_TEXT[cat],
+                        CATEGORY_HEADER_COLORS[cat],
+                        col.align === "right" ? "text-right" : "text-left",
+                      )}
+                      style={{
+                        width: getColWidth(col),
+                        maxWidth: getColWidth(col),
+                        height: HEADER_H,
+                        lineHeight: `${HEADER_H}px`,
+                      }}
+                    >
+                      <span className="inline-flex items-center gap-0.5 overflow-hidden">
+                        {col.label}
+                        {col.computed && col.formula && <FormulaTooltip formula={col.formula} />}
+                      </span>
+                      <div
+                        onMouseDown={(e) => handleResizeStart(e, col.key)}
+                        className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-brand/50 active:bg-brand/70 transition-colors"
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+              {/* ボディ */}
+              <div style={{ height: filtered.length === 0 ? undefined : totalHeight, position: "relative" }}>
+                {filtered.length === 0 ? (
+                  <div className="py-8 text-center text-gray-500 text-sm">データがありません</div>
+                ) : (
+                  virtualItems.map((virtualRow) => {
+                    const item = filtered[virtualRow.index];
+                    const rowIdx = virtualRow.index;
+                    return (
+                      <div
+                        key={getRowKey(item)}
+                        className={cn(
+                          "border-b border-white/[0.06] hover:bg-white/5 transition-colors flex",
+                          rowIdx % 2 === 1 && "bg-white/[0.015]"
+                        )}
+                        style={{
+                          position: "absolute",
+                          top: 0,
+                          left: 0,
+                          width: "100%",
+                          height: ROW_H,
+                          transform: `translateY(${virtualRow.start}px)`,
+                        }}
+                      >
+                        {scrollCols.map((col) => {
+                          const cat = col.category || "base";
                           return (
                             <div
-                              key={getRowKey(item)}
+                              key={col.key}
                               className={cn(
-                                "border-b border-white/[0.06] hover:bg-white/5 transition-colors flex",
-                                rowIdx % 2 === 1 && "bg-white/[0.015]"
+                                "py-0.5 px-2 text-xs overflow-hidden whitespace-nowrap text-ellipsis flex-shrink-0",
+                                col.align === "right" ? "text-right" : col.align === "center" ? "text-center" : "text-left",
+                                "text-gray-300",
+                                CATEGORY_CELL_COLORS[cat]
                               )}
                               style={{
-                                position: "absolute",
-                                top: 0,
-                                left: 0,
-                                width: "100%",
+                                width: getColWidth(col),
+                                maxWidth: getColWidth(col),
                                 height: ROW_H,
-                                transform: `translateY(${virtualRow.start}px)`,
+                                lineHeight: `${ROW_H}px`,
                               }}
                             >
-                              {scrollCols.map((col) => {
-                                const cat = col.category || "base";
-                                return (
-                                  <div
-                                    key={col.key}
-                                    className={cn(
-                                      "py-0.5 px-2 text-xs overflow-hidden whitespace-nowrap text-ellipsis flex-shrink-0",
-                                      col.align === "right" ? "text-right" : col.align === "center" ? "text-center" : "text-left",
-                                      "text-gray-300",
-                                      CATEGORY_CELL_COLORS[cat]
-                                    )}
-                                    style={{
-                                      width: getColWidth(col),
-                                      maxWidth: getColWidth(col),
-                                      height: ROW_H,
-                                      lineHeight: `${ROW_H}px`,
-                                    }}
-                                  >
-                                    {col.render(item)}
-                                  </div>
-                                );
-                              })}
+                              {col.render(item)}
                             </div>
                           );
                         })}
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
             </div>
           </div>
         </div>

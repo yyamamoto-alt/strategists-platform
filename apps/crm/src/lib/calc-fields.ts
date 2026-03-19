@@ -58,10 +58,11 @@ export function calcExpectedReferralFee(c: CustomerWithRelations): number {
   return salary * rankRate * feeRate * margin;
 }
 
-/** 顧客が人材紹介利用者か判定: 人材紹介区分が「フル利用」or「一部利用」のみ */
+/** 顧客が人材紹介利用者か判定: 人材紹介区分が「フル利用」「一部利用」「自社」「該当」 */
+export const AGENT_CATEGORIES = new Set(["フル利用", "一部利用", "自社", "該当"]);
 export function isAgentCustomer(c: CustomerWithRelations): boolean {
   const cat = c.contract?.referral_category;
-  return cat === "フル利用" || cat === "一部利用";
+  return !!cat && AGENT_CATEGORIES.has(cat);
 }
 
 /** 顧客が「受講中」か判定（Excel Col BU の条件） */

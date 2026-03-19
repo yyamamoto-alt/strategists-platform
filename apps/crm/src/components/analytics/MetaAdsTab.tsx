@@ -6,6 +6,7 @@ import {
   LineChart, Line,
 } from "recharts";
 import type { MetaCampaignDaily, MetaAdsetDaily, MetaAdDaily, AdsFunnelCustomer } from "@/lib/data/analytics";
+import { AGENT_CATEGORIES } from "@/lib/calc-fields";
 import { SubTab, KpiCard, GranularitySelector, getDataDateRange, getWeekKey, getMonthKey } from "./shared";
 import type { AdsGranularity } from "./shared";
 
@@ -686,8 +687,7 @@ function MetaFunnelTab({ metaFunnel }: { metaFunnel: AdsFunnelCustomer[] }) {
 
   const kpis = useMemo(() => {
     const count = closedCustomers.length;
-    const isAgent = (c: AdsFunnelCustomer) => c.referral_category === "フル利用" || c.referral_category === "一部利用";
-    const revenue = closedCustomers.reduce((s, c) => s + c.confirmed_amount + c.subsidy_amount + (isAgent(c) ? c.expected_referral_fee : 0), 0);
+    const revenue = closedCustomers.reduce((s, c) => s + c.confirmed_amount + c.subsidy_amount + (!!(c.referral_category && AGENT_CATEGORIES.has(c.referral_category)) ? c.expected_referral_fee : 0), 0);
     const kisotsu = closedCustomers.filter(c => isKisotsu(c.attribute)).length;
     const shinsotsu = count - kisotsu;
     return { count, revenue, kisotsu, shinsotsu };
@@ -745,7 +745,7 @@ function MetaFunnelTab({ metaFunnel }: { metaFunnel: AdsFunnelCustomer[] }) {
                   </td>
                   <td className="py-2.5 px-3 text-gray-400 truncate max-w-[150px]">{c.utm_campaign || "—"}</td>
                   <td className="py-2.5 px-3 text-gray-400 truncate max-w-[150px]">{c.utm_medium || "—"}</td>
-                  <td className="text-right py-2.5 px-3 text-white">{(() => { const agent = (c.referral_category === "フル利用" || c.referral_category === "一部利用") ? c.expected_referral_fee : 0; const ltv = c.confirmed_amount + c.subsidy_amount + agent; return ltv > 0 ? fmtYen(ltv) : "—"; })()}</td>
+                  <td className="text-right py-2.5 px-3 text-white">{(() => { const agent = !!(c.referral_category && AGENT_CATEGORIES.has(c.referral_category)) ? c.expected_referral_fee : 0; const ltv = c.confirmed_amount + c.subsidy_amount + agent; return ltv > 0 ? fmtYen(ltv) : "—"; })()}</td>
                 </tr>
               ))}
               {closedCustomers.length === 0 && (
