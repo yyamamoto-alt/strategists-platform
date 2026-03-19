@@ -1175,10 +1175,10 @@ export function CustomerDetailClient({
         vals[`learning.${key}`] = dateKeys.has(key) ? toDateValue(l[key]) : (l[key] != null ? String(l[key]) : "");
       }
     }
-    // agent fields
-    if (customer.agent) {
-      const a = customer.agent as unknown as Record<string, unknown>;
-      for (const key of ["offer_company", "offer_salary", "offer_rank", "referral_fee_rate", "placement_confirmed", "placement_date", "margin", "ai_offer_probability"]) {
+    // agent fields（agent_recordsが未作成でも編集可能にする）
+    {
+      const a = (customer.agent ?? {}) as Record<string, unknown>;
+      for (const key of ["job_search_status", "offer_company", "offer_salary", "offer_rank", "referral_fee_rate", "placement_confirmed", "placement_date", "margin", "ai_offer_probability"]) {
         vals[`agent.${key}`] = dateKeys.has(key) ? toDateValue(a[key]) : (a[key] != null ? String(a[key]) : "");
       }
     }
@@ -1207,11 +1207,10 @@ export function CustomerDetailClient({
         const key = compositeKey.slice(dotIdx + 1);
         if (!table) continue;
 
-        // 元の値と比較
+        // 元の値と比較（関連テーブルが未作成でも変更を検出する）
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const source: any = table === "customer" ? customer : (customer as any)[table];
-        if (!source) continue;
-        const origVal = source[key];
+        const origVal = source?.[key];
         const origStr = origVal != null ? String(origVal) : "";
         if (val === origStr) continue;
 

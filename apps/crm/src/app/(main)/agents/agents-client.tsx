@@ -33,12 +33,13 @@ export function AgentsClient({ customers, agentSummary }: AgentsClientProps) {
     .filter((c) => c.agent)
     .map((c) => ({ ...c, agent: c.agent! }));
 
+  // agent_recordsがある顧客を全員表示（非対象を除外）
   const enrolled = agentCustomers.filter((c) => {
     const ov = overrides[c.id];
-    if (ov?.referral_category !== undefined) {
-      return AGENT_CATEGORIES.has(ov.referral_category);
-    }
-    return isAgentCustomer(c);
+    const cat = ov?.referral_category ?? c.contract?.referral_category;
+    // 明示的に「非対象」「なし」「スクールのみ」に設定されている場合のみ除外
+    if (cat === "非対象" || cat === "なし" || cat === "スクールのみ") return false;
+    return true;
   });
   const getJobStatus = (c: CustomerWithRelations) => overrides[c.id]?.job_search_status ?? c.agent?.job_search_status ?? null;
   const getReferralCat = (c: CustomerWithRelations) => overrides[c.id]?.referral_category ?? c.contract?.referral_category ?? null;

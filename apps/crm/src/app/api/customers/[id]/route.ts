@@ -88,13 +88,25 @@ export async function PATCH(request: Request, { params }: Props) {
     if (error) errors.push(`sales_pipeline: ${error.message}`);
   }
 
-  // contracts テーブル更新
+  // contracts テーブル更新（未作成ならinsert）
   if (body.contract && Object.keys(body.contract).length > 0) {
-    const { error } = await db
+    const { data: existingContract } = await db
       .from("contracts")
-      .update(body.contract)
-      .eq("customer_id", id);
-    if (error) errors.push(`contracts: ${error.message}`);
+      .select("id")
+      .eq("customer_id", id)
+      .maybeSingle();
+    if (existingContract) {
+      const { error } = await db
+        .from("contracts")
+        .update(body.contract)
+        .eq("customer_id", id);
+      if (error) errors.push(`contracts: ${error.message}`);
+    } else {
+      const { error } = await db
+        .from("contracts")
+        .insert({ customer_id: id, ...body.contract });
+      if (error) errors.push(`contracts: ${error.message}`);
+    }
   }
 
   // learning_records テーブル更新
@@ -106,13 +118,25 @@ export async function PATCH(request: Request, { params }: Props) {
     if (error) errors.push(`learning_records: ${error.message}`);
   }
 
-  // agent_records テーブル更新
+  // agent_records テーブル更新（未作成ならinsert）
   if (body.agent && Object.keys(body.agent).length > 0) {
-    const { error } = await db
+    const { data: existing } = await db
       .from("agent_records")
-      .update(body.agent)
-      .eq("customer_id", id);
-    if (error) errors.push(`agent_records: ${error.message}`);
+      .select("id")
+      .eq("customer_id", id)
+      .maybeSingle();
+    if (existing) {
+      const { error } = await db
+        .from("agent_records")
+        .update(body.agent)
+        .eq("customer_id", id);
+      if (error) errors.push(`agent_records: ${error.message}`);
+    } else {
+      const { error } = await db
+        .from("agent_records")
+        .insert({ customer_id: id, ...body.agent });
+      if (error) errors.push(`agent_records: ${error.message}`);
+    }
   }
 
   if (errors.length > 0) {
