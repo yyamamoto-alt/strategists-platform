@@ -182,7 +182,11 @@ export function MetaAdsSummaryClient({ weeklyRows, monthlyRows, campaignDaily = 
                 ))}
                 <Line yAxisId="right" type="monotone" dataKey="cpa_scheduled" name="CPA(2ヶ月移動)" stroke="#ef4444" strokeWidth={2} dot={false} />
                 <Line yAxisId="right" type="monotone" dataKey="rolling_ltv" name="確定LTV(2ヶ月移動)" stroke="#10b981" strokeWidth={2} dot={false} strokeDasharray="6 3" />
-                <Scatter yAxisId="closedAxis" dataKey="closed" name="成約" fill="#fbbf24" shape="circle" legendType="circle" />
+                <Scatter yAxisId="closedAxis" dataKey="closed" name="成約" fill="#fbbf24" legendType="circle"
+                  shape={(props: any) => {
+                    if (!props.payload?.closed || props.payload.closed === 0) return null;
+                    return <circle cx={props.cx} cy={props.cy} r={5} fill="#fbbf24" stroke="#fff" strokeWidth={1} />;
+                  }} />
               </ComposedChart>
             </ResponsiveContainer>
           </div>

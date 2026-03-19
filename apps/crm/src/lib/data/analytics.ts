@@ -494,36 +494,56 @@ export async function fetchMetaAdDaily(days: number = 90): Promise<MetaAdDaily[]
   return all;
 }
 
-/** Meta Ads 経由の顧客ファネルデータ (utm_source = "fbad" or "facebook") */
+/** Meta広告帰属の顧客ファネルデータ（customer_channel_attributionベース） */
 export async function fetchMetaFunnelData(): Promise<AdsFunnelCustomer[]> {
-  const { data, error } = await supabase()
-    .from("customers")
-    .select("id,name,application_date,attribute,utm_source,utm_medium,utm_campaign,sales_pipeline(stage),contracts(confirmed_amount,subsidy_amount,referral_category),agent_records(expected_referral_fee)")
-    .in("utm_source", ["fbad", "facebook"])
-    .order("application_date", { ascending: false });
+  // 1. Meta広告帰属の顧客IDを取得（純粋 + 重複チャネル両方）
+  const { data: attrData, error: attrError } = await supabase()
+    .from("customer_channel_attribution")
+    .select("customer_id")
+    .like("marketing_channel", "%Meta広告%");
 
-  if (error) {
-    console.error("Meta funnel fetch error:", error.message);
+  if (attrError || !attrData || attrData.length === 0) {
+    if (attrError) console.error("Meta attribution fetch error:", attrError.message);
     return [];
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const r = (obj: any) => Array.isArray(obj) ? obj[0] : obj;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (data || []).map((row: any) => ({
-    id: row.id,
-    name: row.name,
-    application_date: row.application_date,
-    attribute: row.attribute,
-    utm_source: row.utm_source,
-    utm_medium: row.utm_medium,
-    utm_campaign: row.utm_campaign,
-    stage: r(row.sales_pipeline)?.stage ?? null,
-    confirmed_amount: r(row.contracts)?.confirmed_amount ?? 0,
-    subsidy_amount: r(row.contracts)?.subsidy_amount ?? 0,
-    expected_referral_fee: r(row.agent_records)?.expected_referral_fee ?? 0,
-    referral_category: r(row.contracts)?.referral_category ?? null,
-  }));
+  const customerIds = attrData.map((r: { customer_id: string }) => r.customer_id);
+
+  // 2. 顧客データをバッチで取得（PostgREST URLサイズ制限回避）
+  const BATCH = 200;
+  const allRows: AdsFunnelCustomer[] = [];
+  for (let i = 0; i < customerIds.length; i += BATCH) {
+    const batch = customerIds.slice(i, i + BATCH);
+    const { data, error } = await supabase()
+      .from("customers")
+      .select("id,name,application_date,attribute,utm_source,utm_medium,utm_campaign,sales_pipeline(stage),contracts(confirmed_amount,subsidy_amount,referral_category),agent_records(expected_referral_fee)")
+      .in("id", batch)
+      .order("application_date", { ascending: false });
+
+    if (error) {
+      console.error("Meta funnel fetch error:", error.message);
+      continue;
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const r = (obj: any) => Array.isArray(obj) ? obj[0] : obj;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    allRows.push(...(data || []).map((row: any) => ({
+      id: row.id,
+      name: row.name,
+      application_date: row.application_date,
+      attribute: row.attribute,
+      utm_source: row.utm_source,
+      utm_medium: row.utm_medium,
+      utm_campaign: row.utm_campaign,
+      stage: r(row.sales_pipeline)?.stage ?? null,
+      confirmed_amount: r(row.contracts)?.confirmed_amount ?? 0,
+      subsidy_amount: r(row.contracts)?.subsidy_amount ?? 0,
+      expected_referral_fee: r(row.agent_records)?.expected_referral_fee ?? 0,
+      referral_category: r(row.contracts)?.referral_category ?? null,
+    })));
+  }
+  return allRows;
 }
 
 /* ───── YouTube Analytics ───── */

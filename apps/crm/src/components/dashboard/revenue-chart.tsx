@@ -265,7 +265,7 @@ function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
         shinsotsu_gray: Math.max(0, shinsotsu_gray),
       };
     });
-  }, [data, costMap]);
+  }, [data, costMap, gradYearFilter]);
 
   // 四半期集計
   const quarterlyData = useMemo(() => {

@@ -39,13 +39,6 @@ interface Props {
 type Granularity = "weekly" | "monthly";
 type ViewMode = "chart" | "table";
 
-function periodStartDate12m(): string {
-  const d = new Date();
-  d.setDate(d.getDate() - 1);
-  d.setMonth(d.getMonth() - 12);
-  return d.toISOString().slice(0, 10);
-}
-
 function formatDate(dateStr: string): string {
   // "2025-09-20" → "2025/09/20", "2025-09" → "2025/09"
   return dateStr.replace(/-/g, "/");
@@ -70,11 +63,10 @@ export function AdsSummaryClient({ weeklyRows, monthlyRows, campaignDaily = [] }
   const [granularity, setGranularity] = useState<Granularity>("weekly");
   const [viewMode, setViewMode] = useState<ViewMode>("chart");
 
-  // 12ヶ月固定フィルタ
+  // サーバー側でADS_STARTフィルタ済み — クライアントではそのまま使用
   const rows = useMemo(() => {
     const source = granularity === "weekly" ? weeklyRows : monthlyRows;
-    const start = periodStartDate12m();
-    return source.filter(r => r.period >= start);
+    return source;
   }, [granularity, weeklyRows, monthlyRows]);
 
   // Chart data needs ascending order
@@ -86,8 +78,7 @@ export function AdsSummaryClient({ weeklyRows, monthlyRows, campaignDaily = [] }
   // Campaign stacked chart data
   const { stackedData, campaignNames } = useMemo(() => {
     if (campaignDaily.length === 0) return { stackedData: [], campaignNames: [] };
-    const startDate = periodStartDate12m();
-    const filtered = campaignDaily.filter(r => r.date >= startDate);
+    const filtered = campaignDaily;
 
     // Group by week or month
     const dateMap = new Map<string, Record<string, number>>();
@@ -211,7 +202,11 @@ export function AdsSummaryClient({ weeklyRows, monthlyRows, campaignDaily = [] }
                 ))}
                 <Line yAxisId="right" type="monotone" dataKey="cpa_scheduled" name="日程確定CPA(2ヶ月移動)" stroke="#ef4444" strokeWidth={2} dot={false} />
                 <Line yAxisId="right" type="monotone" dataKey="rolling_ltv" name="確定LTV(2ヶ月移動)" stroke="#10b981" strokeWidth={2} dot={false} strokeDasharray="6 3" />
-                <Scatter yAxisId="closedAxis" dataKey="closed" name="成約" fill="#fbbf24" shape="circle" legendType="circle" />
+                <Scatter yAxisId="closedAxis" dataKey="closed" name="成約" fill="#fbbf24" legendType="circle"
+                  shape={(props: any) => {
+                    if (!props.payload?.closed || props.payload.closed === 0) return null;
+                    return <circle cx={props.cx} cy={props.cy} r={5} fill="#fbbf24" stroke="#fff" strokeWidth={1} />;
+                  }} />
               </ComposedChart>
             </ResponsiveContainer>
           </div>
