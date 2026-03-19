@@ -31,8 +31,6 @@ interface Props {
 
 type Granularity = "weekly" | "monthly";
 type ViewMode = "chart" | "table";
-type ChartType = "total" | "campaign";
-
 function weekKeyLocal(dateStr: string): string {
   const d = new Date(dateStr);
   const day = d.getDay();
@@ -51,7 +49,6 @@ function yAxisFmt(v: number): string {
 export function MetaAdsSummaryClient({ weeklyRows, monthlyRows, campaignDaily = [] }: Props) {
   const [granularity, setGranularity] = useState<Granularity>("weekly");
   const [viewMode, setViewMode] = useState<ViewMode>("chart");
-  const [chartType, setChartType] = useState<ChartType>("campaign");
   const rows = granularity === "weekly" ? weeklyRows : monthlyRows;
 
   // Chart data needs ascending order
@@ -127,56 +124,19 @@ export function MetaAdsSummaryClient({ weeklyRows, monthlyRows, campaignDaily = 
           </div>
         </div>
 
-        {/* Chart type toggle */}
-        {viewMode === "chart" && (
-          <div className="px-5 pt-3 flex gap-0.5 bg-transparent">
-            <div className="flex gap-0.5 bg-white/5 rounded-lg p-0.5">
-              <button onClick={() => setChartType("campaign")}
-                className={`px-2.5 py-1 text-xs rounded-md transition-colors ${chartType === "campaign" ? "bg-white/15 text-white" : "text-gray-400 hover:text-white"}`}>
-                キャンペーン別
-              </button>
-              <button onClick={() => setChartType("total")}
-                className={`px-2.5 py-1 text-xs rounded-md transition-colors ${chartType === "total" ? "bg-white/15 text-white" : "text-gray-400 hover:text-white"}`}>
-                合計+CPA
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Stacked campaign chart */}
-        {viewMode === "chart" && chartType === "campaign" && stackedData.length > 0 && (
+        {/* Combined chart: stacked campaign bars + CPA/LTV lines */}
+        {viewMode === "chart" && stackedData.length > 0 && (
           <div className="p-5">
             <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={stackedData}>
+              <ComposedChart data={(() => {
+                const lineMap = new Map(chartData.map(r => [r.label, r]));
+                return stackedData.map(d => ({ ...d, ...(lineMap.get(d.label) || {}) }));
+              })()}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                 <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#6b7280" }}
                   interval={Math.max(Math.floor(stackedData.length / 12), 1)} />
-                <YAxis tick={{ fontSize: 10, fill: "#6b7280" }}
+                <YAxis yAxisId="left" tick={{ fontSize: 10, fill: "#6b7280" }}
                   tickFormatter={(v: number) => v >= 10000 ? `${(v/10000).toFixed(1)}万` : `¥${Math.round(v)}`} />
-                <Tooltip
-                  contentStyle={{ backgroundColor: "#1f2937", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 12 }}
-                  labelStyle={{ color: "#9ca3af" }}
-                  formatter={(value: unknown) => [`¥${Math.round(Number(value)).toLocaleString()}`, ""]}
-                />
-                <Legend wrapperStyle={{ fontSize: 10 }} />
-                {campaignNames.map((camp, i) => (
-                  <Bar key={camp} dataKey={camp} stackId="cost" fill={CAMPAIGN_COLORS[i % CAMPAIGN_COLORS.length]}
-                    name={camp.length > 20 ? camp.slice(0, 18) + "…" : camp} />
-                ))}
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        )}
-
-        {/* Total cost + CPA/LTV chart */}
-        {viewMode === "chart" && chartType === "total" && chartData.length > 0 && (
-          <div className="p-5">
-            <ResponsiveContainer width="100%" height={280}>
-              <ComposedChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#6b7280" }}
-                  interval={Math.max(Math.floor(chartData.length / 10), 0)} />
-                <YAxis yAxisId="left" tick={{ fontSize: 10, fill: "#6b7280" }} tickFormatter={yAxisFmt} domain={[0, 200000]} allowDataOverflow />
                 <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10, fill: "#6b7280" }} tickFormatter={yAxisFmt} hide />
                 <Tooltip
                   contentStyle={{ backgroundColor: "#1f2937", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 12 }}
@@ -187,8 +147,11 @@ export function MetaAdsSummaryClient({ weeklyRows, monthlyRows, campaignDaily = 
                     return [v > 0 ? `¥${Math.round(v).toLocaleString()}` : "—", name];
                   }}
                 />
-                <Legend wrapperStyle={{ fontSize: 11 }} />
-                <Bar yAxisId="left" dataKey="spend" name="広告費" fill="#8b5cf6" radius={[2, 2, 0, 0]} />
+                <Legend wrapperStyle={{ fontSize: 10 }} />
+                {campaignNames.map((camp, i) => (
+                  <Bar key={camp} yAxisId="left" dataKey={camp} stackId="cost" fill={CAMPAIGN_COLORS[i % CAMPAIGN_COLORS.length]}
+                    name={camp.length > 20 ? camp.slice(0, 18) + "…" : camp} />
+                ))}
                 <Line yAxisId="right" type="monotone" dataKey="cpa_scheduled" name="CPA(2ヶ月移動)" stroke="#ef4444" strokeWidth={2} dot={false} />
                 <Line yAxisId="right" type="monotone" dataKey="rolling_ltv" name="確定LTV(2ヶ月移動)" stroke="#10b981" strokeWidth={2} dot={false} strokeDasharray="6 3" />
               </ComposedChart>

@@ -32,22 +32,11 @@ interface Props {
 
 type Granularity = "weekly" | "monthly";
 type ViewMode = "chart" | "table";
-type ChartType = "total" | "campaign";
-type PeriodRange = "3m" | "6m" | "12m" | "all";
 
-const PERIOD_OPTIONS: { value: PeriodRange; label: string }[] = [
-  { value: "3m", label: "3ヶ月" },
-  { value: "6m", label: "6ヶ月" },
-  { value: "12m", label: "12ヶ月" },
-  { value: "all", label: "全期間" },
-];
-
-function periodStartDate(range: PeriodRange): string | null {
-  if (range === "all") return null;
+function periodStartDate12m(): string {
   const d = new Date();
-  d.setDate(d.getDate() - 1); // 昨日基準
-  const months = range === "3m" ? 3 : range === "6m" ? 6 : 12;
-  d.setMonth(d.getMonth() - months);
+  d.setDate(d.getDate() - 1);
+  d.setMonth(d.getMonth() - 12);
   return d.toISOString().slice(0, 10);
 }
 
@@ -74,25 +63,13 @@ function yAxisFmt(v: number): string {
 export function AdsSummaryClient({ weeklyRows, monthlyRows, campaignDaily = [] }: Props) {
   const [granularity, setGranularity] = useState<Granularity>("weekly");
   const [viewMode, setViewMode] = useState<ViewMode>("chart");
-  const [chartType, setChartType] = useState<ChartType>("campaign");
-  const [periodRange, setPeriodRange] = useState<PeriodRange>("6m");
 
-  // 期間でフィルタ
+  // 12ヶ月固定フィルタ
   const rows = useMemo(() => {
     const source = granularity === "weekly" ? weeklyRows : monthlyRows;
-    const start = periodStartDate(periodRange);
-    if (!start) return source;
+    const start = periodStartDate12m();
     return source.filter(r => r.period >= start);
-  }, [granularity, weeklyRows, monthlyRows, periodRange]);
-
-  // 表示期間のテキスト
-  const periodText = useMemo(() => {
-    if (rows.length === 0) return "";
-    const sorted = [...rows].sort((a, b) => a.period.localeCompare(b.period));
-    const from = sorted[0].period;
-    const to = sorted[sorted.length - 1].period;
-    return `${formatDate(from)} 〜 ${formatDate(to)}`;
-  }, [rows]);
+  }, [granularity, weeklyRows, monthlyRows]);
 
   // Chart data needs ascending order
   const chartData = useMemo(() => [...rows].reverse().map(r => ({
@@ -103,8 +80,8 @@ export function AdsSummaryClient({ weeklyRows, monthlyRows, campaignDaily = [] }
   // Campaign stacked chart data
   const { stackedData, campaignNames } = useMemo(() => {
     if (campaignDaily.length === 0) return { stackedData: [], campaignNames: [] };
-    const startDate = periodStartDate(periodRange);
-    const filtered = startDate ? campaignDaily.filter(r => r.date >= startDate) : campaignDaily;
+    const startDate = periodStartDate12m();
+    const filtered = campaignDaily.filter(r => r.date >= startDate);
 
     // Group by week or month
     const dateMap = new Map<string, Record<string, number>>();
@@ -146,20 +123,10 @@ export function AdsSummaryClient({ weeklyRows, monthlyRows, campaignDaily = [] }
             <div>
               <h2 className="text-sm font-semibold text-white">Google広告パフォーマンス</h2>
               <p className="text-[10px] text-gray-500 mt-0.5">
-                帰属チャネル: Google広告
-                {periodText && <span className="ml-2 text-gray-400">{periodText}</span>}
+                帰属チャネル: Google広告（直近12ヶ月）
               </p>
             </div>
             <div className="flex items-center gap-2">
-              {/* Period range toggle */}
-              <div className="flex gap-0.5 bg-white/5 rounded-lg p-0.5">
-                {PERIOD_OPTIONS.map(({ value, label }) => (
-                  <button key={value} onClick={() => setPeriodRange(value)}
-                    className={`px-2.5 py-1 text-xs rounded-md transition-colors ${periodRange === value ? "bg-brand text-white" : "text-gray-400 hover:text-white"}`}>
-                    {label}
-                  </button>
-                ))}
-              </div>
               {/* View mode toggle */}
               <div className="flex gap-0.5 bg-white/5 rounded-lg p-0.5">
                 <button onClick={() => setViewMode("chart")}
@@ -185,56 +152,20 @@ export function AdsSummaryClient({ weeklyRows, monthlyRows, campaignDaily = [] }
 
         </div>
 
-        {/* Chart type toggle */}
-        {viewMode === "chart" && (
-          <div className="px-5 pt-3 flex gap-0.5 bg-transparent">
-            <div className="flex gap-0.5 bg-white/5 rounded-lg p-0.5">
-              <button onClick={() => setChartType("campaign")}
-                className={`px-2.5 py-1 text-xs rounded-md transition-colors ${chartType === "campaign" ? "bg-white/15 text-white" : "text-gray-400 hover:text-white"}`}>
-                キャンペーン別
-              </button>
-              <button onClick={() => setChartType("total")}
-                className={`px-2.5 py-1 text-xs rounded-md transition-colors ${chartType === "total" ? "bg-white/15 text-white" : "text-gray-400 hover:text-white"}`}>
-                合計+CPA
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Stacked campaign chart */}
-        {viewMode === "chart" && chartType === "campaign" && stackedData.length > 0 && (
+        {/* Combined chart: stacked campaign bars + CPA/LTV lines */}
+        {viewMode === "chart" && stackedData.length > 0 && (
           <div className="p-5">
             <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={stackedData}>
+              <ComposedChart data={(() => {
+                // Merge stacked campaign data with CPA/LTV line data
+                const lineMap = new Map(chartData.map(r => [r.label, r]));
+                return stackedData.map(d => ({ ...d, ...(lineMap.get(d.label) || {}) }));
+              })()}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                 <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#6b7280" }}
                   interval={Math.max(Math.floor(stackedData.length / 12), 1)} />
-                <YAxis tick={{ fontSize: 10, fill: "#6b7280" }}
+                <YAxis yAxisId="left" tick={{ fontSize: 10, fill: "#6b7280" }}
                   tickFormatter={(v: number) => v >= 10000 ? `${(v/10000).toFixed(1)}万` : `¥${Math.round(v)}`} />
-                <Tooltip
-                  contentStyle={{ backgroundColor: "#1f2937", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 12 }}
-                  labelStyle={{ color: "#9ca3af" }}
-                  formatter={(value: unknown) => [`¥${Math.round(Number(value)).toLocaleString()}`, ""]}
-                />
-                <Legend wrapperStyle={{ fontSize: 10 }} />
-                {campaignNames.map((camp, i) => (
-                  <Bar key={camp} dataKey={camp} stackId="cost" fill={CAMPAIGN_COLORS[i % CAMPAIGN_COLORS.length]}
-                    name={camp.length > 20 ? camp.slice(0, 18) + "…" : camp} />
-                ))}
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        )}
-
-        {/* Total cost + CPA/LTV chart */}
-        {viewMode === "chart" && chartType === "total" && chartData.length > 0 && (
-          <div className="p-5">
-            <ResponsiveContainer width="100%" height={280}>
-              <ComposedChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#6b7280" }}
-                  interval={Math.max(Math.floor(chartData.length / 10), 0)} />
-                <YAxis yAxisId="left" tick={{ fontSize: 10, fill: "#6b7280" }} tickFormatter={yAxisFmt} domain={[0, 200000]} allowDataOverflow />
                 <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10, fill: "#6b7280" }} tickFormatter={yAxisFmt} hide />
                 <Tooltip
                   contentStyle={{ backgroundColor: "#1f2937", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 12 }}
@@ -245,8 +176,11 @@ export function AdsSummaryClient({ weeklyRows, monthlyRows, campaignDaily = [] }
                     return [v > 0 ? `¥${Math.round(v).toLocaleString()}` : "—", name];
                   }}
                 />
-                <Legend wrapperStyle={{ fontSize: 11 }} />
-                <Bar yAxisId="left" dataKey="cost" name="広告費" fill="#f59e0b" radius={[2, 2, 0, 0]} />
+                <Legend wrapperStyle={{ fontSize: 10 }} />
+                {campaignNames.map((camp, i) => (
+                  <Bar key={camp} yAxisId="left" dataKey={camp} stackId="cost" fill={CAMPAIGN_COLORS[i % CAMPAIGN_COLORS.length]}
+                    name={camp.length > 20 ? camp.slice(0, 18) + "…" : camp} />
+                ))}
                 <Line yAxisId="right" type="monotone" dataKey="cpa_scheduled" name="日程確定CPA(2ヶ月移動)" stroke="#ef4444" strokeWidth={2} dot={false} />
                 <Line yAxisId="right" type="monotone" dataKey="rolling_ltv" name="確定LTV(2ヶ月移動)" stroke="#10b981" strokeWidth={2} dot={false} strokeDasharray="6 3" />
               </ComposedChart>
