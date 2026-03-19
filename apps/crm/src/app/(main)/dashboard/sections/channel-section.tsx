@@ -2,7 +2,7 @@ import { cache } from "react";
 import { fetchCustomersWithRelations } from "@/lib/data/customers";
 import { computeChannelTrends, computeChannelMonthlyRaw, type ChannelTrend, type ChannelMonthlyRaw } from "@/lib/data/dashboard-metrics";
 import { fetchChannelAttributions } from "@/lib/data/marketing-settings";
-import { ChannelChartItem, ChannelTrendItem } from "./channel-client";
+import { ChannelChartItem, ShinsotsuChannelChartItem, ChannelTrendItem } from "./channel-client";
 
 /** データ取得をcacheしてリクエスト内で共有 */
 const getChannelData = cache(async (): Promise<{ channelTrends: ChannelTrend[]; monthlyRaw: ChannelMonthlyRaw[] }> => {
@@ -41,12 +41,12 @@ export async function ChannelKisotsuClosed() {
 
 export async function ChannelShinsotsuApp() {
   const { monthlyRaw } = await getChannelData();
-  return <ChannelChartItem data={monthlyRaw} attrFilter="shinsotsu" metricFilter="application" title="新卒 申し込み" />;
+  return <ShinsotsuChannelChartItem data={monthlyRaw} metricFilter="application" title="新卒 申し込み" />;
 }
 
 export async function ChannelShinsotsuClosed() {
   const { monthlyRaw } = await getChannelData();
-  return <ChannelChartItem data={monthlyRaw} attrFilter="shinsotsu" metricFilter="closed" title="新卒 成約" />;
+  return <ShinsotsuChannelChartItem data={monthlyRaw} metricFilter="closed" title="新卒 成約" />;
 }
 
 export async function ChannelTrends() {

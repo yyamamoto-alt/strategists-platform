@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useState, useMemo } from "react";
 import type { SalesReportRow } from "./sales-rate-section";
 
 function isShinsotsuAttr(attr: string): boolean {
@@ -26,6 +26,25 @@ interface PersonRow {
   name: string;
   months: Map<string, Cell>;
   total: Cell;
+}
+
+type PeriodOption = "3m" | "6m" | "12m" | "24m";
+const PERIOD_OPTIONS: { value: PeriodOption; label: string }[] = [
+  { value: "3m", label: "3ヶ月" },
+  { value: "6m", label: "6ヶ月" },
+  { value: "12m", label: "12ヶ月" },
+  { value: "24m", label: "24ヶ月" },
+];
+
+function getMonthKeys(period: PeriodOption): string[] {
+  const months = period === "3m" ? 3 : period === "6m" ? 6 : period === "12m" ? 12 : 24;
+  const now = new Date();
+  const keys: string[] = [];
+  for (let i = months - 1; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    keys.push(`${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, "0")}`);
+  }
+  return keys;
 }
 
 function buildTable(
@@ -70,7 +89,7 @@ function fmt(n: number, d: number) {
 function MiniTable({ title, rows, months }: { title: string; rows: PersonRow[]; months: string[] }) {
   if (rows.length === 0) return null;
   return (
-    <div className="min-w-0">
+    <div className="min-w-0 overflow-x-auto">
       <h3 className="text-[11px] font-semibold text-gray-300 mb-1">{title}</h3>
       <table className="w-full text-[11px]">
         <thead>
@@ -115,24 +134,29 @@ interface SalesRateClientProps {
 }
 
 export function SalesRateClient({ reports }: SalesRateClientProps) {
-  const months = useMemo(() => {
-    const now = new Date();
-    const keys: string[] = [];
-    for (let i = 2; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      keys.push(`${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, "0")}`);
-    }
-    return keys;
-  }, []);
+  const [period, setPeriod] = useState<PeriodOption>("6m");
 
+  const months = useMemo(() => getMonthKeys(period), [period]);
   const kisotsuRows = useMemo(() => buildTable(reports, months, isKisotsuAttr), [reports, months]);
   const shinsotsuRows = useMemo(() => buildTable(reports, months, isShinsotsuAttr), [reports, months]);
 
+  const periodLabel = PERIOD_OPTIONS.find(p => p.value === period)?.label || "";
+
   return (
     <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-4">
-      <div className="mb-2">
-        <h2 className="text-sm font-semibold text-white">営業マン別 成約率（直近3ヶ月）</h2>
-        <p className="text-[10px] text-gray-500">分母: 面談実施（NoShow・キャンセル・追加指導除外） / 分子: 成約</p>
+      <div className="flex items-center justify-between mb-2">
+        <div>
+          <h2 className="text-sm font-semibold text-white">営業マン別 成約率（直近{periodLabel}）</h2>
+          <p className="text-[10px] text-gray-500">分母: 面談実施（NoShow・キャンセル・追加指導除外） / 分子: 成約</p>
+        </div>
+        <div className="flex gap-0.5 bg-white/5 rounded-lg p-0.5">
+          {PERIOD_OPTIONS.map(({ value, label }) => (
+            <button key={value} onClick={() => setPeriod(value)}
+              className={`px-2.5 py-1 text-[11px] rounded-md transition-colors ${period === value ? "bg-brand text-white" : "text-gray-400 hover:text-white"}`}>
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
       <div className="grid grid-cols-2 gap-4">
         <MiniTable title="既卒" rows={kisotsuRows} months={months} />

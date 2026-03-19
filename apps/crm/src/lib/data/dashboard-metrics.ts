@@ -1205,6 +1205,7 @@ export interface ChannelMonthlyRaw {
   channel: string;
   isShinsotsu: boolean;
   isClosed: boolean;
+  attribute: string;   // "既卒・中途", "27卒", "28卒" etc.
 }
 
 /**
@@ -1239,6 +1240,7 @@ export function computeChannelMonthlyRaw(
       channel,
       isShinsotsu: isShinsotsu(c.attribute),
       isClosed: isStageClosed(c.pipeline?.stage),
+      attribute: c.attribute || "不明",
     });
   }
 

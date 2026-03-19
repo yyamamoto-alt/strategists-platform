@@ -403,13 +403,13 @@ export function CustomersClient() {
         alert("活動状況の更新に失敗しました");
       } else {
         // 売上カラムの再計算のためリロード
-        window.location.reload();
+        router.refresh();
       }
     } catch {
       setJobStatusOverrides((prev) => { const next = { ...prev }; delete next[customerId]; return next; });
       alert("活動状況の更新に失敗しました");
     }
-  }, []);
+  }, [router]);
 
   // 内定ランク更新
   const [offerRankOverrides, setOfferRankOverrides] = useState<Record<string, string>>({});
@@ -426,13 +426,13 @@ export function CustomersClient() {
         setOfferRankOverrides((prev) => { const next = { ...prev }; delete next[customerId]; return next; });
         alert("内定ランクの更新に失敗しました");
       } else {
-        window.location.reload();
+        router.refresh();
       }
     } catch {
       setOfferRankOverrides((prev) => { const next = { ...prev }; delete next[customerId]; return next; });
       alert("内定ランクの更新に失敗しました");
     }
-  }, []);
+  }, [router]);
 
   // 架電メモ保存
   const handleCallMemoSave = useCallback(async (customerId: string, memo: string) => {
@@ -917,7 +917,7 @@ export function CustomersClient() {
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ agent: { placement_confirmed: newVal } }),
                   });
-                  window.location.reload();
+                  router.refresh();
                 } catch { /* ignore */ }
               }}
               className={`border rounded px-1 py-0.5 text-[10px] font-medium focus:outline-none focus:ring-1 focus:ring-brand cursor-pointer w-full ${

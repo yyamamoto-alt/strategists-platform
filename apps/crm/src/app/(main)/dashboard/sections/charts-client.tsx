@@ -24,7 +24,7 @@ export function ChartsClient({
   funnelShinsotsu,
 }: ChartsClientProps) {
   return (
-    <div className="px-6">
+    <div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10 p-6">
           <h2 className="text-lg font-semibold text-white mb-4">売上推移</h2>

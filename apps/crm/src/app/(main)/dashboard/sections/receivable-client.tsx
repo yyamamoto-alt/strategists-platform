@@ -21,7 +21,7 @@ export function ReceivableClient({ data }: { data: AccountsReceivableSummary }) 
 
   if (data.totalCount === 0) {
     return (
-      <div className="px-6">
+      <div>
         <div className="bg-surface-card rounded-xl border border-white/10 p-6">
           <h2 className="text-lg font-semibold text-white mb-2">売掛金</h2>
           <p className="text-sm text-gray-500">未入金の注文はありません</p>

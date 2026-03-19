@@ -4,7 +4,7 @@ export async function HeaderSection() {
   const dashboardData = await fetchDashboardData();
 
   return (
-    <div className="p-6 pb-0">
+    <div>
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white">ダッシュボード</h1>

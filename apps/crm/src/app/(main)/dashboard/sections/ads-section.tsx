@@ -128,7 +128,7 @@ export async function AdsSection() {
   }
 
   // --- 週次行を組み立て ---
-  const ADS_START = "2025-08";
+  const ADS_START = "2025-04";
   const allWeekKeys = new Set([...weeklyAds.keys(), ...weeklyFunnel.keys()]);
   const weeklyRows: AdsWeeklyRow[] = Array.from(allWeekKeys).filter(wk => wk >= ADS_START).sort().reverse().map(wk => {
     const ads = weeklyAds.get(wk) || { cost: 0 };

@@ -21,7 +21,7 @@ function monthKey(dateStr: string): string {
   return dateStr.slice(0, 7);
 }
 
-const ADS_START = "2025-08";
+const ADS_START = "2025-04";
 
 export async function MetaAdsSection() {
   const [campaigns, funnel] = await Promise.all([
