@@ -87,7 +87,7 @@ const VIEW_COLUMNS: Record<ViewTab, string[] | null> = {
     // マーケ帰属
     "marketing_channel", "initial_channel_base", "application_reason_base", "utm_source_base", "sales_route_base",
     "subsidy_eligible",
-    "career_history", "referral_category",
+    "career_history",
     // 売上（見込含む = 確定 + 人材見込）
     "rev_total", "rev_eq", "confirmed_amount", "rev_plus", "rev_agent",
     // プラン名
@@ -157,7 +157,7 @@ const VIEW_COLUMNS: Record<ViewTab, string[] | null> = {
     "meeting_scheduled", "sales_person", "additional_coaching_date", "response_deadline",
     "marketing_channel", "initial_channel_base", "application_reason_base", "utm_source_base", "sales_route_base",
     "subsidy_eligible",
-    "career_history", "referral_category",
+    "career_history",
     "rev_total", "rev_eq", "confirmed_amount", "rev_plus", "rev_agent",
     "plan_name",
     "probability",
@@ -827,11 +827,6 @@ export function CustomersClient() {
       { key: "additional_discount_info", label: "[追加]割引案内", width: 130, category: "sales",        render: (c) => c.pipeline?.additional_discount_info || "-" },
 
       // ═══ 人材紹介（紫） ═══
-      { key: "referral_category", label: "人材紹介区分", width: 100, category: "agent",
-        render: (c) => {
-          const rc = c.contract?.referral_category;
-          return rc ? <span className={`inline-block px-2 py-px rounded-full text-[10px] leading-none font-medium whitespace-nowrap ${getReferralCategoryColor(rc)}`}>{rc}</span> : <span className="text-gray-600 text-xs">-</span>;
-        } },
       { key: "external_agents", label: "利用エージェント", width: 110, category: "agent",
         render: (c) => <span className="text-xs">{c.agent?.external_agents || "-"}</span> },
       { key: "offer_rank", label: "内定ランク", width: 90, category: "agent",
