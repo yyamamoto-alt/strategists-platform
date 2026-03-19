@@ -1,0 +1,1346 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Meta広告 ディープ分析レポート | 2026年3月</title>
+<style>
+  :root {
+    --red: #A62B17;
+    --black: #000000;
+    --dark-gray: #555555;
+    --light-gray: #F5F5F5;
+    --border: #E0E0E0;
+    --white: #FFFFFF;
+    --dark: #1A1A1A;
+    --green: #2E7D32;
+    --amber: #F57F17;
+    --danger: #C62828;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Noto Sans JP', 'Hiragino Sans', sans-serif;
+    background: var(--white);
+    color: var(--black);
+    line-height: 1.7;
+  }
+  .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+
+  /* Header */
+  .header {
+    background: var(--dark);
+    color: var(--white);
+    padding: 48px 0 40px;
+  }
+  .header h1 {
+    font-family: 'Noto Serif JP', serif;
+    font-size: 36px;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+  .header .subtitle {
+    font-size: 16px;
+    color: #aaa;
+  }
+  .header .meta-info {
+    display: flex;
+    gap: 24px;
+    margin-top: 16px;
+    font-size: 14px;
+    color: #999;
+  }
+
+  /* Section */
+  section {
+    padding: 48px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  section:nth-child(even) { background: var(--light-gray); }
+  section h2 {
+    font-family: 'Noto Serif JP', serif;
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 24px;
+    padding-left: 16px;
+    border-left: 4px solid var(--red);
+  }
+  section h3 {
+    font-family: 'Noto Serif JP', serif;
+    font-size: 22px;
+    font-weight: 600;
+    margin: 24px 0 12px;
+    color: var(--dark);
+  }
+
+  /* KPI Cards */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+  .kpi-card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-top: 3px solid var(--red);
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+  }
+  .kpi-card .label { font-size: 13px; color: var(--dark-gray); margin-bottom: 4px; }
+  .kpi-card .value { font-size: 32px; font-weight: 700; }
+  .kpi-card .sub { font-size: 12px; color: var(--dark-gray); margin-top: 4px; }
+  .kpi-card.danger .value { color: var(--danger); }
+  .kpi-card.success .value { color: var(--green); }
+  .kpi-card.warning .value { color: var(--amber); }
+
+  /* Tables */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+    font-size: 14px;
+  }
+  th, td {
+    padding: 10px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  th {
+    background: var(--dark);
+    color: var(--white);
+    font-weight: 600;
+    font-size: 13px;
+    position: sticky;
+    top: 0;
+  }
+  tr:hover { background: #fafafa; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .highlight { background: #FFF3E0 !important; }
+  .bad { color: var(--danger); font-weight: 600; }
+  .good { color: var(--green); font-weight: 600; }
+
+  /* Alert boxes */
+  .alert {
+    padding: 16px 20px;
+    border-radius: 8px;
+    margin: 16px 0;
+    font-size: 15px;
+    line-height: 1.8;
+  }
+  .alert-danger {
+    background: #FFEBEE;
+    border-left: 4px solid var(--danger);
+  }
+  .alert-warning {
+    background: #FFF8E1;
+    border-left: 4px solid var(--amber);
+  }
+  .alert-success {
+    background: #E8F5E9;
+    border-left: 4px solid var(--green);
+  }
+  .alert-info {
+    background: #E3F2FD;
+    border-left: 4px solid #1565C0;
+  }
+  .alert strong { display: block; margin-bottom: 4px; }
+
+  /* Charts (CSS-only bar charts) */
+  .bar-chart { margin: 16px 0; }
+  .bar-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+  .bar-label {
+    width: 120px;
+    font-size: 13px;
+    text-align: right;
+    padding-right: 12px;
+    flex-shrink: 0;
+  }
+  .bar-track {
+    flex: 1;
+    height: 24px;
+    background: #eee;
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+  }
+  .bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.3s;
+    display: flex;
+    align-items: center;
+    padding-left: 8px;
+    font-size: 12px;
+    color: white;
+    font-weight: 600;
+  }
+  .bar-fill.red { background: var(--red); }
+  .bar-fill.green { background: var(--green); }
+  .bar-fill.amber { background: var(--amber); }
+  .bar-fill.blue { background: #1565C0; }
+  .bar-fill.gray { background: #999; }
+
+  /* Findings */
+  .finding {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px;
+    margin: 16px 0;
+  }
+  .finding h4 {
+    font-size: 18px;
+    margin-bottom: 8px;
+    color: var(--dark);
+  }
+  .finding p { color: var(--dark-gray); margin-bottom: 8px; }
+  .finding .impact {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-right: 8px;
+  }
+  .finding .impact-high { background: #FFCDD2; color: var(--danger); }
+  .finding .impact-medium { background: #FFF9C4; color: #F57F17; }
+  .finding .impact-low { background: #C8E6C9; color: var(--green); }
+
+  /* Recommendations */
+  .rec-list { list-style: none; counter-reset: rec; }
+  .rec-list li {
+    counter-increment: rec;
+    padding: 20px 20px 20px 64px;
+    margin: 12px 0;
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    position: relative;
+  }
+  .rec-list li::before {
+    content: counter(rec);
+    position: absolute;
+    left: 20px;
+    top: 20px;
+    width: 32px;
+    height: 32px;
+    background: var(--red);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 16px;
+  }
+  .rec-list li strong { display: block; margin-bottom: 4px; font-size: 16px; }
+  .rec-list li p { color: var(--dark-gray); font-size: 14px; margin: 4px 0; }
+  .priority-tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    margin-left: 8px;
+  }
+  .priority-critical { background: var(--danger); color: white; }
+  .priority-high { background: var(--amber); color: white; }
+  .priority-medium { background: #E3F2FD; color: #1565C0; }
+
+  /* Footer */
+  .footer {
+    background: var(--dark);
+    color: #999;
+    padding: 24px 0;
+    text-align: center;
+    font-size: 13px;
+  }
+
+  /* Two column */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+  @media (max-width: 768px) {
+    .two-col { grid-template-columns: 1fr; }
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  .tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    margin: 0 2px;
+  }
+  .tag-active { background: #C8E6C9; color: var(--green); }
+  .tag-paused { background: #FFCDD2; color: var(--danger); }
+
+  .timeline-item {
+    padding: 12px 0 12px 24px;
+    border-left: 2px solid var(--border);
+    position: relative;
+  }
+  .timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -5px;
+    top: 16px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--red);
+  }
+  .timeline-item .date { font-size: 13px; color: var(--dark-gray); font-weight: 600; }
+  .timeline-item .event { font-size: 14px; margin-top: 2px; }
+</style>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&family=Noto+Serif+JP:wght@600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="container">
+    <h1>Meta広告 ディープ分析レポート</h1>
+    <div class="subtitle">赤木ケース面接対策塾（Strategists）</div>
+    <div class="meta-info">
+      <span>分析対象期間: 2025年5月 〜 2026年3月20日</span>
+      <span>レポート作成: 2026年3月20日</span>
+      <span>広告アカウント: act_1246885725997282</span>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 1: EXECUTIVE SUMMARY -->
+<section>
+  <div class="container">
+    <h2>エグゼクティブサマリー</h2>
+
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="label">総広告費（全期間）</div>
+        <div class="value">¥4.2M</div>
+        <div class="sub">2025/05 ~ 2026/03/20</div>
+      </div>
+      <div class="kpi-card">
+        <div class="label">総CV数（カスタムCV）</div>
+        <div class="value">412</div>
+        <div class="sub">うち学生CVが大半を占める可能性</div>
+      </div>
+      <div class="kpi-card warning">
+        <div class="label">平均CPA（全期間）</div>
+        <div class="value">¥10,194</div>
+        <div class="sub">月による振れ幅が極めて大きい</div>
+      </div>
+      <div class="kpi-card danger">
+        <div class="label">現在稼働中キャンペーン</div>
+        <div class="value">2</div>
+        <div class="sub">新規B, 新規C（A停止中）</div>
+      </div>
+    </div>
+
+    <div class="alert alert-danger">
+      <strong>最重要発見: ターゲティング設定に根本的な問題</strong>
+      全アクティブ広告セットで <code>age_min: 18</code> かつ <code>advantage_audience: 1</code>（Advantage+ 拡張ON）になっており、大学ターゲティングが「在学生」を大量に引き込んでいる。社会人獲得というビジネス目標と完全に矛盾した状態。
+    </div>
+
+    <div class="alert alert-warning">
+      <strong>クリエイティブ疲弊の兆候</strong>
+      「下黒1」クリエイティブは2026年1月から約2ヶ月間変更なし。2月→3月でCPA悪化傾向（新規B: ¥3,933→¥5,249 / 新規C: ¥5,185→¥7,398）。新クリエイティブ「しおりさん/詩織さん画像」は初動期で比較には時期尚早。
+    </div>
+  </div>
+</section>
+
+<!-- SECTION 2: CAMPAIGN HISTORY TIMELINE -->
+<section>
+  <div class="container">
+    <h2>キャンペーン運用の時系列分析</h2>
+
+    <h3>月別パフォーマンス推移</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>月</th>
+          <th>キャンペーン</th>
+          <th class="num">広告費</th>
+          <th class="num">CV数</th>
+          <th class="num">CPA</th>
+          <th class="num">リンククリック</th>
+          <th class="num">LC→CV率</th>
+          <th class="num">リーチ</th>
+          <th class="num">フリクエンシー</th>
+          <th>評価</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="highlight">
+          <td>2025/05</td>
+          <td>202505-<span class="tag tag-paused">停止</span></td>
+          <td class="num">¥270,854</td>
+          <td class="num bad">0</td>
+          <td class="num">-</td>
+          <td class="num">7,100</td>
+          <td class="num">-</td>
+          <td class="num">614,841</td>
+          <td class="num bad">6.7</td>
+          <td class="bad">目的=Traffic。CVゼロ</td>
+        </tr>
+        <tr>
+          <td>2025/06</td>
+          <td>Conversion（テスト）</td>
+          <td class="num">¥6,761</td>
+          <td class="num good">7</td>
+          <td class="num good">¥966</td>
+          <td class="num">59</td>
+          <td class="num good">11.9%</td>
+          <td class="num">7,075</td>
+          <td class="num">1.1</td>
+          <td class="good">初期テスト。極めて良好</td>
+        </tr>
+        <tr>
+          <td>2025/06</td>
+          <td>新卒キャンペーン</td>
+          <td class="num">¥151,806</td>
+          <td class="num">25</td>
+          <td class="num">¥6,072</td>
+          <td class="num">669</td>
+          <td class="num">3.7%</td>
+          <td class="num">53,169</td>
+          <td class="num">2.0</td>
+          <td>新卒多い。CVR高めだが質に疑問</td>
+        </tr>
+        <tr>
+          <td>2025/06</td>
+          <td>既卒キャンペーン</td>
+          <td class="num">¥94,685</td>
+          <td class="num">12</td>
+          <td class="num">¥7,890</td>
+          <td class="num">372</td>
+          <td class="num">3.2%</td>
+          <td class="num">28,255</td>
+          <td class="num">1.9</td>
+          <td>まずまず</td>
+        </tr>
+        <tr class="highlight">
+          <td>2025/07</td>
+          <td>既卒キャンペーン</td>
+          <td class="num bad">¥749,527</td>
+          <td class="num">29</td>
+          <td class="num bad">¥25,846</td>
+          <td class="num">2,113</td>
+          <td class="num">1.4%</td>
+          <td class="num">252,658</td>
+          <td class="num">2.1</td>
+          <td class="bad">予算急拡大。学習追いつかず</td>
+        </tr>
+        <tr class="highlight">
+          <td>2025/08</td>
+          <td>既卒キャンペーン</td>
+          <td class="num">¥284,393</td>
+          <td class="num bad">1</td>
+          <td class="num bad">¥284,393</td>
+          <td class="num">732</td>
+          <td class="num bad">0.1%</td>
+          <td class="num">148,995</td>
+          <td class="num">1.6</td>
+          <td class="bad">壊滅的。学習崩壊</td>
+        </tr>
+        <tr>
+          <td>2025/09</td>
+          <td>既卒キャンペーン</td>
+          <td class="num">¥246,738</td>
+          <td class="num">8</td>
+          <td class="num bad">¥30,842</td>
+          <td class="num">649</td>
+          <td class="num">1.2%</td>
+          <td class="num">71,115</td>
+          <td class="num">1.6</td>
+          <td class="bad">MicroCV導入で若干改善</td>
+        </tr>
+        <tr>
+          <td>2025/10</td>
+          <td>既卒（MicroCV最適化）</td>
+          <td class="num">¥302,984</td>
+          <td class="num good">104</td>
+          <td class="num good">¥2,913</td>
+          <td class="num">4,196</td>
+          <td class="num">2.5%</td>
+          <td class="num">146,016</td>
+          <td class="num">1.8</td>
+          <td class="good">MicroCV最適化が奏功</td>
+        </tr>
+        <tr>
+          <td>2025/11</td>
+          <td>既卒（合計）</td>
+          <td class="num">¥331,377</td>
+          <td class="num">37</td>
+          <td class="num">¥8,956</td>
+          <td class="num">2,607</td>
+          <td class="num">1.4%</td>
+          <td class="num">221,459</td>
+          <td class="num">-</td>
+          <td>MicroCVバブル崩壊</td>
+        </tr>
+        <tr>
+          <td>2025/12</td>
+          <td>既卒（合計）</td>
+          <td class="num">¥74,639</td>
+          <td class="num">6</td>
+          <td class="num bad">¥12,440</td>
+          <td class="num">563</td>
+          <td class="num">1.1%</td>
+          <td class="num">11,954</td>
+          <td class="num">2.4</td>
+          <td>予算縮小。年末減速</td>
+        </tr>
+        <tr>
+          <td>2026/01</td>
+          <td>新規B</td>
+          <td class="num">¥41,221</td>
+          <td class="num">14</td>
+          <td class="num good">¥2,944</td>
+          <td class="num">229</td>
+          <td class="num good">6.1%</td>
+          <td class="num">14,036</td>
+          <td class="num">1.6</td>
+          <td class="good">新キャンペーン好調スタート</td>
+        </tr>
+        <tr>
+          <td>2026/02</td>
+          <td>新規B</td>
+          <td class="num">¥139,782</td>
+          <td class="num">35</td>
+          <td class="num">¥3,994</td>
+          <td class="num">543</td>
+          <td class="num good">6.4%</td>
+          <td class="num">31,945</td>
+          <td class="num">2.1</td>
+          <td>安定成長</td>
+        </tr>
+        <tr>
+          <td>2026/02</td>
+          <td>新規C</td>
+          <td class="num">¥139,732</td>
+          <td class="num">26</td>
+          <td class="num">¥5,374</td>
+          <td class="num">594</td>
+          <td class="num">4.4%</td>
+          <td class="num">32,328</td>
+          <td class="num">2.2</td>
+          <td>Bより若干劣る</td>
+        </tr>
+        <tr class="highlight">
+          <td>2026/03</td>
+          <td>新規B</td>
+          <td class="num">¥101,711</td>
+          <td class="num">19</td>
+          <td class="num warning">¥5,353</td>
+          <td class="num">396</td>
+          <td class="num">4.8%</td>
+          <td class="num">20,872</td>
+          <td class="num">2.2</td>
+          <td class="bad">CPA悪化傾向（+34%）</td>
+        </tr>
+        <tr class="highlight">
+          <td>2026/03</td>
+          <td>新規C</td>
+          <td class="num">¥89,693</td>
+          <td class="num">12</td>
+          <td class="num bad">¥7,474</td>
+          <td class="num">434</td>
+          <td class="num">2.8%</td>
+          <td class="num">18,151</td>
+          <td class="num">2.4</td>
+          <td class="bad">CPA悪化傾向（+39%）</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>キャンペーン変遷タイムライン</h3>
+    <div style="margin-left: 24px;">
+      <div class="timeline-item">
+        <div class="date">2024/04 ~ 2024/08</div>
+        <div class="event">初期テスト期間（CVテスト、ケース面接_04xx~08xx）。少額テストで模索。OUTCOME_LEADS / OUTCOME_TRAFFIC目的。</div>
+      </div>
+      <div class="timeline-item">
+        <div class="date">2025/05 ~ 2025/06</div>
+        <div class="event">「202505-」トラフィックキャンペーンで大量インプレッションだがCV 0。→ CVR最適化に切り替え。「Conversion」テストでCPA¥966を記録。</div>
+      </div>
+      <div class="timeline-item">
+        <div class="date">2025/06 ~ 2025/07</div>
+        <div class="event">「日2万」予算で既卒・新卒を分離運用開始。7月に予算を急拡大（¥75万）するも学習崩壊、CPA¥25,846に急騰。</div>
+      </div>
+      <div class="timeline-item">
+        <div class="date">2025/08 ~ 2025/09</div>
+        <div class="event">暗黒期。CV 1件（CPA¥28.4万）。9月にMicroCV導入で若干回復。</div>
+      </div>
+      <div class="timeline-item">
+        <div class="date">2025/10</div>
+        <div class="event">MicroCVへの最適化変更が劇的に効果。CV 104件、CPA¥2,913。ただしMicroCV＝申込ではないため、質の検証が必要。</div>
+      </div>
+      <div class="timeline-item">
+        <div class="date">2025/11 ~ 2025/12</div>
+        <div class="event">MicroCVの効果が急速に減衰。「オーディエンスなし」キャンペーンも試行。12月は予算縮小。</div>
+      </div>
+      <div class="timeline-item">
+        <div class="date">2026/01/22</div>
+        <div class="event">新規A/B/Cキャンペーン開始。クリエイティブ「下黒1」で好調スタート。Aは停止、B/Cが稼働中。</div>
+      </div>
+      <div class="timeline-item">
+        <div class="date">2026/02</div>
+        <div class="event">「しおりさん/詩織さん画像」クリエイティブ追加。Bの「下黒」がCPA¥3,933でベストパフォーマンス。</div>
+      </div>
+      <div class="timeline-item">
+        <div class="date">2026/03（現在）</div>
+        <div class="event">CPA悪化傾向。新規B: ¥3,933→¥5,353（+36%）、新規C: ¥5,185→¥7,474（+44%）。クリエイティブ疲弊の兆候。</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SECTION 3: TARGETING ANALYSIS -->
+<section>
+  <div class="container">
+    <h2>ターゲティング分析 ― 最大の問題点</h2>
+
+    <div class="alert alert-danger">
+      <strong>致命的問題: 学生（18-24歳）に広告費が流出している</strong>
+      現在のターゲティング設定は「年齢18-65歳 + 有名大学のeducation_schools」だが、これは在学中の学生も卒業生も両方拾う。さらに<code>advantage_audience: 1</code>（Meta Advantage+ 拡張）がONのため、Metaのアルゴリズムがターゲット外にも拡張配信している。
+    </div>
+
+    <h3>年齢層別CV分析（2026年1月〜3月・新規B/C）</h3>
+
+    <div class="two-col">
+      <div>
+        <h4 style="margin-bottom:12px">新規B キャンペーン</h4>
+        <table>
+          <thead>
+            <tr><th>年齢層</th><th class="num">広告費</th><th class="num">CV</th><th class="num">CPA</th><th class="num">構成比</th></tr>
+          </thead>
+          <tbody>
+            <tr class="highlight">
+              <td>18-24 <span class="tag" style="background:#FFCDD2;color:#C62828">学生層</span></td>
+              <td class="num">¥119,831</td>
+              <td class="num">18</td>
+              <td class="num bad">¥6,657</td>
+              <td class="num bad">広告費の42%</td>
+            </tr>
+            <tr>
+              <td>25-34 <span class="tag" style="background:#C8E6C9;color:#2E7D32">コアターゲット</span></td>
+              <td class="num">¥113,502</td>
+              <td class="num good">35</td>
+              <td class="num good">¥3,243</td>
+              <td class="num">広告費の40%</td>
+            </tr>
+            <tr>
+              <td>35-44</td>
+              <td class="num">¥25,636</td>
+              <td class="num">5</td>
+              <td class="num">¥5,127</td>
+              <td class="num">9%</td>
+            </tr>
+            <tr>
+              <td>45-54</td>
+              <td class="num">¥9,913</td>
+              <td class="num good">4</td>
+              <td class="num good">¥2,478</td>
+              <td class="num">3%</td>
+            </tr>
+            <tr>
+              <td>55-64</td>
+              <td class="num">¥8,545</td>
+              <td class="num good">4</td>
+              <td class="num good">¥2,136</td>
+              <td class="num">3%</td>
+            </tr>
+            <tr>
+              <td>65+</td>
+              <td class="num">¥5,466</td>
+              <td class="num">2</td>
+              <td class="num">¥2,733</td>
+              <td class="num">2%</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div>
+        <h4 style="margin-bottom:12px">新規C キャンペーン</h4>
+        <table>
+          <thead>
+            <tr><th>年齢層</th><th class="num">広告費</th><th class="num">CV</th><th class="num">CPA</th><th class="num">構成比</th></tr>
+          </thead>
+          <tbody>
+            <tr class="highlight">
+              <td>18-24 <span class="tag" style="background:#FFCDD2;color:#C62828">学生層</span></td>
+              <td class="num">¥91,602</td>
+              <td class="num">11</td>
+              <td class="num bad">¥8,327</td>
+              <td class="num bad">広告費の37%</td>
+            </tr>
+            <tr>
+              <td>25-34 <span class="tag" style="background:#C8E6C9;color:#2E7D32">コアターゲット</span></td>
+              <td class="num">¥108,284</td>
+              <td class="num good">21</td>
+              <td class="num good">¥5,156</td>
+              <td class="num">広告費の43%</td>
+            </tr>
+            <tr>
+              <td>35-44</td>
+              <td class="num">¥25,302</td>
+              <td class="num">3</td>
+              <td class="num">¥8,434</td>
+              <td class="num">10%</td>
+            </tr>
+            <tr>
+              <td>45-54</td>
+              <td class="num">¥10,256</td>
+              <td class="num">1</td>
+              <td class="num">¥10,256</td>
+              <td class="num">4%</td>
+            </tr>
+            <tr>
+              <td>55-64</td>
+              <td class="num">¥7,564</td>
+              <td class="num">3</td>
+              <td class="num good">¥2,521</td>
+              <td class="num">3%</td>
+            </tr>
+            <tr>
+              <td>65+</td>
+              <td class="num">¥7,599</td>
+              <td class="num">1</td>
+              <td class="num">¥7,599</td>
+              <td class="num">3%</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="finding">
+      <h4>学生への無駄な広告費の試算</h4>
+      <span class="impact impact-high">影響: 大</span>
+      <p>新規B+Cの合計で、18-24歳層への広告費は <strong>¥211,433</strong>（全体の約40%）。この層のCV 29件は「カスタムCV」であり、ユーザーの証言通り<strong>成約にはほぼ繋がらない</strong>。</p>
+      <p>仮にこの予算を25-34歳に集中した場合、25-34歳のCPAで計算すると <strong>追加50-65件のCV</strong> が見込める。うち社会人CVは成約率が格段に高い。</p>
+    </div>
+
+    <h3>現在のターゲティング設定の問題点</h3>
+    <table>
+      <thead>
+        <tr><th>設定項目</th><th>現在の設定</th><th>問題点</th><th>推奨変更</th></tr>
+      </thead>
+      <tbody>
+        <tr class="highlight">
+          <td><strong>年齢下限</strong></td>
+          <td>18歳</td>
+          <td class="bad">大学1-4年生が含まれる。学生CVはCPA高い+成約しない</td>
+          <td class="good">25歳以上に変更</td>
+        </tr>
+        <tr class="highlight">
+          <td><strong>Advantage+ Audience</strong></td>
+          <td>ON (1)</td>
+          <td class="bad">Metaが学生含む広いオーディエンスに自動拡張</td>
+          <td>OFF推奨、または年齢制限と併用</td>
+        </tr>
+        <tr>
+          <td><strong>education_schools</strong></td>
+          <td>東大,慶應,早稲田,京大etc 12校</td>
+          <td>在学生と卒業生の区別ができない</td>
+          <td>年齢制限で間接的に排除 + interests追加</td>
+        </tr>
+        <tr>
+          <td><strong>性別</strong></td>
+          <td>制限なし</td>
+          <td>女性のCVは非常に少ない（但しCPAは悪くない層もある）</td>
+          <td>現状維持でOK</td>
+        </tr>
+        <tr>
+          <td><strong>年齢上限</strong></td>
+          <td>65歳</td>
+          <td>65+層は少額だが一部CVあり</td>
+          <td>55歳に絞ることで効率化可能</td>
+        </tr>
+        <tr>
+          <td><strong>カスタムオーディエンス除外</strong></td>
+          <td>なし（アクティブ広告セット）</td>
+          <td class="bad">既存申込者やCV済みユーザーに再配信の可能性</td>
+          <td class="good">CV済みユーザー除外リスト必須</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- SECTION 4: CREATIVE ANALYSIS -->
+<section>
+  <div class="container">
+    <h2>クリエイティブ分析</h2>
+
+    <h3>現在アクティブなクリエイティブ</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>クリエイティブ</th>
+          <th>キャンペーン</th>
+          <th>広告セット</th>
+          <th class="num">広告費(2月)</th>
+          <th class="num">CV(2月)</th>
+          <th class="num">CPA(2月)</th>
+          <th class="num">広告費(3月)</th>
+          <th class="num">CV(3月)</th>
+          <th class="num">CPA(3月)</th>
+          <th>傾向</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>下黒1</strong></td>
+          <td>新規B</td>
+          <td>下黒</td>
+          <td class="num">¥125,845</td>
+          <td class="num good">32</td>
+          <td class="num good">¥3,933</td>
+          <td class="num">¥62,987</td>
+          <td class="num">12</td>
+          <td class="num">¥5,249</td>
+          <td class="bad">CPA +33% 悪化</td>
+        </tr>
+        <tr>
+          <td><strong>下黒1</strong></td>
+          <td>新規C</td>
+          <td>下黒</td>
+          <td class="num">¥124,437</td>
+          <td class="num">24</td>
+          <td class="num">¥5,185</td>
+          <td class="num">¥44,389</td>
+          <td class="num">6</td>
+          <td class="num bad">¥7,398</td>
+          <td class="bad">CPA +43% 悪化</td>
+        </tr>
+        <tr>
+          <td><strong>黒背景（しおりさん）</strong></td>
+          <td>新規B</td>
+          <td>しおりさん_広告画像</td>
+          <td class="num">¥13,937</td>
+          <td class="num">3</td>
+          <td class="num">¥4,646</td>
+          <td class="num">¥38,724</td>
+          <td class="num">7</td>
+          <td class="num">¥5,532</td>
+          <td>予算拡大中・経過観察</td>
+        </tr>
+        <tr>
+          <td><strong>黒背景（詩織さん）</strong></td>
+          <td>新規C</td>
+          <td>詩織さん画像</td>
+          <td class="num">¥15,295</td>
+          <td class="num">2</td>
+          <td class="num">¥7,648</td>
+          <td class="num">¥45,304</td>
+          <td class="num">6</td>
+          <td class="num">¥7,551</td>
+          <td>安定だがCPA高め</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="finding">
+      <h4>「下黒1」クリエイティブの疲弊</h4>
+      <span class="impact impact-high">影響: 大</span>
+      <p>メインクリエイティブ「下黒1」は1月のローンチ時CPA¥2,916（新規B）から、3月には¥5,249に悪化。<strong>約2ヶ月でCPAが80%上昇</strong>。</p>
+      <p>典型的なクリエイティブ疲弊パターン。同じ画像を同じオーディエンスに繰り返し表示した結果、フリクエンシーが上昇（1月1.6→3月2.2）し、クリック率が低下。</p>
+    </div>
+
+    <h3>旧キャンペーンのクリエイティブ（参考：2026年1月）</h3>
+    <p style="color:var(--dark-gray);margin-bottom:12px">「Conversion - 日2万 - 既卒」キャンペーン内の個別クリエイティブ成績。全体的にCV発生せず。</p>
+    <table>
+      <thead>
+        <tr><th>クリエイティブ</th><th class="num">広告費</th><th class="num">CV</th><th class="num">CPA</th><th class="num">CTR</th><th>状態</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>FB画像7</td><td class="num">¥20,331</td><td class="num bad">0</td><td class="num">-</td><td class="num">0.95%</td><td>高CTRだがCV 0</td></tr>
+        <tr><td>Shioriさん画像_2</td><td class="num">¥16,854</td><td class="num good">2</td><td class="num">¥8,427</td><td class="num">1.33%</td><td>唯一のCV発生源</td></tr>
+        <tr><td>FB画像6</td><td class="num">¥16,948</td><td class="num good">2</td><td class="num">¥8,474</td><td class="num">0.66%</td><td>低CTR、一部CV</td></tr>
+        <tr><td>FB画像9</td><td class="num">¥15,442</td><td class="num bad">0</td><td class="num">-</td><td class="num">0.59%</td><td>消耗</td></tr>
+        <tr><td>FB画像3</td><td class="num">¥10,129</td><td class="num bad">0</td><td class="num">-</td><td class="num">0.43%</td><td>消耗</td></tr>
+        <tr><td>その他(8件)</td><td class="num">¥13,059</td><td class="num">1</td><td class="num">-</td><td class="num">-</td><td>少額配信</td></tr>
+      </tbody>
+    </table>
+
+    <div class="alert alert-info">
+      <strong>クリエイティブに関する所見</strong>
+      <ul style="margin:8px 0 0 20px;font-size:14px">
+        <li>「下黒1」: Title/Body情報なし（Metaが自動最適化している可能性）。1月はCPA¥2,916で優秀だったが2ヶ月で疲弊。</li>
+        <li>「黒背景（しおり/詩織さん）」: Title=「元MBB面接官監修プログラム/戦コン内定率82%ケース面接指導」。CTA=LEARN_MORE。比較的新しく評価段階。</li>
+        <li>広告テキスト「【無料】MBB社員/内定者があなたのケース面接力を判定！」→ <strong>「内定者」という言葉が学生を引き寄せている可能性</strong>。</li>
+        <li>FB画像シリーズ（1-9）は完全に疲弊。既卒キャンペーンのCPA悪化の一因。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- SECTION 5: PLACEMENT ANALYSIS -->
+<section>
+  <div class="container">
+    <h2>配信面（プレースメント）分析</h2>
+
+    <h3>配信面別パフォーマンス（2026年・新規B+C合計）</h3>
+    <table>
+      <thead>
+        <tr><th>配信面</th><th class="num">広告費</th><th class="num">CV</th><th class="num">CPA</th><th class="num">構成比</th><th>評価</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Instagram Feed</strong></td>
+          <td class="num">¥187,894</td>
+          <td class="num good">32</td>
+          <td class="num good">¥5,872</td>
+          <td class="num">35%</td>
+          <td class="good">最大配信面。安定</td>
+        </tr>
+        <tr>
+          <td><strong>Instagram Stories</strong></td>
+          <td class="num">¥164,348</td>
+          <td class="num good">36</td>
+          <td class="num good">¥4,565</td>
+          <td class="num">31%</td>
+          <td class="good">最良CPA</td>
+        </tr>
+        <tr>
+          <td><strong>Instagram Reels</strong></td>
+          <td class="num">¥86,201</td>
+          <td class="num">17</td>
+          <td class="num">¥5,071</td>
+          <td class="num">16%</td>
+          <td>良好</td>
+        </tr>
+        <tr>
+          <td><strong>Facebook Feed</strong></td>
+          <td class="num">¥41,303</td>
+          <td class="num">13</td>
+          <td class="num good">¥3,177</td>
+          <td class="num">8%</td>
+          <td class="good">少量だが高効率</td>
+        </tr>
+        <tr>
+          <td><strong>Audience Network</strong></td>
+          <td class="num">¥26,327</td>
+          <td class="num">8</td>
+          <td class="num">¥3,291</td>
+          <td class="num">5%</td>
+          <td>CPA良いが質に疑問</td>
+        </tr>
+        <tr>
+          <td><strong>Threads Feed</strong></td>
+          <td class="num">¥16,450</td>
+          <td class="num">1</td>
+          <td class="num bad">¥16,450</td>
+          <td class="num">3%</td>
+          <td class="bad">極めて非効率</td>
+        </tr>
+        <tr>
+          <td><strong>Facebook Reels</strong></td>
+          <td class="num">¥4,832</td>
+          <td class="num bad">0</td>
+          <td class="num">-</td>
+          <td class="num">1%</td>
+          <td class="bad">CV 0</td>
+        </tr>
+        <tr>
+          <td>その他</td>
+          <td class="num">¥6,099</td>
+          <td class="num">1</td>
+          <td class="num">-</td>
+          <td class="num">1%</td>
+          <td>-</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="finding">
+      <h4>Instagram Stories が最も効率的</h4>
+      <span class="impact impact-medium">影響: 中</span>
+      <p>Instagram Stories のCPA¥4,565は全配信面で最良。Facebook Feedも¥3,177と優秀だが配信量が少ない。</p>
+      <p><strong>Threads</strong>はCV 1件に対し¥16,450を消費しており、配信面除外を検討すべき。<strong>Facebook Reels</strong>もCV 0でコスト無駄。</p>
+    </div>
+  </div>
+</section>
+
+<!-- SECTION 6: WEEKLY TREND -->
+<section>
+  <div class="container">
+    <h2>週次トレンド分析（2026年）</h2>
+
+    <h3>新規B ― 週次CPA推移</h3>
+    <div class="bar-chart">
+      <div class="bar-row"><div class="bar-label">W04 (1月)</div><div class="bar-track"><div class="bar-fill green" style="width:25%">¥1,914 (6CV)</div></div></div>
+      <div class="bar-row"><div class="bar-label">W05</div><div class="bar-track"><div class="bar-fill green" style="width:50%">¥3,930 (9CV)</div></div></div>
+      <div class="bar-row"><div class="bar-label">W06</div><div class="bar-track"><div class="bar-fill green" style="width:45%">¥3,491 (10CV)</div></div></div>
+      <div class="bar-row"><div class="bar-label">W07</div><div class="bar-track"><div class="bar-fill green" style="width:45%">¥3,490 (10CV)</div></div></div>
+      <div class="bar-row"><div class="bar-label">W08 (2月)</div><div class="bar-track"><div class="bar-fill amber" style="width:73%">¥5,762 (6CV)</div></div></div>
+      <div class="bar-row"><div class="bar-label">W09</div><div class="bar-track"><div class="bar-fill amber" style="width:57%">¥4,458 (8CV)</div></div></div>
+      <div class="bar-row"><div class="bar-label">W10</div><div class="bar-track"><div class="bar-fill green" style="width:40%">¥3,142 (11CV)</div></div></div>
+      <div class="bar-row"><div class="bar-label">W11 (3月)</div><div class="bar-track"><div class="bar-fill red" style="width:100%">¥7,805 (5CV)</div></div></div>
+      <div class="bar-row"><div class="bar-label">W12</div><div class="bar-track"><div class="bar-fill red" style="width:95%">¥7,412 (3CV)</div></div></div>
+    </div>
+
+    <h3>新規C ― 週次CPA推移</h3>
+    <div class="bar-chart">
+      <div class="bar-row"><div class="bar-label">W05 (1月)</div><div class="bar-track"><div class="bar-fill amber" style="width:19%">¥6,679 (4CV)</div></div></div>
+      <div class="bar-row"><div class="bar-label">W06</div><div class="bar-track"><div class="bar-fill green" style="width:8%">¥2,911 (12CV)</div></div></div>
+      <div class="bar-row"><div class="bar-label">W07</div><div class="bar-track"><div class="bar-fill amber" style="width:20%">¥6,993 (5CV)</div></div></div>
+      <div class="bar-row"><div class="bar-label">W08 (2月)</div><div class="bar-track"><div class="bar-fill red" style="width:50%">¥17,544 (2CV)</div></div></div>
+      <div class="bar-row"><div class="bar-label">W09</div><div class="bar-track"><div class="bar-fill amber" style="width:20%">¥6,994 (5CV)</div></div></div>
+      <div class="bar-row"><div class="bar-label">W10</div><div class="bar-track"><div class="bar-fill red" style="width:100%">¥34,776 (1CV)</div></div></div>
+      <div class="bar-row"><div class="bar-label">W11 (3月)</div><div class="bar-track"><div class="bar-fill green" style="width:10%">¥3,638 (9CV)</div></div></div>
+      <div class="bar-row"><div class="bar-label">W12</div><div class="bar-track"><div class="bar-fill amber" style="width:23%">¥8,214 (2CV)</div></div></div>
+    </div>
+
+    <div class="alert alert-warning">
+      <strong>週次トレンドからの示唆</strong>
+      <ul style="margin:8px 0 0 20px;font-size:14px">
+        <li>新規Bは<strong>W04-W07（1月末〜2月中旬）が最も安定</strong>。W08以降は変動が激しくなり、直近2週はCPA¥7,000超。</li>
+        <li>新規CはW06のCPA¥2,911がピークで、その後は不安定。W10に¥34,776の異常値（CV 1件）。</li>
+        <li>両キャンペーンとも<strong>3月に入って明確に悪化</strong>。クリエイティブ疲弊 + 学期末のタイミングが重なっている可能性。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- SECTION 7: B vs C COMPARISON -->
+<section>
+  <div class="container">
+    <h2>キャンペーン新規B vs 新規C 比較</h2>
+
+    <div class="two-col">
+      <div class="finding">
+        <h4>新規B（勝者）</h4>
+        <p><strong>累計:</strong> ¥282,714 / 68CV / CPA ¥4,157</p>
+        <p><strong>特徴:</strong></p>
+        <ul style="font-size:14px;margin-left:20px">
+          <li>CPAが一貫してCより低い</li>
+          <li>25-34歳層のCPA ¥3,243（全体ベスト）</li>
+          <li>「下黒」広告セットが主力</li>
+          <li>「しおりさん」画像が補助的に稼働</li>
+        </ul>
+      </div>
+      <div class="finding">
+        <h4>新規C（劣勢）</h4>
+        <p><strong>累計:</strong> ¥250,615 / 40CV / CPA ¥6,265</p>
+        <p><strong>特徴:</strong></p>
+        <ul style="font-size:14px;margin-left:20px">
+          <li>CPAがBより常に30-50%高い</li>
+          <li>CVの変動が大きい（W06: 12CV→W10: 1CV）</li>
+          <li>「詩織さん画像」広告セットのCPA ¥7,551</li>
+          <li>コスト効率で劣後</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="alert alert-info">
+      <strong>B/Cの差異分析</strong>
+      両キャンペーンは同じターゲティング（education_schools + Advantage+）、同じクリエイティブ名（「下黒1」「黒背景」）を使用。目的もともにOUTCOME_ENGAGEMENT / OFFSITE_CONVERSIONS。<strong>差異はMetaの機械学習の初期最適化方向の違い</strong>と考えられる。Bの方がより良質なユーザーセグメントに初期配信された結果、学習が良い方向に進んだ可能性が高い。
+    </div>
+  </div>
+</section>
+
+<!-- SECTION 8: DIAGNOSIS -->
+<section>
+  <div class="container">
+    <h2>診断: なぜ成約が減ったのか</h2>
+
+    <div class="finding">
+      <h4>問題1: 学生CVの混在（最大の問題）</h4>
+      <span class="impact impact-high">影響: 特大</span>
+      <p>age_min=18で有名大学ターゲティング → 大量の在学生に配信。CVカウント上は「良いCPA」に見えても、実際には<strong>成約しない学生がCVの大部分</strong>を占めている可能性。</p>
+      <p>2026年1-3月の18-24歳CVは<strong>全CV の27%</strong>（新規Bで18/68件 = 26%、新規Cで11/40件 = 28%）。この層は成約率がほぼゼロなら、<strong>実質的なCPAは表面上の1.4倍</strong>。</p>
+      <p style="background:#FFF3E0;padding:12px;border-radius:4px;margin-top:8px">
+        <strong>計算:</strong> 社会人CV(25歳+)のみでCPA再計算<br>
+        新規B: ¥282,714 ÷ 50CV(25歳+) = <strong>¥5,654</strong>（表面CPA ¥4,157の1.36倍）<br>
+        新規C: ¥250,615 ÷ 29CV(25歳+) = <strong>¥8,642</strong>（表面CPA ¥6,265の1.38倍）
+      </p>
+    </div>
+
+    <div class="finding">
+      <h4>問題2: クリエイティブ疲弊</h4>
+      <span class="impact impact-high">影響: 大</span>
+      <p>「下黒1」クリエイティブは2ヶ月間でCPAが80%悪化。フリクエンシーの上昇（1.6→2.4）が示す通り、同じユーザーへの重複表示が増加。新規リーチが減り、既に見た人への再表示が増えている。</p>
+    </div>
+
+    <div class="finding">
+      <h4>問題3: Advantage+ Audience による制御不能</h4>
+      <span class="impact impact-medium">影響: 中</span>
+      <p><code>advantage_audience: 1</code> はMetaに「ターゲティング設定はあくまで参考値」と伝える設定。つまり年齢18-65のeducation_schools指定は、Metaが必要と判断すれば無視される。この結果、意図しないユーザーへの配信が拡大する。</p>
+    </div>
+
+    <div class="finding">
+      <h4>問題4: 広告テキストが学生を誘引</h4>
+      <span class="impact impact-medium">影響: 中</span>
+      <p>「【無料】MBB社員/<strong>内定者</strong>があなたのケース面接力を判定！」の「内定者」という表現は、就活中の学生に強くアピールする。社会人転職者向けには「<strong>元MBB</strong>コンサルタント」「<strong>転職</strong>ケース面接」等の表現が適切。</p>
+    </div>
+
+    <div class="finding">
+      <h4>問題5: MicroCVの罠（2025年10月の教訓）</h4>
+      <span class="impact impact-medium">影響: 中</span>
+      <p>2025年10月にMicroCV最適化でCV 104件/CPA¥2,913を記録したが、翌月には37件に激減。MicroCVは「ボタンクリック」等の軽いアクションであり、<strong>実際の申込とは大きな乖離</strong>がある。数値が良く見えるだけで成約に繋がらないオプティマイゼーションになっていた。</p>
+    </div>
+  </div>
+</section>
+
+<!-- SECTION 9: RECOMMENDATIONS -->
+<section>
+  <div class="container">
+    <h2>改善アクションプラン</h2>
+
+    <ol class="rec-list">
+      <li>
+        <strong>年齢下限を25歳に変更 <span class="priority-tag priority-critical">最優先</span></strong>
+        <p>全アクティブ広告セット（下黒、しおりさん_広告画像、詩織さん画像）の<code>age_min</code>を18→25に変更。これだけで広告費の約40%を社会人に再配分できる。</p>
+        <p><strong>予測効果:</strong> 社会人CPAが表面上¥5,654→実質¥4,000前後に改善。月間社会人CV数 +50%。</p>
+        <p><strong>実施方法:</strong> Meta広告マネージャーで各広告セットの編集画面から年齢設定を変更。学習期間リセットに1-2日要するが、中長期的なROI改善は明確。</p>
+      </li>
+
+      <li>
+        <strong>Advantage+ Audience をOFFにする <span class="priority-tag priority-critical">最優先</span></strong>
+        <p>各広告セットの「Advantage+オーディエンス」をOFFに変更。これによりMetaの自動拡張を止め、指定したターゲティング条件を厳密に適用させる。</p>
+        <p><strong>注意:</strong> 一度にすべて変更すると学習がリセットされるため、1広告セットずつ段階的に変更することを推奨。</p>
+      </li>
+
+      <li>
+        <strong>CV済みユーザーの除外リスト作成 <span class="priority-tag priority-high">高</span></strong>
+        <p>Pixelで取得したCV済みユーザーのカスタムオーディエンスを作成し、全広告セットの除外リストに追加。再コンバージョンへの無駄な配信を防止。</p>
+        <p>旧キャンペーン（「Conversion - デモグラのみ」）では<code>excluded_custom_audiences</code>が設定されていたが、現在アクティブな広告セットには<strong>設定されていない</strong>。</p>
+      </li>
+
+      <li>
+        <strong>新クリエイティブのテスト投入 <span class="priority-tag priority-high">高</span></strong>
+        <p>「下黒1」の疲弊は明確。以下の方向で新クリエイティブをテスト:</p>
+        <p style="margin-top:8px"><strong>A) コピー変更:</strong></p>
+        <ul style="margin-left:24px;font-size:14px">
+          <li>「内定者」→「元MBBコンサルタント」に変更して学生を排除</li>
+          <li>「転職でコンサルを目指す方へ」と明示的に社会人訴求</li>
+          <li>「社会人3年目以上の方限定」等の限定表現</li>
+        </ul>
+        <p style="margin-top:8px"><strong>B) ビジュアル変更:</strong></p>
+        <ul style="margin-left:24px;font-size:14px">
+          <li>スーツ姿の社会人（学生ではなく）を使用</li>
+          <li>オフィス風景や面接シーンの画像</li>
+          <li>動画クリエイティブ（Reelsで効果的）</li>
+        </ul>
+      </li>
+
+      <li>
+        <strong>Threads/Facebook Reelsの配信除外 <span class="priority-tag priority-medium">中</span></strong>
+        <p>Threads Feed（CPA¥16,450、CV 1件）とFacebook Reels（CV 0件）は明確に非効率。プレースメント設定でこれらを除外し、Instagram Stories/Feed/Reelsに集中させる。</p>
+      </li>
+
+      <li>
+        <strong>新規Cの予算を新規Bに集中 <span class="priority-tag priority-medium">中</span></strong>
+        <p>新規BのCPA¥4,157 vs 新規Cの¥6,265。同じターゲティング・クリエイティブで30-50%の差がある。新規Cの予算の一部を新規Bに移管して効率化。</p>
+        <p><strong>ただし注意:</strong> 完全停止ではなくA/Bテストの受け皿として低予算維持が望ましい。</p>
+      </li>
+
+      <li>
+        <strong>インタレストターゲティングの追加テスト <span class="priority-tag priority-medium">中</span></strong>
+        <p>現在のeducation_schoolsターゲティングは学生/卒業生の区別ができない。追加で以下のインタレストターゲティングをテスト:</p>
+        <ul style="margin-left:24px;font-size:14px">
+          <li>「転職」「キャリアチェンジ」関連インタレスト</li>
+          <li>「経営コンサルティング」（旧「上黒」広告セットで使用実績あり）</li>
+          <li>「戦略コンサルティング」「BCG」「マッキンゼー」等のファーム名</li>
+          <li>LinkedIn / ビズリーチ等の転職サービス利用者</li>
+        </ul>
+      </li>
+
+      <li>
+        <strong>類似オーディエンスの再構築 <span class="priority-tag priority-medium">中</span></strong>
+        <p>旧キャンペーンでは「成約に繋がりそうなターゲット」「サイト訪問者の3%類似」のカスタムオーディエンスが使われていたが、現在のアクティブ広告セットには未設定。</p>
+        <p><strong>提案:</strong> CRMの<strong>成約済み社会人</strong>顧客データでカスタムオーディエンスを作成し、その類似オーディエンス（1-3%）をテスト。</p>
+      </li>
+
+      <li>
+        <strong>コンバージョン定義の見直し <span class="priority-tag priority-medium">中</span></strong>
+        <p>現在の<code>offsite_conversion.fb_pixel_custom</code>が具体的に何を計測しているか再確認が必要。「ページ閲覧」「ボタンクリック」レベルのMicroCVと「申込フォーム送信」では意味が全く異なる。</p>
+        <p>理想的には「申込フォーム送信」のみをCVイベントとして設定し、それに最適化をかける。</p>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<!-- SECTION 10: IMPACT SIMULATION -->
+<section>
+  <div class="container">
+    <h2>改善インパクトシミュレーション</h2>
+
+    <h3>現状 vs 改善後の予測（月間）</h3>
+    <table>
+      <thead>
+        <tr><th>指標</th><th class="num">現状（3月推計）</th><th class="num">改善後予測</th><th class="num">変化</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>月間広告費</td>
+          <td class="num">¥280,000</td>
+          <td class="num">¥280,000</td>
+          <td class="num">同額</td>
+        </tr>
+        <tr>
+          <td>総CV数</td>
+          <td class="num">45件</td>
+          <td class="num">35件</td>
+          <td class="num bad">-22%（学生CV排除）</td>
+        </tr>
+        <tr>
+          <td>社会人CV数</td>
+          <td class="num good">30件</td>
+          <td class="num good">35件</td>
+          <td class="num good">+17%</td>
+        </tr>
+        <tr>
+          <td>表面CPA</td>
+          <td class="num">¥6,222</td>
+          <td class="num">¥8,000</td>
+          <td class="num bad">見かけ上悪化</td>
+        </tr>
+        <tr>
+          <td><strong>実質CPA（社会人のみ）</strong></td>
+          <td class="num bad">¥9,333</td>
+          <td class="num good">¥8,000</td>
+          <td class="num good">-14%</td>
+        </tr>
+        <tr>
+          <td><strong>成約見込み</strong></td>
+          <td class="num">3-5件</td>
+          <td class="num good">5-8件</td>
+          <td class="num good">+60-100%</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="alert alert-success">
+      <strong>改善の本質</strong>
+      表面上のCPA・CV数は悪化して見えるが、<strong>実際に成約する社会人のCV数が増加</strong>することが重要。CVの「量」ではなく「質」にフォーカスを切り替える。ROAS 3x基準で判断すれば、社会人1件のCVの価値は学生CVの数十倍。
+    </div>
+  </div>
+</section>
+
+<!-- SECTION 11: SUMMARY TABLE -->
+<section>
+  <div class="container">
+    <h2>全キャンペーン サマリーテーブル</h2>
+    <div style="overflow-x:auto">
+    <table style="font-size:13px">
+      <thead>
+        <tr>
+          <th>キャンペーン</th>
+          <th>期間</th>
+          <th>目的</th>
+          <th>状態</th>
+          <th class="num">総広告費</th>
+          <th class="num">総CV</th>
+          <th class="num">平均CPA</th>
+          <th>備考</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>202505-</td>
+          <td>2024/08~2025/06</td>
+          <td>Traffic</td>
+          <td><span class="tag tag-paused">停止</span></td>
+          <td class="num">¥390,509</td>
+          <td class="num bad">0</td>
+          <td class="num">-</td>
+          <td>トラフィック目的。CVゼロ</td>
+        </tr>
+        <tr>
+          <td>Conversion（テスト）</td>
+          <td>2025/06</td>
+          <td>Conversions</td>
+          <td><span class="tag tag-paused">停止</span></td>
+          <td class="num">¥6,761</td>
+          <td class="num">7</td>
+          <td class="num good">¥966</td>
+          <td>初期テスト。少額で好結果</td>
+        </tr>
+        <tr>
+          <td>日2万 - 新卒</td>
+          <td>2025/06</td>
+          <td>Conversions</td>
+          <td><span class="tag tag-paused">停止</span></td>
+          <td class="num">¥151,806</td>
+          <td class="num">25</td>
+          <td class="num">¥6,072</td>
+          <td>新卒=学生多い。質に難</td>
+        </tr>
+        <tr>
+          <td>日2万 - 既卒</td>
+          <td>2025/06~2026/01</td>
+          <td>Conversions</td>
+          <td><span class="tag tag-paused">停止</span></td>
+          <td class="num">¥2,985,270</td>
+          <td class="num">189</td>
+          <td class="num">¥15,795</td>
+          <td>主力だったが学習崩壊で停止</td>
+        </tr>
+        <tr>
+          <td>オーディエンスなし</td>
+          <td>2025/11</td>
+          <td>Conversions</td>
+          <td><span class="tag tag-paused">停止</span></td>
+          <td class="num">¥47,610</td>
+          <td class="num">14</td>
+          <td class="num good">¥3,401</td>
+          <td>オーディエンス除外テスト。良結果だったが短命</td>
+        </tr>
+        <tr>
+          <td>20250122新規A</td>
+          <td>2026/01</td>
+          <td>Engagement</td>
+          <td><span class="tag tag-paused">停止</span></td>
+          <td class="num">¥18,929</td>
+          <td class="num">5</td>
+          <td class="num good">¥3,786</td>
+          <td>短期テスト。良結果だが停止</td>
+        </tr>
+        <tr style="background:#E8F5E9">
+          <td><strong>20250122新規B</strong></td>
+          <td>2026/01~現在</td>
+          <td>Engagement</td>
+          <td><span class="tag tag-active">稼働中</span></td>
+          <td class="num">¥282,714</td>
+          <td class="num good">68</td>
+          <td class="num good">¥4,157</td>
+          <td>現在のベスト。ただし3月悪化傾向</td>
+        </tr>
+        <tr style="background:#FFF8E1">
+          <td><strong>20250122新規C</strong></td>
+          <td>2026/01~現在</td>
+          <td>Engagement</td>
+          <td><span class="tag tag-active">稼働中</span></td>
+          <td class="num">¥250,615</td>
+          <td class="num">40</td>
+          <td class="num">¥6,265</td>
+          <td>稼働中だがBに劣後</td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<div class="footer">
+  <div class="container">
+    &copy; Strategists | Meta広告ディープ分析レポート | Generated: 2026-03-20
+  </div>
+</div>
+
+</body>
+</html>
