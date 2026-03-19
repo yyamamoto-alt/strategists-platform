@@ -12,7 +12,7 @@ interface AgentsClientProps {
 }
 
 const REFERRAL_OPTIONS = ["フル利用", "一部利用", "自社", "該当", "非対象", "なし", "スクールのみ"] as const;
-const JOB_STATUS_OPTIONS = ["活動中", "活動予定", "終了"] as const;
+const JOB_STATUS_OPTIONS = ["活動中", "活動予定", "中断", "内定（別経路）", "転職成功", "終了"] as const;
 
 /** 内定ランクの色バッジ */
 function RankBadge({ rank }: { rank: string | null | undefined }) {
@@ -54,6 +54,9 @@ export function AgentsClient({ customers, agentSummary }: AgentsClientProps) {
     switch (status) {
       case "活動中": return "bg-brand-muted text-brand";
       case "活動予定": return "bg-cyan-500/15 text-cyan-400";
+      case "転職成功": return "bg-emerald-500/15 text-emerald-400";
+      case "内定（別経路）": return "bg-purple-500/15 text-purple-400";
+      case "中断": return "bg-gray-900/20 text-gray-400";
       case "終了": return "bg-gray-900/20 text-gray-400";
       default: return "bg-white/10 text-gray-300";
     }
@@ -188,7 +191,9 @@ export function AgentsClient({ customers, agentSummary }: AgentsClientProps) {
                         className={`border border-white/10 rounded px-2 py-1 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-brand cursor-pointer ${
                           jobStatus === "活動中" ? "bg-brand/20 text-brand border-brand/30" :
                           jobStatus === "活動予定" ? "bg-cyan-500/15 text-cyan-400 border-cyan-500/30" :
-                          jobStatus === "終了" ? "bg-gray-800 text-gray-400 border-gray-700" :
+                          jobStatus === "転職成功" ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" :
+                          jobStatus === "内定（別経路）" ? "bg-purple-500/15 text-purple-400 border-purple-500/30" :
+                          (jobStatus === "中断" || jobStatus === "終了") ? "bg-gray-800 text-gray-400 border-gray-700" :
                           "bg-white/5 text-gray-500"
                         }`}
                       >

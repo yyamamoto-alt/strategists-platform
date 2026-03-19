@@ -622,6 +622,9 @@ export function CustomersClient() {
               className={`border border-white/10 rounded px-1 py-0.5 text-[10px] font-medium focus:outline-none focus:ring-1 focus:ring-brand cursor-pointer w-full ${
                 status === "活動中" ? "bg-brand/20 text-brand border-brand/30" :
                 status === "活動予定" ? "bg-cyan-500/15 text-cyan-400 border-cyan-500/30" :
+                status === "転職成功" ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" :
+                status === "内定（別経路）" ? "bg-purple-500/15 text-purple-400 border-purple-500/30" :
+                status === "中断" ? "bg-gray-800 text-gray-400 border-gray-700" :
                 status === "終了" ? "bg-gray-800 text-gray-400 border-gray-700" :
                 "bg-transparent text-gray-500"
               }`}
@@ -629,6 +632,9 @@ export function CustomersClient() {
               <option value="">未設定</option>
               <option value="活動中">活動中</option>
               <option value="活動予定">活動予定</option>
+              <option value="中断">中断</option>
+              <option value="内定（別経路）">内定（別経路）</option>
+              <option value="転職成功">転職成功</option>
               <option value="終了">終了</option>
             </select>
           );
@@ -647,7 +653,7 @@ export function CustomersClient() {
         render: (c) => {
           if (!isAgentCustomer(c)) return <span className="text-gray-600 text-xs">-</span>;
           const jobStatus = jobStatusOverrides[c.id] !== undefined ? jobStatusOverrides[c.id] : (c.agent?.job_search_status || "");
-          if (jobStatus === "終了") return <span className="text-gray-600 text-xs">-</span>;
+          if (["終了", "中断", "内定（別経路）", "転職成功"].includes(jobStatus)) return <span className="text-gray-600 text-xs">-</span>;
           const rank = offerRankOverrides[c.id] !== undefined ? offerRankOverrides[c.id] : (c.agent?.offer_rank || "");
           const meta = rank ? OFFER_RANK_META[rank] : null;
           return (
@@ -680,7 +686,7 @@ export function CustomersClient() {
         render: (c) => {
           if (!isAgentCustomer(c)) return <span className="text-gray-600 text-xs">-</span>;
           const js = jobStatusOverrides[c.id] !== undefined ? jobStatusOverrides[c.id] : (c.agent?.job_search_status || "");
-          if (js === "終了") return <span className="text-gray-600 text-xs">-</span>;
+          if (["終了", "中断", "内定（別経路）", "転職成功"].includes(js)) return <span className="text-gray-600 text-xs">-</span>;
           const prob = c.agent?.ai_offer_probability;
           if (prob == null) return <span className="text-gray-600 text-xs">-</span>;
           const color = prob >= 60 ? "text-emerald-400" : prob >= 30 ? "text-amber-400" : "text-gray-400";

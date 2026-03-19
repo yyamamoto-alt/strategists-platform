@@ -82,9 +82,9 @@ export function isStageClosed(stage: string | undefined | null): boolean {
   return stage === "成約" || stage === "追加指導" || stage === "受講終了" || stage === "卒業";
 }
 
-/** 顧客のエージェント確定フラグを判定 */
+/** 顧客のエージェント確定フラグを判定（転職成功も確定扱い） */
 export function isAgentConfirmed(c: CustomerWithRelations): boolean {
-  return c.agent?.placement_confirmed === "確定";
+  return c.agent?.placement_confirmed === "確定" || c.agent?.job_search_status === "転職成功";
 }
 
 /** 補助金額算出（Excel Col EJ: リスキャリ補助金） */
@@ -264,11 +264,14 @@ export function calcConfirmedRevenue(c: CustomerWithRelations): number {
   return schoolConfirmed + subsidy + agentConfirmed;
 }
 
-/** 転職活動中か判定: 「終了」以外は全て活動中とみなす */
+/** 人材見込みに含めないステータス */
+const INACTIVE_JOB_STATUSES = new Set(["終了", "中断", "内定（別経路）", "転職成功"]);
+
+/** 転職活動中か判定: 終了/中断/内定(別経路)/転職成功 以外は活動中とみなす */
 export function isActivelyJobSearching(c: CustomerWithRelations): boolean {
   const status = c.agent?.job_search_status;
-  // 「終了」のみ除外。「活動中」も未設定も活動中とみなす
-  return status !== "終了";
+  if (!status) return true; // 未設定は活動中とみなす
+  return !INACTIVE_JOB_STATUSES.has(status);
 }
 
 /** 人材見込売上（人材紹介区分に基づく乗数）（Excel Col BU） */
