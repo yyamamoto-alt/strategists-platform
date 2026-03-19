@@ -773,6 +773,12 @@ function buildAgentFields(c: CustomerWithRelations): FieldDef[] {
   const margin = (a.margin && a.margin > 0) ? a.margin : 0.7;
   const feeRate = a.referral_fee_rate ?? 0.3;
   return [
+    { key: "referral_category", label: "人材紹介区分", source: "manual", type: "select", options: [
+      "フル利用", "一部利用", "スクールのみ", "自社", "該当", "非対象", "なし",
+    ], table: "contract", getValue: () => c.contract?.referral_category || "-" },
+    { key: "job_search_status", label: "活動状況", source: "manual", type: "select", options: [
+      "活動中", "活動予定", "中断", "内定（別経路）", "転職成功", "終了",
+    ], table: "agent", getValue: () => a.job_search_status || "-" },
     { key: "offer_rank", label: "内定ランク", source: "manual", type: "select", options: ["S", "A", "B", "C", "D"], table: "agent", getValue: () => {
       const rank = a.offer_rank;
       if (!rank) return "-";
