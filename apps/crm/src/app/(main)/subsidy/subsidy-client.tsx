@@ -319,11 +319,12 @@ function ReceiptPreview({ customer, paymentDate }: { customer: CustomerWithRelat
   );
 }
 
-function CertificatePreview({ customer, certNumber, startDate, endDate, issueDate }: {
+function CertificatePreview({ customer, certNumber, startDate, endDate, issueDate, address }: {
   customer: CustomerWithRelations;
   certNumber: string;
   startDate: string;
   endDate: string;
+  address: string;
   issueDate: string;
 }) {
   return (
@@ -331,7 +332,7 @@ function CertificatePreview({ customer, certNumber, startDate, endDate, issueDat
       <p className="text-right text-xs text-gray-500 mb-4">通し番号：{certNumber}</p>
       <p className="text-right text-xs text-gray-600 mb-2">{issueDate}</p>
       <h2 className="text-center text-xl font-bold mb-8">修了証明書</h2>
-      <p className="mb-2 text-xs text-gray-600">{"（住所は手動で入力してください）"}</p>
+      {address && <p className="mb-1 text-sm">{address}</p>}
       <p className="mb-6 text-lg">{customer.name} 殿</p>
       <p className="mb-6 leading-relaxed">
         あなたは、経済産業省「リスキリングを通じたキャリアアップ支援事業」の補助事業を通じ、
@@ -372,6 +373,7 @@ function DocumentModal({
   const [paymentDate, setPaymentDate] = useState(defaultPaymentDate);
   const [startDate, setStartDate] = useState(defaultStartDate);
   const [endDate, setEndDate] = useState("");
+  const [address, setAddress] = useState(customer.address || "");
   const [issueDate, setIssueDate] = useState(today);
   const [certNumber, setCertNumber] = useState(
     customer.contract?.subsidy_number ? String(customer.contract.subsidy_number) : "00001"
@@ -402,6 +404,7 @@ function DocumentModal({
           docType: state.type,
           customerName: customer.name,
           customerEmail,
+          customerAddress: address,
           paymentDate,
           startDate,
           endDate,
@@ -525,6 +528,16 @@ function DocumentModal({
                   className="w-48 px-3 py-1.5 bg-white/5 border border-white/10 rounded text-sm text-white"
                 />
               </div>
+              <div>
+                <label className="text-xs text-gray-400 block mb-1">住所{customer.address ? "" : "（未登録）"}</label>
+                <input
+                  type="text"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  placeholder="東京都渋谷区..."
+                  className="w-80 px-3 py-1.5 bg-white/5 border border-white/10 rounded text-sm text-white placeholder-gray-600"
+                />
+              </div>
             </>
           )}
         </div>
@@ -542,6 +555,7 @@ function DocumentModal({
                 startDate={formatDateJP(startDate) || startDate}
                 endDate={formatDateJP(endDate) || endDate}
                 issueDate={formatDateJP(issueDate) || issueDate}
+                address={address}
               />
             )}
           </div>

@@ -9,7 +9,7 @@ const CC_ADDRESS = "support@akagiconsulting.com";
 
 export async function POST(request: Request) {
   const body = await request.json();
-  const { customerId, docType, customerName, customerEmail, paymentDate, startDate, endDate, sendEmail } = body;
+  const { customerId, docType, customerName, customerEmail, customerAddress, paymentDate, startDate, endDate, sendEmail } = body;
 
   if (!customerId || !docType) {
     return NextResponse.json({ error: "customerId and docType are required" }, { status: 400 });
@@ -83,7 +83,7 @@ export async function POST(request: Request) {
       const htmlBody = htmlBodyMap[docType] || "";
 
       // Generate PDF
-      const pdfParams = { customerName, paymentDate, startDate, endDate, certNumber: certificateNumber || undefined };
+      const pdfParams = { customerName, customerAddress, paymentDate, startDate, endDate, certNumber: certificateNumber || undefined };
       let pdfBuffer: Buffer;
       let pdfFilename: string;
       if (docType === "invoice") {

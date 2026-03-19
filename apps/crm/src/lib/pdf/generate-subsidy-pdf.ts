@@ -14,6 +14,7 @@ async function loadJapaneseFont(): Promise<ArrayBuffer> {
 
 interface DocParams {
   customerName: string;
+  customerAddress?: string;
   paymentDate?: string;
   startDate?: string;
   endDate?: string;
@@ -180,7 +181,7 @@ export async function generateReceiptPdf(params: DocParams): Promise<Buffer> {
 // 修了証明書
 // ================================================================
 export async function generateCertificatePdf(params: DocParams): Promise<Buffer> {
-  const { customerName, startDate, endDate, certNumber } = params;
+  const { customerName, customerAddress, startDate, endDate, certNumber } = params;
   const doc = await PDFDocument.create();
   doc.registerFontkit(fontkit);
   const fontBytes = await loadJapaneseFont();
@@ -205,6 +206,12 @@ export async function generateCertificatePdf(params: DocParams): Promise<Buffer>
   const titleW = font.widthOfTextAtSize(title, 22);
   page.drawText(title, { x: (width - titleW) / 2, y, size: 22, font, color: black });
   y -= 50;
+
+  // 住所
+  if (customerAddress) {
+    page.drawText(customerAddress, { x: margin, y, size: 11, font, color: black });
+    y -= 22;
+  }
 
   // 宛名
   page.drawText(`${customerName} 殿`, { x: margin, y, size: 14, font, color: black });

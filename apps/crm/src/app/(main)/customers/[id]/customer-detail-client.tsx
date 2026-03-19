@@ -366,6 +366,7 @@ function buildBasicFields(c: CustomerWithRelations): FieldDef[] {
     { key: "name", label: "名前", source: "manual", table: "customer", getValue: () => c.name },
     { key: "email", label: "メール", source: "manual", table: "customer", getValue: () => c.email || "-" },
     { key: "phone", label: "電話番号", source: "manual", table: "customer", getValue: () => c.phone || "-" },
+    { key: "address", label: "住所", source: "manual", table: "customer", getValue: () => c.address || "-" },
     { key: "attribute", label: "属性", source: "manual", type: "select", options: [
       "既卒", "既卒・中途", "既卒・中途(3年目未満)", "既卒・中途(3年目以上7年目未満)", "既卒・中途(7年目以上)", "中途",
       "新卒", "24卒", "24卒(学部卒)", "24卒(院卒)", "25卒", "25卒(学部卒)", "25卒(院卒)",
@@ -1144,7 +1145,7 @@ export function CustomerDetailClient({
     const dateKeys = new Set(["meeting_scheduled_date", "additional_coaching_date", "sales_date", "sales_date_2", "sales_date_3", "response_deadline", "response_date_2", "response_date_3", "payment_date", "coaching_end_date", "last_coaching_date", "placement_date", "application_date"]);
     // customer fields
     const cFields = customer as unknown as unknown as Record<string, unknown>;
-    for (const key of ["name", "email", "phone", "attribute", "priority", "university", "faculty", "notes", "caution_notes", "application_date", "initial_level", "career_history", "target_companies", "target_firm_type", "transfer_intent", "name_kana", "birth_date", "graduation_year"]) {
+    for (const key of ["name", "email", "phone", "address", "attribute", "priority", "university", "faculty", "notes", "caution_notes", "application_date", "initial_level", "career_history", "target_companies", "target_firm_type", "transfer_intent", "name_kana", "birth_date", "graduation_year"]) {
       vals[`customer.${key}`] = dateKeys.has(key) ? toDateValue(cFields[key]) : (cFields[key] != null ? String(cFields[key]) : "");
     }
     // pipeline fields
