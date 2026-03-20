@@ -120,7 +120,7 @@ async function fetchEmailChannelMap(): Promise<Record<string, string>> {
 
 export async function SalesCostSection() {
   // 管理者のみ表示
-  const authClient = createAuthClient();
+  const authClient = await createAuthClient();
   const { data: { user } } = await authClient.auth.getUser();
   if (user) {
     const supabase = createServiceClient();
