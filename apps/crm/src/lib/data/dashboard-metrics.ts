@@ -996,12 +996,21 @@ function computeSegmentData(
       }
     }
 
-    // チャネル別売上（支払い実績ベース）
+    // チャネル別売上（スクール確定 + 補助金 + 人材見込/確定）
     if (hasPaid) {
-      channelRevenue.set(channel, (channelRevenue.get(channel) || 0) + amount);
+      const subsidy = getSubsidyAmount(c);
+      let chRev = amount + subsidy;
+      // 人材紹介売上を加算
+      if (isAgentCustomer(c)) {
+        const agentFee = calcExpectedReferralFee(c);
+        if (isAgentConfirmed(c) || isCurrentlyEnrolled(c)) {
+          chRev += agentFee;
+        }
+      }
+      channelRevenue.set(channel, (channelRevenue.get(channel) || 0) + chRev);
       if (!channelRevenueByPeriod.has(channel)) channelRevenueByPeriod.set(channel, {});
       const crp = channelRevenueByPeriod.get(channel)!;
-      crp[period] = (crp[period] || 0) + amount;
+      crp[period] = (crp[period] || 0) + chRev;
     }
 
     // Tier 3: 未払い顧客のパイプライン期待値
