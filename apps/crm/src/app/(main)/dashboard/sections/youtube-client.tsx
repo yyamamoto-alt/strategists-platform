@@ -258,11 +258,11 @@ export function YouTubeDashboardClient({ weeklyViews, weeklyMinutes, videoInfoMa
                 interval={0} height={50} />
               <YAxis tick={{ fontSize: 9, fill: "#6b7280" }} tickFormatter={yAxisFmt} />
               <Tooltip content={<VideoTooltip />} />
-              {/* その他を先に描画（下）、色付き動画を上に積む */}
-              <Bar dataKey="others" stackId="main" fill={OTHER_COLOR} name="その他" />
+              {/* 上位動画を底に、その他を上に積む（視認性向上） */}
               {topVideoIds.map((vid, i) => (
                 <Bar key={vid} dataKey={vid} stackId="main" fill={VIDEO_COLORS[i % VIDEO_COLORS.length]} name={shortTitle(vid)} />
               ))}
+              <Bar dataKey="others" stackId="main" fill={OTHER_COLOR} name="その他" />
             </BarChart>
           </ResponsiveContainer>
           <div className="flex flex-wrap gap-2 mt-2 px-1">
