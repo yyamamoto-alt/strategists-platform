@@ -77,9 +77,9 @@ function calcHeatBg(value: number | null, min: number, max: number, direction: H
 function renderKpt(items: string[] | null) {
   if (!items || items.length === 0) return "-";
   return (
-    <div className="space-y-0.5">
+    <div className="space-y-0">
       {items.map((item, i) => (
-        <div key={i} className="text-sm text-gray-300 leading-snug">
+        <div key={i} className="text-[11px] text-gray-300 leading-tight">
           <span className="text-gray-500">・</span>
           {item}
         </div>
@@ -236,25 +236,26 @@ export function AdsReportsClient({ reports }: { reports: AdsWeeklyReport[] }) {
           レポートデータがありません
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-white/10">
-          <table className="min-w-full">
+        <div className="overflow-hidden rounded-xl border border-white/10">
+          <table className="w-full table-fixed">
+            <colgroup>
+              <col className="w-[80px]" />
+              <col className="w-[150px]" />
+              <col className="w-[80px]" />
+              <col className="w-[80px]" />
+              <col className="w-[120px]" />
+              <col />
+              <col />
+              <col />
+            </colgroup>
             <thead className="sticky top-0 z-10 bg-surface-raised">
               <tr>
-                {[
-                  { label: "期間", width: "w-[120px]" },
-                  { label: "費用/配信", width: "w-[200px]" },
-                  { label: "申込", width: "w-[110px]" },
-                  { label: "日程確定", width: "w-[110px]" },
-                  { label: "成約/売上", width: "w-[150px]" },
-                  { label: "Keep", width: "min-w-[250px]" },
-                  { label: "Problem", width: "min-w-[250px]" },
-                  { label: "Try", width: "min-w-[250px]" },
-                ].map((h) => (
+                {["期間", "費用/配信", "申込", "日程確定", "成約/売上", "Keep", "Problem", "Try"].map((h) => (
                   <th
-                    key={h.label}
-                    className={`px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider border-b border-white/10 whitespace-nowrap align-top ${h.width}`}
+                    key={h}
+                    className="px-1.5 py-2 text-left text-[10px] font-semibold text-gray-400 uppercase tracking-wider border-b border-white/10 whitespace-nowrap align-top"
                   >
-                    {h.label}
+                    {h}
                   </th>
                 ))}
               </tr>
@@ -265,55 +266,55 @@ export function AdsReportsClient({ reports }: { reports: AdsWeeklyReport[] }) {
                 return (
                   <tr
                     key={r.id ?? idx}
-                    className={`border-b border-white/5 hover:bg-white/5 transition-colors align-top`}
+                    className="border-b border-white/5 hover:bg-white/5 transition-colors align-top"
                   >
                     {/* 期間 + レポートリンク */}
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      <div className="text-sm text-gray-200">{fmtWeek(r.week_start, r.week_end)}</div>
+                    <td className="px-1.5 py-1.5 whitespace-nowrap">
+                      <div className="text-xs text-gray-200">{fmtWeek(r.week_start, r.week_end)}</div>
                       {r.report_url ? (
-                        <a href={r.report_url} target="_blank" rel="noopener noreferrer" className="text-xs text-brand hover:underline">📄開く</a>
+                        <a href={r.report_url} target="_blank" rel="noopener noreferrer" className="text-[10px] text-brand hover:underline">📄開く</a>
                       ) : null}
                     </td>
-                    {/* 費用/配信 (費用 + imp→click + CPC/CTR) */}
-                    <td className="px-3 py-2 whitespace-nowrap" style={heatStyle("cost", r.cost)}>
-                      <div className="text-sm font-medium text-gray-200">{fmtCurrency(r.cost)}</div>
-                      <div className="text-xs text-gray-400">{fmtNum(r.impressions)}imp → {fmtNum(r.clicks)}click</div>
-                      <div className="text-xs text-gray-500">CPC {fmtCurrency(r.cpc)} ・ CTR {fmtPct(r.ctr)}</div>
+                    {/* 費用/配信 */}
+                    <td className="px-1.5 py-1.5 whitespace-nowrap" style={heatStyle("cost", r.cost)}>
+                      <div className="text-xs font-medium text-gray-200">{fmtCurrency(r.cost)}</div>
+                      <div className="text-[10px] text-gray-400">{fmtNum(r.impressions)}imp→{fmtNum(r.clicks)}cl</div>
+                      <div className="text-[10px] text-gray-500">CPC{fmtCurrency(r.cpc)}・CTR{fmtPct(r.ctr)}</div>
                     </td>
-                    {/* 申込 (件数 + CPA) */}
-                    <td className="px-3 py-2 whitespace-nowrap" style={heatStyle("applications", r.applications)}>
-                      <div className="text-sm font-medium text-gray-200 cursor-help" title={customerTooltip(r.customer_details, "applications")}>
+                    {/* 申込 */}
+                    <td className="px-1.5 py-1.5 whitespace-nowrap" style={heatStyle("applications", r.applications)}>
+                      <div className="text-xs font-medium text-gray-200 cursor-help" title={customerTooltip(r.customer_details, "applications")}>
                         {fmtNum(r.applications)}件
                       </div>
-                      <div className="text-xs text-gray-500">CPA {fmtCurrency(r.application_cpa)}</div>
+                      <div className="text-[10px] text-gray-500">{fmtCurrency(r.application_cpa)}</div>
                     </td>
-                    {/* 日程確定 (件数 + CPA) */}
-                    <td className="px-3 py-2 whitespace-nowrap" style={heatStyle("schedules", r.schedules)}>
-                      <div className="text-sm font-medium text-gray-200 cursor-help" title={customerTooltip(r.customer_details, "schedules")}>
+                    {/* 日程確定 */}
+                    <td className="px-1.5 py-1.5 whitespace-nowrap" style={heatStyle("schedules", r.schedules)}>
+                      <div className="text-xs font-medium text-gray-200 cursor-help" title={customerTooltip(r.customer_details, "schedules")}>
                         {fmtNum(r.schedules)}件
                       </div>
-                      <div className="text-xs text-gray-500">CPA {fmtCurrency(r.schedule_cpa)}</div>
+                      <div className="text-[10px] text-gray-500">{fmtCurrency(r.schedule_cpa)}</div>
                     </td>
-                    {/* 成約/売上 (成約件数 + 売上額 + ROAS) */}
-                    <td className="px-3 py-2 whitespace-nowrap" style={heatStyle("roas", rollingRoas)}>
-                      <div className="text-sm font-medium text-gray-200 cursor-help" title={customerTooltip(r.customer_details, "contracts")}>
-                        成約 {fmtNum(r.contracts)}件
+                    {/* 成約/売上 */}
+                    <td className="px-1.5 py-1.5 whitespace-nowrap" style={heatStyle("roas", rollingRoas)}>
+                      <div className="text-xs font-medium text-gray-200 cursor-help" title={customerTooltip(r.customer_details, "contracts")}>
+                        成約{fmtNum(r.contracts)}件
                       </div>
-                      <div className="text-sm text-gray-300 cursor-help" title={revenueTooltip(r.customer_details)}>
-                        売上 {fmtCurrency(r.revenue)}
+                      <div className="text-xs text-gray-300 cursor-help" title={revenueTooltip(r.customer_details)}>
+                        {fmtCurrency(r.revenue)}
                       </div>
-                      <div className="text-xs text-gray-500">ROAS(8週) {fmtRoas(rollingRoas)}</div>
+                      <div className="text-[10px] text-gray-500">ROAS {fmtRoas(rollingRoas)}</div>
                     </td>
                     {/* Keep */}
-                    <td className="px-3 py-2 whitespace-normal max-w-[350px]">
+                    <td className="px-1.5 py-1.5 whitespace-normal overflow-hidden">
                       {renderKpt(r.keeps)}
                     </td>
                     {/* Problem */}
-                    <td className="px-3 py-2 whitespace-normal max-w-[350px]">
+                    <td className="px-1.5 py-1.5 whitespace-normal overflow-hidden">
                       {renderKpt(r.problems)}
                     </td>
                     {/* Try */}
-                    <td className="px-3 py-2 whitespace-normal max-w-[350px]">
+                    <td className="px-1.5 py-1.5 whitespace-normal overflow-hidden">
                       {renderKpt(r.tries)}
                     </td>
                   </tr>
