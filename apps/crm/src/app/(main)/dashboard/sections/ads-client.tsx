@@ -5,7 +5,7 @@ import {
   XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend, Line, ComposedChart, Bar, BarChart, Scatter,
 } from "recharts";
 
-const CAMPAIGN_COLORS = ["#FBBC04", "#4285F4", "#EA4335", "#34A853", "#FF6D01", "#46BDC6", "#AB47BC", "#7CB342"];
+const CAMPAIGN_COLORS = ["#FBBC04", "#4285F4", "#8B5CF6", "#34A853", "#FF6D01", "#46BDC6", "#AB47BC", "#7CB342"];
 
 export interface ClosedCustomerInfo {
   name: string;

@@ -380,25 +380,37 @@ function buildRows(
     totalValue: null,
   });
 
-  rows.push({
-    key: "ltv_school",
-    label: "スクール確定LTV（補助金込み）",
-    indent: 1,
-    style: "value",
-    format: "currency",
-    values: periods.map((p) => data.ltvSchool[p] || null),
-    totalValue: data.cumulativeLtvSchool,
-  });
-
-  rows.push({
-    key: "ltv_with_agent",
-    label: "確定+人材見込LTV",
-    indent: 1,
-    style: "value",
-    format: "currency",
-    values: periods.map((p) => data.ltvWithAgent[p] || null),
-    totalValue: data.cumulativeLtvWithAgent,
-  });
+  // LTV行は平均が適切 → 自動補完のsum/avgではなく手動で設定（自動補完で上書きされないようavg6m/avg12mを明示）
+  {
+    const ltvL6 = periods.slice(-6);
+    const ltvL12 = periods.slice(-12);
+    const ltvAvg = (fn: (p: string) => number | null, ps: string[]) => {
+      const v = ps.map(fn).filter((x): x is number => x !== null && x > 0);
+      return v.length > 0 ? Math.round(v.reduce((a, b) => a + b, 0) / v.length) : null;
+    };
+    rows.push({
+      key: "ltv_school",
+      label: "スクール確定LTV（補助金込み）",
+      indent: 1,
+      style: "value",
+      format: "currency",
+      values: periods.map((p) => data.ltvSchool[p] || null),
+      totalValue: data.cumulativeLtvSchool,
+      avg6m: ltvAvg((p) => data.ltvSchool[p] || null, ltvL6),
+      avg12m: ltvAvg((p) => data.ltvSchool[p] || null, ltvL12),
+    });
+    rows.push({
+      key: "ltv_with_agent",
+      label: "確定+人材見込LTV",
+      indent: 1,
+      style: "value",
+      format: "currency",
+      values: periods.map((p) => data.ltvWithAgent[p] || null),
+      totalValue: data.cumulativeLtvWithAgent,
+      avg6m: ltvAvg((p) => data.ltvWithAgent[p] || null, ltvL6),
+      avg12m: ltvAvg((p) => data.ltvWithAgent[p] || null, ltvL12),
+    });
+  }
 
   rows.push(sep("sep_ltv"));
 
@@ -615,6 +627,29 @@ function buildRows(
         totalValue: Object.values(yearData).reduce((s, v) => s + v, 0),
       });
     }
+  }
+
+  // --- avg6m / avg12m の自動補完 ---
+  const l6 = periods.slice(-6);
+  const l12 = periods.slice(-12);
+  for (const row of rows) {
+    if (row.avg6m !== undefined || row.avg12m !== undefined) continue;
+    if (row.values.length === 0 || row.style === "header" || row.style === "separator") continue;
+
+    const getVal = (targetPeriods: string[], useMean: boolean): number | null => {
+      const vals = targetPeriods.map(p => {
+        const idx = periods.indexOf(p);
+        return idx >= 0 ? row.values[idx] : null;
+      }).filter((v): v is number => v !== null && (useMean ? v > 0 : true));
+      if (vals.length === 0) return null;
+      return useMean
+        ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length)
+        : Math.round(vals.reduce((a, b) => a + b, 0));
+    };
+
+    const useMean = row.format === "percent";
+    row.avg6m = getVal(l6, useMean);
+    row.avg12m = getVal(l12, useMean);
   }
 
   return rows;
