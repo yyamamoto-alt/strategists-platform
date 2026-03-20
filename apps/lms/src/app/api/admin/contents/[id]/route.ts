@@ -35,7 +35,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     contentData.updated_at = new Date().toISOString();
     const { error } = await admin.from("contents").update(contentData).eq("id", id);
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ error: "操作に失敗しました" }, { status: 500 });
     }
   }
 
@@ -59,7 +59,7 @@ export async function DELETE(_request: Request, context: RouteContext) {
 
   const { error } = await admin.from("contents").delete().eq("id", id);
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: "操作に失敗しました" }, { status: 500 });
   }
 
   return NextResponse.json({ success: true });

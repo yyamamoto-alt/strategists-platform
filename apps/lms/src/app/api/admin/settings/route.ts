@@ -82,7 +82,7 @@ export async function PATCH(request: NextRequest) {
       .single();
 
     if (error) {
-      errors.push({ key: update.key, error: error.message });
+      errors.push({ key: update.key, error: "操作に失敗しました" });
     } else {
       results.push(data);
     }

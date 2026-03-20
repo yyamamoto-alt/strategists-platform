@@ -22,6 +22,6 @@ export async function GET(request: NextRequest) {
   if (q) query = query.or(`company.ilike.%${q}%,question.ilike.%${q}%`);
 
   const { data, error } = await query;
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return NextResponse.json({ error: "操作に失敗しました" }, { status: 500 });
   return NextResponse.json({ problems: data || [] });
 }

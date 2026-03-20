@@ -26,7 +26,7 @@ export async function GET(request: Request) {
       .eq("is_active", true)
       .order("role", { ascending: true });
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return NextResponse.json({ error: "操作に失敗しました" }, { status: 500 });
     return NextResponse.json(data || []);
   }
 
@@ -87,7 +87,7 @@ export async function POST(request: Request) {
     .select()
     .single();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return NextResponse.json({ error: "操作に失敗しました" }, { status: 500 });
   return NextResponse.json(data);
 }
 
@@ -112,6 +112,6 @@ export async function DELETE(request: Request) {
     .update({ is_active: false, updated_at: new Date().toISOString() })
     .eq("id", id);
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return NextResponse.json({ error: "操作に失敗しました" }, { status: 500 });
   return NextResponse.json({ ok: true });
 }
