@@ -202,11 +202,34 @@ function useFreeeCoasts(enabled: boolean) {
 }
 
 // チャネル別カラーパレット
-const CHANNEL_COLORS = [
-  "#dc2626", "#3b82f6", "#10b981", "#f59e0b", "#8b5cf6",
-  "#ec4899", "#14b8a6", "#f97316", "#6366f1", "#84cc16",
-  "#06b6d4", "#e11d48", "#a855f7", "#22c55e", "#eab308",
+// チャネル名→色の固定マッピング（視認性重視・類似色を回避）
+const CHANNEL_COLOR_MAP: Record<string, string> = {
+  "SEO":          "#dc2626", // 赤
+  "X":            "#3b82f6", // 青
+  "FB広告":        "#ec4899", // ピンク
+  "Google広告":    "#10b981", // 緑
+  "YouTube":      "#f43f5e", // ローズ
+  "note":         "#f59e0b", // 黄
+  "自社メディア":    "#06b6d4", // シアン
+  "口コミ・紹介":    "#f97316", // オレンジ
+  "コンサルタイムズ": "#84cc16", // ライム
+  "不明":          "#6b7280", // グレー
+  "Lステップ":      "#a78bfa", // ラベンダー
+  "Instagram":    "#e879f9", // マゼンタ
+  "アフィリエイト":   "#fbbf24", // ゴールド
+  "X広告":         "#60a5fa", // ライトブルー
+  "Aces":         "#34d399", // ミント
+  "Udemy":        "#fb923c", // ライトオレンジ
+  "ココナラ":       "#c084fc", // パープル
+  "インフルエンサー":  "#2dd4bf", // ティール
+  "その他":         "#9ca3af", // ライトグレー
+};
+const CHANNEL_COLORS_FALLBACK = [
+  "#8b5cf6", "#14b8a6", "#eab308", "#e11d48", "#a855f7", "#22c55e",
 ];
+function getChannelColor(name: string, index: number): string {
+  return CHANNEL_COLOR_MAP[name] || CHANNEL_COLORS_FALLBACK[index % CHANNEL_COLORS_FALLBACK.length];
+}
 
 /** 統合チャート */
 function UnifiedChart({ data, revenueByChannel }: { data: ThreeTierRevenue[]; revenueByChannel?: ChannelMonthlyRevenue[] }) {
@@ -568,7 +591,7 @@ function UnifiedChart({ data, revenueByChannel }: { data: ThreeTierRevenue[]; re
                 yAxisId="left"
                 dataKey={ch}
                 name={ch}
-                fill={CHANNEL_COLORS[i % CHANNEL_COLORS.length]}
+                fill={getChannelColor(ch, i)}
                 stackId="channel"
                 radius={i === channelKeys.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
               />
