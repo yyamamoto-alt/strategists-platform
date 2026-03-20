@@ -15,6 +15,7 @@ import {
   ChannelTrends,
 } from "./sections/channel-section";
 import { SalesRateSection } from "./sections/sales-rate-section";
+import { SalesCostSection } from "./sections/sales-cost-section";
 import { YouTubeSection } from "./sections/youtube-section";
 import {
   HeaderSkeleton,
@@ -82,6 +83,11 @@ export default async function DashboardPage() {
       {/* 営業マン別成約率 */}
       <Suspense fallback={<CardSkeleton />}>
         <SalesRateSection />
+      </Suspense>
+
+      {/* 営業コスト試算 */}
+      <Suspense fallback={<CardSkeleton />}>
+        <SalesCostSection />
       </Suspense>
 
       {/* 売掛金 */}

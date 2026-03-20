@@ -706,10 +706,27 @@ export interface PLSegmentData {
   graduationYearApps?: Record<string, Record<string, number>>;
 }
 
+/** その他売上（note/MyVision/アフィリエイト等）の月別データ */
+export interface PLOtherRevenueData {
+  /** 月別のその他売上合計 */
+  revenue: Record<string, number>;
+  revenueTotal: number;
+  /** 内訳: note */
+  noteRevenue: Record<string, number>;
+  noteRevenueTotal: number;
+  /** 内訳: MyVision受託 */
+  myvisionRevenue: Record<string, number>;
+  myvisionRevenueTotal: number;
+  /** 内訳: その他（アフィリエイト等） */
+  miscRevenue: Record<string, number>;
+  miscRevenueTotal: number;
+}
+
 export interface PLSheetData {
   periods: string[];
   kisotsu: PLSegmentData;
   shinsotsu: PLSegmentData;
+  other?: PLOtherRevenueData;
 }
 
 // ---------- AI経営示唆型 ----------

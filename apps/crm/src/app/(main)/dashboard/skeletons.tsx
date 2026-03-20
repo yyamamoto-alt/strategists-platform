@@ -2,7 +2,7 @@
 
 export function HeaderSkeleton() {
   return (
-    <div className="p-6 pb-0 animate-pulse">
+    <div className="animate-pulse">
       <div className="flex items-center justify-between">
         <div>
           <div className="h-7 bg-white/10 rounded w-48 mb-2" />
@@ -16,7 +16,7 @@ export function HeaderSkeleton() {
 
 export function ChartsSkeleton() {
   return (
-    <div className="px-6 animate-pulse">
+    <div className="animate-pulse">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* 売上チャート */}
         <div className="bg-surface-card rounded-xl border border-white/10 p-6">
@@ -65,7 +65,7 @@ export function ChartsSkeleton() {
 
 export function ReceivableSkeleton() {
   return (
-    <div className="px-6 animate-pulse">
+    <div className="animate-pulse">
       <div className="bg-surface-card rounded-xl border border-white/10 p-6">
         <div className="flex items-center justify-between mb-5">
           <div>
@@ -97,7 +97,7 @@ export function ReceivableSkeleton() {
 
 export function ChannelSkeleton() {
   return (
-    <div className="px-6 animate-pulse">
+    <div className="animate-pulse">
       <div className="bg-surface-card rounded-xl border border-white/10 p-4">
         <div className="h-4 bg-white/10 rounded w-36 mb-2" />
         <div className="h-3 bg-white/5 rounded w-52 mb-3" />
@@ -116,7 +116,7 @@ export function ChannelSkeleton() {
 
 export function AdsSummarySkeleton() {
   return (
-    <div className="px-6 animate-pulse">
+    <div className="animate-pulse">
       <div className="bg-surface-card rounded-xl border border-white/10 overflow-hidden">
         <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between">
           <div>
@@ -148,7 +148,7 @@ export function AdsSummarySkeleton() {
 
 export function MetaAdsSkeleton() {
   return (
-    <div className="px-6 animate-pulse">
+    <div className="animate-pulse">
       <div className="bg-surface-card rounded-xl border border-white/10 overflow-hidden">
         <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between">
           <div>
@@ -180,7 +180,7 @@ export function MetaAdsSkeleton() {
 
 export function InsightsSkeleton() {
   return (
-    <div className="px-6 pb-6 animate-pulse">
+    <div className="animate-pulse">
       <div className="bg-surface-card rounded-xl border border-white/10 p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">

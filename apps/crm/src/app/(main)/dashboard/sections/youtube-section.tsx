@@ -44,6 +44,7 @@ export async function YouTubeSection() {
   const videoInfoMap: YouTubeVideoInfo[] = videos.map(v => ({
     video_id: v.video_id,
     title: v.title,
+    is_short: v.duration_seconds != null && v.duration_seconds <= 60,
   }));
 
   // --- Aggregate daily data into weekly, per video ---

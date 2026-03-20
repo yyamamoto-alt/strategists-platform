@@ -3,6 +3,7 @@ import { sendSlackMessage, sendInviteApprovalRequest, mapPlanToCourseIds } from 
 import type { PaymentInfo, LearningInfo } from "@/lib/slack";
 import { NextResponse } from "next/server";
 import { rateLimit } from "@/lib/rate-limit";
+import crypto from "crypto";
 
 /**
  * Google Forms 入塾申請 Webhook
@@ -43,13 +44,41 @@ export async function POST(request: Request) {
   const body = await request.json();
   const { name, email, phone, motivation, experience, plan_name, webhook_secret } = body;
 
-  // Webhook認証（必須）
+  // Webhook認証（HMAC署名 or ボディ内シークレット）
   const expectedSecret = process.env.WEBHOOK_SECRET;
   if (!expectedSecret) {
     console.error("WEBHOOK_SECRET is not configured");
     return NextResponse.json({ error: "Server configuration error" }, { status: 500 });
   }
-  if (webhook_secret !== expectedSecret) {
+
+  const hmacSignature = request.headers.get("x-webhook-signature");
+  let authenticated = false;
+
+  if (hmacSignature) {
+    // 優先: HMAC-SHA256署名検証（ヘッダーベース）
+    const rawBody = JSON.stringify(body);
+    const expected = crypto.createHmac("sha256", expectedSecret).update(rawBody).digest("hex");
+    try {
+      authenticated = crypto.timingSafeEqual(
+        Buffer.from(hmacSignature),
+        Buffer.from(expected)
+      );
+    } catch {
+      authenticated = false;
+    }
+  } else if (webhook_secret) {
+    // フォールバック: ボディ内シークレット（timing-safe比較）
+    try {
+      authenticated = crypto.timingSafeEqual(
+        Buffer.from(String(webhook_secret)),
+        Buffer.from(expectedSecret)
+      );
+    } catch {
+      authenticated = false;
+    }
+  }
+
+  if (!authenticated) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -111,7 +140,7 @@ export async function POST(request: Request) {
 
   if (error) {
     return NextResponse.json(
-      { error: `申請の保存に失敗しました: ${error.message}` },
+      { error: "申請の保存に失敗しました" },
       { status: 500 }
     );
   }

@@ -37,7 +37,13 @@ interface TableRow {
 }
 
 type PeriodRange = "6m" | "12m" | "all";
-type SegmentTab = "kisotsu" | "shinsotsu";
+type SegmentTab = "all" | "kisotsu" | "shinsotsu" | "other";
+
+interface CostData {
+  period: string;
+  cost_of_sales: number;
+  sga: number;
+}
 
 // ================================================================
 // フォーマッター
@@ -59,7 +65,6 @@ function buildRows(
   data: PLSegmentData,
   periods: string[],
   showGradYear?: boolean,
-  otherRevenues?: OtherRevenueSummary
 ): TableRow[] {
   const rows: TableRow[] = [];
   // チャンネルを成約数降順にソート
@@ -130,73 +135,7 @@ function buildRows(
     totalValue: data.forecastRevenueTotal,
   });
 
-  // --- その他売上（note/MyVision） ---
-  if (otherRevenues) {
-    rows.push({
-      key: "other_rev_header",
-      label: "◆その他売上",
-      indent: 0,
-      style: "header",
-      format: "none",
-      values: [],
-      totalValue: null,
-    });
 
-    const noteValues = periods.map((p) => otherRevenues[p]?.note || null);
-    const mvValues = periods.map((p) => otherRevenues[p]?.myvision || null);
-    const otherValues = periods.map((p) => otherRevenues[p]?.other || null);
-    const totalValues = periods.map((p) => {
-      const r = otherRevenues[p];
-      return r ? (r.note + r.myvision + r.other) || null : null;
-    });
-
-    const allPeriodKeys = Object.keys(otherRevenues);
-    const noteTotal = allPeriodKeys.reduce((s, p) => s + (otherRevenues[p]?.note || 0), 0);
-    const mvTotal = allPeriodKeys.reduce((s, p) => s + (otherRevenues[p]?.myvision || 0), 0);
-    const otherTotal = allPeriodKeys.reduce((s, p) => s + (otherRevenues[p]?.other || 0), 0);
-
-    rows.push({
-      key: "other_rev_total",
-      label: "その他売上合計",
-      indent: 1,
-      style: "total",
-      format: "currency",
-      values: totalValues,
-      totalValue: noteTotal + mvTotal + otherTotal,
-    });
-
-    rows.push({
-      key: "other_rev_note",
-      label: "note売上",
-      indent: 2,
-      style: "value",
-      format: "currency",
-      values: noteValues,
-      totalValue: noteTotal,
-    });
-
-    rows.push({
-      key: "other_rev_myvision",
-      label: "MyVision受託",
-      indent: 2,
-      style: "value",
-      format: "currency",
-      values: mvValues,
-      totalValue: mvTotal,
-    });
-
-    if (otherTotal > 0) {
-      rows.push({
-        key: "other_rev_other",
-        label: "その他",
-        indent: 2,
-        style: "value",
-        format: "currency",
-        values: otherValues,
-        totalValue: otherTotal,
-      });
-    }
-  }
 
   rows.push(sep("sep_rev"));
 
@@ -746,6 +685,355 @@ function getTotalStyle(style: RowStyle): string {
 }
 
 // ================================================================
+// その他売上セクション
+// ================================================================
+
+function OtherRevenueSection({
+  otherRevenues,
+  periods,
+}: {
+  otherRevenues?: OtherRevenueSummary;
+  periods: string[];
+}) {
+  const rows = useMemo(() => {
+    const result: TableRow[] = [];
+    if (!otherRevenues) return result;
+
+    const allPeriodKeys = Object.keys(otherRevenues);
+    const noteTotal = allPeriodKeys.reduce((s, p) => s + (otherRevenues[p]?.note || 0), 0);
+    const mvTotal = allPeriodKeys.reduce((s, p) => s + (otherRevenues[p]?.myvision || 0), 0);
+    const otherTotal = allPeriodKeys.reduce((s, p) => s + (otherRevenues[p]?.other || 0), 0);
+
+    result.push({
+      key: "other_total",
+      label: "その他売上合計",
+      indent: 0,
+      style: "total",
+      format: "currency",
+      values: periods.map((p) => {
+        const r = otherRevenues[p];
+        return r ? (r.note + r.myvision + r.other) || null : null;
+      }),
+      totalValue: noteTotal + mvTotal + otherTotal,
+    });
+    result.push({
+      key: "note_rev",
+      label: "note売上",
+      indent: 1,
+      style: "value",
+      format: "currency",
+      values: periods.map((p) => otherRevenues[p]?.note || null),
+      totalValue: noteTotal,
+    });
+    result.push({
+      key: "myvision_rev",
+      label: "MyVision受託",
+      indent: 1,
+      style: "value",
+      format: "currency",
+      values: periods.map((p) => otherRevenues[p]?.myvision || null),
+      totalValue: mvTotal,
+    });
+    if (otherTotal > 0) {
+      result.push({
+        key: "misc_rev",
+        label: "その他",
+        indent: 1,
+        style: "value",
+        format: "currency",
+        values: periods.map((p) => otherRevenues[p]?.other || null),
+        totalValue: otherTotal,
+      });
+    }
+    return result;
+  }, [otherRevenues, periods]);
+
+  return (
+    <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10">
+      <div className="px-6 py-4 border-b border-white/10">
+        <h2 className="text-lg font-semibold text-white">その他売上</h2>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm whitespace-nowrap">
+          <thead>
+            <tr className="border-b border-white/10">
+              <th className="text-left py-2 px-3 text-xs font-semibold text-gray-500 sticky left-0 bg-surface-card z-10 min-w-[220px]">
+                項目
+              </th>
+              {periods.map((p) => (
+                <th key={p} className="text-right py-2 px-3 text-xs font-semibold text-gray-500 min-w-[75px]">
+                  {p}
+                </th>
+              ))}
+              <th className="text-right py-2 px-3 text-xs font-semibold text-white min-w-[90px] border-l border-white/10">
+                合計
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => {
+              const bg = getRowBg(row.style);
+              const labelCls = getLabelStyle(row.style);
+              const valCls = getValueStyle(row.style);
+              const totCls = getTotalStyle(row.style);
+              return (
+                <tr key={row.key} className={`border-b border-white/[0.06] ${bg}`}>
+                  <td className={`py-1.5 px-3 sticky left-0 z-10 bg-surface-card ${labelCls}`}
+                      style={{ paddingLeft: `${12 + row.indent * 16}px` }}>
+                    {row.label}
+                  </td>
+                  {row.values.map((v, i) => (
+                    <td key={i} className={`py-1.5 px-3 text-right ${valCls}`}>
+                      {fmtValue(v, row.format)}
+                    </td>
+                  ))}
+                  <td className={`py-1.5 px-3 text-right border-l border-white/10 ${totCls}`}>
+                    {fmtValue(row.totalValue, row.format)}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ================================================================
+// 全社セクション（既卒+新卒+その他 + 費用 + 利益）
+// ================================================================
+
+function AllCompanySection({
+  data,
+  otherRevenues,
+  costData,
+  periods,
+}: {
+  data: PLSegmentData;
+  otherRevenues?: OtherRevenueSummary;
+  costData: CostData[] | null;
+  periods: string[];
+}) {
+  const rows = useMemo(() => {
+    const result: TableRow[] = [];
+
+    // その他売上の月別合計を計算
+    const otherByPeriod: Record<string, number> = {};
+    let otherTotal = 0;
+    if (otherRevenues) {
+      for (const p of Object.keys(otherRevenues)) {
+        const r = otherRevenues[p];
+        const sum = (r?.note || 0) + (r?.myvision || 0) + (r?.other || 0);
+        otherByPeriod[p] = sum;
+        otherTotal += sum;
+      }
+    }
+
+    // 費用データをperiod→CostDataのマップに
+    const costMap: Record<string, CostData> = {};
+    if (costData) {
+      for (const c of costData) costMap[c.period] = c;
+    }
+
+    // === 売上 ===
+    // a: スクール確定（補助金含）
+    result.push({
+      key: "all_school_confirmed",
+      label: "a. スクール確定売上（補助金含）",
+      indent: 0, style: "subtotal", format: "currency",
+      values: periods.map((p) => data.schoolConfirmedRevenue[p] || null),
+      totalValue: data.schoolConfirmedRevenueTotal,
+    });
+    // b: 人材確定
+    result.push({
+      key: "all_agent_confirmed",
+      label: "b. 人材確定売上",
+      indent: 0, style: "subtotal", format: "currency",
+      values: periods.map((p) => data.agentConfirmedRevenue[p] || null),
+      totalValue: data.agentConfirmedRevenueTotal,
+    });
+    // c: 人材見込
+    result.push({
+      key: "all_agent_projected",
+      label: "c. 人材見込売上",
+      indent: 0, style: "subtotal", format: "currency",
+      values: periods.map((p) => data.agentProjectedByPeriod[p] || null),
+      totalValue: data.agentProjected,
+    });
+    // その他売上（確定）
+    result.push({
+      key: "all_other_rev",
+      label: "その他売上（note/MV等）",
+      indent: 0, style: "subtotal", format: "currency",
+      values: periods.map((p) => otherByPeriod[p] || null),
+      totalValue: otherTotal,
+    });
+
+    result.push(sep("sep_all1"));
+
+    // d: 確定売上 = a + b + その他
+    result.push({
+      key: "all_confirmed",
+      label: "d. 確定売上（a+b+その他）",
+      indent: 0, style: "total", format: "currency",
+      values: periods.map((p) => {
+        const v = (data.confirmedRevenue[p] || 0) + (otherByPeriod[p] || 0);
+        return v || null;
+      }),
+      totalValue: data.confirmedRevenueTotal + otherTotal,
+    });
+    // e: 見込売上 = a + b + c + その他
+    result.push({
+      key: "all_revenue",
+      label: "e. 見込売上（a+b+c+その他）",
+      indent: 0, style: "total", format: "currency",
+      values: periods.map((p) => {
+        const v = (data.revenue[p] || 0) + (otherByPeriod[p] || 0);
+        return v || null;
+      }),
+      totalValue: data.revenueTotal + otherTotal,
+    });
+    // f: 予測売上 = 見込みLTV合計×月消化率 + その他
+    result.push({
+      key: "all_forecast",
+      label: "f. 予測売上（Forecast）",
+      indent: 0, style: "total", format: "currency",
+      values: periods.map((p) => {
+        const v = (data.forecastRevenue[p] || 0) + (otherByPeriod[p] || 0);
+        return v || null;
+      }),
+      totalValue: data.forecastRevenueTotal + otherTotal,
+    });
+
+    result.push(sep("sep_all2"));
+
+    // === 費用 ===
+    result.push({
+      key: "cost_header",
+      label: "◆費用（freee）",
+      indent: 0, style: "header", format: "none",
+      values: [], totalValue: null,
+    });
+
+    const cogsValues = periods.map((p) => costMap[p]?.cost_of_sales || null);
+    const sgaValues = periods.map((p) => costMap[p]?.sga || null);
+    const totalCostValues = periods.map((p) => {
+      const c = costMap[p];
+      return c ? (c.cost_of_sales + c.sga) || null : null;
+    });
+    const cogsTotal = Object.values(costMap).reduce((s, c) => s + c.cost_of_sales, 0);
+    const sgaTotal = Object.values(costMap).reduce((s, c) => s + c.sga, 0);
+
+    result.push({
+      key: "cost_cogs",
+      label: "売上原価",
+      indent: 1, style: "value", format: "currency",
+      values: cogsValues, totalValue: cogsTotal || null,
+    });
+    result.push({
+      key: "cost_sga",
+      label: "販管費",
+      indent: 1, style: "value", format: "currency",
+      values: sgaValues, totalValue: sgaTotal || null,
+    });
+    result.push({
+      key: "cost_total",
+      label: "費用合計",
+      indent: 0, style: "total", format: "currency",
+      values: totalCostValues, totalValue: (cogsTotal + sgaTotal) || null,
+    });
+
+    result.push(sep("sep_all3"));
+
+    // === 利益 ===
+    // 確定売上ベース利益
+    result.push({
+      key: "profit_confirmed",
+      label: "利益（確定売上 - 費用）",
+      indent: 0, style: "total", format: "currency",
+      values: periods.map((p) => {
+        const rev = (data.confirmedRevenue[p] || 0) + (otherByPeriod[p] || 0);
+        const cost = costMap[p] ? costMap[p].cost_of_sales + costMap[p].sga : 0;
+        return (rev - cost) || null;
+      }),
+      totalValue: (data.confirmedRevenueTotal + otherTotal - cogsTotal - sgaTotal) || null,
+    });
+    // 予測売上ベース利益
+    result.push({
+      key: "profit_forecast",
+      label: "利益（Forecast - 費用）",
+      indent: 0, style: "total", format: "currency",
+      values: periods.map((p) => {
+        const rev = (data.forecastRevenue[p] || 0) + (otherByPeriod[p] || 0);
+        const cost = costMap[p] ? costMap[p].cost_of_sales + costMap[p].sga : 0;
+        return (rev - cost) || null;
+      }),
+      totalValue: (data.forecastRevenueTotal + otherTotal - cogsTotal - sgaTotal) || null,
+    });
+
+    return result;
+  }, [data, otherRevenues, costData, periods]);
+
+  return (
+    <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10">
+      <div className="px-6 py-4 border-b border-white/10">
+        <h2 className="text-lg font-semibold text-white">全社 P/L</h2>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm whitespace-nowrap">
+          <thead>
+            <tr className="border-b border-white/10">
+              <th className="text-left py-2 px-3 text-xs font-semibold text-gray-500 sticky left-0 bg-surface-card z-10 min-w-[220px]">
+                項目
+              </th>
+              {periods.map((p) => (
+                <th key={p} className="text-right py-2 px-3 text-xs font-semibold text-gray-500 min-w-[75px]">
+                  {p}
+                </th>
+              ))}
+              <th className="text-right py-2 px-3 text-xs font-semibold text-white min-w-[90px] border-l border-white/10">
+                合計
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => {
+              if (row.style === "separator") {
+                return <tr key={row.key}><td colSpan={periods.length + 2} className="h-2" /></tr>;
+              }
+              const bg = getRowBg(row.style);
+              const labelCls = getLabelStyle(row.style);
+              const valCls = getValueStyle(row.style);
+              const totCls = getTotalStyle(row.style);
+              const hasValues = row.values.length > 0;
+              return (
+                <tr key={row.key} className={`border-b border-white/[0.06] ${bg}`}>
+                  <td className={`py-1.5 px-3 sticky left-0 z-10 bg-surface-card ${labelCls}`}
+                      style={{ paddingLeft: `${12 + row.indent * 16}px` }}>
+                    {row.label}
+                  </td>
+                  {hasValues
+                    ? row.values.map((v, i) => (
+                        <td key={i} className={`py-1.5 px-3 text-right ${valCls}`}>
+                          {fmtValue(v, row.format)}
+                        </td>
+                      ))
+                    : periods.map((_, i) => <td key={i} className="py-1.5 px-3" />)}
+                  <td className={`py-1.5 px-3 text-right border-l border-white/10 ${totCls}`}>
+                    {fmtValue(row.totalValue, row.format)}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ================================================================
 // PLSection コンポーネント
 // ================================================================
 
@@ -754,17 +1042,15 @@ function PLSection({
   data,
   periods,
   showGradYear,
-  otherRevenues,
 }: {
   label: string;
   data: PLSegmentData;
   periods: string[];
   showGradYear?: boolean;
-  otherRevenues?: OtherRevenueSummary;
 }) {
   const rows = useMemo(
-    () => buildRows(data, periods, showGradYear, otherRevenues),
-    [data, periods, showGradYear, otherRevenues]
+    () => buildRows(data, periods, showGradYear),
+    [data, periods, showGradYear]
   );
 
   const allCollapsibleGroups = useMemo(() => {
@@ -905,9 +1191,68 @@ interface RevenueClientProps {
   otherRevenues?: OtherRevenueSummary;
 }
 
+/** 2つのPLSegmentDataの売上系フィールドを合算 */
+function mergeSegments(a: PLSegmentData, b: PLSegmentData): PLSegmentData {
+  const mergeRec = (x: Record<string, number>, y: Record<string, number>): Record<string, number> => {
+    const result: Record<string, number> = { ...x };
+    for (const k of Object.keys(y)) {
+      result[k] = (result[k] || 0) + (y[k] || 0);
+    }
+    return result;
+  };
+  return {
+    ...a,
+    revenue: mergeRec(a.revenue, b.revenue),
+    confirmedRevenue: mergeRec(a.confirmedRevenue, b.confirmedRevenue),
+    forecastRevenue: mergeRec(a.forecastRevenue, b.forecastRevenue),
+    revenueTotal: a.revenueTotal + b.revenueTotal,
+    confirmedRevenueTotal: a.confirmedRevenueTotal + b.confirmedRevenueTotal,
+    forecastRevenueTotal: a.forecastRevenueTotal + b.forecastRevenueTotal,
+    schoolConfirmedRevenue: mergeRec(a.schoolConfirmedRevenue, b.schoolConfirmedRevenue),
+    schoolConfirmedRevenueTotal: a.schoolConfirmedRevenueTotal + b.schoolConfirmedRevenueTotal,
+    agentConfirmedRevenue: mergeRec(a.agentConfirmedRevenue, b.agentConfirmedRevenue),
+    agentConfirmedRevenueTotal: a.agentConfirmedRevenueTotal + b.agentConfirmedRevenueTotal,
+    expectedLtvRevenue: mergeRec(a.expectedLtvRevenue, b.expectedLtvRevenue),
+    expectedLtvRevenueTotal: a.expectedLtvRevenueTotal + b.expectedLtvRevenueTotal,
+    agentConfirmedByPeriod: mergeRec(a.agentConfirmedByPeriod, b.agentConfirmedByPeriod),
+    agentProjectedByPeriod: mergeRec(a.agentProjectedByPeriod, b.agentProjectedByPeriod),
+    agentConfirmed: a.agentConfirmed + b.agentConfirmed,
+    agentProjected: a.agentProjected + b.agentProjected,
+    // 以下は全社で合算しても意味が薄いがインターフェース互換のため
+    channels: [],
+    totals: {},
+    grandTotals: a.grandTotals,
+    ltvSchool: {},
+    ltvWithAgent: {},
+    cumulativeLtvSchool: 0,
+    cumulativeLtvWithAgent: 0,
+    ltvPerApp: 0,
+  };
+}
+
 export function RevenueClient({ plData, otherRevenues }: RevenueClientProps) {
   const [periodRange, setPeriodRange] = useState<PeriodRange>("12m");
-  const [segmentTab, setSegmentTab] = useState<SegmentTab>("kisotsu");
+  const [segmentTab, setSegmentTab] = useState<SegmentTab>("all");
+  const [costData, setCostData] = useState<CostData[] | null>(null);
+
+  // freee費用データ取得
+  useEffect(() => {
+    const now = new Date();
+    const m = now.getMonth() + 1;
+    const fy = m >= 4 ? now.getFullYear() : now.getFullYear() - 1;
+    fetch(`/api/freee/pl?startYear=${fy - 1}&endYear=${fy}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (Array.isArray(d) && d.length > 0) {
+          setCostData(d.map((item: CostData) => ({
+            period: item.period,
+            cost_of_sales: item.cost_of_sales,
+            sga: item.sga,
+          })));
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const displayPeriods = useMemo(() => {
     const periods = periodRange === "all"
@@ -916,8 +1261,25 @@ export function RevenueClient({ plData, otherRevenues }: RevenueClientProps) {
     return [...periods].reverse();
   }, [plData.periods, periodRange]);
 
-  const currentData = segmentTab === "kisotsu" ? plData.kisotsu : plData.shinsotsu;
-  const currentLabel = segmentTab === "kisotsu" ? "既卒スクール×エージェント事業" : "新卒スクール事業";
+  // 全社タブ用: 既卒+新卒を合算
+  const allSegmentData = useMemo(
+    () => mergeSegments(plData.kisotsu, plData.shinsotsu),
+    [plData.kisotsu, plData.shinsotsu]
+  );
+
+  const tabConfig: { key: SegmentTab; label: string }[] = [
+    { key: "all", label: "全社" },
+    { key: "kisotsu", label: "既卒" },
+    { key: "shinsotsu", label: "新卒" },
+    { key: "other", label: "その他" },
+  ];
+
+  const tabLabels: Record<SegmentTab, string> = {
+    all: "全社 P/L",
+    kisotsu: "既卒スクール×エージェント事業",
+    shinsotsu: "新卒スクール事業",
+    other: "その他売上",
+  };
 
   return (
     <div className="p-6 space-y-6">
@@ -925,10 +1287,7 @@ export function RevenueClient({ plData, otherRevenues }: RevenueClientProps) {
         <div className="flex items-center gap-4">
           <h1 className="text-2xl font-bold text-white">PL</h1>
           <div className="flex gap-1 bg-white/5 rounded-lg p-0.5">
-            {([
-              { key: "kisotsu" as SegmentTab, label: "既卒" },
-              { key: "shinsotsu" as SegmentTab, label: "新卒" },
-            ]).map(({ key, label }) => (
+            {tabConfig.map(({ key, label }) => (
               <button
                 key={key}
                 onClick={() => setSegmentTab(key)}
@@ -964,13 +1323,26 @@ export function RevenueClient({ plData, otherRevenues }: RevenueClientProps) {
         </div>
       </div>
 
-      <PLSection
-        label={currentLabel}
-        data={currentData}
-        periods={displayPeriods}
-        showGradYear={segmentTab === "shinsotsu"}
-        otherRevenues={otherRevenues}
-      />
+      {segmentTab === "other" ? (
+        <OtherRevenueSection
+          otherRevenues={otherRevenues}
+          periods={displayPeriods}
+        />
+      ) : segmentTab === "all" ? (
+        <AllCompanySection
+          data={allSegmentData}
+          otherRevenues={otherRevenues}
+          costData={costData}
+          periods={displayPeriods}
+        />
+      ) : (
+        <PLSection
+          label={tabLabels[segmentTab]}
+          data={segmentTab === "kisotsu" ? plData.kisotsu : plData.shinsotsu}
+          periods={displayPeriods}
+          showGradYear={segmentTab === "shinsotsu"}
+        />
+      )}
     </div>
   );
 }
