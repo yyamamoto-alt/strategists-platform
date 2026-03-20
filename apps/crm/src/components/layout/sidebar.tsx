@@ -28,10 +28,17 @@ const navGroups: NavGroup[] = [
       { name: "KPI", href: "/revenue" },
       { name: "顧客DB", href: "/customers" },
       { name: "パイプライン", href: "/pipeline" },
-      { name: "マーケティング分析", href: "/analytics" },
       { name: "競合分析", href: "/competitors" },
+    ],
+  },
+  {
+    title: "マーケティング",
+    items: [
+      { name: "マーケティング分析", href: "/analytics" },
       { name: "広告分析レポート", href: "/ads-reports" },
     ],
+    collapsible: true,
+    defaultOpen: true,
   },
   {
     title: "システム",

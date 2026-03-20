@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getLmsSession } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { getLmsSession, createLmsServerClient } from "@/lib/supabase/server";
 
 interface ReorderItem {
   id: string;
@@ -32,7 +31,8 @@ export async function PUT(
     return NextResponse.json({ error: "modules配列は必須です" }, { status: 400 });
   }
 
-  const supabase = createAdminClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const supabase = await createLmsServerClient() as any;
   const errors: string[] = [];
 
   // モジュールの sort_order 更新

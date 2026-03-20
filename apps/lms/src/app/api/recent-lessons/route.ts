@@ -1,5 +1,4 @@
-import { getLmsSession } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { getLmsSession, createLmsServerClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -9,7 +8,7 @@ export async function GET() {
   if (!session?.customerId)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const supabase = createAdminClient();
+  const supabase = await createLmsServerClient();
 
   const { data } = await supabase
     .from("lesson_progress")

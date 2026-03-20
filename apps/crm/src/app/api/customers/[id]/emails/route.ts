@@ -18,7 +18,7 @@ export async function GET(_request: Request, { params }: Props) {
     .order("is_primary", { ascending: false });
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: "操作に失敗しました" }, { status: 500 });
   }
 
   return NextResponse.json(data);
@@ -54,7 +54,7 @@ export async function POST(request: Request, { params }: Props) {
         { status: 409 }
       );
     }
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: "操作に失敗しました" }, { status: 500 });
   }
 
   return NextResponse.json(data, { status: 201 });

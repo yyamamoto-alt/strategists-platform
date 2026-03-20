@@ -19,7 +19,7 @@ export async function GET(
     .single();
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 404 });
+    return NextResponse.json({ error: "操作に失敗しました" }, { status: 404 });
   }
   return NextResponse.json(data);
 }
@@ -62,7 +62,7 @@ export async function PATCH(
     .single();
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: "操作に失敗しました" }, { status: 500 });
   }
   return NextResponse.json(data);
 }
@@ -79,7 +79,7 @@ export async function DELETE(
   const { error } = await db.from("automations").delete().eq("id", id);
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: "操作に失敗しました" }, { status: 500 });
   }
   return NextResponse.json({ success: true });
 }

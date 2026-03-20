@@ -1,9 +1,13 @@
 import { createServiceClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { requireAdmin } from "@/lib/api-auth";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
+  const { error: authError } = await requireAdmin();
+  if (authError) return authError;
+
   const supabase = createServiceClient();
 
   // user_roles 一覧を取得（権限フィールド含む）

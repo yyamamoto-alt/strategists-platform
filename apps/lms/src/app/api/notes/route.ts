@@ -1,5 +1,4 @@
-import { getLmsSession } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { getLmsSession, createLmsServerClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 
 // GET /api/notes?lesson_id=xxx — レッスンメモ取得
@@ -14,7 +13,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "lesson_id is required" }, { status: 400 });
   }
 
-  const supabase = createAdminClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const supabase = await createLmsServerClient() as any;
 
   const { data, error } = await supabase
     .from("lesson_notes")
@@ -54,7 +54,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "content must be a string" }, { status: 400 });
   }
 
-  const supabase = createAdminClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const supabase = await createLmsServerClient() as any;
 
   const { data, error } = await supabase
     .from("lesson_notes")

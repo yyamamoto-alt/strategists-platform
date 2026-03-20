@@ -49,7 +49,7 @@ export async function PATCH(request: Request, { params }: Props) {
     .single();
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: "操作に失敗しました" }, { status: 500 });
   }
 
   if (!data) {
@@ -79,7 +79,7 @@ export async function DELETE(_request: Request, { params }: Props) {
     .eq("id", id);
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: "操作に失敗しました" }, { status: 500 });
   }
 
   revalidateTag("orders");

@@ -1,10 +1,14 @@
 import { createServiceClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { headers } from "next/headers";
+import { requireAdmin } from "@/lib/api-auth";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
+  const { error: authError } = await requireAdmin();
+  if (authError) return authError;
+
   const {
     role,
     display_name,
@@ -47,7 +51,7 @@ export async function POST(request: Request) {
 
   if (error) {
     return NextResponse.json(
-      { error: `招待の作成に失敗しました: ${error.message}` },
+      { error: "招待の作成に失敗しました" },
       { status: 500 }
     );
   }

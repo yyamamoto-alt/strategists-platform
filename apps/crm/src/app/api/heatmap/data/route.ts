@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
       .gte("created_at", sinceStr)
       .order("created_at", { ascending: false }) as { data: { lp_version: string; created_at: string }[] | null; error: { message: string } | null };
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return NextResponse.json({ error: "操作に失敗しました" }, { status: 500 });
 
     // バージョンごとに最初と最後の日時、件数を集計
     const vMap = new Map<string, { count: number; first: string; last: string }>();
@@ -66,7 +66,7 @@ export async function GET(req: NextRequest) {
     const { data, error } = await baseQuery("session_id, scroll_depth")
       .eq("event_type", "scroll") as { data: { session_id: string; scroll_depth: number | null }[] | null; error: { message: string } | null };
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return NextResponse.json({ error: "操作に失敗しました" }, { status: 500 });
 
     const sessionMax = new Map<string, number>();
     for (const row of data || []) {
@@ -88,7 +88,7 @@ export async function GET(req: NextRequest) {
   const { data, error } = await baseQuery("x_pct, y_pct")
     .eq("event_type", "click") as { data: { x_pct: number | null; y_pct: number | null }[] | null; error: { message: string } | null };
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return NextResponse.json({ error: "操作に失敗しました" }, { status: 500 });
 
   const grid = new Map<string, number>();
   let maxCount = 0;

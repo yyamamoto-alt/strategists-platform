@@ -1,10 +1,10 @@
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createLmsServerClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
-  const supabase = createAdminClient();
+  const supabase = await createLmsServerClient();
   const { searchParams } = request.nextUrl;
   const company = searchParams.get("company");
   const tag = searchParams.get("tag");

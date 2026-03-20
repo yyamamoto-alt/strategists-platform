@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { getLmsSession } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { getLmsSession, createLmsServerClient } from "@/lib/supabase/server";
 
 // GET /api/announcements — アクティブなお知らせ取得（ログインユーザー用、プラン別フィルタ）
 export async function GET() {
@@ -9,7 +8,7 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const supabase = createAdminClient();
+  const supabase = await createLmsServerClient();
 
   const { data, error } = await supabase
     .from("announcements")

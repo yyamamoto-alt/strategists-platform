@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getLmsSession } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { getLmsSession, createLmsServerClient } from "@/lib/supabase/server";
 
 // PATCH /api/modules/[id] — モジュール更新
 export async function PATCH(
@@ -34,7 +33,8 @@ export async function PATCH(
     return NextResponse.json({ error: "更新するフィールドがありません" }, { status: 400 });
   }
 
-  const supabase = createAdminClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const supabase = await createLmsServerClient() as any;
 
   const { data, error } = await supabase
     .from("modules")
@@ -62,7 +62,8 @@ export async function DELETE(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const supabase = createAdminClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const supabase = await createLmsServerClient() as any;
 
   const { error } = await supabase
     .from("modules")

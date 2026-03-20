@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { getLmsSession } from "@/lib/supabase/server";
+import { getLmsSession, createLmsServerClient } from "@/lib/supabase/server";
 
 // GET /api/courses/[id]/plans — コースに紐づくプランID一覧
 export async function GET(
@@ -13,7 +12,8 @@ export async function GET(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const supabase = createAdminClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const supabase = await createLmsServerClient() as any;
   const { data, error } = await supabase
     .from("course_plan_access")
     .select("plan_id")
@@ -51,7 +51,8 @@ export async function PUT(
     return NextResponse.json({ error: "plan_ids must be an array" }, { status: 400 });
   }
 
-  const supabase = createAdminClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const supabase = await createLmsServerClient() as any;
 
   // 既存の紐付けを全削除
   const { error: deleteError } = await supabase

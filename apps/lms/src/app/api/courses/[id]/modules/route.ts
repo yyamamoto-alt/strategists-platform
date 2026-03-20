@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getLmsSession } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { getLmsSession, createLmsServerClient } from "@/lib/supabase/server";
 
 // GET /api/courses/[id]/modules — モジュール一覧（lessons含む）
 export async function GET(
@@ -13,7 +12,7 @@ export async function GET(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const supabase = createAdminClient();
+  const supabase = await createLmsServerClient();
 
   const { data: modules, error } = await supabase
     .from("modules")
@@ -65,7 +64,7 @@ export async function POST(
     return NextResponse.json({ error: "モジュール名は必須です" }, { status: 400 });
   }
 
-  const supabase = createAdminClient();
+  const supabase = await createLmsServerClient();
 
   // sort_order: 既存最大値 + 1
   const { data: maxOrder } = await supabase

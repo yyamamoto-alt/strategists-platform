@@ -11,6 +11,9 @@ export async function GET(request: Request) {
     return NextResponse.json([]);
   }
 
+  // Supabase PostgREST特殊文字をエスケープ
+  const sanitized = q.replace(/[%_\\(),."]/g, (ch) => `\\${ch}`);
+
   const supabase = createServiceClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as any;
@@ -19,11 +22,11 @@ export async function GET(request: Request) {
   const { data, error } = await db
     .from("customers")
     .select("id, name, name_kana, email, attribute")
-    .or(`name.ilike.%${q}%,name_kana.ilike.%${q}%,email.ilike.%${q}%`)
+    .or(`name.ilike.%${sanitized}%,name_kana.ilike.%${sanitized}%,email.ilike.%${sanitized}%`)
     .limit(10);
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: "操作に失敗しました" }, { status: 500 });
   }
 
   return NextResponse.json(data || []);

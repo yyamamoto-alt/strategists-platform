@@ -12,7 +12,7 @@ export async function GET() {
     .order("created_at", { ascending: false });
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: "操作に失敗しました" }, { status: 500 });
   }
 
   return NextResponse.json(data);
@@ -39,7 +39,7 @@ export async function POST(request: Request) {
     .single();
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: "操作に失敗しました" }, { status: 500 });
   }
 
   return NextResponse.json(data, { status: 201 });

@@ -200,7 +200,7 @@ export async function POST() {
     return NextResponse.json(
       {
         error: "AI示唆の生成に失敗しました",
-        detail: error instanceof Error ? error.message : String(error),
+        detail: process.env.NODE_ENV === "development" ? (error instanceof Error ? error.message : String(error)) : undefined,
       },
       { status: 500 }
     );

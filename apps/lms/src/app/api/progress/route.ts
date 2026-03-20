@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getLmsSession } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { getLmsSession, createLmsServerClient } from "@/lib/supabase/server";
 
 // GET /api/progress?course_id=xxx — コース内の全レッスン進捗取得
 export async function GET(request: NextRequest) {
@@ -14,7 +13,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "course_id is required" }, { status: 400 });
   }
 
-  const supabase = createAdminClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const supabase = await createLmsServerClient() as any;
 
   // コースのレッスンID一覧を取得
   const { data: lessons } = await supabase
@@ -65,7 +65,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid status" }, { status: 400 });
   }
 
-  const supabase = createAdminClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const supabase = await createLmsServerClient() as any;
   const now = new Date().toISOString();
 
   // ステータスの降格を防ぐ（完了 → 閲覧済みへの戻りは不可）

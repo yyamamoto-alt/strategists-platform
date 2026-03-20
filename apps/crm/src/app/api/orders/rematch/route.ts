@@ -18,7 +18,7 @@ export async function POST() {
     .eq("match_status", "unmatched");
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: "操作に失敗しました" }, { status: 500 });
   }
 
   if (!unmatchedOrders || unmatchedOrders.length === 0) {

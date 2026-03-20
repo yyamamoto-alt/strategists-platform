@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getLmsSession } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { getLmsSession, createLmsServerClient } from "@/lib/supabase/server";
 
 export async function POST(req: NextRequest) {
   try {
@@ -35,7 +34,8 @@ export async function POST(req: NextRequest) {
     const ext = file.name.split(".").pop() || "jpg";
     const filePath = `${session.user.id}/avatar.${ext}`;
 
-    const supabase = createAdminClient();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const supabase = await createLmsServerClient() as any;
 
     // Upload to storage (upsert to overwrite existing)
     const arrayBuffer = await file.arrayBuffer();

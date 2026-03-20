@@ -1,9 +1,9 @@
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createLmsServerClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
 // GET /api/forms - アクティブなフォーム一覧（受講生向け）
 export async function GET() {
-  const admin = createAdminClient();
+  const admin = await createLmsServerClient();
 
   const { data: forms, error } = await admin
     .from("forms")

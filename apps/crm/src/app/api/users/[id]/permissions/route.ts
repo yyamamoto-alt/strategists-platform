@@ -1,11 +1,15 @@
 import { createServiceClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { requireAdmin } from "@/lib/api-auth";
 
 interface Props {
   params: Promise<{ id: string }>;
 }
 
 export async function PATCH(request: Request, { params }: Props) {
+  const { session, error: authError } = await requireAdmin();
+  if (authError) return authError;
+
   const { id } = await params;
   const body = await request.json();
   const supabase = createServiceClient();

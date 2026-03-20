@@ -25,7 +25,7 @@ const ADS_START = "2025-04";
 
 export async function MetaAdsSection() {
   const [campaigns, funnel] = await Promise.all([
-    fetchMetaCampaignDaily(180),
+    fetchMetaCampaignDaily(730),
     fetchMetaFunnelData(),
   ]);
 

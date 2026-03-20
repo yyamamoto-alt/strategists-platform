@@ -1,5 +1,4 @@
-import { createAdminClient } from "@/lib/supabase/admin";
-import { getLmsSession } from "@/lib/supabase/server";
+import { getLmsSession, createLmsServerClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
 // GET /api/mypage - ログインユーザーの顧客情報を返す
@@ -9,7 +8,8 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const admin = createAdminClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const admin = await createLmsServerClient() as any;
   const email = session.user.email;
   const userId = session.user.id;
 

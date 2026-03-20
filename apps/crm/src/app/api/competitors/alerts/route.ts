@@ -30,7 +30,7 @@ export async function GET(request: Request) {
   const { data, error } = await query;
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: "操作に失敗しました" }, { status: 500 });
   }
 
   return NextResponse.json({ alerts: data || [] });
@@ -52,7 +52,7 @@ export async function PATCH(request: Request) {
       .eq("is_read", false);
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ error: "操作に失敗しました" }, { status: 500 });
     }
     return NextResponse.json({ ok: true });
   }
@@ -67,7 +67,7 @@ export async function PATCH(request: Request) {
     .eq("id", id);
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: "操作に失敗しました" }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true });

@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { getLmsSession } from "@/lib/supabase/server";
+import { getLmsSession, createLmsServerClient } from "@/lib/supabase/server";
 
 // GET /api/student/plan — ログイン中受講生のプラン情報
 export async function GET() {
@@ -18,7 +17,7 @@ export async function GET() {
     return NextResponse.json({ plan: null, target_attribute: null, role: session.role });
   }
 
-  const supabase = createAdminClient();
+  const supabase = await createLmsServerClient();
 
   // customer → attribute 取得
   const { data: customer } = await supabase

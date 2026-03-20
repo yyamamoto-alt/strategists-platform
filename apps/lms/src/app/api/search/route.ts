@@ -1,5 +1,4 @@
-import { getLmsSession } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { getLmsSession, createLmsServerClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -12,7 +11,8 @@ export async function GET(request: NextRequest) {
   const q = request.nextUrl.searchParams.get("q");
   if (!q || q.length < 2) return NextResponse.json({ results: [] });
 
-  const supabase = createAdminClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const supabase = await createLmsServerClient() as any;
 
   // Search lessons by title or content
   const { data: lessons } = await supabase
@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
     .limit(20);
 
   // Format results
-  const results = (lessons || []).map((l) => ({
+  const results = (lessons || []).map((l: any) => ({
     id: l.id,
     title: l.title,
     courseSlug: (l as any).modules?.courses?.slug || "",

@@ -59,7 +59,7 @@ export async function POST(request: Request) {
 
   if (customerError || !customer) {
     return NextResponse.json(
-      { error: customerError?.message || "顧客作成に失敗しました" },
+      { error: "顧客作成に失敗しました" },
       { status: 500 }
     );
   }

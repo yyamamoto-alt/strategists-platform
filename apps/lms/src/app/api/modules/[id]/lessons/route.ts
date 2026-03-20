@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getLmsSession } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { getLmsSession, createLmsServerClient } from "@/lib/supabase/server";
 
 // POST /api/modules/[id]/lessons — レッスン追加
 export async function POST(
@@ -26,7 +25,7 @@ export async function POST(
     return NextResponse.json({ error: "レッスンタイトルは必須です" }, { status: 400 });
   }
 
-  const supabase = createAdminClient();
+  const supabase = await createLmsServerClient();
 
   // moduleからcourse_idを取得
   const { data: mod, error: modError } = await supabase

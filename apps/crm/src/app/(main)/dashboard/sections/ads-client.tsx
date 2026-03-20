@@ -59,15 +59,32 @@ function yAxisFmt(v: number): string {
   return String(v);
 }
 
+type PeriodFilter = "3m" | "6m" | "12m" | "all";
+const PERIOD_OPTIONS: { value: PeriodFilter; label: string }[] = [
+  { value: "3m", label: "3ヶ月" },
+  { value: "6m", label: "6ヶ月" },
+  { value: "12m", label: "12ヶ月" },
+  { value: "all", label: "全期間" },
+];
+
+function filterByPeriod(data: AdsWeeklyRow[], period: PeriodFilter): AdsWeeklyRow[] {
+  if (period === "all") return data;
+  const now = new Date();
+  const months = period === "3m" ? 3 : period === "6m" ? 6 : 12;
+  const cutoff = new Date(now.getFullYear(), now.getMonth() - months, 1);
+  const cutoffStr = cutoff.toISOString().slice(0, 10);
+  return data.filter(r => r.period >= cutoffStr);
+}
+
 export function AdsSummaryClient({ weeklyRows, monthlyRows, campaignDaily = [] }: Props) {
   const [granularity, setGranularity] = useState<Granularity>("weekly");
   const [viewMode, setViewMode] = useState<ViewMode>("chart");
+  const [periodFilter, setPeriodFilter] = useState<PeriodFilter>("12m");
 
-  // サーバー側でADS_STARTフィルタ済み — クライアントではそのまま使用
   const rows = useMemo(() => {
     const source = granularity === "weekly" ? weeklyRows : monthlyRows;
-    return source;
-  }, [granularity, weeklyRows, monthlyRows]);
+    return filterByPeriod(source, periodFilter);
+  }, [granularity, weeklyRows, monthlyRows, periodFilter]);
 
   // Chart data needs ascending order
   const chartData = useMemo(() => [...rows].reverse().map(r => ({
@@ -120,10 +137,20 @@ export function AdsSummaryClient({ weeklyRows, monthlyRows, campaignDaily = [] }
             <div>
               <h2 className="text-sm font-semibold text-white">Google広告パフォーマンス</h2>
               <p className="text-[10px] text-gray-500 mt-0.5">
-                帰属チャネル: Google広告（直近12ヶ月）
+                帰属チャネル: Google広告
               </p>
             </div>
             <div className="flex items-center gap-2">
+              {/* Period filter */}
+              <select
+                value={periodFilter}
+                onChange={(e) => setPeriodFilter(e.target.value as PeriodFilter)}
+                className="bg-white/5 border border-white/10 text-xs text-gray-300 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-brand"
+              >
+                {PERIOD_OPTIONS.map(opt => (
+                  <option key={opt.value} value={opt.value} className="bg-gray-800">{opt.label}</option>
+                ))}
+              </select>
               {/* View mode toggle */}
               <div className="flex gap-0.5 bg-white/5 rounded-lg p-0.5">
                 <button onClick={() => setViewMode("chart")}

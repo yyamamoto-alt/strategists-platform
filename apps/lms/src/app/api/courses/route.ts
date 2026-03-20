@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getLmsSession } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { getLmsSession, createLmsServerClient } from "@/lib/supabase/server";
 
 function toSlug(title: string): string {
   return title
@@ -19,7 +18,7 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const supabase = createAdminClient();
+  const supabase = await createLmsServerClient();
 
   let query = supabase
     .from("courses")
@@ -60,7 +59,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "コース名は必須です" }, { status: 400 });
   }
 
-  const supabase = createAdminClient();
+  const supabase = await createLmsServerClient();
 
   // slug生成（重複チェック）
   let slug = toSlug(title);

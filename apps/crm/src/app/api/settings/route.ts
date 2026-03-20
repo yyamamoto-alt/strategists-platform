@@ -1,5 +1,6 @@
 import { createServiceClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { requireAdmin } from "@/lib/api-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -8,6 +9,9 @@ export const dynamic = "force-dynamic";
  * List all settings from app_settings table
  */
 export async function GET() {
+  const { error: authError } = await requireAdmin();
+  if (authError) return authError;
+
   const supabase = createServiceClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as any;
@@ -18,7 +22,7 @@ export async function GET() {
     .order("key");
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: "操作に失敗しました" }, { status: 500 });
   }
 
   return NextResponse.json(data);
@@ -30,6 +34,9 @@ export async function GET() {
  * Body: { updates: { key: string, value: any }[] }
  */
 export async function PATCH(request: Request) {
+  const { error: authError } = await requireAdmin();
+  if (authError) return authError;
+
   let body: { updates: { key: string; value: unknown }[] };
   try {
     body = await request.json();
@@ -72,7 +79,7 @@ export async function PATCH(request: Request) {
       .single();
 
     if (error) {
-      errors.push({ key: update.key, error: error.message });
+      errors.push({ key: update.key, error: "操作に失敗しました" });
     } else {
       results.push(data);
     }
