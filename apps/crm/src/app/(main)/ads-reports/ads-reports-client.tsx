@@ -111,6 +111,7 @@ function revenueTooltip(details: AdsWeeklyReport["customer_details"]): string {
     .join("\n");
 }
 
+export type { AdsWeeklyReport };
 type Tab = "google" | "meta";
 
 // ヒートマップ対象のカラム定義
@@ -137,12 +138,25 @@ const HEAT_COLS: HeatCol[] = [
 
 export function AdsReportsClient({ reports }: { reports: AdsWeeklyReport[] }) {
   const [activeTab, setActiveTab] = useState<Tab>("google");
+  const [showAll, setShowAll] = useState(false);
 
-  const filtered = reports.filter((r) =>
+  const filtered = useMemo(() => {
+    const byPlatform = reports.filter((r) =>
+      activeTab === "google"
+        ? r.platform?.toLowerCase() === "google"
+        : r.platform?.toLowerCase() === "meta"
+    );
+    if (showAll) return byPlatform;
+    // 直近4週間のみ
+    const sorted = [...byPlatform].sort((a, b) => b.week_start.localeCompare(a.week_start));
+    return sorted.slice(0, 4);
+  }, [reports, activeTab, showAll]);
+
+  const totalCount = reports.filter((r) =>
     activeTab === "google"
       ? r.platform?.toLowerCase() === "google"
       : r.platform?.toLowerCase() === "meta"
-  );
+  ).length;
 
   // 8週ローリングROAS計算
   const rollingRoasMap = useMemo(() => {
@@ -322,6 +336,18 @@ export function AdsReportsClient({ reports }: { reports: AdsWeeklyReport[] }) {
               })}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* すべて表示 / 折りたたみ */}
+      {totalCount > 4 && (
+        <div className="flex justify-center">
+          <button
+            onClick={() => setShowAll(!showAll)}
+            className="px-4 py-1.5 text-xs text-gray-400 border border-white/10 rounded-lg hover:bg-white/5 hover:text-gray-300 transition-colors"
+          >
+            {showAll ? `直近4週間のみ表示` : `すべて表示（${totalCount}週）`}
+          </button>
         </div>
       )}
     </div>

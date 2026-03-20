@@ -17,6 +17,7 @@ import {
 import { SalesRateSection } from "./sections/sales-rate-section";
 import { SalesCostSection } from "./sections/sales-cost-section";
 import { YouTubeSection } from "./sections/youtube-section";
+import { AdsReportTableSection } from "./sections/ads-report-table-section";
 import {
   HeaderSkeleton,
   ChartsSkeleton,
@@ -51,6 +52,11 @@ export default async function DashboardPage() {
           <MetaAdsSection />
         </Suspense>
       </div>
+
+      {/* 広告週次レポート（直近2週間） */}
+      <Suspense fallback={<CardSkeleton />}>
+        <AdsReportTableSection />
+      </Suspense>
 
       {/* チャネル別状況 2×2 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
