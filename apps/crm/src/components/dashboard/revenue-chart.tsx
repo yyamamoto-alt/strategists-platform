@@ -339,8 +339,8 @@ function UnifiedChart({ data, revenueByChannel }: { data: ThreeTierRevenue[]; re
   const isQuarterly = periodMode === "quarterly";
 
   // チャネル別チャートデータ（ピュア/複合/自社プレフィックスを統合）
-  const { channelChartData, channelKeys } = useMemo(() => {
-    if (!revenueByChannel || revenueByChannel.length === 0) return { channelChartData: [], channelKeys: [] };
+  const { channelChartData, channelQuarterlyData, channelKeys } = useMemo(() => {
+    if (!revenueByChannel || revenueByChannel.length === 0) return { channelChartData: [], channelQuarterlyData: [], channelKeys: [] };
     const mergeName = (name: string) => name.replace(/^(ピュア|複合|自社)/, "");
     // 全チャネルを統合名で集計して売上順にソート
     const totals: Record<string, number> = {};
@@ -370,13 +370,28 @@ function UnifiedChart({ data, revenueByChannel }: { data: ThreeTierRevenue[]; re
     });
 
     const keys = hasOthers ? [...topChannels, "その他"] : topChannels;
-    return { channelChartData: rows, channelKeys: keys };
+
+    // 四半期集計
+    const qMap: Record<string, Record<string, number | string>> = {};
+    for (const row of rows) {
+      const [y, m] = String(row.period).split("/").map(Number);
+      const qKey = `${y}/Q${Math.ceil(m / 3)}`;
+      if (!qMap[qKey]) qMap[qKey] = { period: qKey };
+      const target = qMap[qKey];
+      for (const k of keys) {
+        target[k] = (Number(target[k]) || 0) + (Number(row[k]) || 0);
+      }
+    }
+    const quarterlyRows = Object.values(qMap).sort((a, b) => String(a.period).localeCompare(String(b.period)));
+
+    return { channelChartData: rows, channelQuarterlyData: quarterlyRows, channelKeys: keys };
   }, [revenueByChannel]);
 
   const yMax = useMemo(() => {
     let max = 0;
     if (viewMode === "channel") {
-      for (const d of channelChartData) {
+      const src = isQuarterly ? channelQuarterlyData : channelChartData;
+      for (const d of src) {
         let total = 0;
         for (const k of channelKeys) total += Number(d[k] || 0);
         if (total > max) max = total;
@@ -507,7 +522,7 @@ function UnifiedChart({ data, revenueByChannel }: { data: ThreeTierRevenue[]; re
 
       {viewMode === "channel" && channelChartData.length > 0 ? (
         <ResponsiveContainer width="100%" height={600}>
-          <ComposedChart data={channelChartData} margin={{ top: 30, right: 10, left: 10, bottom: 5 }}>
+          <ComposedChart data={isQuarterly ? channelQuarterlyData : channelChartData} margin={{ top: 30, right: 10, left: 10, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
             <XAxis
               dataKey="period"
