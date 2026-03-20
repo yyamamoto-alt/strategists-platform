@@ -210,12 +210,12 @@ const CHANNEL_COLOR_MAP: Record<string, string> = {
   "Google広告":    "#f97316", // オレンジ
   "X広告":         "#ef4444", // 赤
   "Instagram":    "#f43f5e", // ローズ
-  // --- Organic（寒色系） ---
+  // --- Organic ---
   "SEO":          "#15803d", // 濃い緑
-  "X":            "#6366f1", // インディゴ
-  "YouTube":      "#8b5cf6", // 紫
+  "X":            "#1f2937", // 黒
+  "YouTube":      "#dc2626", // 赤
   "note":         "#10b981", // エメラルド
-  "自社メディア":    "#06b6d4", // シアン
+  "自社メディア":    "#eab308", // 黄色
   "口コミ・紹介":    "#14b8a6", // ティール
   "コンサルタイムズ": "#84cc16", // ライム
   "Lステップ":      "#a78bfa", // ラベンダー
@@ -405,7 +405,19 @@ function UnifiedChart({ data, revenueByChannel }: { data: ThreeTierRevenue[]; re
       return r;
     });
 
-    const keys = hasOthers ? [...topChannels, "その他"] : topChannels;
+    // 積み上げ順序: Paid隣接、Organic、その他の順
+    const STACK_ORDER = [
+      "SEO", "自社メディア", "X", "YouTube", "note", "口コミ・紹介", "コンサルタイムズ",
+      "FB広告", "Google広告", "X広告", "Instagram",
+      "Lステップ", "Aces", "Udemy", "ココナラ", "アフィリエイト", "インフルエンサー",
+      "不明", "その他",
+    ];
+    const allKeys = hasOthers ? [...topChannels, "その他"] : topChannels;
+    const keys = allKeys.sort((a, b) => {
+      const ai = STACK_ORDER.indexOf(a);
+      const bi = STACK_ORDER.indexOf(b);
+      return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+    });
 
     // 四半期集計
     const qMap: Record<string, Record<string, number | string>> = {};
