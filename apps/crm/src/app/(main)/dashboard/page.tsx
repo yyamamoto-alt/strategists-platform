@@ -6,6 +6,7 @@ import { HeaderSection } from "./sections/header-section";
 import { ChartsSection } from "./sections/charts-section";
 import { AdsSection } from "./sections/ads-section";
 import { MetaAdsSection } from "./sections/meta-ads-section";
+import { AdsKpiSection } from "./sections/ads-kpi-section";
 import { ReceivableSection } from "./sections/receivable-section";
 import {
   ChannelKisotsuApp,
@@ -57,6 +58,11 @@ export default async function DashboardPage() {
           <MetaAdsSection />
         </Suspense>
       </div>
+
+      {/* 広告KPI（デイリー） */}
+      <Suspense fallback={<CardSkeleton />}>
+        <AdsKpiSection />
+      </Suspense>
 
       {/* 広告週次レポート（直近2週間） */}
       <Suspense fallback={<CardSkeleton />}>
