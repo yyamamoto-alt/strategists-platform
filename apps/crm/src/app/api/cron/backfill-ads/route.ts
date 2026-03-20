@@ -176,7 +176,9 @@ export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
   const url = new URL(request.url);
   const secretParam = url.searchParams.get("secret");
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}` && secretParam !== process.env.CRON_SECRET) {
+  const validSecrets = [process.env.CRON_SECRET, process.env.SUPABASE_SERVICE_ROLE_KEY].filter(Boolean);
+  const isAuthed = validSecrets.some(s => authHeader === `Bearer ${s}` || secretParam === s);
+  if (!isAuthed) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
