@@ -222,7 +222,7 @@ export function YouTubeDashboardClient({ weeklyViews, weeklyMinutes, videoInfoMa
         <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between">
           <div>
             <h3 className="text-sm font-medium text-gray-200">YouTube 視聴推移</h3>
-            <p className="text-[10px] text-gray-500 mt-0.5">週ごとのトップ{TOP_N}動画 + その他</p>
+            <p className="text-[10px] text-gray-500 mt-0.5">月ごとのトップ{TOP_N}動画 + その他</p>
           </div>
           <div className="flex items-center gap-2">
             {hasShorts && (
@@ -248,9 +248,14 @@ export function YouTubeDashboardClient({ weeklyViews, weeklyMinutes, videoInfoMa
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={chartData} stackOffset="none">
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-              <XAxis dataKey="week" tick={{ fontSize: 9, fill: "#6b7280" }}
-                tickFormatter={(v: string) => `${parseInt(v.slice(5, 7))}/${v.slice(8, 10)}`}
-                interval={Math.max(0, Math.floor(chartData.length / 12))} />
+              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+              <XAxis dataKey="week"
+                tick={((props: any) => (
+                  <text x={props.x} y={props.y + 8} textAnchor="end" fill="#6b7280" fontSize={9} transform={`rotate(-45, ${props.x}, ${props.y + 8})`}>
+                    {formatMonth(props.payload.value)}
+                  </text>
+                )) as any}
+                interval={0} height={50} />
               <YAxis tick={{ fontSize: 9, fill: "#6b7280" }} tickFormatter={yAxisFmt} />
               <Tooltip content={<VideoTooltip />} />
               {topVideoIds.map((vid, i) => (
@@ -286,8 +291,14 @@ export function YouTubeDashboardClient({ weeklyViews, weeklyMinutes, videoInfoMa
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={ltvMonthly}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                  <XAxis dataKey="month" tick={{ fontSize: 9, fill: "#6b7280" }}
-                    tickFormatter={formatMonth} />
+                  {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                  <XAxis dataKey="month"
+                    tick={((props: any) => (
+                      <text x={props.x} y={props.y + 8} textAnchor="end" fill="#6b7280" fontSize={9} transform={`rotate(-45, ${props.x}, ${props.y + 8})`}>
+                        {formatMonth(props.payload.value)}
+                      </text>
+                    )) as any}
+                    interval={0} height={50} />
                   <YAxis tick={{ fontSize: 9, fill: "#6b7280" }} tickFormatter={yAxisFmt} />
                   <Tooltip content={<LTVTooltip />} />
                   <Bar dataKey="school_kisotsu" name="確定売上(既卒)" stackId="ltv" fill={LTV_COLORS.school_kisotsu} />

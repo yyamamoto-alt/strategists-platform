@@ -11,14 +11,8 @@ import {
   type YouTubeLTVMonthlyRow,
 } from "./youtube-client";
 
-/** 週キーを算出（月曜始まり） */
-function weekKey(dateStr: string): string {
-  const d = new Date(dateStr);
-  const day = d.getDay();
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-  const mon = new Date(d);
-  mon.setDate(diff);
-  return mon.toISOString().slice(0, 10);
+function monthKey(dateStr: string): string {
+  return dateStr.slice(0, 7);
 }
 
 function funnelIsClosed(stage: string | null): boolean {
@@ -29,6 +23,20 @@ function funnelIsClosed(stage: string | null): boolean {
 function isKisotsu(attr: string | null): boolean {
   if (!attr) return false;
   return attr.includes("既卒") || attr.includes("中途");
+}
+
+/** 2つの月の間のすべての月キーを生成 */
+function allMonthsBetween(first: string, last: string): string[] {
+  const result: string[] = [];
+  const [sy, sm] = first.split("-").map(Number);
+  const [ey, em] = last.split("-").map(Number);
+  let y = sy, m = sm;
+  while (y < ey || (y === ey && m <= em)) {
+    result.push(`${y}-${String(m).padStart(2, "0")}`);
+    m++;
+    if (m > 12) { m = 1; y++; }
+  }
+  return result;
 }
 
 export async function YouTubeSection() {
@@ -47,38 +55,36 @@ export async function YouTubeSection() {
     is_short: v.duration_seconds != null && v.duration_seconds <= 60,
   }));
 
-  // --- Aggregate daily data into weekly, per video ---
-  const weeklyViewsMap = new Map<string, Map<string, number>>();
-  const weeklyMinutesMap = new Map<string, Map<string, number>>();
+  // --- Aggregate daily data into MONTHLY, per video ---
+  const monthlyViewsMap = new Map<string, Map<string, number>>();
+  const monthlyMinutesMap = new Map<string, Map<string, number>>();
 
   for (const d of daily) {
-    const wk = weekKey(d.date);
+    const mk = monthKey(d.date);
 
-    if (!weeklyViewsMap.has(wk)) weeklyViewsMap.set(wk, new Map());
-    const wv = weeklyViewsMap.get(wk)!;
-    wv.set(d.video_id, (wv.get(d.video_id) || 0) + d.views);
+    if (!monthlyViewsMap.has(mk)) monthlyViewsMap.set(mk, new Map());
+    const mv = monthlyViewsMap.get(mk)!;
+    mv.set(d.video_id, (mv.get(d.video_id) || 0) + d.views);
 
-    if (!weeklyMinutesMap.has(wk)) weeklyMinutesMap.set(wk, new Map());
-    const wm = weeklyMinutesMap.get(wk)!;
-    wm.set(d.video_id, (wm.get(d.video_id) || 0) + d.estimated_minutes_watched);
+    if (!monthlyMinutesMap.has(mk)) monthlyMinutesMap.set(mk, new Map());
+    const mm = monthlyMinutesMap.get(mk)!;
+    mm.set(d.video_id, (mm.get(d.video_id) || 0) + d.estimated_minutes_watched);
   }
 
-  // Convert to sorted arrays (drop last incomplete week)
-  const toWeeklyArray = (map: Map<string, Map<string, number>>): YouTubeWeeklyVideoData[] => {
-    const arr = Array.from(map.entries())
+  // Convert to sorted arrays (using weekKey field for compatibility)
+  const toMonthlyArray = (map: Map<string, Map<string, number>>): YouTubeWeeklyVideoData[] => {
+    return Array.from(map.entries())
       .sort(([a], [b]) => a.localeCompare(b))
-      .map(([wk, vmap]) => ({
-        weekKey: wk,
+      .map(([mk, vmap]) => ({
+        weekKey: mk,
         videoBreakdown: Object.fromEntries(vmap),
       }));
-    // Drop last week (incomplete)
-    return arr.length > 1 ? arr.slice(0, -1) : arr;
   };
 
-  const weeklyViews = toWeeklyArray(weeklyViewsMap);
-  const weeklyMinutes = toWeeklyArray(weeklyMinutesMap);
+  const monthlyViews = toMonthlyArray(monthlyViewsMap);
+  const monthlyMinutes = toMonthlyArray(monthlyMinutesMap);
 
-  // --- Task 2: YouTube funnel LTV monthly ---
+  // --- YouTube funnel LTV monthly ---
   const closedCustomers = funnel.filter(c => funnelIsClosed(c.stage));
 
   const ltvMonthlyMap = new Map<string, {
@@ -103,26 +109,34 @@ export async function YouTubeSection() {
     const ltv = c.confirmed_amount + c.subsidy_amount + agentFee;
 
     if (isKisotsu(c.attribute)) {
-      // 既卒: confirmed_amount goes to school_kisotsu
       entry.school_kisotsu += c.confirmed_amount;
       entry.subsidy += c.subsidy_amount;
       entry.agent_fee += agentFee;
     } else {
-      // 新卒: confirmed_amount + subsidy goes to shinsotsu
       entry.shinsotsu += c.confirmed_amount + c.subsidy_amount;
     }
 
     entry.customers.push({ name: c.name, ltv });
   }
 
-  const ltvMonthly: YouTubeLTVMonthlyRow[] = Array.from(ltvMonthlyMap.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([month, data]) => ({ month, ...data }));
+  // 全月を埋める（成約ゼロの月もゼロで表示）
+  const allViewMonths = monthlyViews.map(m => m.weekKey);
+  const allLtvMonths = Array.from(ltvMonthlyMap.keys());
+  const allMonthKeys = [...new Set([...allViewMonths, ...allLtvMonths])].sort();
+  const firstMonth = allMonthKeys[0] || monthKey(new Date().toISOString());
+  const lastMonth = allMonthKeys[allMonthKeys.length - 1] || firstMonth;
+  const fullMonths = allMonthsBetween(firstMonth, lastMonth);
+
+  const ltvMonthly: YouTubeLTVMonthlyRow[] = fullMonths.map(month => {
+    const data = ltvMonthlyMap.get(month);
+    if (data) return { month, ...data };
+    return { month, school_kisotsu: 0, subsidy: 0, agent_fee: 0, shinsotsu: 0, customers: [] };
+  });
 
   return (
     <YouTubeDashboardClient
-      weeklyViews={weeklyViews}
-      weeklyMinutes={weeklyMinutes}
+      weeklyViews={monthlyViews}
+      weeklyMinutes={monthlyMinutes}
       videoInfoMap={videoInfoMap}
       ltvMonthly={ltvMonthly}
     />
