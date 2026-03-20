@@ -77,7 +77,9 @@ export function SalesCostClient({ reports, emailChannelMap }: SalesCostClientPro
       const month = toMonthKey(r.date);
       if (!months.includes(month)) continue;
       const cost = calcCost(r.salesPerson, r.attribute);
-      const channel = emailChannelMap[r.customerEmail.toLowerCase()] || "不明";
+      // ピュア/複合を統合（「ピュアFB広告」「複合FB広告」→「FB広告」）
+      const rawChannel = emailChannelMap[r.customerEmail.toLowerCase()] || "不明";
+      const channel = rawChannel.replace(/^(ピュア|複合)/, "");
 
       channelTotal.set(channel, (channelTotal.get(channel) || 0) + cost);
       const mc = monthChannel.get(month);
@@ -120,9 +122,7 @@ export function SalesCostClient({ reports, emailChannelMap }: SalesCostClientPro
       <div className="flex items-center justify-between mb-3">
         <div>
           <h2 className="text-sm font-semibold text-white">営業コスト試算（直近12ヶ月）</h2>
-          <p className="text-[10px] text-gray-500 mt-0.5">
-            田中: ¥9,000/回 / 他スタッフ: 新卒¥3,000・既卒¥4,000 — チャネル別積み上げ
-          </p>
+          <p className="text-[10px] text-gray-500 mt-0.5">チャネル別積み上げ</p>
         </div>
         <div className="flex items-center gap-3">
           <span className="text-lg font-bold text-white">

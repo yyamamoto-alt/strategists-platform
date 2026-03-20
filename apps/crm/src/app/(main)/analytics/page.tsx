@@ -23,6 +23,7 @@ import {
 import { AnalyticsClient } from "./analytics-client";
 import { AdsSection } from "../dashboard/sections/ads-section";
 import { MetaAdsSection } from "../dashboard/sections/meta-ads-section";
+import { createServiceClient } from "@/lib/supabase/server";
 
 export default async function AnalyticsPage() {
   // Use allSettled so one failing fetch doesn't break the entire page
@@ -80,6 +81,13 @@ export default async function AnalyticsPage() {
     youtube: latestDate(youtubeChannelDaily),
   };
 
+  // 広告週次レポート（KPTテーブル用）
+  const supabase = createServiceClient();
+  const { data: adsWeeklyReports } = await (supabase as any)
+    .from("ads_weekly_reports")
+    .select("*")
+    .order("week_start", { ascending: false });
+
   return (
     <>
       <AnalyticsClient
@@ -104,6 +112,7 @@ export default async function AnalyticsPage() {
         lastUpdated={lastUpdated}
         adsSummary={<AdsSection />}
         metaAdsSummary={<MetaAdsSection />}
+        adsWeeklyReports={adsWeeklyReports ?? []}
       />
     </>
   );

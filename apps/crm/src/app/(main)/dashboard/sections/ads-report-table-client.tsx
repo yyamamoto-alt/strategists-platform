@@ -198,7 +198,7 @@ export function AdsReportTableClient({ reports }: { reports: AdsWeeklyReport[] }
             </button>
           </div>
         </div>
-        <Link href="/ads-reports" className="text-[10px] text-brand hover:underline">
+        <Link href="/analytics" className="text-[10px] text-brand hover:underline">
           すべて見る →
         </Link>
       </div>

@@ -90,6 +90,8 @@ export interface AnalyticsProps {
   };
   adsSummary?: React.ReactNode;
   metaAdsSummary?: React.ReactNode;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  adsWeeklyReports?: any[];
 }
 
 /* ───────── Shared Utils ───────── */

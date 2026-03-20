@@ -9,6 +9,7 @@ import { AdsTab } from "@/components/analytics/AdsTab";
 import { MetaAdsTab } from "@/components/analytics/MetaAdsTab";
 import { YouTubeTab } from "./youtube-tab";
 import { HeatmapTab } from "@/components/analytics/HeatmapTab";
+import { AdsWeeklyReportTable } from "@/components/analytics/AdsWeeklyReportTable";
 
 export function AnalyticsClient({
   pageDailyRows,
@@ -32,6 +33,7 @@ export function AnalyticsClient({
   youtubeTrafficSources,
   youtubeSearchTerms,
   lastUpdated,
+  adsWeeklyReports,
 }: AnalyticsProps) {
   const [mainTab, setMainTab] = useState<MainTab>("seo");
 
@@ -80,6 +82,9 @@ export function AnalyticsClient({
       {mainTab === "ads" && (
         <div className="space-y-6">
           {adsSummary}
+          {adsWeeklyReports && adsWeeklyReports.length > 0 && (
+            <AdsWeeklyReportTable reports={adsWeeklyReports} platform="google" />
+          )}
           <AdsTab adsCampaigns={adsCampaigns} adsKeywords={adsKeywords} adsFunnel={adsFunnel} />
         </div>
       )}
@@ -87,6 +92,9 @@ export function AnalyticsClient({
       {mainTab === "meta_ads" && (
         <div className="space-y-6">
           {metaAdsSummary}
+          {adsWeeklyReports && adsWeeklyReports.length > 0 && (
+            <AdsWeeklyReportTable reports={adsWeeklyReports} platform="meta" />
+          )}
           <MetaAdsTab metaCampaigns={metaCampaigns} metaAdsets={metaAdsets} metaAds={metaAds} metaFunnel={metaFunnel} />
         </div>
       )}

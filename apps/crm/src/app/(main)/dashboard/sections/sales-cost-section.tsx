@@ -1,4 +1,5 @@
 import { createServiceClient } from "@/lib/supabase/server";
+import { createAuthClient } from "@/lib/supabase/auth-server";
 import { SalesCostClient } from "./sales-cost-client";
 
 export interface SalesCostReportRow {
@@ -118,6 +119,21 @@ async function fetchEmailChannelMap(): Promise<Record<string, string>> {
 }
 
 export async function SalesCostSection() {
+  // 管理者のみ表示
+  const authClient = createAuthClient();
+  const { data: { user } } = await authClient.auth.getUser();
+  if (user) {
+    const supabase = createServiceClient();
+    const { data: roleData } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id)
+      .single() as { data: { role: string } | null };
+    if (roleData?.role !== "admin") return null;
+  } else {
+    return null;
+  }
+
   const [reports, emailChannelMap] = await Promise.all([
     fetchSalesReportsForCost(),
     fetchEmailChannelMap(),

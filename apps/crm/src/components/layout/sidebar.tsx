@@ -35,7 +35,6 @@ const navGroups: NavGroup[] = [
     title: "マーケティング",
     items: [
       { name: "マーケティング分析", href: "/analytics" },
-      { name: "広告分析レポート", href: "/ads-reports" },
     ],
     collapsible: true,
     defaultOpen: true,
