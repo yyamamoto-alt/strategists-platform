@@ -18,7 +18,8 @@
 
 const CRM_WEBHOOK_URL = "https://strategists-crm.vercel.app/api/webhooks/google-forms";
 const LMS_WEBHOOK_URL = "https://strategists-lms.vercel.app/api/webhook/enrollment";
-const WEBHOOK_SECRET = "f6154b56c835074ddda4ad20ce2d2ecc5d4387ec8d4911522fdd9eff7689608c";
+const CRM_WEBHOOK_SECRET = "8051873c74dafb5e47ab664b2c6506a41ded6aa05d5bf5f9d4fb1d0dd3b05e3c";
+const LMS_WEBHOOK_SECRET = "3d0d933d5f88c362f87684c0fc09ef17474805b8c746822115d512afe7eda4e1";
 const FORM_NAME = "入塾フォーム";
 
 /**
@@ -78,7 +79,7 @@ function onFormSubmit(e) {
 function sendToCRM(data) {
   try {
     const payload = {
-      secret: WEBHOOK_SECRET,
+      secret: CRM_WEBHOOK_SECRET,
       formName: FORM_NAME,
       data: data,
     };
@@ -112,7 +113,7 @@ function sendToLMS(data) {
   try {
     // フォーム項目名からLMSフィールドへ変換
     const lmsData = {
-      webhook_secret: WEBHOOK_SECRET,
+      webhook_secret: LMS_WEBHOOK_SECRET,
     };
 
     for (const [jpKey, value] of Object.entries(data)) {
