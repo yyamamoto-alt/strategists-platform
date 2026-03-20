@@ -211,7 +211,7 @@ const CHANNEL_COLOR_MAP: Record<string, string> = {
   "X広告":         "#ef4444", // 赤
   "Instagram":    "#f43f5e", // ローズ
   // --- Organic（寒色系） ---
-  "SEO":          "#3b82f6", // 青
+  "SEO":          "#15803d", // 濃い緑
   "X":            "#6366f1", // インディゴ
   "YouTube":      "#8b5cf6", // 紫
   "note":         "#10b981", // エメラルド
