@@ -43,6 +43,11 @@ export default async function DashboardPage() {
         <ChartsSection />
       </Suspense>
 
+      {/* チャネル別申込推移 */}
+      <Suspense fallback={<ChannelSkeleton />}>
+        <ChannelTrends />
+      </Suspense>
+
       {/* 広告パフォーマンス 2列 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Suspense fallback={<AdsSummarySkeleton />}>
@@ -75,11 +80,6 @@ export default async function DashboardPage() {
           <ChannelShinsotsuClosed />
         </Suspense>
       </div>
-
-      {/* チャネル別申込推移 */}
-      <Suspense fallback={<ChannelSkeleton />}>
-        <ChannelTrends />
-      </Suspense>
 
       {/* YouTube 視聴推移 + 成約LTV */}
       <Suspense fallback={<CardSkeleton />}>

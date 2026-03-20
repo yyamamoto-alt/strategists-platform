@@ -4,16 +4,25 @@ import {
   computeFunnelMetricsBySegment,
   computeRevenueMetrics,
   computeThreeTierRevenue,
+  computeRevenueByChannel,
 } from "@/lib/data/dashboard-metrics";
 import { fetchNoteSalesByMonth } from "@/lib/data/note-sales";
+import { fetchChannelAttributions } from "@/lib/data/marketing-settings";
 import { ChartsClient } from "./charts-client";
 
 export async function ChartsSection() {
-  const customers = await fetchCustomersWithRelations();
+  const [customers, attributionData] = await Promise.all([
+    fetchCustomersWithRelations(),
+    fetchChannelAttributions(),
+  ]);
+
+  const attrRecord: Record<string, (typeof attributionData)[number]> = {};
+  for (const a of attributionData) attrRecord[a.customer_id] = a;
 
   const funnelBySegment = computeFunnelMetricsBySegment(customers);
   const revenueMetrics = computeRevenueMetrics(customers);
   const threeTierRevenue = computeThreeTierRevenue(customers);
+  const revenueByChannel = computeRevenueByChannel(customers, attrRecord);
 
   // その他売上（note/MyVision）を取得してThreeTierRevenueにマージ
   const supabase = createServiceClient();
@@ -82,6 +91,7 @@ export async function ChartsSection() {
     <ChartsClient
       revenueMetrics={revenueMetrics}
       threeTierRevenue={threeTierRevenue}
+      revenueByChannel={revenueByChannel}
       funnelMetrics={funnelBySegment.all}
       funnelKisotsu={funnelBySegment.kisotsu}
       funnelShinsotsu={funnelBySegment.shinsotsu}

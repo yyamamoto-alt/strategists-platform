@@ -1512,3 +1512,53 @@ export const computeOrderBasedRevenue = unstable_cache(
   ["order-based-revenue"],
   { revalidate: 300, tags: ["orders", "dashboard"] }
 );
+
+// ================================================================
+// チャネル別月次売上ピボット（売上推移の経路別表示用）
+// ================================================================
+
+export interface ChannelMonthlyRevenue {
+  period: string;
+  byChannel: Record<string, number>;
+}
+
+export function computeRevenueByChannel(
+  customers: CustomerWithRelations[],
+  attributionMap?: Record<string, ChannelAttribution>
+): ChannelMonthlyRevenue[] {
+  customers = filterByAnalyticsPeriod(customers);
+  const hasAttribution = attributionMap && Object.keys(attributionMap).length > 0;
+
+  const byPeriod = new Map<string, Record<string, number>>();
+
+  for (const c of customers) {
+    const period = getPeriod(c);
+    if (!period) continue;
+
+    const channel = hasAttribution
+      ? (attributionMap[c.id]?.marketing_channel || "不明")
+      : (c.utm_source || "その他");
+
+    // 売上 = スクール確定 + 補助金 + エージェント(確定+見込み)
+    let revenue = getSchoolRevenue(c);
+    const closed = isStageClosed(c.pipeline?.stage);
+    if (closed) revenue += getSubsidyAmount(c);
+    if (isAgentCustomer(c)) {
+      if (isAgentConfirmed(c)) {
+        revenue += calcExpectedReferralFee(c);
+      } else {
+        revenue += calcAgentProjectedRevenue(c);
+      }
+    }
+
+    if (revenue <= 0) continue;
+
+    if (!byPeriod.has(period)) byPeriod.set(period, {});
+    const m = byPeriod.get(period)!;
+    m[channel] = (m[channel] || 0) + revenue;
+  }
+
+  return Array.from(byPeriod.entries())
+    .map(([period, byChannel]) => ({ period, byChannel }))
+    .sort((a, b) => a.period.localeCompare(b.period));
+}

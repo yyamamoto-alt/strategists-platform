@@ -14,9 +14,15 @@ import {
 } from "recharts";
 import type { RevenueMetrics, ThreeTierRevenue } from "@/types/database";
 
+interface ChannelMonthlyRevenue {
+  period: string;
+  byChannel: Record<string, number>;
+}
+
 interface RevenueChartProps {
   data: RevenueMetrics[];
   threeTierData?: ThreeTierRevenue[];
+  revenueByChannel?: ChannelMonthlyRevenue[];
 }
 
 const formatYen = (value: number) => {
@@ -138,9 +144,9 @@ function ProjectedDotPattern({ id, color }: { id: string; color: string }) {
   );
 }
 
-export function RevenueChart({ data, threeTierData }: RevenueChartProps) {
+export function RevenueChart({ data, threeTierData, revenueByChannel }: RevenueChartProps) {
   if (threeTierData && threeTierData.length > 0) {
-    return <UnifiedChart data={threeTierData} />;
+    return <UnifiedChart data={threeTierData} revenueByChannel={revenueByChannel} />;
   }
   return <FallbackChart data={data} />;
 }
@@ -195,14 +201,22 @@ function useFreeeCoasts(enabled: boolean) {
   return { costMap, loading };
 }
 
+// チャネル別カラーパレット
+const CHANNEL_COLORS = [
+  "#dc2626", "#3b82f6", "#10b981", "#f59e0b", "#8b5cf6",
+  "#ec4899", "#14b8a6", "#f97316", "#6366f1", "#84cc16",
+  "#06b6d4", "#e11d48", "#a855f7", "#22c55e", "#eab308",
+];
+
 /** 統合チャート */
-function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
+function UnifiedChart({ data, revenueByChannel }: { data: ThreeTierRevenue[]; revenueByChannel?: ChannelMonthlyRevenue[] }) {
   const [colors, setColors] = useState<Record<ColorKey, string>>(DEFAULT_COLORS);
   const [showPicker, setShowPicker] = useState(false);
   const [periodMode, setPeriodMode] = useState<"monthly" | "quarterly">("monthly");
   const [showCost, setShowCost] = useState(false);
   const [gradYearFilter, setGradYearFilter] = useState<string | null>(null);
   const [showGradFilter, setShowGradFilter] = useState(false);
+  const [viewMode, setViewMode] = useState<"category" | "channel">("category");
 
   // 利用可能な卒年を抽出
   const availableGradYears = useMemo(() => {
@@ -324,26 +338,65 @@ function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
   const chartData = periodMode === "quarterly" ? quarterlyData : monthlyData;
   const isQuarterly = periodMode === "quarterly";
 
+  // チャネル別チャートデータ
+  const { channelChartData, channelKeys } = useMemo(() => {
+    if (!revenueByChannel || revenueByChannel.length === 0) return { channelChartData: [], channelKeys: [] };
+    // 全チャネルを集計して売上順にソート
+    const totals: Record<string, number> = {};
+    for (const row of revenueByChannel) {
+      for (const [ch, val] of Object.entries(row.byChannel)) {
+        totals[ch] = (totals[ch] || 0) + val;
+      }
+    }
+    const sorted = Object.entries(totals).sort((a, b) => b[1] - a[1]);
+    const topChannels = sorted.slice(0, 10).map(([k]) => k);
+    const hasOthers = sorted.length > 10;
+
+    const rows = revenueByChannel.map(row => {
+      const r: Record<string, number | string> = { period: row.period };
+      let othersSum = 0;
+      for (const [ch, val] of Object.entries(row.byChannel)) {
+        if (topChannels.includes(ch)) {
+          r[ch] = val;
+        } else {
+          othersSum += val;
+        }
+      }
+      if (hasOthers) r["その他"] = othersSum;
+      return r;
+    });
+
+    const keys = hasOthers ? [...topChannels, "その他"] : topChannels;
+    return { channelChartData: rows, channelKeys: keys };
+  }, [revenueByChannel]);
+
   const yMax = useMemo(() => {
     let max = 0;
-    for (const d of chartData) {
-      const barTotal =
-        (d.confirmed_school_kisotsu || 0) +
-        (d.confirmed_subsidy || 0) +
-        (d.confirmed_school_shinsotsu || 0) +
-        (d.confirmed_agent || 0) +
-        (d.content_revenue || 0) +
-        (d.myvision_revenue || 0) +
-        (d.other_misc_revenue || 0) +
-        (d.projected_agent || 0) +
-        (d.ltv_gap || 0);
-      if (barTotal > max) max = barTotal;
-      // 費用表示ON時はコスト合計も考慮
-      if (showCost && d.total_cost > max) max = d.total_cost;
+    if (viewMode === "channel") {
+      for (const d of channelChartData) {
+        let total = 0;
+        for (const k of channelKeys) total += Number(d[k] || 0);
+        if (total > max) max = total;
+      }
+    } else {
+      for (const d of chartData) {
+        const barTotal =
+          (d.confirmed_school_kisotsu || 0) +
+          (d.confirmed_subsidy || 0) +
+          (d.confirmed_school_shinsotsu || 0) +
+          (d.confirmed_agent || 0) +
+          (d.content_revenue || 0) +
+          (d.myvision_revenue || 0) +
+          (d.other_misc_revenue || 0) +
+          (d.projected_agent || 0) +
+          (d.ltv_gap || 0);
+        if (barTotal > max) max = barTotal;
+        if (showCost && d.total_cost > max) max = d.total_cost;
+      }
     }
     const step = 1000000;
     return Math.ceil(max * 1.1 / step) * step || 10000000;
-  }, [chartData, showCost]);
+  }, [chartData, channelChartData, channelKeys, showCost, viewMode]);
 
   const yTicks = useMemo(() => {
     const step = yMax <= 10000000 ? 1000000 : yMax <= 30000000 ? 2000000 : 5000000;
@@ -356,6 +409,27 @@ function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
     <div className="relative">
       {/* ツールバー */}
       <div className="absolute top-0 right-0 z-10 flex items-center gap-2">
+        {/* 項目別 / 経路別 切替 */}
+        {revenueByChannel && revenueByChannel.length > 0 && (
+          <div className="flex items-center bg-surface-elevated border border-white/10 rounded-lg overflow-hidden">
+            <button
+              onClick={() => setViewMode("category")}
+              className={`px-2.5 py-1 text-[10px] font-medium transition-colors ${
+                viewMode === "category" ? "bg-brand text-white" : "text-gray-400 hover:text-white"
+              }`}
+            >
+              項目別
+            </button>
+            <button
+              onClick={() => setViewMode("channel")}
+              className={`px-2.5 py-1 text-[10px] font-medium transition-colors ${
+                viewMode === "channel" ? "bg-brand text-white" : "text-gray-400 hover:text-white"
+              }`}
+            >
+              経路別
+            </button>
+          </div>
+        )}
         <div className="flex items-center bg-surface-elevated border border-white/10 rounded-lg overflow-hidden">
           <button
             onClick={() => setPeriodMode("monthly")}
@@ -427,6 +501,53 @@ function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
         <ColorPicker colors={colors} onChange={handleColorChange} onClose={() => setShowPicker(false)} />
       )}
 
+      {viewMode === "channel" && channelChartData.length > 0 ? (
+        <ResponsiveContainer width="100%" height={600}>
+          <ComposedChart data={channelChartData} margin={{ top: 30, right: 10, left: 10, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+            <XAxis
+              dataKey="period"
+              tick={{ fontSize: 8, fill: "#9ca3af" }}
+              stroke="rgba(255,255,255,0.1)"
+              angle={-45}
+              textAnchor="end"
+              height={45}
+              interval={0}
+              tickFormatter={(v: string) => formatPeriodLabel(v, isQuarterly)}
+            />
+            <YAxis
+              yAxisId="left"
+              tickFormatter={formatYen}
+              tick={{ fontSize: 11, fill: "#9ca3af" }}
+              stroke="rgba(255,255,255,0.1)"
+              domain={[0, yMax]}
+              ticks={yTicks}
+            />
+            <Tooltip
+              formatter={(value, name) => [`¥${Number(value).toLocaleString()}`, name]}
+              contentStyle={{
+                backgroundColor: "#1A1A1A",
+                border: "1px solid rgba(255,255,255,0.1)",
+                borderRadius: "8px",
+                color: "#fff",
+              }}
+              labelStyle={{ color: "#9ca3af" }}
+            />
+            <Legend iconSize={10} wrapperStyle={{ fontSize: 11, color: "#9ca3af" }} />
+            {channelKeys.map((ch, i) => (
+              <Bar
+                key={ch}
+                yAxisId="left"
+                dataKey={ch}
+                name={ch}
+                fill={CHANNEL_COLORS[i % CHANNEL_COLORS.length]}
+                stackId="channel"
+                radius={i === channelKeys.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
+              />
+            ))}
+          </ComposedChart>
+        </ResponsiveContainer>
+      ) : (
       <ResponsiveContainer width="100%" height={600}>
         <ComposedChart data={chartData} margin={{ top: 30, right: 10, left: 10, bottom: 5 }}>
           <defs>
@@ -551,6 +672,7 @@ function UnifiedChart({ data }: { data: ThreeTierRevenue[] }) {
           )}
         </ComposedChart>
       </ResponsiveContainer>
+      )}
     </div>
   );
 }

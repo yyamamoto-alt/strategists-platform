@@ -39,10 +39,10 @@ const VIDEO_COLORS = ["#FF0000", "#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#D
 const OTHER_COLOR = "#4B5563";
 const TOP_N = 7;
 const LTV_COLORS = {
-  school_kisotsu: "#3B82F6",
-  subsidy: "#10B981",
-  agent_fee: "#F59E0B",
-  shinsotsu: "#A78BFA",
+  school_kisotsu: "#2563EB",   // 青（濃）
+  subsidy: "#60A5FA",          // 青（中）
+  agent_fee: "#93C5FD",        // 青（淡）
+  shinsotsu: "#F59E0B",        // オレンジ（新卒）
 };
 
 type ViewMode = "views" | "minutes";
@@ -258,10 +258,11 @@ export function YouTubeDashboardClient({ weeklyViews, weeklyMinutes, videoInfoMa
                 interval={0} height={50} />
               <YAxis tick={{ fontSize: 9, fill: "#6b7280" }} tickFormatter={yAxisFmt} />
               <Tooltip content={<VideoTooltip />} />
+              {/* その他を先に描画（下）、色付き動画を上に積む */}
+              <Bar dataKey="others" stackId="main" fill={OTHER_COLOR} name="その他" />
               {topVideoIds.map((vid, i) => (
                 <Bar key={vid} dataKey={vid} stackId="main" fill={VIDEO_COLORS[i % VIDEO_COLORS.length]} name={shortTitle(vid)} />
               ))}
-              <Bar dataKey="others" stackId="main" fill={OTHER_COLOR} name="その他" />
             </BarChart>
           </ResponsiveContainer>
           <div className="flex flex-wrap gap-2 mt-2 px-1">
