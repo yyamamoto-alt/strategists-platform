@@ -34,6 +34,8 @@ interface TableRow {
   totalValue: number | null;
   collapsibleGroup?: string;
   parentGroup?: string;
+  avg6m?: number | null;
+  avg12m?: number | null;
 }
 
 type PeriodRange = "6m" | "12m" | "all";
@@ -434,6 +436,38 @@ function buildRows(
   rows.push(sep("sep_agent"));
 
   // --- チャネル別 LTV ---
+  // ピュア/複合を統合したチャネルデータを作成
+  const mergeChannelName = (name: string) => name.replace(/^(ピュア|複合|自社)/, "");
+  const mergedChannelMap = new Map<string, { revenue: number; applications: number; closed: number; revenueByPeriod: Record<string, number>; funnelByPeriod: Record<string, { applications: number; closed: number }> }>();
+
+  for (const ch of [...organicChannels, ...paidChannels]) {
+    const merged = mergeChannelName(ch.name);
+    const ex = mergedChannelMap.get(merged) || { revenue: 0, applications: 0, closed: 0, revenueByPeriod: {}, funnelByPeriod: {} };
+    ex.revenue += ch.revenue;
+    ex.applications += ch.totals.applications;
+    ex.closed += ch.totals.closed;
+    for (const p of periods) {
+      ex.revenueByPeriod[p] = (ex.revenueByPeriod[p] || 0) + (ch.revenueByPeriod[p] || 0);
+      if (!ex.funnelByPeriod[p]) ex.funnelByPeriod[p] = { applications: 0, closed: 0 };
+      ex.funnelByPeriod[p].applications += ch.funnel[p]?.applications || 0;
+      ex.funnelByPeriod[p].closed += ch.funnel[p]?.closed || 0;
+    }
+    mergedChannelMap.set(merged, ex);
+  }
+  const mergedChannels = Array.from(mergedChannelMap.entries())
+    .filter(([, v]) => v.applications >= 3)
+    .sort((a, b) => b[1].closed - a[1].closed);
+
+  // 直近6ヶ月・12ヶ月のインデックス計算
+  const last6Periods = periods.slice(-6);
+  const last12Periods = periods.slice(-12);
+
+  function avgOverPeriods(calcFn: (p: string) => number | null, targetPeriods: string[]): number | null {
+    const vals = targetPeriods.map(calcFn).filter((v): v is number => v !== null && v > 0);
+    if (vals.length === 0) return null;
+    return Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
+  }
+
   rows.push({
     key: "ch_ltv_header",
     label: "◆チャネル別 LTV",
@@ -444,11 +478,22 @@ function buildRows(
     totalValue: null,
   });
 
-  // 全体 申込あたりLTV（月別）
+  // ── 申込あたりLTV セクション ──
+  rows.push({
+    key: "ltv_per_app_section",
+    label: "申込あたりLTV",
+    indent: 1,
+    style: "subtotal",
+    format: "none",
+    values: [],
+    totalValue: null,
+  });
+
+  // 全体
   rows.push({
     key: "ltv_per_app_total",
-    label: "全体 申込あたりLTV",
-    indent: 1,
+    label: "全体",
+    indent: 2,
     style: "total",
     format: "currency",
     values: periods.map((p) => {
@@ -457,98 +502,83 @@ function buildRows(
       return apps > 0 ? Math.round(rev / apps) : null;
     }),
     totalValue: data.ltvPerApp,
-  });
-
-  // 全体 成約あたりLTV（月別）
-  rows.push({
-    key: "ltv_per_close_total",
-    label: "全体 成約あたりLTV",
-    indent: 1,
-    style: "total",
-    format: "currency",
-    values: periods.map((p) => {
-      const closed = data.totals[p]?.closed || 0;
+    avg6m: avgOverPeriods((p) => {
+      const apps = data.totals[p]?.applications || 0;
       const rev = data.confirmedRevenue[p] || 0;
-      return closed > 0 ? Math.round(rev / closed) : null;
-    }),
-    totalValue: (() => {
-      const closed = data.grandTotals.closed;
-      return closed > 0 ? Math.round(data.confirmedRevenueTotal / closed) : null;
-    })(),
+      return apps > 0 ? Math.round(rev / apps) : null;
+    }, last6Periods),
+    avg12m: avgOverPeriods((p) => {
+      const apps = data.totals[p]?.applications || 0;
+      const rev = data.confirmedRevenue[p] || 0;
+      return apps > 0 ? Math.round(rev / apps) : null;
+    }, last12Periods),
   });
 
-  // 全体 売上合計（月別）
+  // チャネル別
+  for (const [chName, ch] of mergedChannels) {
+    rows.push({
+      key: `ltv_per_app_${chName}`,
+      label: chName,
+      indent: 2,
+      style: "channel",
+      format: "currency",
+      values: periods.map((p) => {
+        const apps = ch.funnelByPeriod[p]?.applications || 0;
+        const rev = ch.revenueByPeriod[p] || 0;
+        return apps > 0 ? Math.round(rev / apps) : null;
+      }),
+      totalValue: ch.applications > 0 ? Math.round(ch.revenue / ch.applications) : null,
+      avg6m: avgOverPeriods((p) => {
+        const apps = ch.funnelByPeriod[p]?.applications || 0;
+        const rev = ch.revenueByPeriod[p] || 0;
+        return apps > 0 ? Math.round(rev / apps) : null;
+      }, last6Periods),
+      avg12m: avgOverPeriods((p) => {
+        const apps = ch.funnelByPeriod[p]?.applications || 0;
+        const rev = ch.revenueByPeriod[p] || 0;
+        return apps > 0 ? Math.round(rev / apps) : null;
+      }, last12Periods),
+    });
+  }
+
+  rows.push(sep("sep_ch_ltv_app"));
+
+  // ── 売上合計 セクション ──
+  rows.push({
+    key: "ch_rev_section",
+    label: "売上合計",
+    indent: 1,
+    style: "subtotal",
+    format: "none",
+    values: [],
+    totalValue: null,
+  });
+
+  // 全体
   rows.push({
     key: "ch_rev_total",
-    label: "全体 売上合計",
-    indent: 1,
+    label: "全体",
+    indent: 2,
     style: "total",
     format: "currency",
     values: periods.map((p) => data.confirmedRevenue[p] || null),
     totalValue: data.confirmedRevenueTotal,
+    avg6m: avgOverPeriods((p) => data.confirmedRevenue[p] || null, last6Periods),
+    avg12m: avgOverPeriods((p) => data.confirmedRevenue[p] || null, last12Periods),
   });
 
-  rows.push(sep("sep_ch_ltv_total"));
-
-  // チャネル別（申込3件以上のみ表示）
-  const allChannels = sortByClosedDesc([...organicChannels, ...paidChannels].filter(ch => ch.totals.applications >= 3));
-  for (const ch of allChannels) {
-    const chLtvGroupId = `ch_ltv_${ch.name}`;
-
-    // チャネル名ヘッダー（折りたたみ）
+  // チャネル別
+  for (const [chName, ch] of mergedChannels) {
     rows.push({
-      key: chLtvGroupId,
-      label: `${ch.name}`,
-      indent: 1,
-      style: "subtotal",
-      format: "none",
-      values: [],
-      totalValue: null,
-      collapsibleGroup: chLtvGroupId,
-    });
-
-    // 申込あたりLTV
-    rows.push({
-      key: `${chLtvGroupId}_per_app`,
-      label: "申込あたりLTV",
-      indent: 2,
-      style: "channel",
-      format: "currency",
-      values: periods.map((p) => {
-        const apps = ch.funnel[p]?.applications || 0;
-        const rev = ch.revenueByPeriod[p] || 0;
-        return apps > 0 ? Math.round(rev / apps) : null;
-      }),
-      totalValue: ch.totals.applications > 0 ? Math.round(ch.revenue / ch.totals.applications) : null,
-      parentGroup: chLtvGroupId,
-    });
-
-    // 成約あたりLTV
-    rows.push({
-      key: `${chLtvGroupId}_per_close`,
-      label: "成約あたりLTV",
-      indent: 2,
-      style: "channel",
-      format: "currency",
-      values: periods.map((p) => {
-        const closed = ch.funnel[p]?.closed || 0;
-        const rev = ch.revenueByPeriod[p] || 0;
-        return closed > 0 ? Math.round(rev / closed) : null;
-      }),
-      totalValue: ch.totals.closed > 0 ? Math.round(ch.revenue / ch.totals.closed) : null,
-      parentGroup: chLtvGroupId,
-    });
-
-    // 売上合計
-    rows.push({
-      key: `${chLtvGroupId}_rev`,
-      label: "売上合計",
+      key: `ch_rev_${chName}`,
+      label: chName,
       indent: 2,
       style: "channel",
       format: "currency",
       values: periods.map((p) => ch.revenueByPeriod[p] || null),
       totalValue: ch.revenue || null,
-      parentGroup: chLtvGroupId,
+      avg6m: avgOverPeriods((p) => ch.revenueByPeriod[p] || null, last6Periods),
+      avg12m: avgOverPeriods((p) => ch.revenueByPeriod[p] || null, last12Periods),
     });
   }
 
@@ -765,6 +795,12 @@ function OtherRevenueSection({
                   {p}
                 </th>
               ))}
+              <th className="text-right py-2 px-3 text-xs font-semibold text-blue-400 min-w-[80px] border-l border-white/10">
+                6ヶ月avg
+              </th>
+              <th className="text-right py-2 px-3 text-xs font-semibold text-blue-400 min-w-[80px]">
+                12ヶ月avg
+              </th>
               <th className="text-right py-2 px-3 text-xs font-semibold text-white min-w-[90px] border-l border-white/10">
                 合計
               </th>
@@ -992,6 +1028,12 @@ function AllCompanySection({
                   {p}
                 </th>
               ))}
+              <th className="text-right py-2 px-3 text-xs font-semibold text-blue-400 min-w-[80px] border-l border-white/10">
+                6ヶ月avg
+              </th>
+              <th className="text-right py-2 px-3 text-xs font-semibold text-blue-400 min-w-[80px]">
+                12ヶ月avg
+              </th>
               <th className="text-right py-2 px-3 text-xs font-semibold text-white min-w-[90px] border-l border-white/10">
                 合計
               </th>
@@ -1097,6 +1139,12 @@ function PLSection({
                   {p}
                 </th>
               ))}
+              <th className="text-right py-2 px-3 text-xs font-semibold text-blue-400 min-w-[80px] border-l border-white/10">
+                6ヶ月avg
+              </th>
+              <th className="text-right py-2 px-3 text-xs font-semibold text-blue-400 min-w-[80px]">
+                12ヶ月avg
+              </th>
               <th className="text-right py-2 px-3 text-xs font-semibold text-white min-w-[90px] border-l border-white/10">
                 合計
               </th>
@@ -1111,7 +1159,7 @@ function PLSection({
               if (row.style === "separator") {
                 return (
                   <tr key={row.key}>
-                    <td colSpan={periods.length + 2} className="h-2" />
+                    <td colSpan={periods.length + 4} className="h-2" />
                   </tr>
                 );
               }
@@ -1163,6 +1211,12 @@ function PLSection({
                     : periods.map((_, i) => (
                         <td key={i} className="py-1.5 px-3" />
                       ))}
+                  <td className={`py-1.5 px-3 text-right border-l border-white/10 ${valCls}`}>
+                    {fmtValue(row.avg6m ?? null, row.format)}
+                  </td>
+                  <td className={`py-1.5 px-3 text-right ${valCls}`}>
+                    {fmtValue(row.avg12m ?? null, row.format)}
+                  </td>
                   <td
                     className={`py-1.5 px-3 text-right border-l border-white/10 ${totCls}`}
                   >
