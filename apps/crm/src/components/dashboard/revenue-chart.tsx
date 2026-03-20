@@ -395,7 +395,8 @@ function UnifiedChart({ data, revenueByChannel }: { data: ThreeTierRevenue[]; re
       }
     }
     const step = 1000000;
-    return Math.ceil(max * 1.1 / step) * step || 10000000;
+    const calc = Math.ceil(max * 1.1 / step) * step || 10000000;
+    return Math.max(calc, 10000000);
   }, [chartData, channelChartData, channelKeys, showCost, viewMode]);
 
   const yTicks = useMemo(() => {
