@@ -338,14 +338,16 @@ function UnifiedChart({ data, revenueByChannel }: { data: ThreeTierRevenue[]; re
   const chartData = periodMode === "quarterly" ? quarterlyData : monthlyData;
   const isQuarterly = periodMode === "quarterly";
 
-  // チャネル別チャートデータ
+  // チャネル別チャートデータ（ピュア/複合/自社プレフィックスを統合）
   const { channelChartData, channelKeys } = useMemo(() => {
     if (!revenueByChannel || revenueByChannel.length === 0) return { channelChartData: [], channelKeys: [] };
-    // 全チャネルを集計して売上順にソート
+    const mergeName = (name: string) => name.replace(/^(ピュア|複合|自社)/, "");
+    // 全チャネルを統合名で集計して売上順にソート
     const totals: Record<string, number> = {};
     for (const row of revenueByChannel) {
       for (const [ch, val] of Object.entries(row.byChannel)) {
-        totals[ch] = (totals[ch] || 0) + val;
+        const merged = mergeName(ch);
+        totals[merged] = (totals[merged] || 0) + val;
       }
     }
     const sorted = Object.entries(totals).sort((a, b) => b[1] - a[1]);
@@ -356,8 +358,9 @@ function UnifiedChart({ data, revenueByChannel }: { data: ThreeTierRevenue[]; re
       const r: Record<string, number | string> = { period: row.period };
       let othersSum = 0;
       for (const [ch, val] of Object.entries(row.byChannel)) {
-        if (topChannels.includes(ch)) {
-          r[ch] = val;
+        const merged = mergeName(ch);
+        if (topChannels.includes(merged)) {
+          r[merged] = (Number(r[merged]) || 0) + val;
         } else {
           othersSum += val;
         }
