@@ -181,7 +181,6 @@ export async function GET(request: Request) {
   }
 
   // Validate params
-  const url = new URL(request.url);
   const fromParam = url.searchParams.get("from");
   const toParam = url.searchParams.get("to");
 
