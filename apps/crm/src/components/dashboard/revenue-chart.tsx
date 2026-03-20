@@ -341,7 +341,16 @@ function UnifiedChart({ data, revenueByChannel }: { data: ThreeTierRevenue[]; re
   // チャネル別チャートデータ（ピュア/複合/自社プレフィックスを統合）
   const { channelChartData, channelQuarterlyData, channelKeys } = useMemo(() => {
     if (!revenueByChannel || revenueByChannel.length === 0) return { channelChartData: [], channelQuarterlyData: [], channelKeys: [] };
-    const mergeName = (name: string) => name.replace(/^(ピュア|複合|自社)/, "");
+    const CHANNEL_ALIASES: Record<string, string> = {
+      "Google検索(自然)": "SEO",
+      "予測SEO": "SEO",
+      "X(SNS)": "X",
+    };
+    const mergeName = (name: string) => {
+      // ピュア/複合を除去（自社メディアは区別して残す）
+      const stripped = name.replace(/^(ピュア|複合)/, "");
+      return CHANNEL_ALIASES[stripped] || stripped;
+    };
     // 全チャネルを統合名で集計して売上順にソート
     const totals: Record<string, number> = {};
     for (const row of revenueByChannel) {
