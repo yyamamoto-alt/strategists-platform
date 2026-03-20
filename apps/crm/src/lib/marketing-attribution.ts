@@ -143,8 +143,12 @@ export function computeAttribution(
 
   const AD_CHANNELS = new Set(["FB広告", "Google広告", "X広告"]);
 
-  // 1. utm が広告チャネル → 最優先（広告費ROI追跡）
-  if (utmChannel && AD_CHANNELS.has(utmChannel)) {
+  // UTMを自社で管理しているチャネル（広告 + 自社メディア系）
+  // これらはutm_sourceを自分で設定しているため、initial_channelより信頼性が高い
+  const UTM_PRIORITY_CHANNELS = new Set([...AD_CHANNELS, "自社メディア", "コンサルタイムズ"]);
+
+  // 1. utm が広告 or 自社管理チャネル → 最優先（UTM管理下）
+  if (utmChannel && UTM_PRIORITY_CHANNELS.has(utmChannel)) {
     base_channel = utmChannel;
     attribution_source = "utm_source";
     confidence = "high";
