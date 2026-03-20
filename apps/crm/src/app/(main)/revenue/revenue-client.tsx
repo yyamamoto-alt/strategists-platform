@@ -468,6 +468,12 @@ function buildRows(
     return Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
   }
 
+  function sumOverPeriods(calcFn: (p: string) => number | null, targetPeriods: string[]): number | null {
+    const vals = targetPeriods.map(calcFn).filter((v): v is number => v !== null);
+    if (vals.length === 0) return null;
+    return Math.round(vals.reduce((a, b) => a + b, 0));
+  }
+
   rows.push({
     key: "ch_ltv_header",
     label: "◆チャネル別 LTV",
@@ -563,8 +569,8 @@ function buildRows(
     format: "currency",
     values: periods.map((p) => data.confirmedRevenue[p] || null),
     totalValue: data.confirmedRevenueTotal,
-    avg6m: avgOverPeriods((p) => data.confirmedRevenue[p] || null, last6Periods),
-    avg12m: avgOverPeriods((p) => data.confirmedRevenue[p] || null, last12Periods),
+    avg6m: sumOverPeriods((p) => data.confirmedRevenue[p] || null, last6Periods),
+    avg12m: sumOverPeriods((p) => data.confirmedRevenue[p] || null, last12Periods),
   });
 
   // チャネル別
@@ -577,8 +583,8 @@ function buildRows(
       format: "currency",
       values: periods.map((p) => ch.revenueByPeriod[p] || null),
       totalValue: ch.revenue || null,
-      avg6m: avgOverPeriods((p) => ch.revenueByPeriod[p] || null, last6Periods),
-      avg12m: avgOverPeriods((p) => ch.revenueByPeriod[p] || null, last12Periods),
+      avg6m: sumOverPeriods((p) => ch.revenueByPeriod[p] || null, last6Periods),
+      avg12m: sumOverPeriods((p) => ch.revenueByPeriod[p] || null, last12Periods),
     });
   }
 
@@ -1131,6 +1137,15 @@ function PLSection({
               <th className="text-left py-2 px-3 text-xs font-semibold text-gray-500 sticky left-0 bg-surface-card z-10 min-w-[220px]">
                 項目
               </th>
+              <th className="text-right py-2 px-3 text-xs font-semibold text-blue-400 min-w-[80px] border-r border-white/10">
+                直近6ヶ月
+              </th>
+              <th className="text-right py-2 px-3 text-xs font-semibold text-blue-400 min-w-[80px] border-r border-white/10">
+                直近12ヶ月
+              </th>
+              <th className="text-right py-2 px-3 text-xs font-semibold text-white min-w-[90px] border-r border-white/10">
+                合計
+              </th>
               {periods.map((p) => (
                 <th
                   key={p}
@@ -1139,15 +1154,6 @@ function PLSection({
                   {p}
                 </th>
               ))}
-              <th className="text-right py-2 px-3 text-xs font-semibold text-blue-400 min-w-[80px] border-l border-white/10">
-                6ヶ月avg
-              </th>
-              <th className="text-right py-2 px-3 text-xs font-semibold text-blue-400 min-w-[80px]">
-                12ヶ月avg
-              </th>
-              <th className="text-right py-2 px-3 text-xs font-semibold text-white min-w-[90px] border-l border-white/10">
-                合計
-              </th>
             </tr>
           </thead>
           <tbody>
@@ -1199,6 +1205,17 @@ function PLSection({
                     )}
                     {row.label}
                   </td>
+                  <td className={`py-1.5 px-3 text-right border-r border-white/10 ${totCls}`}>
+                    {fmtValue(row.avg6m ?? null, row.format)}
+                  </td>
+                  <td className={`py-1.5 px-3 text-right border-r border-white/10 ${totCls}`}>
+                    {fmtValue(row.avg12m ?? null, row.format)}
+                  </td>
+                  <td
+                    className={`py-1.5 px-3 text-right border-r border-white/10 ${totCls}`}
+                  >
+                    {fmtValue(row.totalValue, row.format)}
+                  </td>
                   {hasValues
                     ? row.values.map((v, i) => (
                         <td
@@ -1211,17 +1228,6 @@ function PLSection({
                     : periods.map((_, i) => (
                         <td key={i} className="py-1.5 px-3" />
                       ))}
-                  <td className={`py-1.5 px-3 text-right border-l border-white/10 ${valCls}`}>
-                    {fmtValue(row.avg6m ?? null, row.format)}
-                  </td>
-                  <td className={`py-1.5 px-3 text-right ${valCls}`}>
-                    {fmtValue(row.avg12m ?? null, row.format)}
-                  </td>
-                  <td
-                    className={`py-1.5 px-3 text-right border-l border-white/10 ${totCls}`}
-                  >
-                    {fmtValue(row.totalValue, row.format)}
-                  </td>
                 </tr>
               );
             })}
