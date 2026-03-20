@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { formatCurrency, formatPercent } from "@/lib/utils";
 import type {
   PLSheetData,
