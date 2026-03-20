@@ -811,6 +811,9 @@ function computeSegmentData(
   hasAttribution: boolean,
   allPeriods: string[]
 ): PLSegmentData {
+  // 直近成約率（見込みLTV計算で使用）
+  const recentRates = computeRecentClosingRateByAttribute(customers, 3);
+
   // チャネル別データ蓄積
   const channelMap = new Map<
     string,
@@ -832,6 +835,14 @@ function computeSegmentData(
   let confirmedRevenueTotal = 0;
   let revenueTotal = 0;
   let forecastRevenueTotal = 0;
+
+  // a: スクール確定売上（補助金含）
+  const schoolConfirmedRevenue: Record<string, number> = {};
+  let schoolConfirmedRevenueTotal = 0;
+  // b: 人材確定売上（agentConfirmedRevByPeriodと同値だが明示的に分離）
+  // 見込みLTV合計
+  const expectedLtvRevenue: Record<string, number> = {};
+  let expectedLtvRevenueTotal = 0;
 
   // LTV計算用
   const closedCountByPeriod: Record<string, number> = {};
@@ -936,6 +947,11 @@ function computeSegmentData(
       }
     }
 
+    // --- 見込みLTV: 全顧客の見込みLTV合計 ---
+    const customerLtv = calcExpectedLTV(c, undefined, recentRates);
+    expectedLtvRevenue[period] = (expectedLtvRevenue[period] || 0) + customerLtv;
+    expectedLtvRevenueTotal += customerLtv;
+
     // --- 確定売上: 支払い実績ベース（ステージ不問） ---
     const amount = getSchoolRevenue(c);
     const hasPaid = amount > 0;
@@ -945,6 +961,11 @@ function computeSegmentData(
       // schoolRevByPeriod: スクール確定（補助金込み） — P/Lの「スクール確定分」に対応
       const subsidy = getSubsidyAmount(c);
       schoolRevByPeriod[period] = (schoolRevByPeriod[period] || 0) + amount + subsidy;
+
+      // a: スクール確定売上（補助金含）
+      const schoolConf = amount + subsidy;
+      schoolConfirmedRevenue[period] = (schoolConfirmedRevenue[period] || 0) + schoolConf;
+      schoolConfirmedRevenueTotal += schoolConf;
 
       // 確定売上 = スクール確定(補助金込み) + 人材確定
       let periodConfirmed = amount + subsidy;
@@ -1004,17 +1025,16 @@ function computeSegmentData(
     }
   }
 
-  // 売上計算: revenue = confirmed + agent
-  // forecast = (confirmed + agent) × 月消化率補正 + pipeline期待値（確率補正済みのため補正不要）
-  // ※ ダッシュボードの forecast_total と同じ計算式
+  // 売上計算: revenue = confirmed + agent（確定+人材見込）
+  // forecast = 見込みLTV合計 × 月消化率補正（ダッシュボードの expected_ltv_total と同じ）
   for (const p of allPeriods) {
     const conf = confirmedRevenue[p] || 0;
     const agentRev = agentRevByPeriod[p] || 0;
     revenue[p] = conf + agentRev;
     revenueTotal += revenue[p];
     const monthMul = getMonthProgressMultiplier(p);
-    const pipelineExpected = forecastByPeriod[p] || 0;
-    forecastRevenue[p] = Math.round((conf + agentRev) * monthMul + pipelineExpected);
+    const ltvRaw = expectedLtvRevenue[p] || 0;
+    forecastRevenue[p] = Math.round(ltvRaw * monthMul);
     forecastRevenueTotal += forecastRevenue[p];
   }
 
@@ -1079,6 +1099,12 @@ function computeSegmentData(
     revenueTotal,
     confirmedRevenueTotal,
     forecastRevenueTotal,
+    schoolConfirmedRevenue,
+    schoolConfirmedRevenueTotal,
+    agentConfirmedRevenue: agentConfirmedRevByPeriod,
+    agentConfirmedRevenueTotal: Object.values(agentConfirmedRevByPeriod).reduce((s, v) => s + v, 0),
+    expectedLtvRevenue,
+    expectedLtvRevenueTotal,
     channels,
     totals,
     grandTotals,

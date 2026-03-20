@@ -68,30 +68,61 @@ function buildRows(
   const organicChannels = sortByClosedDesc(data.channels.filter((ch) => !ch.isPaid));
   const paidChannels = sortByClosedDesc(data.channels.filter((ch) => ch.isPaid));
 
-  // --- 3段階売上 ---
+  // --- 6行売上構造 ---
+  // a: スクール確定売上（補助金含）
+  rows.push({
+    key: "school_confirmed",
+    label: "a. スクール確定売上（補助金含）",
+    indent: 0,
+    style: "subtotal",
+    format: "currency",
+    values: periods.map((p) => data.schoolConfirmedRevenue[p] || null),
+    totalValue: data.schoolConfirmedRevenueTotal,
+  });
+  // b: 人材確定売上
+  rows.push({
+    key: "agent_confirmed_rev",
+    label: "b. 人材確定売上",
+    indent: 0,
+    style: "subtotal",
+    format: "currency",
+    values: periods.map((p) => data.agentConfirmedRevenue[p] || null),
+    totalValue: data.agentConfirmedRevenueTotal,
+  });
+  // c: 人材見込売上
+  rows.push({
+    key: "agent_projected_rev",
+    label: "c. 人材見込売上",
+    indent: 0,
+    style: "subtotal",
+    format: "currency",
+    values: periods.map((p) => data.agentProjectedByPeriod[p] || null),
+    totalValue: data.agentProjected,
+  });
+  // d: 確定売上 = a + b
   rows.push({
     key: "confirmed_revenue",
-    label: "確定売上（スクール+人材確定+補助金）",
+    label: "d. 確定売上（a+b）",
     indent: 0,
     style: "total",
     format: "currency",
     values: periods.map((p) => data.confirmedRevenue[p] || null),
     totalValue: data.confirmedRevenueTotal,
   });
-
+  // e: 見込売上（人材見込含）= a + b + c
   rows.push({
     key: "revenue",
-    label: "確定+人材見込（受講中）",
+    label: "e. 見込売上（a+b+c）",
     indent: 0,
     style: "total",
     format: "currency",
     values: periods.map((p) => data.revenue[p] || null),
     totalValue: data.revenueTotal,
   });
-
+  // f: 予測売上 = 見込みLTV合計 × 月消化率補正
   rows.push({
     key: "forecast_revenue",
-    label: "予測売上（パイプライン期待値含む）",
+    label: "f. 予測売上（Forecast）",
     indent: 0,
     style: "total",
     format: "currency",

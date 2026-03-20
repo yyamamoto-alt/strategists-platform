@@ -682,6 +682,15 @@ export interface PLSegmentData {
   revenueTotal: number;
   confirmedRevenueTotal: number;
   forecastRevenueTotal: number;
+  /** a: スクール確定売上（補助金含） */
+  schoolConfirmedRevenue: Record<string, number>;
+  schoolConfirmedRevenueTotal: number;
+  /** b: 人材確定売上 */
+  agentConfirmedRevenue: Record<string, number>;
+  agentConfirmedRevenueTotal: number;
+  /** 見込みLTV合計（月消化率補正前の生値） */
+  expectedLtvRevenue: Record<string, number>;
+  expectedLtvRevenueTotal: number;
   channels: PLChannelData[];
   totals: Record<string, PLFunnelCounts>;
   grandTotals: PLFunnelCounts;
