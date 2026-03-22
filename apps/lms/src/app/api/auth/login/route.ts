@@ -80,7 +80,12 @@ export async function POST(request: Request) {
   });
 
   for (const cookie of cookiesToReturn) {
-    response.cookies.set(cookie.name, cookie.value, cookie.options);
+    response.cookies.set(cookie.name, cookie.value, {
+      ...cookie.options,
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+    });
   }
 
   return response;

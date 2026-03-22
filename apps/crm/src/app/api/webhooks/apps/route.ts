@@ -34,7 +34,13 @@ export async function POST(request: Request) {
     .createHmac("sha256", secret)
     .update(rawBody)
     .digest("hex");
-  if (signature !== expected) {
+  try {
+    const sigBuffer = Buffer.from(signature, "utf8");
+    const expectedBuffer = Buffer.from(expected, "utf8");
+    if (sigBuffer.length !== expectedBuffer.length || !crypto.timingSafeEqual(sigBuffer, expectedBuffer)) {
+      return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+    }
+  } catch {
     return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
   }
 

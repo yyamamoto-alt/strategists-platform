@@ -159,11 +159,20 @@ export async function POST(request: Request) {
     );
   }
 
-  // 3. 招待を使用済みにマーク（emailも記録）
+  // 3. 招待を使用済みにマーク（レースコンディション防止: used_at IS NULL条件付き）
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabase.from("invitations") as any)
+  const { data: updatedInvite } = await (supabase.from("invitations") as any)
     .update({ used_at: new Date().toISOString(), email })
-    .eq("id", invitation.id);
+    .eq("id", invitation.id)
+    .is("used_at", null)
+    .select("id");
+
+  if (!updatedInvite || updatedInvite.length === 0) {
+    return NextResponse.json(
+      { error: "この招待は既に使用されています" },
+      { status: 400 }
+    );
+  }
 
   return NextResponse.json({
     message: "アカウントが作成されました",

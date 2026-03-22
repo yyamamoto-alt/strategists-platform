@@ -1,4 +1,5 @@
 import { createServiceClient } from "@/lib/supabase/server";
+import { requireAuth } from "@/lib/api-auth";
 import { NextRequest, NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { fetchCustomersWithRelations, fetchFirstPaidDates } from "@/lib/data/customers";
@@ -6,9 +7,12 @@ import { fetchChannelAttributions } from "@/lib/data/marketing-settings";
 import { computeAttributionForCustomer } from "@/lib/compute-attribution-for-customer";
 
 export async function GET(request: NextRequest) {
+  const auth = await requireAuth();
+  if (auth.error) return auth.error;
   const { searchParams } = request.nextUrl;
-  const limit = parseInt(searchParams.get("limit") || "0", 10);
-  const offset = parseInt(searchParams.get("offset") || "0", 10);
+  const MAX_LIMIT = 500;
+  const limit = Math.min(Math.max(parseInt(searchParams.get("limit") || "0", 10), 0), MAX_LIMIT);
+  const offset = Math.max(parseInt(searchParams.get("offset") || "0", 10), 0);
 
   const [allCustomers, attributions, firstPaidMap] = await Promise.all([
     fetchCustomersWithRelations(),
@@ -30,6 +34,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: Request) {
+  const auth = await requireAuth();
+  if (auth.error) return auth.error;
+
   const body = await request.json();
   const supabase = createServiceClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

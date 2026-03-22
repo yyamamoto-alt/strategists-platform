@@ -1,4 +1,5 @@
 import { createServiceClient } from "@/lib/supabase/server";
+import { requireAuth } from "@/lib/api-auth";
 import { computeAttributionForCustomer } from "@/lib/compute-attribution-for-customer";
 import { logStageChange } from "@/lib/stage-audit";
 import { NextResponse } from "next/server";
@@ -9,6 +10,8 @@ interface Props {
 }
 
 export async function DELETE(_request: Request, { params }: Props) {
+  const auth = await requireAuth();
+  if (auth.error) return auth.error;
   const { id } = await params;
   const supabase = createServiceClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -44,6 +47,9 @@ export async function DELETE(_request: Request, { params }: Props) {
 }
 
 export async function PATCH(request: Request, { params }: Props) {
+  const auth = await requireAuth();
+  if (auth.error) return auth.error;
+
   const { id } = await params;
   const body = await request.json();
   const supabase = createServiceClient();
@@ -53,13 +59,53 @@ export async function PATCH(request: Request, { params }: Props) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as any;
 
+  // フィールドホワイトリスト（Mass Assignment防止）
+  const ALLOWED_CUSTOMER_FIELDS = [
+    "name", "email", "phone", "attribute", "gender", "application_date",
+    "birth_date", "address", "university", "faculty", "graduation_year",
+    "current_company", "current_position", "desired_industry", "desired_position",
+    "annual_income", "desired_income", "notes", "data_origin", "referral_source",
+    "utm_source", "utm_medium", "utm_campaign", "line_id", "name_kana",
+    "agent_service_enrolled", "reskilling_subsidy_target",
+  ];
+  const ALLOWED_PIPELINE_FIELDS = [
+    "stage", "projected_amount", "meeting_scheduled_date", "meeting_url",
+    "sales_person", "jicoo_message", "notes", "close_date",
+  ];
+  const ALLOWED_CONTRACT_FIELDS = [
+    "plan_name", "confirmed_amount", "billing_status", "enrollment_status",
+    "contract_date", "payment_method", "installment_count", "subsidy_eligible",
+    "referral_category", "progress_sheet_url", "notes",
+  ];
+  const ALLOWED_LEARNING_FIELDS = [
+    "total_sessions", "completed_sessions", "contract_months",
+    "coaching_start_date", "coaching_end_date", "mentor_name",
+    "schedule_progress_rate", "notes",
+  ];
+  const ALLOWED_AGENT_FIELDS = [
+    "offer_salary", "hire_rate", "offer_probability", "referral_fee_rate",
+    "margin", "expected_referral_fee", "placement_confirmed", "placement_date",
+    "placement_company", "agent_service_enrolled", "notes",
+  ];
+
+  function pickAllowed(obj: Record<string, unknown>, allowed: string[]): Record<string, unknown> {
+    const result: Record<string, unknown> = {};
+    for (const key of allowed) {
+      if (key in obj) result[key] = obj[key];
+    }
+    return result;
+  }
+
   // customers テーブル更新
   if (body.customer && Object.keys(body.customer).length > 0) {
-    const { error } = await db
-      .from("customers")
-      .update(body.customer)
-      .eq("id", id);
-    if (error) errors.push(`customers: ${error.message}`);
+    const safeData = pickAllowed(body.customer, ALLOWED_CUSTOMER_FIELDS);
+    if (Object.keys(safeData).length > 0) {
+      const { error } = await db
+        .from("customers")
+        .update(safeData)
+        .eq("id", id);
+      if (error) errors.push(`customers: ${error.message}`);
+    }
   }
 
   // sales_pipeline テーブル更新
@@ -81,61 +127,73 @@ export async function PATCH(request: Request, { params }: Props) {
         }).catch(() => {});
       }
     }
-    const { error } = await db
-      .from("sales_pipeline")
-      .update(body.pipeline)
-      .eq("customer_id", id);
-    if (error) errors.push(`sales_pipeline: ${error.message}`);
+    const safePipeline = pickAllowed(body.pipeline, ALLOWED_PIPELINE_FIELDS);
+    if (Object.keys(safePipeline).length > 0) {
+      const { error } = await db
+        .from("sales_pipeline")
+        .update(safePipeline)
+        .eq("customer_id", id);
+      if (error) errors.push(`sales_pipeline: ${error.message}`);
+    }
   }
 
   // contracts テーブル更新（未作成ならinsert）
   if (body.contract && Object.keys(body.contract).length > 0) {
-    const { data: existingContract } = await db
-      .from("contracts")
-      .select("id")
-      .eq("customer_id", id)
-      .maybeSingle();
-    if (existingContract) {
-      const { error } = await db
+    const safeContract = pickAllowed(body.contract, ALLOWED_CONTRACT_FIELDS);
+    if (Object.keys(safeContract).length > 0) {
+      const { data: existingContract } = await db
         .from("contracts")
-        .update(body.contract)
-        .eq("customer_id", id);
-      if (error) errors.push(`contracts: ${error.message}`);
-    } else {
-      const { error } = await db
-        .from("contracts")
-        .insert({ customer_id: id, ...body.contract });
-      if (error) errors.push(`contracts: ${error.message}`);
+        .select("id")
+        .eq("customer_id", id)
+        .maybeSingle();
+      if (existingContract) {
+        const { error } = await db
+          .from("contracts")
+          .update(safeContract)
+          .eq("customer_id", id);
+        if (error) errors.push(`contracts: ${error.message}`);
+      } else {
+        const { error } = await db
+          .from("contracts")
+          .insert({ customer_id: id, ...safeContract });
+        if (error) errors.push(`contracts: ${error.message}`);
+      }
     }
   }
 
   // learning_records テーブル更新
   if (body.learning && Object.keys(body.learning).length > 0) {
-    const { error } = await db
-      .from("learning_records")
-      .update(body.learning)
-      .eq("customer_id", id);
-    if (error) errors.push(`learning_records: ${error.message}`);
+    const safeLearning = pickAllowed(body.learning, ALLOWED_LEARNING_FIELDS);
+    if (Object.keys(safeLearning).length > 0) {
+      const { error } = await db
+        .from("learning_records")
+        .update(safeLearning)
+        .eq("customer_id", id);
+      if (error) errors.push(`learning_records: ${error.message}`);
+    }
   }
 
   // agent_records テーブル更新（未作成ならinsert）
   if (body.agent && Object.keys(body.agent).length > 0) {
-    const { data: existing } = await db
-      .from("agent_records")
-      .select("id")
-      .eq("customer_id", id)
-      .maybeSingle();
-    if (existing) {
-      const { error } = await db
+    const safeAgent = pickAllowed(body.agent, ALLOWED_AGENT_FIELDS);
+    if (Object.keys(safeAgent).length > 0) {
+      const { data: existing } = await db
         .from("agent_records")
-        .update(body.agent)
-        .eq("customer_id", id);
-      if (error) errors.push(`agent_records: ${error.message}`);
-    } else {
-      const { error } = await db
-        .from("agent_records")
-        .insert({ customer_id: id, ...body.agent });
-      if (error) errors.push(`agent_records: ${error.message}`);
+        .select("id")
+        .eq("customer_id", id)
+        .maybeSingle();
+      if (existing) {
+        const { error } = await db
+          .from("agent_records")
+          .update(safeAgent)
+          .eq("customer_id", id);
+        if (error) errors.push(`agent_records: ${error.message}`);
+      } else {
+        const { error } = await db
+          .from("agent_records")
+          .insert({ customer_id: id, ...safeAgent });
+        if (error) errors.push(`agent_records: ${error.message}`);
+      }
     }
   }
 

@@ -45,8 +45,18 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { secret, formName, data } = body;
 
-    // 認証
-    if (secret !== process.env.CRON_SECRET) {
+    // 認証（タイミングセーフ比較）
+    const expectedSecret = process.env.CRON_SECRET;
+    if (!expectedSecret || !secret) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    try {
+      const secretBuf = Buffer.from(String(secret), "utf8");
+      const expectedBuf = Buffer.from(expectedSecret, "utf8");
+      if (secretBuf.length !== expectedBuf.length || !crypto.timingSafeEqual(secretBuf, expectedBuf)) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+    } catch {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

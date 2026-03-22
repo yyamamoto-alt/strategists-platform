@@ -159,8 +159,14 @@ export async function POST(request: Request) {
         .update(signedPayload)
         .digest("hex");
 
-      if (sig !== expected) {
-        console.warn("Jicoo signature mismatch — rejecting request");
+      try {
+        const sigBuffer = Buffer.from(sig, "utf8");
+        const expectedBuffer = Buffer.from(expected, "utf8");
+        if (sigBuffer.length !== expectedBuffer.length || !crypto.timingSafeEqual(sigBuffer, expectedBuffer)) {
+          console.warn("Jicoo signature mismatch — rejecting request");
+          return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+        }
+      } catch {
         return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
       }
     }

@@ -1,9 +1,12 @@
 import { createServiceClient } from "@/lib/supabase/server";
+import { requireAuth } from "@/lib/api-auth";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
+  const auth = await requireAuth();
+  if (auth.error) return auth.error;
   const supabase = createServiceClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as any;
@@ -30,6 +33,9 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const auth = await requireAuth();
+  if (auth.error) return auth.error;
+
   const body = await request.json();
   const supabase = createServiceClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

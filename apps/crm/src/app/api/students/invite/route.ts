@@ -80,7 +80,7 @@ async function createInvitation(
   // 招待レコード作成
   const token = crypto.randomUUID();
   const expiresAt = new Date();
-  expiresAt.setDate(expiresAt.getDate() + 30); // 30日有効
+  expiresAt.setDate(expiresAt.getDate() + 7); // 7日有効
 
   const { error } = await db.from("invitations").insert({
     email,

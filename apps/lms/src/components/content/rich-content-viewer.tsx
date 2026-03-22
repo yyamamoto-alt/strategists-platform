@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useMemo } from "react";
+import DOMPurify from "isomorphic-dompurify";
 import { CopyProtectedWrapper } from "./copy-protected-wrapper";
 import { slugify } from "@/lib/toc-utils";
 
@@ -12,6 +13,15 @@ interface Props {
 
 export function RichContentViewer({ content, protected: isProtected = true, proseClass = "prose-base" }: Props) {
   const contentRef = useRef<HTMLDivElement>(null);
+
+  const sanitizedContent = useMemo(
+    () =>
+      DOMPurify.sanitize(content, {
+        ADD_TAGS: ["iframe"],
+        ADD_ATTR: ["allowfullscreen", "frameborder", "target", "rel"],
+      }),
+    [content]
+  );
 
   useEffect(() => {
     if (!contentRef.current) return;
@@ -43,7 +53,7 @@ export function RichContentViewer({ content, protected: isProtected = true, pros
           "prose-li:text-gray-300 prose-li:leading-[1.8] prose-li:marker:text-[#DC2626]",
           "prose-hr:border-[#DC2626]/15",
         ].join(" ")}
-        dangerouslySetInnerHTML={{ __html: content }}
+        dangerouslySetInnerHTML={{ __html: sanitizedContent }}
       />
     </CopyProtectedWrapper>
   );

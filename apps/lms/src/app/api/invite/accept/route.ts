@@ -98,11 +98,20 @@ export async function POST(request: Request) {
     await admin.from("user_course_access").insert(courseAccessRows);
   }
 
-  // 5. 招待を使用済みにする
-  await admin
+  // 5. 招待を使用済みにする（レースコンディション防止: used_at IS NULL条件付き）
+  const { data: updatedInvite, error: updateErr } = await admin
     .from("invitations")
     .update({ used_at: new Date().toISOString() })
-    .eq("id", invitation.id);
+    .eq("id", invitation.id)
+    .is("used_at", null)
+    .select("id");
+
+  if (updateErr || !updatedInvite || updatedInvite.length === 0) {
+    return NextResponse.json(
+      { error: "この招待リンクは既に使用されています" },
+      { status: 400 }
+    );
+  }
 
   // 6. 自動ログイン — Cookie にセッションをセット
   const cookieStore = await cookies();

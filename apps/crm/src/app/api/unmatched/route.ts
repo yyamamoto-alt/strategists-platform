@@ -1,7 +1,10 @@
 import { createServiceClient } from "@/lib/supabase/server";
+import { requireAuth } from "@/lib/api-auth";
 import { NextResponse } from "next/server";
 
 export async function GET(request: Request) {
+  const auth = await requireAuth();
+  if (auth.error) return auth.error;
   const { searchParams } = new URL(request.url);
   const connectionId = searchParams.get("connection_id");
   const status = searchParams.get("status") || "pending";

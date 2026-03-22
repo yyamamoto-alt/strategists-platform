@@ -39,8 +39,14 @@ export async function POST(request: Request) {
       .update(signedPayload)
       .digest("hex");
 
-    if (sig !== expected) {
-      console.error("Stripe webhook: signature mismatch");
+    try {
+      const sigBuffer = Buffer.from(sig, "utf8");
+      const expectedBuffer = Buffer.from(expected, "utf8");
+      if (sigBuffer.length !== expectedBuffer.length || !crypto.timingSafeEqual(sigBuffer, expectedBuffer)) {
+        console.error("Stripe webhook: signature mismatch");
+        return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+      }
+    } catch {
       return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
     }
   } else {

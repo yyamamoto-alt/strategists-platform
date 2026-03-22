@@ -1,4 +1,5 @@
 import { createServiceClient } from "@/lib/supabase/server";
+import { requireAuth } from "@/lib/api-auth";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -12,6 +13,9 @@ function isValidColumnName(name: string): boolean {
 }
 
 export async function POST(request: Request) {
+  const auth = await requireAuth();
+  if (auth.error) return auth.error;
+
   const body = await request.json();
   const { table, column_name, column_label } = body;
 
@@ -35,14 +39,9 @@ export async function POST(request: Request) {
   const db = supabase as any;
 
   try {
-    // カラムが既に存在するかチェック
-    const { data: existing } = await db.rpc("exec_sql", {
-      sql: `SELECT column_name FROM information_schema.columns WHERE table_name = '${table}' AND column_name = '${column_name}'`,
-    });
-
-    // rpcが使えない場合はraw SQLで試行
-    // ALTER TABLE ... ADD COLUMN IF NOT EXISTS で安全に追加
-    const alterSql = `ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS ${column_name} text`;
+    // テーブル名はALLOWED_TABLESでバリデ済み、カラム名はisValidColumnNameでバリデ済み
+    // 安全が確認された値のみでSQL文を組み立てる（パラメータバインドが使えないDDL文のため）
+    const alterSql = `ALTER TABLE "${table}" ADD COLUMN IF NOT EXISTS "${column_name}" text`;
 
     // Supabase Management APIでSQL実行
     const projectRef = process.env.SUPABASE_URL?.match(/\/\/([^.]+)\./)?.[1];
@@ -50,8 +49,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "SUPABASE_URL からプロジェクトIDを取得できません" }, { status: 500 });
     }
 
-    // service_role keyでRPC実行を試みる
-    // 直接SQLは実行できないのでManagement APIを使う
     const mgmtToken = process.env.SUPABASE_ACCESS_TOKEN;
     if (mgmtToken) {
       const mgmtRes = await fetch(
@@ -67,8 +64,8 @@ export async function POST(request: Request) {
       );
 
       if (!mgmtRes.ok) {
-        const errData = await mgmtRes.text();
-        return NextResponse.json({ error: `カラム追加に失敗: ${errData}` }, { status: 500 });
+        console.error("Management API error:", await mgmtRes.text());
+        return NextResponse.json({ error: "カラム追加に失敗しました" }, { status: 500 });
       }
     } else {
       return NextResponse.json(

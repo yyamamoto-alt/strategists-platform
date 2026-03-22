@@ -1,4 +1,5 @@
 import { createServiceClient } from "@/lib/supabase/server";
+import { requireAuth } from "@/lib/api-auth";
 import { NextResponse } from "next/server";
 
 interface Props {
@@ -6,15 +7,24 @@ interface Props {
 }
 
 export async function PATCH(request: Request, { params }: Props) {
+  const auth = await requireAuth();
+  if (auth.error) return auth.error;
   const { id } = await params;
   const body = await request.json();
   const supabase = createServiceClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as any;
 
+  // フィールドホワイトリスト（Mass Assignment防止）
+  const ALLOWED_FIELDS = ["name", "description", "color", "is_active", "sort_order"];
+  const safeBody: Record<string, unknown> = {};
+  for (const key of ALLOWED_FIELDS) {
+    if (key in body) safeBody[key] = body[key];
+  }
+
   const { data, error } = await db
     .from("marketing_channels")
-    .update(body)
+    .update({ ...safeBody, updated_at: new Date().toISOString() })
     .eq("id", id)
     .select()
     .single();
@@ -27,6 +37,9 @@ export async function PATCH(request: Request, { params }: Props) {
 }
 
 export async function DELETE(_request: Request, { params }: Props) {
+  const auth = await requireAuth();
+  if (auth.error) return auth.error;
+
   const { id } = await params;
   const supabase = createServiceClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

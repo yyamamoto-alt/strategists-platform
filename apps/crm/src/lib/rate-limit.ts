@@ -1,8 +1,9 @@
 /**
  * CRM用 シンプルなin-memoryレート制限
  *
- * Vercel Serverless では invocation 間で Map が共有されない場合があるが、
- * 同一 invocation 内での連続呼び出し（ブルートフォース等）には有効。
+ * ⚠️ 制限事項: Vercel Serverless では invocation 間で Map が共有されないため、
+ * 分散攻撃に対しては効果が限定的。同一 invocation 内でのバーストには有効。
+ * 本番スケールでは upstash/ratelimit や Vercel Edge Config への移行を推奨。
  */
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 

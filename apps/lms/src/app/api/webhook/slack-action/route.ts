@@ -44,7 +44,13 @@ export async function POST(request: Request) {
     const sigBaseString = `v0:${timestamp}:${rawBodyText}`;
     const expectedSig = "v0=" + crypto.createHmac("sha256", signingSecret).update(sigBaseString, "utf8").digest("hex");
 
-    if (expectedSig !== slackSig) {
+    try {
+      const expectedBuffer = Buffer.from(expectedSig, "utf8");
+      const slackBuffer = Buffer.from(slackSig, "utf8");
+      if (expectedBuffer.length !== slackBuffer.length || !crypto.timingSafeEqual(expectedBuffer, slackBuffer)) {
+        return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+      }
+    } catch {
       return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
     }
   }
@@ -212,7 +218,7 @@ export async function POST(request: Request) {
       // 招待レコード作成
       const token = crypto.randomUUID();
       const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + 30);
+      expiresAt.setDate(expiresAt.getDate() + 7);
 
       // 補助金フラグ取得（enrollment_applicationsまたはcontracts）
       let subsidyEligible = application.subsidy_eligible || false;

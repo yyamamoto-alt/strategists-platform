@@ -1,4 +1,5 @@
 import { createServiceClient } from "@/lib/supabase/server";
+import { requireAuth } from "@/lib/api-auth";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -8,6 +9,8 @@ export const dynamic = "force-dynamic";
  * システム自動化のON/OFF状態 + 設定オーバーライドを取得
  */
 export async function GET() {
+  const auth = await requireAuth();
+  if (auth.error) return auth.error;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const supabase = createServiceClient() as any;
 
@@ -51,6 +54,9 @@ export async function GET() {
  * Body: { id: string, enabled: boolean }
  */
 export async function PATCH(request: Request) {
+  const auth = await requireAuth();
+  if (auth.error) return auth.error;
+
   let body: { id: string; enabled: boolean };
   try {
     body = await request.json();
@@ -88,6 +94,9 @@ export async function PATCH(request: Request) {
  * Body: { automationId: string, overrides: Record<string, string | number> }
  */
 export async function POST(request: Request) {
+  const auth = await requireAuth();
+  if (auth.error) return auth.error;
+
   let body: { automationId: string; overrides: Record<string, string | number> };
   try {
     body = await request.json();

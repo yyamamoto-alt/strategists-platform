@@ -1,4 +1,5 @@
 import { createServiceClient } from "@/lib/supabase/server";
+import { requireAuth } from "@/lib/api-auth";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -14,6 +15,9 @@ function getSettingKey(request: Request): string {
  * default → staff_slack_mapping (名前→Slack ID)
  */
 export async function GET(request: Request) {
+  const auth = await requireAuth();
+  if (auth.error) return auth.error;
+
   const key = getSettingKey(request);
   const supabase = createServiceClient() as any;
 
@@ -37,6 +41,9 @@ export async function GET(request: Request) {
  * Body: Record<string, string>
  */
 export async function PATCH(request: Request) {
+  const auth = await requireAuth();
+  if (auth.error) return auth.error;
+
   const key = getSettingKey(request);
 
   let mapping: Record<string, string>;

@@ -56,7 +56,7 @@ export async function POST(request: Request) {
   // 招待レコード作成
   const token = crypto.randomUUID();
   const expiresAt = new Date();
-  expiresAt.setDate(expiresAt.getDate() + 30);
+  expiresAt.setDate(expiresAt.getDate() + 7);
 
   // courseIds のバリデーション
   const validCourseIds = Array.isArray(courseIds) ? courseIds.filter((id: string) => typeof id === "string" && id.length > 0) : [];

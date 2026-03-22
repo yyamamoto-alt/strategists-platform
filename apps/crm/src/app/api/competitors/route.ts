@@ -1,10 +1,13 @@
 import { createServiceClient } from "@/lib/supabase/server";
+import { requireAuth } from "@/lib/api-auth";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
 /** GET /api/competitors — 競合サイト一覧 + 未読アラート数 */
 export async function GET() {
+  const auth = await requireAuth();
+  if (auth.error) return auth.error;
   const supabase = createServiceClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as any;
@@ -29,6 +32,9 @@ export async function GET() {
 
 /** POST /api/competitors — 新規サイト登録 */
 export async function POST(request: Request) {
+  const auth = await requireAuth();
+  if (auth.error) return auth.error;
+
   const body = await request.json();
   const { name, url, check_frequency } = body;
 
@@ -55,6 +61,9 @@ export async function POST(request: Request) {
 
 /** PATCH /api/competitors — サイト更新 */
 export async function PATCH(request: Request) {
+  const auth = await requireAuth();
+  if (auth.error) return auth.error;
+
   const body = await request.json();
   const { id, ...updates } = body;
 
@@ -66,9 +75,16 @@ export async function PATCH(request: Request) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as any;
 
+  // フィールドホワイトリスト（Mass Assignment防止）
+  const ALLOWED_FIELDS = ["name", "url", "check_frequency", "is_active"];
+  const safeUpdates: Record<string, unknown> = {};
+  for (const key of ALLOWED_FIELDS) {
+    if (key in updates) safeUpdates[key] = updates[key];
+  }
+
   const { data, error } = await db
     .from("competitor_sites")
-    .update({ ...updates, updated_at: new Date().toISOString() })
+    .update({ ...safeUpdates, updated_at: new Date().toISOString() })
     .eq("id", id)
     .select()
     .single();
@@ -82,6 +98,8 @@ export async function PATCH(request: Request) {
 
 /** DELETE /api/competitors — サイト削除 */
 export async function DELETE(request: Request) {
+  const auth = await requireAuth();
+  if (auth.error) return auth.error;
   const { searchParams } = new URL(request.url);
   const id = searchParams.get("id");
 
