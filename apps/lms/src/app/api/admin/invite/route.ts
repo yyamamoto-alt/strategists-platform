@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getLmsSession } from "@/lib/supabase/server";
 import { sendInviteEmail } from "@/lib/email";
 import { NextResponse } from "next/server";
 import crypto from "crypto";
@@ -8,6 +9,11 @@ import crypto from "crypto";
  * 受講生招待URL生成（管理者のみ）
  */
 export async function POST(request: Request) {
+  const session = await getLmsSession();
+  if (!session || session.role !== "admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   const { email, displayName, role: requestedRole, sendEmail, courseIds } = await request.json();
 
   if (!email) {

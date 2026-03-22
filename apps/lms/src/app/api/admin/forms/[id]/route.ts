@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getLmsSession } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
 interface RouteContext {
@@ -7,6 +8,11 @@ interface RouteContext {
 
 // PATCH /api/admin/forms/[id] - フォーム更新
 export async function PATCH(request: Request, context: RouteContext) {
+  const session = await getLmsSession();
+  if (!session || session.role !== "admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   const { id } = await context.params;
   const body = await request.json();
   const admin = createAdminClient();
@@ -35,6 +41,11 @@ export async function PATCH(request: Request, context: RouteContext) {
 
 // DELETE /api/admin/forms/[id] - フォーム削除
 export async function DELETE(_request: Request, context: RouteContext) {
+  const session = await getLmsSession();
+  if (!session || session.role !== "admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   const { id } = await context.params;
   const admin = createAdminClient();
 

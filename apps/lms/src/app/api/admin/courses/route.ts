@@ -1,8 +1,14 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getLmsSession } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
 // GET /api/admin/courses - コース一覧（含む教材紐付け）
 export async function GET() {
+  const session = await getLmsSession();
+  if (!session || session.role !== "admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   const admin = createAdminClient();
 
   const { data: courses, error } = await admin
@@ -36,6 +42,11 @@ export async function GET() {
 
 // POST /api/admin/courses - コース作成
 export async function POST(request: Request) {
+  const session = await getLmsSession();
+  if (!session || session.role !== "admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   const body = await request.json();
   const admin = createAdminClient();
 
