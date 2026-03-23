@@ -85,6 +85,7 @@ function isAdditionalCoaching(stage: string | undefined | null): boolean {
 const NOT_CONDUCTED_STAGES = new Set([
   "日程未確", "未実施", "実施不可",
   "キャンセル", "NoShow",
+  "失注見込(自動)", "失注見込", "非実施対象",
 ]);
 function isConducted(stage: string | undefined | null): boolean {
   if (!stage) return false;
