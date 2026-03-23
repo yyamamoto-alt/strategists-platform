@@ -233,6 +233,27 @@ export async function POST(request: Request) {
         }
       }
 
+      // Jicoo eventTypeId / URL から流入経路を推定 → 「決め手」に設定
+      // ただしカルテ等で後から上書きされた場合はそちらが優先
+      const eventTypeId = (obj.eventTypeId as string | undefined) || "";
+      const JICOO_EVENT_CHANNEL_MAP: Record<string, string> = {
+        "JRw9yc5VuKmw": "コンサルタイムズ",
+        // 他のJicooページがあれば追加
+      };
+      const jicooChannel = JICOO_EVENT_CHANNEL_MAP[eventTypeId];
+      if (jicooChannel) {
+        // application_reason が空 or 不明の場合のみ設定（カルテ等の上書きは尊重）
+        const { data: cust } = await db.from("customers")
+          .select("application_reason")
+          .eq("id", match.customer_id)
+          .single();
+        if (!cust?.application_reason || cust.application_reason === "" || cust.application_reason === "不明") {
+          await db.from("customers")
+            .update({ application_reason: jicooChannel })
+            .eq("id", match.customer_id);
+        }
+      }
+
       await db
         .from("sales_pipeline")
         .update(pipelineUpdate)
