@@ -35,6 +35,18 @@ export function AdsKpiClient({ title, data }: { title: string; data: DailyKpi[] 
   const [range, setRange] = useState<30 | 60 | 90>(30);
   const filtered = useMemo(() => data.slice(-range), [data, range]);
 
+  // CPC専用Y軸の最大値
+  const cpcMax = useMemo(() => {
+    const max = Math.max(...filtered.map((d) => d.cpc), 0);
+    return Math.ceil(max / 100) * 100 || 500;
+  }, [filtered]);
+
+  // CV: 0をnullに変換してドット非表示にする
+  const chartData = useMemo(() => filtered.map((d) => ({
+    ...d,
+    cv_display: d.conversions > 0 ? d.conversions : null,
+  })), [filtered]);
+
   // 集計
   const summary = useMemo(() => {
     const totalCost = filtered.reduce((s, d) => s + d.cost, 0);
@@ -106,7 +118,7 @@ export function AdsKpiClient({ title, data }: { title: string; data: DailyKpi[] 
       {view === "chart" ? (
         <div className="px-2 pb-3">
           <ResponsiveContainer width="100%" height={280}>
-            <ComposedChart data={filtered} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+            <ComposedChart data={chartData} margin={{ top: 5, right: 50, left: 0, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
               <XAxis
                 dataKey="date"
@@ -123,11 +135,13 @@ export function AdsKpiClient({ title, data }: { title: string; data: DailyKpi[] 
                 width={45}
               />
               <YAxis
-                yAxisId="count"
+                yAxisId="cpc"
                 orientation="right"
-                tick={{ fontSize: 9, fill: "#9ca3af" }}
+                tick={{ fontSize: 9, fill: "#f59e0b" }}
                 stroke="rgba(255,255,255,0.1)"
-                width={35}
+                domain={[0, cpcMax]}
+                tickFormatter={(v: number) => `¥${v}`}
+                width={50}
               />
               <Tooltip
                 contentStyle={{
@@ -140,6 +154,7 @@ export function AdsKpiClient({ title, data }: { title: string; data: DailyKpi[] 
                 labelFormatter={(l) => String(l)}
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 formatter={(value: any, name: any) => {
+                  if (value === null) return [null, null];
                   const v = Number(value);
                   const n = String(name);
                   if (n === "広告費" || n === "CPC") return [`¥${v.toLocaleString()}`, n];
@@ -148,9 +163,9 @@ export function AdsKpiClient({ title, data }: { title: string; data: DailyKpi[] 
               />
               <Legend iconSize={8} wrapperStyle={{ fontSize: 10 }} />
               <Bar yAxisId="cost" dataKey="cost" name="広告費" fill="#3b82f6" opacity={0.7} radius={[2, 2, 0, 0]} />
-              <Line yAxisId="count" dataKey="clicks" name="クリック" stroke="#10b981" strokeWidth={1.5} dot={false} />
-              <Line yAxisId="cost" dataKey="cpc" name="CPC" stroke="#f59e0b" strokeWidth={1.5} dot={false} strokeDasharray="4 2" />
-              <Line yAxisId="count" dataKey="conversions" name="CV" stroke="#ef4444" strokeWidth={2} dot={{ r: 2, fill: "#ef4444" }} />
+              <Line yAxisId="cost" dataKey="clicks" name="クリック" stroke="#10b981" strokeWidth={1.5} dot={false} />
+              <Line yAxisId="cpc" dataKey="cpc" name="CPC" stroke="#f59e0b" strokeWidth={1.5} dot={false} strokeDasharray="4 2" />
+              <Line yAxisId="cost" dataKey="cv_display" name="CV" stroke="#ef4444" strokeWidth={0} dot={{ r: 4, fill: "#ef4444" }} connectNulls={false} />
             </ComposedChart>
           </ResponsiveContainer>
         </div>
