@@ -12,9 +12,14 @@ import {
   Tooltip,
   Legend,
 } from "recharts";
-import type { DailyKpi } from "./ads-kpi-section";
+import type { DailyKpiWithCampaigns } from "./ads-kpi-section";
 
 type ViewMode = "chart" | "table";
+
+const CAMPAIGN_COLORS = [
+  "#3b82f6", "#8b5cf6", "#ec4899", "#06b6d4", "#f59e0b",
+  "#10b981", "#ef4444", "#6366f1", "#84cc16", "#f97316",
+];
 
 const formatYen = (v: number) => {
   if (v === 0) return "0";
@@ -28,26 +33,75 @@ const formatDate = (d: string) => {
   return `${Number(m)}/${Number(day)}`;
 };
 
-export function AdsKpiClient({ title, data }: { title: string; data: DailyKpi[] }) {
+interface Props {
+  title: string;
+  data: DailyKpiWithCampaigns[];
+  campaignNames: string[];
+  /** 検索広告のみフィルター（Google用） */
+  defaultSearchOnly?: boolean;
+  searchFilterLabel?: string;
+}
+
+export function AdsKpiClient({
+  title,
+  data,
+  campaignNames,
+  defaultSearchOnly = false,
+  searchFilterLabel,
+}: Props) {
   const [view, setView] = useState<ViewMode>("chart");
-
-  // 直近30日 / 60日 / 90日
   const [range, setRange] = useState<30 | 60 | 90>(30);
-  const filtered = useMemo(() => data.slice(-range), [data, range]);
+  const [searchOnly, setSearchOnly] = useState(defaultSearchOnly);
 
-  // CPC専用Y軸の最大値
+  const filtered = useMemo(() => {
+    const sliced = data.slice(-range);
+    if (!searchOnly) return sliced;
+    // 検索広告のみ: 「検索広告」カテゴリのコストのみ残す
+    return sliced.map((d) => {
+      const searchCost = d.campaignCosts["検索広告"] || 0;
+      const searchRatio = d.cost > 0 ? searchCost / d.cost : 0;
+      return {
+        ...d,
+        cost: searchCost,
+        clicks: Math.round(d.clicks * searchRatio),
+        cpc: Math.round(d.clicks * searchRatio) > 0
+          ? Math.round(searchCost / Math.round(d.clicks * searchRatio))
+          : 0,
+        campaignCosts: { "検索広告": searchCost } as Record<string, number>,
+      };
+    });
+  }, [data, range, searchOnly]);
+
+  // 表示するキャンペーン名（フィルター適用後）
+  const visibleCampaigns = useMemo(() => {
+    if (searchOnly) return ["検索広告"];
+    return campaignNames;
+  }, [campaignNames, searchOnly]);
+
   const cpcMax = useMemo(() => {
     const max = Math.max(...filtered.map((d) => d.cpc), 0);
     return Math.ceil(max / 100) * 100 || 500;
   }, [filtered]);
 
-  // CV: 0をnullに変換してドット非表示にする
-  const chartData = useMemo(() => filtered.map((d) => ({
-    ...d,
-    cv_display: d.conversions > 0 ? d.conversions : null,
-  })), [filtered]);
+  const chartData = useMemo(
+    () =>
+      filtered.map((d) => {
+        const row: Record<string, unknown> = {
+          date: d.date,
+          cost: d.cost,
+          clicks: d.clicks,
+          cpc: d.cpc,
+          cv_display: d.conversions > 0 ? d.conversions : null,
+        };
+        // キャンペーン別コストをフラットに展開
+        for (const name of visibleCampaigns) {
+          row[`cost_${name}`] = d.campaignCosts[name] || 0;
+        }
+        return row;
+      }),
+    [filtered, visibleCampaigns]
+  );
 
-  // 集計
   const summary = useMemo(() => {
     const totalCost = filtered.reduce((s, d) => s + d.cost, 0);
     const totalClicks = filtered.reduce((s, d) => s + d.clicks, 0);
@@ -56,11 +110,28 @@ export function AdsKpiClient({ title, data }: { title: string; data: DailyKpi[] 
     return { totalCost, totalClicks, totalCV, avgCpc, days: filtered.length };
   }, [filtered]);
 
+  // キャンペーン名の省略表示
+  const shortenName = (name: string) =>
+    name.length > 15 ? name.slice(0, 13) + "…" : name;
+
   return (
     <div className="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.4)] border border-white/10">
       <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
         <h3 className="text-sm font-semibold text-white">{title}</h3>
         <div className="flex items-center gap-2">
+          {/* 検索広告のみトグル（Google用） */}
+          {searchFilterLabel && (
+            <button
+              onClick={() => setSearchOnly(!searchOnly)}
+              className={`px-2 py-0.5 text-[10px] rounded border ${
+                searchOnly
+                  ? "bg-blue-600/30 border-blue-500/50 text-blue-300"
+                  : "border-white/10 text-gray-500 hover:text-white"
+              }`}
+            >
+              {searchFilterLabel}
+            </button>
+          )}
           <div className="flex gap-0.5">
             {([30, 60, 90] as const).map((r) => (
               <button
@@ -157,12 +228,25 @@ export function AdsKpiClient({ title, data }: { title: string; data: DailyKpi[] 
                   if (value === null) return [null, null];
                   const v = Number(value);
                   const n = String(name);
-                  if (n === "広告費" || n === "CPC") return [`¥${v.toLocaleString()}`, n];
+                  if (n.includes("広告") || n === "CPC" || n.includes("検索") || n.includes("その他"))
+                    return [`¥${v.toLocaleString()}`, n];
                   return [v.toLocaleString(), n];
                 }}
               />
               <Legend iconSize={8} wrapperStyle={{ fontSize: 10 }} />
-              <Bar yAxisId="cost" dataKey="cost" name="広告費" fill="#3b82f6" opacity={0.7} radius={[2, 2, 0, 0]} />
+              {/* キャンペーン別積み上げ棒グラフ */}
+              {visibleCampaigns.map((name, i) => (
+                <Bar
+                  key={name}
+                  yAxisId="cost"
+                  dataKey={`cost_${name}`}
+                  name={shortenName(name)}
+                  stackId="cost"
+                  fill={CAMPAIGN_COLORS[i % CAMPAIGN_COLORS.length]}
+                  opacity={0.8}
+                  radius={i === visibleCampaigns.length - 1 ? [2, 2, 0, 0] : [0, 0, 0, 0]}
+                />
+              ))}
               <Line yAxisId="cost" dataKey="clicks" name="クリック" stroke="#10b981" strokeWidth={1.5} dot={false} />
               <Line yAxisId="cpc" dataKey="cpc" name="CPC" stroke="#f59e0b" strokeWidth={1.5} dot={false} strokeDasharray="4 2" />
               <Line yAxisId="cost" dataKey="cv_display" name="CV" stroke="#ef4444" strokeWidth={0} dot={{ r: 4, fill: "#ef4444" }} connectNulls={false} />
