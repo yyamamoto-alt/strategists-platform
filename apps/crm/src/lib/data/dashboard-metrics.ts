@@ -105,6 +105,15 @@ function isStageLost(stage: string | undefined | null): boolean {
   return LOST_STAGES.has(stage);
 }
 
+/**
+ * 日程確定判定: sales_date または meeting_scheduled_date が入っていれば確定
+ * 日程未確 / 実施不可 は日程未確定扱い
+ */
+function isScheduled(pipeline: { sales_date?: string | null; meeting_scheduled_date?: string | null } | null | undefined): boolean {
+  if (!pipeline) return false;
+  return !!(pipeline.sales_date || pipeline.meeting_scheduled_date);
+}
+
 export function computeFunnelMetrics(
   customers: CustomerWithRelations[]
 ): FunnelMetrics[] {
@@ -128,8 +137,8 @@ export function computeFunnelMetrics(
 
     if (c.pipeline) {
       const s = c.pipeline.stage;
-      // 日程確定以降（日程未確以外すべて）
-      if (s !== "日程未確") {
+      // 日程確定 = sales_date or meeting_scheduled_date あり
+      if (isScheduled(c.pipeline)) {
         m.scheduled++;
       }
       // 未実施かつ営業予定日が未来 → 参考値（pending_future）
@@ -739,7 +748,7 @@ export function computeChannelFunnelPivot(
     if (c.pipeline) {
       const s = c.pipeline.stage;
 
-      if (s !== "日程未確") {
+      if (isScheduled(c.pipeline)) {
         p.scheduled++;
         ch.scheduled++;
       }
@@ -909,8 +918,8 @@ function computeSegmentData(
     if (c.pipeline) {
       const s = c.pipeline.stage;
 
-      // 日程確定
-      if (s !== "日程未確") {
+      // 日程確定 = sales_date or meeting_scheduled_date あり
+      if (isScheduled(c.pipeline)) {
         pf.scheduled++;
         ch.totals.scheduled++;
         pt.scheduled++;
