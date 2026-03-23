@@ -300,6 +300,7 @@ export function calcFunnelLTV(c: AdsFunnelCustomer): number {
 
 const NOT_CONDUCTED_STAGES = new Set([
   "日程未確", "未実施", "実施不可", "キャンセル", "NoShow",
+  "失注見込(自動)", "失注見込", "非実施対象",
 ]);
 
 function adsFunnelIsClosed(stage: string | null | undefined): boolean {
@@ -312,9 +313,17 @@ function adsFunnelIsConducted(stage: string | null | undefined): boolean {
   return !NOT_CONDUCTED_STAGES.has(stage);
 }
 
+/** 日程確定: 日程未確・実施不可・非実施対象・失注見込(自動)で日付なしは未確定 */
 function adsFunnelIsScheduled(stage: string | null | undefined): boolean {
   if (!stage) return false;
-  return stage !== "日程未確";
+  // 明確に日程未確定のステージ
+  const NOT_SCHEDULED = new Set(["日程未確", "実施不可", "非実施対象"]);
+  if (NOT_SCHEDULED.has(stage)) return false;
+  // 失注見込(自動)は日程未確から自動遷移した可能性があるが、
+  // AdsFunnelCustomerにsales_dateがないため、ステージベースで判定
+  // 失注見込(自動)は日程確定とみなさない
+  if (stage === "失注見込(自動)") return false;
+  return true;
 }
 
 /** Google広告帰属の顧客ファネルデータ（customer_channel_attributionベース） */
