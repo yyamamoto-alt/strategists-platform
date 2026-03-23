@@ -138,15 +138,14 @@ export function computeFunnelMetrics(
     if (c.pipeline) {
       const s = c.pipeline.stage;
       // 日程確定 = sales_date or meeting_scheduled_date あり
-      if (isScheduled(c.pipeline)) {
+      // ただし未実施かつ営業予定日が未来の人は除外（まだ営業していない）
+      const isFutureMeeting = s === "未実施" && c.pipeline.meeting_scheduled_date && c.pipeline.meeting_scheduled_date > today;
+      if (isScheduled(c.pipeline) && !isFutureMeeting) {
         m.scheduled++;
       }
       // 未実施かつ営業予定日が未来 → 参考値（pending_future）
-      if (s === "未実施") {
-        const meetingDate = c.pipeline.meeting_scheduled_date;
-        if (meetingDate && meetingDate > today) {
-          m.pending_future++;
-        }
+      if (isFutureMeeting) {
+        m.pending_future++;
       }
       // 面談実施: stageが NOT_CONDUCTED_STAGES 以外
       if (isConducted(s)) {
@@ -748,7 +747,8 @@ export function computeChannelFunnelPivot(
     if (c.pipeline) {
       const s = c.pipeline.stage;
 
-      if (isScheduled(c.pipeline)) {
+      const isFuture = s === "未実施" && c.pipeline.meeting_scheduled_date && c.pipeline.meeting_scheduled_date > new Date().toISOString().slice(0, 10);
+      if (isScheduled(c.pipeline) && !isFuture) {
         p.scheduled++;
         ch.scheduled++;
       }
@@ -919,7 +919,9 @@ function computeSegmentData(
       const s = c.pipeline.stage;
 
       // 日程確定 = sales_date or meeting_scheduled_date あり
-      if (isScheduled(c.pipeline)) {
+      // 未実施かつ営業予定日が未来の人は除外（まだ営業していない）
+      const isFutureMtg = s === "未実施" && c.pipeline.meeting_scheduled_date && c.pipeline.meeting_scheduled_date > new Date().toISOString().slice(0, 10);
+      if (isScheduled(c.pipeline) && !isFutureMtg) {
         pf.scheduled++;
         ch.totals.scheduled++;
         pt.scheduled++;
