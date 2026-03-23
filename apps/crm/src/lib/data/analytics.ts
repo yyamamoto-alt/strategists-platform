@@ -301,8 +301,7 @@ export function calcFunnelLTV(c: AdsFunnelCustomer): number {
 }
 
 const NOT_CONDUCTED_STAGES = new Set([
-  "日程未確", "未実施", "実施不可", "キャンセル", "NoShow",
-  "失注見込(自動)", "失注見込", "非実施対象",
+  "日程未確", "未実施", "実施不可", "キャンセル", "NoShow", "非実施対象",
 ]);
 
 function adsFunnelIsClosed(stage: string | null | undefined): boolean {
