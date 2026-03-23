@@ -282,6 +282,7 @@ export interface AdsFunnelCustomer {
   utm_campaign: string | null;
   stage: string | null;
   confirmed_amount: number;
+  contract_total: number;
   subsidy_amount: number;
   expected_referral_fee: number;
   referral_category: string | null;
@@ -292,10 +293,11 @@ export function isAgentFunnelCustomer(c: { referral_category: string | null }): 
   return !!c.referral_category && AGENT_CATEGORIES.has(c.referral_category);
 }
 
-/** 見込みLTV算出: スクール確定 + 補助金 + 人材報酬（エージェント利用者のみ） */
+/** 見込みLTV算出: スクール確定（contract_total優先） + 補助金 + 人材報酬（エージェント利用者のみ） */
 export function calcFunnelLTV(c: AdsFunnelCustomer): number {
   const agent = isAgentFunnelCustomer(c) ? c.expected_referral_fee : 0;
-  return c.confirmed_amount + c.subsidy_amount + agent;
+  const school = c.contract_total || c.confirmed_amount;
+  return school + c.subsidy_amount + agent;
 }
 
 const NOT_CONDUCTED_STAGES = new Set([
@@ -348,7 +350,7 @@ export async function fetchAdsFunnelData(): Promise<AdsFunnelCustomer[]> {
     const batch = customerIds.slice(i, i + BATCH);
     const { data, error } = await supabase()
       .from("customers")
-      .select("id,name,application_date,attribute,utm_source,utm_medium,utm_campaign,sales_pipeline(stage),contracts(confirmed_amount,subsidy_amount,referral_category),agent_records(expected_referral_fee)")
+      .select("id,name,application_date,attribute,utm_source,utm_medium,utm_campaign,sales_pipeline(stage),contracts(confirmed_amount,contract_total,subsidy_amount,referral_category),agent_records(expected_referral_fee)")
       .in("id", batch)
       .order("application_date", { ascending: false });
 
@@ -370,6 +372,7 @@ export async function fetchAdsFunnelData(): Promise<AdsFunnelCustomer[]> {
       utm_campaign: row.utm_campaign,
       stage: r(row.sales_pipeline)?.stage ?? null,
       confirmed_amount: r(row.contracts)?.confirmed_amount ?? 0,
+      contract_total: r(row.contracts)?.contract_total ?? 0,
       subsidy_amount: r(row.contracts)?.subsidy_amount ?? 0,
       expected_referral_fee: r(row.agent_records)?.expected_referral_fee ?? 0,
       referral_category: r(row.contracts)?.referral_category ?? null,
@@ -525,7 +528,7 @@ export async function fetchMetaFunnelData(): Promise<AdsFunnelCustomer[]> {
     const batch = customerIds.slice(i, i + BATCH);
     const { data, error } = await supabase()
       .from("customers")
-      .select("id,name,application_date,attribute,utm_source,utm_medium,utm_campaign,sales_pipeline(stage),contracts(confirmed_amount,subsidy_amount,referral_category),agent_records(expected_referral_fee)")
+      .select("id,name,application_date,attribute,utm_source,utm_medium,utm_campaign,sales_pipeline(stage),contracts(confirmed_amount,contract_total,subsidy_amount,referral_category),agent_records(expected_referral_fee)")
       .in("id", batch)
       .order("application_date", { ascending: false });
 
@@ -547,6 +550,7 @@ export async function fetchMetaFunnelData(): Promise<AdsFunnelCustomer[]> {
       utm_campaign: row.utm_campaign,
       stage: r(row.sales_pipeline)?.stage ?? null,
       confirmed_amount: r(row.contracts)?.confirmed_amount ?? 0,
+      contract_total: r(row.contracts)?.contract_total ?? 0,
       subsidy_amount: r(row.contracts)?.subsidy_amount ?? 0,
       expected_referral_fee: r(row.agent_records)?.expected_referral_fee ?? 0,
       referral_category: r(row.contracts)?.referral_category ?? null,
